@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+sequenceable Disk..OHOS.StorageManager.Disk;
+sequenceable VolumeCore..OHOS.StorageManager.VolumeCore;
+sequenceable VolumeExternal..OHOS.StorageManager.VolumeExternal;
+sequenceable VolumeCore..OHOS.StorageManager.VolumeInfoStr;
+
+interface OHOS.DiskManager.IDiskManager {
+    /* ---------- 应用 / Connect：卷与磁盘 ---------- */
+    [ipccode 1] void Mount([in] String volumeId);
+    [ipccode 2] void Unmount([in] String volumeId);
+    [ipccode 3] void Format([in] String volumeId, [in] String fsType);
+    [ipccode 4] void TryToFix([in] String volumeId);
+    [ipccode 5] void SetVolumeDescription([in] String fsUuid, [in] String description);
+    [ipccode 6] void GetAllVolumes([out] VolumeExternal[] vecOfVol);
+    [ipccode 7] void GetVolumeByUuid([in] String fsUuid, [out] VolumeExternal vc);
+    [ipccode 8] void GetVolumeById([in] String volumeId, [out] VolumeExternal vc);
+    [ipccode 9] void GetFreeSizeOfVolume([in] String volumeUuid, [out] long freeSize);
+    [ipccode 10] void GetTotalSizeOfVolume([in] String volumeUuid, [out] long totalSize);
+    [ipccode 11] void Partition([in] String diskId, [in] int type);
+    [ipccode 12] void GetAllDisks([out] Disk[] vecOfDisk);
+    [ipccode 13] void GetDiskById([in] String diskId, [out] Disk disk);
+    [ipccode 14] void QueryUsbIsInUse([in] String diskPath, [out] boolean isInUse);
+
+    /* ---------- storage_daemon 回调（原 Notify*） ---------- */
+    [ipccode 20] void NotifyDiskCreated([in] Disk disk);
+    [ipccode 21] void NotifyDiskDestroyed([in] String diskId);
+    [ipccode 22] void NotifyVolumeCreated([in] VolumeCore vc);
+    [ipccode 23] void NotifyVolumeMounted([in] VolumeInfoStr vis);
+    [ipccode 24] void NotifyVolumeStateChanged([in] String volumeId, [in] unsigned int state);
+    [ipccode 25] void NotifyVolumeDamaged([in] VolumeInfoStr vis);
+    [ipccode 26] void NotifyMtpMounted([in] String id, [in] String path, [in] String desc, [in] String uuid, [in] String fsType);
+    [ipccode 27] void NotifyMtpUnmounted([in] String id, [in] boolean isBadRemove);
+    [ipccode 28] void NotifyEncryptVolumeStateChanged([in] VolumeInfoStr vis);
+
+    /* ---------- 加密卷（与 IStorageManager 磁盘加密段对齐） ---------- */
+    [ipccode 30] void Encrypt([in] String volumeId, [in] String pazzword);
+    [ipccode 31] void GetCryptProgressById([in] String volumeId, [out] int progress);
+    [ipccode 32] void GetCryptUuidById([in] String volumeId, [out] String uuid);
+    [ipccode 33] void BindRecoverKeyToPasswd([in] String volumeId, [in] String pazzword, [in] String recoverKey);
+    [ipccode 34] void UpdateCryptPasswd([in] String volumeId, [in] String pazzword, [in] String newPazzword);
+    [ipccode 35] void ResetCryptPasswd([in] String volumeId, [in] String recoverKey, [in] String newPazzword);
+    [ipccode 36] void VerifyCryptPasswd([in] String volumeId, [in] String pazzword);
+    [ipccode 37] void Unlock([in] String volumeId, [in] String pazzword);
+    [ipccode 38] void Decrypt([in] String volumeId, [in] String pazzword);
+}
