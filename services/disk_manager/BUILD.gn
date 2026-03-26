@@ -18,7 +18,6 @@ config("disk_manager_config") {
   include_dirs = [
     "include",
     "include/ipc",
-    "${filemanagement_storage_service_root}/interfaces/innerkits/storage_manager/native",
   ]
 
   cflags = [
@@ -43,7 +42,7 @@ ohos_shared_library("disk_manager") {
 
   defines = [
     "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
-    "LOG_DOMAIN = 0xD004400",
+    "LOG_DOMAIN = 0xD00430F",
   ]
 
   configs = [

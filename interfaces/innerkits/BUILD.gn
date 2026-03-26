@@ -13,12 +13,11 @@
 
 import("//build/config/components/idl_tool/idl.gni")
 import("//build/ohos.gni")
-import("//foundation/filemanagement/disk_manager/disk_manager.gni")
 
 idl_gen_interface("disk_manager_interface_native") {
   sources = [ "IDiskManager.idl" ]
   log_tag = "DiskManager"
-  log_domainid = "0xD004400"
+  log_domainid = "0xD00430F"
   hitrace = "HITRACE_TAG_FILEMANAGEMENT"
 }
 
@@ -81,16 +80,21 @@ ohos_shared_library("disk_manager_innerkits") {
 
   sources = [
     "src/disk.cpp",
+    "src/disk_manager_client.cpp",
     "src/volume_core.cpp",
     "src/volume_external.cpp",
   ]
 
   defines = [
     "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
-    "LOG_DOMAIN = 0xD004400",
+    "LOG_DOMAIN = 0xD00430F",
   ]
 
   public_configs = [ ":disk_manager_idl_public_config" ]
+  configs = [
+    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
+  ]
 
   cflags = [
     "-D_FORTIFY_SOURCE=2",
@@ -98,10 +102,13 @@ ohos_shared_library("disk_manager_innerkits") {
   ]
 
   external_deps = [
+    "access_token:libaccesstoken_sdk",
     "c_utils:utils",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
   ]
 
   deps = [

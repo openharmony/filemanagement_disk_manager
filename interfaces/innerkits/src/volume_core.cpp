@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,7 +16,7 @@
 #include "volume_core.h"
 
 namespace OHOS {
-namespace StorageManager {
+namespace DiskManager {
 VolumeCore::VolumeCore() {}
 
 VolumeCore::VolumeCore(const std::string &id, int32_t type, const std::string &diskId)
@@ -34,7 +34,10 @@ VolumeCore::VolumeCore(const std::string &id, int32_t type, const std::string &d
     state_ = state;
 }
 
-VolumeCore::VolumeCore(const std::string &id, int32_t type, const std::string &diskId, int32_t state,
+VolumeCore::VolumeCore(const std::string &id,
+                       int32_t type,
+                       const std::string &diskId,
+                       int32_t state,
                        const std::string &fsType)
 {
     id_ = id;
@@ -134,7 +137,7 @@ bool VolumeInfoStr::Marshalling(Parcel &parcel) const
 
 VolumeCore *VolumeCore::Unmarshalling(Parcel &parcel)
 {
-    VolumeCore* obj = new (std::nothrow) VolumeCore();
+    VolumeCore *obj = new (std::nothrow) VolumeCore();
     if (!obj) {
         return nullptr;
     }
@@ -149,7 +152,7 @@ VolumeCore *VolumeCore::Unmarshalling(Parcel &parcel)
 
 VolumeInfoStr *VolumeInfoStr::Unmarshalling(Parcel &parcel)
 {
-    VolumeInfoStr* obj = new (std::nothrow) VolumeInfoStr();
+    VolumeInfoStr *obj = new (std::nothrow) VolumeInfoStr();
     if (!obj) {
         return nullptr;
     }
@@ -161,5 +164,5 @@ VolumeInfoStr *VolumeInfoStr::Unmarshalling(Parcel &parcel)
     obj->isDamaged = parcel.ReadBool();
     return obj;
 }
-}
-}
+} // namespace DiskManager
+} // namespace OHOS

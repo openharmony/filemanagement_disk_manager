@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO_USER: 若与 storage_service 不同仓，请改路径或拆出独立 parcel 实现，并调整 native/BUILD.gn 中 deps
 declare_args() {
-  filemanagement_storage_service_root = "//foundation/filemanagement/storage_service"
+  disk_manager_dfs_filemanager = defined(global_parts_info) &&
+                                 defined(global_parts_info.filemanagement_dfs_service)
 }
