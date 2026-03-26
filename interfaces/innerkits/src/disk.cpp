@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,12 +16,17 @@
 #include "disk.h"
 
 namespace OHOS {
-namespace StorageManager {
+namespace DiskManager {
 Disk::Disk() {}
 
-Disk::Disk(const std::string &diskId, int64_t sizeBytes, const std::string &sysPath,
-           const std::string &vendor, int32_t flag)
-    : diskId_(diskId), sizeBytes_(sizeBytes), sysPath_(sysPath), vendor_(vendor), flag_(flag) {}
+Disk::Disk(const std::string &diskId,
+           int64_t sizeBytes,
+           const std::string &sysPath,
+           const std::string &vendor,
+           int32_t flag)
+    : diskId_(diskId), sizeBytes_(sizeBytes), sysPath_(sysPath), vendor_(vendor), flag_(flag)
+{
+}
 
 std::string Disk::GetDiskId() const
 {
@@ -80,7 +85,7 @@ bool Disk::Marshalling(Parcel &parcel) const
 
 Disk *Disk::Unmarshalling(Parcel &parcel)
 {
-    Disk* obj = new (std::nothrow) Disk();
+    Disk *obj = new (std::nothrow) Disk();
     if (!obj) {
         return nullptr;
     }
@@ -91,5 +96,5 @@ Disk *Disk::Unmarshalling(Parcel &parcel)
     obj->flag_ = parcel.ReadInt32();
     return obj;
 }
-}
-}
+} // namespace DiskManager
+} // namespace OHOS

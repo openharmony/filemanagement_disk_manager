@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,11 +16,13 @@
 #include "volume_external.h"
 
 namespace OHOS {
-namespace StorageManager {
+namespace DiskManager {
 VolumeExternal::VolumeExternal() {}
 
 VolumeExternal::VolumeExternal(VolumeCore vc)
-    : VolumeExternal::VolumeCore(vc.GetId(), vc.GetType(), vc.GetDiskId(), vc.GetState(), vc.GetFsType()) {}
+    : VolumeExternal::VolumeCore(vc.GetId(), vc.GetType(), vc.GetDiskId(), vc.GetState(), vc.GetFsType())
+{
+}
 
 void VolumeExternal::SetFlags(int32_t flags)
 {
@@ -128,7 +130,7 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
 VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
 {
     std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));
-    VolumeExternal* obj = new (std::nothrow) VolumeExternal(*volumeCorePtr);
+    VolumeExternal *obj = new (std::nothrow) VolumeExternal(*volumeCorePtr);
     if (!obj) {
         return nullptr;
     }
@@ -139,5 +141,5 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->description_ = parcel.ReadString();
     return obj;
 }
-}
-}
+} // namespace DiskManager
+} // namespace OHOS

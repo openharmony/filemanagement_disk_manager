@@ -21,27 +21,35 @@
     "ram": "2048KB",
     "deps": {
       "components": [
+        "ability_runtime",
         "access_token",
         "bounds_checking_function",
         "common_event_service",
         "c_utils",
+        "dfs_service",
+        "file_api",
         "hilog",
         "hisysevent",
         "hitrace",
+        "init",
         "ipc",
+        "napi",
+        "runtime_core",
         "safwk",
-        "samgr",
-        "init"
+        "samgr"
       ],
       "third_party": []
     },
     "build": {
       "group_type": {
         "base_group": [],
-        "fwk_group": [],
+        "fwk_group": [
+          "//foundation/filemanagement/disk_manager/interfaces/kits/js:disk_manager_js",
+          "//foundation/filemanagement/disk_manager/interfaces/kits/taihe:disk_manager_volume_manager_taihe"
+        ],
         "service_group": [
-          "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_sa_profile",
           "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_cfg",
+          "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_sa_profile",
           "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager"
         ]
       },
@@ -51,6 +59,7 @@
           "header": {
             "header_files": [
               "disk.h",
+              "disk_manager_client.h",
               "volume_core.h",
               "volume_external.h"
             ],

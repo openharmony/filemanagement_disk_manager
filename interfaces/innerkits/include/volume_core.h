@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_STORAGE_MANAGER_VOLUME_CORE_H
-#define OHOS_STORAGE_MANAGER_VOLUME_CORE_H
+#ifndef OHOS_DISK_MANAGER_VOLUME_CORE_H
+#define OHOS_DISK_MANAGER_VOLUME_CORE_H
 
 #include "parcel.h"
 
 namespace OHOS {
-namespace StorageManager {
+namespace DiskManager {
 enum VolumeType {
     EMULATED = 1,
     EXTERNAL,
@@ -42,17 +42,21 @@ enum VolumeState {
 
 class VolumeInfoStr : public Parcelable {
 public:
-    VolumeInfoStr() {};
-    
-    VolumeInfoStr(const std::string &volumeId_, const std::string &fsTypeStr_, const std::string &fsUuid_,
-                  const std::string &path_, const std::string &description_, bool isDamaged_)
+    VolumeInfoStr(){};
+
+    VolumeInfoStr(const std::string &volumeId_,
+                  const std::string &fsTypeStr_,
+                  const std::string &fsUuid_,
+                  const std::string &path_,
+                  const std::string &description_,
+                  bool isDamaged_)
         : volumeId(volumeId_),
           fsTypeStr(fsTypeStr_),
           fsUuid(fsUuid_),
           path(path_),
           description(description_),
-          isDamaged(isDamaged_) {};
-    
+          isDamaged(isDamaged_){};
+
     std::string volumeId;
     std::string fsTypeStr;
     std::string fsUuid;
@@ -69,7 +73,10 @@ public:
     VolumeCore();
     VolumeCore(const std::string &id, int32_t type, const std::string &diskId);
     VolumeCore(const std::string &id, int32_t type, const std::string &diskId, int32_t state);
-    VolumeCore(const std::string &id, int32_t type, const std::string &diskId, int32_t state,
+    VolumeCore(const std::string &id,
+               int32_t type,
+               const std::string &diskId,
+               int32_t state,
                const std::string &fsType);
 
     std::string GetId() const;
@@ -81,15 +88,16 @@ public:
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeCore *Unmarshalling(Parcel &parcel);
+
 private:
     std::string id_;
-    int32_t type_ {};
+    int32_t type_{};
     std::string diskId_;
     int32_t state_ = UNMOUNTED;
     bool errorFlag_ = false;
     std::string fsType_;
 };
-} // namespace StorageManager
+} // namespace DiskManager
 } // namespace OHOS
 
-#endif // OHOS_STORAGE_MANAGER_VOLUME_CORE_H
+#endif // OHOS_DISK_MANAGER_VOLUME_CORE_H
