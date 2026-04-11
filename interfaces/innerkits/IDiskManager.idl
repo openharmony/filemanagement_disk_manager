@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-sequenceable Disk..OHOS.StorageManager.Disk;
-sequenceable VolumeCore..OHOS.StorageManager.VolumeCore;
-sequenceable VolumeExternal..OHOS.StorageManager.VolumeExternal;
-sequenceable VolumeCore..OHOS.StorageManager.VolumeInfoStr;
+sequenceable Disk..OHOS.DiskManager.Disk;
+sequenceable VolumeCore..OHOS.DiskManager.VolumeCore;
+sequenceable VolumeExternal..OHOS.DiskManager.VolumeExternal;
+sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
 
 interface OHOS.DiskManager.IDiskManager {
     /* ---------- 应用 / Connect：卷与磁盘 ---------- */
@@ -34,6 +34,7 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 12] void GetAllDisks([out] Disk[] vecOfDisk);
     [ipccode 13] void GetDiskById([in] String diskId, [out] Disk disk);
     [ipccode 14] void QueryUsbIsInUse([in] String diskPath, [out] boolean isInUse);
+    [ipccode 15] void IsUsbFuseByType([in] int type, [out] boolean isUsbFuse);
 
     /* ---------- storage_daemon 回调（原 Notify*） ---------- */
     [ipccode 20] void NotifyDiskCreated([in] Disk disk);
