@@ -27,22 +27,22 @@ enum class DiskEventKind {
     REMOVED,
 };
 
-// 卷/磁盘维度的系统公共事件（COMMON_EVENT_*）发布。
-// 由卷管理、磁盘管理等模块在整理好 VolumeExternal / Disk 后调用；
-// DiskManagerProvider 仅承载 IDL 分发，不应内聚此类实现细节。
+/**
+ * @brief 发布卷、磁盘维度的系统公共事件（COMMON_EVENT_*）。
+ *
+ * 根据 VolumeExternal、Disk 等入参封装 Want，并通过公共事件服务下发。接口均为静态方法。
+ */
 class CommonEventPublisher {
 public:
-    static CommonEventPublisher &GetInstance();
+    static void PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume);
+    static void PublishDiskChange(DiskEventKind kind, const Disk &disk);
 
-    void PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume);
-    void PublishDiskChange(DiskEventKind kind, const Disk &disk);
-
+    CommonEventPublisher() = delete;
+    ~CommonEventPublisher() = delete;
     CommonEventPublisher(const CommonEventPublisher &) = delete;
     CommonEventPublisher &operator=(const CommonEventPublisher &) = delete;
-
-private:
-    CommonEventPublisher() = default;
-    ~CommonEventPublisher() = default;
+    CommonEventPublisher(CommonEventPublisher &&) = delete;
+    CommonEventPublisher &operator=(CommonEventPublisher &&) = delete;
 };
 
 } // namespace DiskManager
