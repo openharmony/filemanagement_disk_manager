@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_STORAGE_MANAGER_DISK_H
-#define OHOS_STORAGE_MANAGER_DISK_H
+#ifndef OHOS_DISK_MANAGER_DISK_H
+#define OHOS_DISK_MANAGER_DISK_H
 
 #include "parcel.h"
 
 namespace OHOS {
-namespace StorageManager {
+namespace DiskManager {
 enum {
     SD_FLAG = 1,
     USB_FLAG = 2,
@@ -47,7 +47,7 @@ private:
     std::string vendor_;
     int32_t flag_ {};
 };
-} // namespace StorageManager
+} // namespace DiskManager
 } // namespace OHOS
 
-#endif // OHOS_STORAGE_MANAGER_DISK_H
+#endif // OHOS_DISK_MANAGER_DISK_H

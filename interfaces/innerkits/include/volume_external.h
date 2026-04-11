@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_STORAGE_MANAGER_VOLUME_EXTERNAL_H
-#define OHOS_STORAGE_MANAGER_VOLUME_EXTERNAL_H
+#ifndef OHOS_DISK_MANAGER_VOLUME_EXTERNAL_H
+#define OHOS_DISK_MANAGER_VOLUME_EXTERNAL_H
 
-#include <map>
 #include "volume_core.h"
+#include <map>
 
 namespace OHOS {
-namespace StorageManager {
+namespace DiskManager {
 enum FsType {
     UNDEFINED = -1,
     NTFS,
@@ -65,14 +65,15 @@ public:
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeExternal *Unmarshalling(Parcel &parcel);
+
 private:
-    int32_t fsType_ { UNDEFINED };
-    int32_t flags_ {};
+    int32_t fsType_{UNDEFINED};
+    int32_t flags_{};
     std::string fsUuid_;
     std::string path_;
     std::string description_;
 };
-} // namespace StorageManager
+} // namespace DiskManager
 } // namespace OHOS
 
-#endif // OHOS_STORAGE_MANAGER_VOLUME_EXTERNAL_H
+#endif // OHOS_DISK_MANAGER_VOLUME_EXTERNAL_H
