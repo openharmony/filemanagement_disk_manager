@@ -101,17 +101,22 @@ constexpr int32_t E_WRITE_DESCRIPTOR_ERR = static_cast<int32_t>(DiskManagerNativ
 constexpr int32_t E_SA_IS_NULLPTR = static_cast<int32_t>(DiskManagerNativeErr::E_SA_IS_NULLPTR);
 constexpr int32_t E_REMOTE_IS_NULLPTR = static_cast<int32_t>(DiskManagerNativeErr::E_REMOTE_IS_NULLPTR);
 constexpr int32_t E_SERVICE_IS_NULLPTR = static_cast<int32_t>(DiskManagerNativeErr::E_SERVICE_IS_NULLPTR);
-constexpr int32_t E_DEATH_RECIPIENT_IS_NULLPTR = static_cast<int32_t>(DiskManagerNativeErr::E_DEATH_RECIPIENT_IS_NULLPTR);
+constexpr int32_t E_DEATH_RECIPIENT_IS_NULLPTR =
+    static_cast<int32_t>(DiskManagerNativeErr::E_DEATH_RECIPIENT_IS_NULLPTR);
 constexpr int32_t E_SYS_APP_PERMISSION_DENIED = static_cast<int32_t>(DiskManagerNativeErr::E_SYS_APP_PERMISSION_DENIED);
 constexpr int32_t E_SET_POLICY = static_cast<int32_t>(DiskManagerNativeErr::E_SET_POLICY);
 constexpr int32_t E_USERID_RANGE = static_cast<int32_t>(DiskManagerNativeErr::E_USERID_RANGE);
 constexpr int32_t E_BUNDLEMGR_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_BUNDLEMGR_ERROR);
 constexpr int32_t E_MEDIALIBRARY_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_MEDIALIBRARY_ERROR);
-constexpr int32_t E_GET_EXT_BUNDLE_STATS_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_GET_EXT_BUNDLE_STATS_ERROR);
-constexpr int32_t E_SET_EXT_BUNDLE_STATS_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_SET_EXT_BUNDLE_STATS_ERROR);
-constexpr int32_t E_GET_ALL_EXT_BUNDLE_STATS_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_GET_ALL_EXT_BUNDLE_STATS_ERROR);
+constexpr int32_t E_GET_EXT_BUNDLE_STATS_ERROR =
+    static_cast<int32_t>(DiskManagerNativeErr::E_GET_EXT_BUNDLE_STATS_ERROR);
+constexpr int32_t E_SET_EXT_BUNDLE_STATS_ERROR =
+    static_cast<int32_t>(DiskManagerNativeErr::E_SET_EXT_BUNDLE_STATS_ERROR);
+constexpr int32_t E_GET_ALL_EXT_BUNDLE_STATS_ERROR =
+    static_cast<int32_t>(DiskManagerNativeErr::E_GET_ALL_EXT_BUNDLE_STATS_ERROR);
 constexpr int32_t E_GET_INODE_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_GET_INODE_ERROR);
-constexpr int32_t E_GET_SYSTEM_DATA_SIZE_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_GET_SYSTEM_DATA_SIZE_ERROR);
+constexpr int32_t E_GET_SYSTEM_DATA_SIZE_ERROR =
+    static_cast<int32_t>(DiskManagerNativeErr::E_GET_SYSTEM_DATA_SIZE_ERROR);
 constexpr int32_t E_GET_BUNDLE_INODES_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_GET_BUNDLE_INODES_ERROR);
 constexpr int32_t E_VOL_STATE = static_cast<int32_t>(DiskManagerNativeErr::E_VOL_STATE);
 constexpr int32_t E_VOL_MOUNT_ERR = static_cast<int32_t>(DiskManagerNativeErr::E_VOL_MOUNT_ERR);
@@ -134,13 +139,17 @@ constexpr int32_t E_DELETE = static_cast<int32_t>(DiskManagerJsErr::E_DELETE);
 constexpr int32_t E_NOOBJECT = static_cast<int32_t>(DiskManagerJsErr::E_NOOBJECT);
 constexpr int32_t E_OUTOFRANGE = static_cast<int32_t>(DiskManagerJsErr::E_OUTOFRANGE);
 constexpr int32_t E_JS_PARAMS_INVALID = static_cast<int32_t>(DiskManagerJsErr::E_JS_PARAMS_INVALID);
-constexpr int32_t E_JS_SET_EXT_BUNDLE_STATS_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_SET_EXT_BUNDLE_STATS_ERROR);
-constexpr int32_t E_JS_GET_EXT_BUNDLE_STATS_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_EXT_BUNDLE_STATS_ERROR);
-constexpr int32_t E_JS_GET_ALL_EXT_BUNDLE_STATS_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_ALL_EXT_BUNDLE_STATS_ERROR);
+constexpr int32_t E_JS_SET_EXT_BUNDLE_STATS_ERROR =
+    static_cast<int32_t>(DiskManagerJsErr::E_JS_SET_EXT_BUNDLE_STATS_ERROR);
+constexpr int32_t E_JS_GET_EXT_BUNDLE_STATS_ERROR =
+    static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_EXT_BUNDLE_STATS_ERROR);
+constexpr int32_t E_JS_GET_ALL_EXT_BUNDLE_STATS_ERROR =
+    static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_ALL_EXT_BUNDLE_STATS_ERROR);
 constexpr int32_t E_JS_RETRY_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_RETRY_ERROR);
 constexpr int32_t E_JS_GET_INODE_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_INODE_ERROR);
 constexpr int32_t E_JS_GET_BUNDLE_INODES_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_BUNDLE_INODES_ERROR);
-constexpr int32_t E_JS_GET_SYSTEM_DATA_SIZE_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_SYSTEM_DATA_SIZE_ERROR);
+constexpr int32_t E_JS_GET_SYSTEM_DATA_SIZE_ERROR =
+    static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_SYSTEM_DATA_SIZE_ERROR);
 
 } // namespace OHOS
 
