@@ -1,0 +1,124 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/components/ets_frontend/ets2abc_config.gni")
+import("//build/ohos.gni")
+import("//build/ohos/taihe_idl/taihe.gni")
+
+subsystem_name = "filemanagement"
+part_name = "disk_manager"
+taihe_generated_file_path =
+    "$taihe_file_path/out/$subsystem_name/$part_name/volume_manager"
+
+copy_taihe_idl("copy_taihe") {
+  sources = [ "volume_manager/idl/ohos.file.volumeManager.taihe" ]
+}
+
+ohos_taihe("run_taihe") {
+  taihe_generated_file_path = "$taihe_generated_file_path"
+  deps = [ ":copy_taihe" ]
+  outputs = [
+    "$taihe_generated_file_path/src/ohos.file.volumeManager.ani.cpp",
+    "$taihe_generated_file_path/src/ohos.file.volumeManager.abi.c",
+  ]
+}
+
+taihe_shared_library("volume_manager_taihe") {
+  taihe_generated_file_path = "$taihe_generated_file_path"
+  subsystem_name = "$subsystem_name"
+  part_name = "$part_name"
+
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "volume_manager/include",
+    "common/include",
+    "//foundation/filemanagement/disk_manager/interfaces/kits/js/common/include",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/include",
+    "//foundation/filemanagement/disk_manager/utils/include",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
+  ]
+
+  cflags = [
+    "-D_FORTIFY_SOURCE=2",
+    "-fstack-protector-strong",
+    "-fPIC",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fvisibility=hidden",
+  ]
+
+  defines = [
+    "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
+    "LOG_DOMAIN = 0xD00430F",
+  ]
+
+  sources = get_target_outputs(":run_taihe")
+  sources += [
+    "common/src/storageStatistics_taihe_error.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/kits/js/common/src/disk_manager_napi_utils.cpp",
+    "volume_manager/src/ani_constructor.cpp",
+    "volume_manager/src/ohos.file.volumeManager.impl.cpp",
+  ]
+
+  deps = [
+    ":run_taihe",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "c_utils:utils",
+    "file_api:filemgmt_libhilog",
+    "file_api:filemgmt_libn",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+}
+
+generate_static_abc("volume_manager_taihe_abc") {
+  base_url = "$taihe_generated_file_path"
+  files = [ "$taihe_generated_file_path/@ohos.file.volumeManager.ets" ]
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/volume_manager_taihe_abc.abc"
+  dependencies = [ ":run_taihe" ]
+}
+
+ohos_prebuilt_etc("volume_manager_etc") {
+  source = "$target_out_dir/volume_manager_taihe_abc.abc"
+  module_install_dir = "framework"
+  part_name = "$part_name"
+  subsystem_name = "$subsystem_name"
+  deps = [ ":volume_manager_taihe_abc" ]
+}
+
+group("disk_manager_volume_manager_taihe") {
+  deps = [
+    ":volume_manager_etc",
+    ":volume_manager_taihe",
+  ]
+}

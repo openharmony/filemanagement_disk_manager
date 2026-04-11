@@ -28,6 +28,11 @@ constexpr int32_t DISK_MANAGER_SYS_CAP_TAG = 13610000;
 enum DiskManagerErrNo : int32_t {
     E_OK = 0,
     DISK_MGR_ERR = -1,
+
+    E_SA_IS_NULLPTR = 10,
+    E_REMOTE_IS_NULLPTR = 11,
+    E_SERVICE_IS_NULLPTR = 12,
+    E_DEATH_RECIPIENT_IS_NULLPTR = 13,
 };
 
 } // namespace DiskManager
