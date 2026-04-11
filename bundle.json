@@ -1,0 +1,64 @@
+{
+  "name": "@ohos/disk_manager",
+  "description": "Disk manager system ability: volume and disk management, callbacks from storage_daemon, and related inner APIs.",
+  "version": "1.0",
+  "license": "Apache License 2.0",
+  "publishAs": "code-segment",
+  "segment": {
+    "destPath": "foundation/filemanagement/disk_manager"
+  },
+  "dirs": {},
+  "scripts": {},
+  "component": {
+    "name": "disk_manager",
+    "subsystem": "filemanagement",
+    "syscap": [],
+    "features": [],
+    "adapted_system_type": [
+      "standard"
+    ],
+    "rom": "512KB",
+    "ram": "2048KB",
+    "deps": {
+      "components": [
+        "access_token",
+        "bounds_checking_function",
+        "common_event_service",
+        "c_utils",
+        "hilog",
+        "hisysevent",
+        "hitrace",
+        "ipc",
+        "safwk",
+        "samgr",
+        "init"
+      ],
+      "third_party": []
+    },
+    "build": {
+      "group_type": {
+        "base_group": [],
+        "fwk_group": [],
+        "service_group": [
+          "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_sa_profile",
+          "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_cfg",
+          "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager"
+        ]
+      },
+      "inner_kits": [
+        {
+          "name": "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+          "header": {
+            "header_files": [
+              "disk.h",
+              "volume_core.h",
+              "volume_external.h"
+            ],
+            "header_base": "//foundation/filemanagement/disk_manager/interfaces/innerkits/include"
+          }
+        }
+      ],
+      "test": []
+    }
+  }
+}
