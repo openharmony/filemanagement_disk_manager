@@ -18,6 +18,8 @@ config("disk_manager_config") {
   include_dirs = [
     "include",
     "include/ipc",
+    "include/notification",
+    "include/adapter",
   ]
 
   cflags = [
@@ -38,7 +40,12 @@ ohos_shared_library("disk_manager") {
     debug = false
   }
 
-  sources = [ "src/ipc/disk_manager_provider.cpp" ]
+  sources = [
+    "src/ipc/disk_manager_provider.cpp",
+    "src/notification/common_event_publisher.cpp",
+    "src/adapter/storage_daemon_adapter.cpp",
+    "src/adapter/storage_daemon_proxy.cpp"
+  ]
 
   defines = [
     "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
@@ -56,7 +63,10 @@ ohos_shared_library("disk_manager") {
   ]
 
   external_deps = [
+    "ability_base:base",
+    "ability_base:want",
     "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
     "hilog:libhilog",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
