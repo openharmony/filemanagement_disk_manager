@@ -13,18 +13,12 @@
 
 import("//build/ohos.gni")
 
-group("disk_manager_all") {
-  deps = [
-    "//foundation/filemanagement/disk_manager/interfaces/kits/js:disk_manager_js",
-    "//foundation/filemanagement/disk_manager/interfaces/kits/taihe:disk_manager_volume_manager_taihe",
-    "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager",
-    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
-    "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_sa_profile",
-    "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_cfg",
+config("disk_manager_mock_include") {
+  include_dirs = [
+    "//foundation/filemanagement/disk_manager/test/mock",
   ]
 }
 
-group("test") {
+group("disk_manager_mock") {
   testonly = true
-  deps = [ "//foundation/filemanagement/disk_manager/test:test" ]
 }
