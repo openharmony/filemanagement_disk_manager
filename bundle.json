@@ -68,7 +68,9 @@
           }
         }
       ],
-      "test": []
+      "test": [
+        "//foundation/filemanagement/disk_manager:test"
+      ]
     }
   }
 }
