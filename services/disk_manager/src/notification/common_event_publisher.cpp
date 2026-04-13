@@ -51,12 +51,6 @@ const VolumeStateInfo STATE_INFOS[] = {
 
 } // namespace
 
-CommonEventPublisher &CommonEventPublisher::GetInstance()
-{
-    static CommonEventPublisher instance;
-    return instance;
-}
-
 void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume)
 {
     AAFwk::Want want;
