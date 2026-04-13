@@ -36,11 +36,15 @@ using namespace testing::ext;
 
 namespace {
 
+constexpr int32_t kUtVolumeFlags = 0x0b;
+constexpr int64_t kUtDiskSizeBytes = 4096;
+constexpr int64_t kUtRemovedDiskSizeBytes = 2048;
+
 VolumeExternal MakeSampleVolume()
 {
     VolumeCore core("vol-ut-1", EXTERNAL, "disk-ut-1");
     VolumeExternal v(core);
-    v.SetFlags(0x0b);
+    v.SetFlags(kUtVolumeFlags);
     v.SetFsUuid("fs-uuid-ut");
     v.SetPath("/mnt/ut_volume");
     v.SetFsType(static_cast<int32_t>(VFAT));
@@ -49,7 +53,7 @@ VolumeExternal MakeSampleVolume()
 
 Disk MakeSampleDisk()
 {
-    return Disk("disk-ut-1", 4096, "/sys/block/ut0", "ut-vendor", USB_FLAG);
+    return Disk("disk-ut-1", kUtDiskSizeBytes, "/sys/block/ut0", "ut-vendor", USB_FLAG);
 }
 
 } // namespace
@@ -110,8 +114,16 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeMappedStatesLoop001, TestS
     GTEST_LOG_(INFO) << "PublishVolumeChangeMappedStatesLoop001 Start";
 
     const VolumeState nonMountedMapped[] = {
-        REMOVED,   UNMOUNTED, BAD_REMOVAL, EJECTING, DAMAGED, DAMAGED_MOUNTED,
-        ENCRYPTING, ENCRYPTED_AND_LOCKED, ENCRYPTED_AND_UNLOCKED, DECRYPTING,
+        REMOVED,
+        UNMOUNTED,
+        BAD_REMOVAL,
+        EJECTING,
+        DAMAGED,
+        DAMAGED_MOUNTED,
+        ENCRYPTING,
+        ENCRYPTED_AND_LOCKED,
+        ENCRYPTED_AND_UNLOCKED,
+        DECRYPTING,
     };
     for (VolumeState s : nonMountedMapped) {
         VolumeExternal vol = MakeSampleVolume();
@@ -159,7 +171,7 @@ HWTEST_F(CommonEventPublisherTest, PublishDiskChangeMountedAndRemoved001, TestSi
     Disk diskMounted = MakeSampleDisk();
     EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskMounted));
 
-    Disk diskRemoved("disk-removed-ut", 2048, "/sys/block/rm0", "rm-vendor", CD_FLAG);
+    Disk diskRemoved("disk-removed-ut", kUtRemovedDiskSizeBytes, "/sys/block/rm0", "rm-vendor", CD_FLAG);
     EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::REMOVED, diskRemoved));
 
     GTEST_LOG_(INFO) << "PublishDiskChangeMountedAndRemoved001 End";
