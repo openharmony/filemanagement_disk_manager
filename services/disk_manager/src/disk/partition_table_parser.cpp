@@ -25,6 +25,17 @@ namespace DiskManager {
 
 namespace {
 
+constexpr size_t HEX_PREFIX_LEN = 2;
+constexpr int HEX_BASE = 16;
+constexpr size_t DISK_TOKENS_MIN = 2;
+constexpr size_t PART_TOKENS_MIN = 2;
+constexpr size_t MBR_PART_TOKENS_MIN = 3;
+constexpr size_t TABLE_TYPE_INDEX = 1;
+constexpr size_t PART_NUM_INDEX = 1;
+constexpr size_t MBR_FS_TYPE_INDEX = 2;
+constexpr int DEC_BASE = 10;
+constexpr uint32_t MIN_VALID_PARTITION_NUM = 1;
+
 void SplitSpace(const std::string &line, std::vector<std::string> &out)
 {
     std::istringstream iss(line);
@@ -52,10 +63,10 @@ std::string PartitionTableParser::Trim(const std::string &s)
 bool PartitionTableParser::IsMbrTypeSupportedForVolume(const std::string &mbrTypeHex)
 {
     std::string h = mbrTypeHex;
-    if (h.size() >= 2 && (h[0] == '0' && (h[1] == 'x' || h[1] == 'X'))) {
-        h = h.substr(2);
+    if (h.size() >= HEX_PREFIX_LEN && (h[0] == '0' && (h[1] == 'x' || h[1] == 'X'))) {
+        h = h.substr(HEX_PREFIX_LEN);
     }
-    unsigned long v = strtoul(h.c_str(), nullptr, 16);
+    unsigned long v = strtoul(h.c_str(), nullptr, HEX_BASE);
     switch (v) {
         case 0x06:
         case 0x07:
@@ -90,27 +101,28 @@ bool PartitionTableParser::ParseSgdiskDump(const std::string &rawDump,
         if (tok.empty()) {
             continue;
         }
-        if (tok[0] == "DISK" && tok.size() >= 2) {
-            table = tok[1];
+        if (tok[0] == "DISK" && tok.size() >= DISK_TOKENS_MIN) {
+            table = tok[TABLE_TYPE_INDEX];
             for (auto &c : table) {
                 c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
             }
             tableTypeOut = table;
             continue;
         }
-        if (tok[0] != "PART" || tok.size() < 2) {
+        if (tok[0] != "PART" || tok.size() < PART_TOKENS_MIN) {
             continue;
         }
-        const uint32_t partNum = static_cast<uint32_t>(strtoul(tok[1].c_str(), nullptr, 10));
-        if (partNum < 1) {
+        const uint32_t partNum =
+            static_cast<uint32_t>(strtoul(tok[PART_NUM_INDEX].c_str(), nullptr, DEC_BASE));
+        if (partNum < MIN_VALID_PARTITION_NUM) {
             continue;
         }
         PartitionRecord rec;
         rec.diskId = diskId;
         rec.partitionNumber = partNum;
-        if (table == "mbr" && tok.size() >= 3) {
+        if (table == "mbr" && tok.size() >= MBR_PART_TOKENS_MIN) {
             rec.partitionType = "mbr";
-            rec.fsTypeRaw = tok[2];
+            rec.fsTypeRaw = tok[MBR_FS_TYPE_INDEX];
             if (!IsMbrTypeSupportedForVolume(rec.fsTypeRaw)) {
                 continue;
             }

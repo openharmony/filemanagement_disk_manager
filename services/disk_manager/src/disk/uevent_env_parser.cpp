@@ -26,6 +26,8 @@ namespace DiskManager {
 
 namespace {
 
+constexpr int DEC_BASE = 10;
+
 constexpr uint32_t KeyHash(std::string_view sv)
 {
     uint32_t h = 2166136261u;
@@ -71,10 +73,10 @@ void ApplyEnvValue(UeventEnv &out, uint32_t keyHash, const std::string &val)
             UeventEnvParser::ToLower(out.devType);
             break;
         case KeyHash("major"):
-            out.major = static_cast<unsigned int>(strtoul(val.c_str(), nullptr, 10));
+            out.major = static_cast<unsigned int>(strtoul(val.c_str(), nullptr, DEC_BASE));
             break;
         case KeyHash("minor"):
-            out.minor = static_cast<unsigned int>(strtoul(val.c_str(), nullptr, 10));
+            out.minor = static_cast<unsigned int>(strtoul(val.c_str(), nullptr, DEC_BASE));
             break;
         case KeyHash("devpath"):
             out.devPath = val;

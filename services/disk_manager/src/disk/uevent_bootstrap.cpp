@@ -27,7 +27,6 @@
 #include "notification/common_event_publisher.h"
 #include "volume_core.h"
 
-#include <cstdio>
 #include <string_view>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -37,9 +36,9 @@ namespace DiskManager {
 
 namespace {
 
-constexpr char kDevBlock[] = "/dev/block/";
-constexpr char kExternalMountRoot[] = "/mnt/data/external/";
-constexpr bool kAutoMountExternalVolumes = true;
+constexpr const char *DEV_BLOCK = "/dev/block/";
+constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
+constexpr bool AUTO_MOUNT_EXTERNAL_VOLUMES = true;
 constexpr uint32_t NODE_PERM = 0660u;
 constexpr uint32_t kDiskBlockDeviceNodeMode = NODE_PERM | static_cast<uint32_t>(S_IFBLK);
 constexpr uint32_t kVolumeBlockDeviceNodeMode = static_cast<uint32_t>(S_IFBLK);
@@ -61,21 +60,17 @@ inline uint32_t ActionHashRuntime(const std::string &action)
 
 std::string DiskIdFrom(unsigned int maj, unsigned int min)
 {
-    char buf[48];
-    (void)snprintf(buf, sizeof(buf), "disk-%u-%u", maj, min);
-    return buf;
+    return std::string("disk-") + std::to_string(maj) + "-" + std::to_string(min);
 }
 
 std::string VolIdFromDev(dev_t d)
 {
-    char buf[48];
-    (void)snprintf(buf, sizeof(buf), "vol-%u-%u", major(d), minor(d));
-    return buf;
+    return std::string("vol-") + std::to_string(major(d)) + "-" + std::to_string(minor(d));
 }
 
 std::string BlockPathForId(const std::string &id)
 {
-    return std::string(kDevBlock) + id;
+    return std::string(DEV_BLOCK) + id;
 }
 
 dev_t PartitionDev(unsigned int diskMaj, unsigned int diskMin, uint32_t partIndex)
@@ -105,6 +100,96 @@ void LogUeventEnvForHandler(const char *handler, const UeventEnv &env)
          "minor=%{public}u devpath=%{public}s devname=%{public}s ejectRequest=%{public}d sysPath=%{public}s",
          handler, env.action.c_str(), env.subsystem.c_str(), env.devType.c_str(), env.major, env.minor,
          env.devPath.c_str(), env.devName.c_str(), static_cast<int>(env.ejectRequest), env.sysPath.c_str());
+}
+
+int32_t BuildAndSyncPartitions(const UeventEnv &env,
+                               const std::string &diskId,
+                               const std::string &diskDevPath,
+                               std::vector<PartitionRecord> &parts)
+{
+    int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
+        diskDevPath, kDiskBlockDeviceNodeMode, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
+    if (err != ERR_OK) {
+        LOGE("CreateDiskBlockDeviceNode disk failed err=%{public}d", err);
+        return err;
+    }
+
+    std::string rawDump;
+    int32_t maxVolume = 0;
+    err = StorageDaemonAdapter::GetInstance().ReadPartitionTable(diskDevPath, rawDump, maxVolume);
+    if (err != ERR_OK) {
+        LOGE("ReadPartitionTable failed err=%{public}d", err);
+    }
+    if (!rawDump.empty()) {
+        std::string tableType;
+        (void)PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
+    }
+    (void)DiskDataManager::GetInstance().ReplacePartitionsForDisk(diskId, parts);
+    return DiskManagerErrNo::E_OK;
+}
+
+void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, bool publishNewDiskEvent)
+{
+    DiskStoreRecord drec;
+    drec.diskId = diskId;
+    drec.diskName = env.devName;
+    drec.sysPath = env.sysPath;
+    drec.removable = true;
+    drec.diskType = DiskTypeFromDevPath(env.devPath);
+    drec.mediaType = DiskStoreMediaType::UNKNOWN;
+    drec.sizeBytes = 0;
+    (void)DiskDataManager::GetInstance().UpsertDiskSnapshot(drec);
+
+    if (!publishNewDiskEvent) {
+        return;
+    }
+    Disk diskForEvent(diskId, 0, env.sysPath, "", LegacyDiskFlagFromDevPath(env.devPath));
+    CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
+}
+
+void DiscoverSinglePartitionVolume(const UeventEnv &env, const std::string &diskId, const PartitionRecord &p)
+{
+    const dev_t pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
+    const std::string volId = VolIdFromDev(pDev);
+    const std::string volDevPath = BlockPathForId(volId);
+
+    int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
+        volDevPath,
+        kVolumeBlockDeviceNodeMode,
+        static_cast<int32_t>(major(pDev)),
+        static_cast<int32_t>(minor(pDev)));
+    if (err != ERR_OK) {
+        LOGE("CreateVolumeBlockDeviceNode vol %{public}s err=%{public}d", volId.c_str(), err);
+        return;
+    }
+
+    VolumeCore core(volId, EXTERNAL, diskId, UNMOUNTED);
+    (void)DiskDataManager::GetInstance().OnVolumeCreated(core);
+
+    std::string uuid;
+    std::string type;
+    std::string label;
+    err = StorageDaemonAdapter::GetInstance().ReadMetadata(volDevPath, uuid, type, label);
+    if (err == ERR_OK) {
+        (void)DiskDataManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
+    }
+    if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
+        return;
+    }
+
+    const std::string mountPath = std::string(EXTERNAL_MOUNT_ROOT) + uuid;
+    err = StorageDaemonAdapter::GetInstance().Mount(volDevPath, mountPath, type, "");
+    if (err != ERR_OK) {
+        LOGE("MountFs vol %{public}s err=%{public}d", volId.c_str(), err);
+        return;
+    }
+
+    VolumeInfoStr vis(volId, type, uuid, mountPath, label, false);
+    (void)DiskDataManager::GetInstance().OnVolumeMounted(vis);
+    VolumeExternal ve;
+    if (DiskDataManager::GetInstance().GetVolumeById(volId, ve) == DiskManagerErrNo::E_OK) {
+        CommonEventPublisher::PublishVolumeChange(MOUNTED, ve);
+    }
 }
 
 } // namespace
@@ -175,79 +260,15 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     const std::string diskId = DiskIdFrom(env.major, env.minor);
     const std::string diskDevPath = BlockPathForId(diskId);
 
-    int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
-        diskDevPath, kDiskBlockDeviceNodeMode, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
+    std::vector<PartitionRecord> parts;
+    int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts);
     if (err != ERR_OK) {
-        LOGE("CreateDiskBlockDeviceNode disk failed err=%{public}d", err);
         return err;
     }
 
-    std::string rawDump;
-    int32_t maxVolume = 0;
-    err = StorageDaemonAdapter::GetInstance().ReadPartitionTable(diskDevPath, rawDump, maxVolume);
-    if (err != ERR_OK) {
-        LOGE("ReadPartitionTable failed err=%{public}d", err);
-    }
-
-    std::string tableType;
-    std::vector<PartitionRecord> parts;
-    if (!rawDump.empty()) {
-        (void)PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
-    }
-    (void)DiskDataManager::GetInstance().ReplacePartitionsForDisk(diskId, parts);
-
-    DiskStoreRecord drec;
-    drec.diskId = diskId;
-    drec.diskName = env.devName;
-    drec.sysPath = env.sysPath;
-    drec.removable = true;
-    drec.diskType = DiskTypeFromDevPath(env.devPath);
-    drec.mediaType = DiskStoreMediaType::UNKNOWN;
-    drec.sizeBytes = 0;
-    (void)DiskDataManager::GetInstance().UpsertDiskSnapshot(drec);
-
-    Disk diskForEvent(diskId, 0, env.sysPath, "", LegacyDiskFlagFromDevPath(env.devPath));
-    if (publishNewDiskEvent) {
-        CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
-    }
-
+    UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent);
     for (const auto &p : parts) {
-        const dev_t pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
-        const std::string volId = VolIdFromDev(pDev);
-        const std::string volDevPath = BlockPathForId(volId);
-
-        err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
-            volDevPath, kVolumeBlockDeviceNodeMode, static_cast<int32_t>(major(pDev)), static_cast<int32_t>(minor(pDev)));
-        if (err != ERR_OK) {
-            LOGE("CreateVolumeBlockDeviceNode vol %{public}s err=%{public}d", volId.c_str(), err);
-            continue;
-        }
-
-        VolumeCore core(volId, EXTERNAL, diskId, UNMOUNTED);
-        (void)DiskDataManager::GetInstance().OnVolumeCreated(core);
-
-        std::string uuid;
-        std::string type;
-        std::string label;
-        err = StorageDaemonAdapter::GetInstance().ReadMetadata(volDevPath, uuid, type, label);
-        if (err == ERR_OK) {
-            (void)DiskDataManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
-        }
-
-        if (kAutoMountExternalVolumes && !type.empty() && !uuid.empty()) {
-            const std::string mountPath = std::string(kExternalMountRoot) + uuid;
-            err = StorageDaemonAdapter::GetInstance().Mount(volDevPath, mountPath, type, "");
-            if (err == ERR_OK) {
-                VolumeInfoStr vis(volId, type, uuid, mountPath, label, false);
-                (void)DiskDataManager::GetInstance().OnVolumeMounted(vis);
-                VolumeExternal ve;
-                if (DiskDataManager::GetInstance().GetVolumeById(volId, ve) == DiskManagerErrNo::E_OK) {
-                    CommonEventPublisher::PublishVolumeChange(MOUNTED, ve);
-                }
-            } else {
-                LOGE("MountFs vol %{public}s err=%{public}d", volId.c_str(), err);
-            }
-        }
+        DiscoverSinglePartitionVolume(env, diskId, p);
     }
 
     return DiskManagerErrNo::E_OK;
