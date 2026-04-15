@@ -27,15 +27,41 @@ public:
     explicit StorageDaemonProxy(const sptr<IRemoteObject> &impl);
     ~StorageDaemonProxy() = default;
 
-    ErrCode Mount(const std::string &volId, uint32_t flags) override;
-    ErrCode UMount(const std::string &volId) override;
-    ErrCode Check(const std::string &volId) override;
-    ErrCode Format(const std::string &volId, const std::string &fsType) override;
-    ErrCode Partition(const std::string &diskId, int32_t type) override;
-    ErrCode SetVolumeDescription(const std::string &volId, const std::string &description) override;
     ErrCode QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) override;
-    ErrCode TryToFix(const std::string &volId, uint32_t flags) override;
     ErrCode MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd) override;
+
+    ErrCode CreateBlockDeviceNode(const std::string &devPath,
+                                  uint32_t mode,
+                                  int32_t major,
+                                  int32_t minor) override;
+    ErrCode DestroyBlockDeviceNode(const std::string &devPath) override;
+    ErrCode ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume) override;
+    ErrCode ReadVolumeMetaData(const std::string &devPath,
+                               std::string &fsUuid,
+                               std::string &fsType,
+                               std::string &fsLabel) override;
+    ErrCode Eject(const std::string &devPath) override;
+    ErrCode GetCDStatus(const std::string &devPath, int32_t &status) override;
+    ErrCode Mount(const std::string &devPath,
+                  const std::string &mountPath,
+                  const std::string &fsType,
+                  const std::string &mountData) override;
+    ErrCode Unmount(const std::string &mountPath, bool force) override;
+    ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) override;
+    ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) override;
+    ErrCode Repair(const std::string &devPath, const std::string &fsType) override;
+    ErrCode SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label) override;
+    ErrCode ReadMetadata(const std::string &devPath,
+                         std::string &uuid,
+                         std::string &type,
+                         std::string &label) override;
+    ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) override;
+    ErrCode OpenFuseDevice(int32_t &fuseFd) override;
+    ErrCode MountFuseDevice(int32_t fuseFd,
+                            const std::string &mountPath,
+                            const std::string &fsUuid,
+                            const std::string &options) override;
+    ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

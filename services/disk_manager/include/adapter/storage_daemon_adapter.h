@@ -30,8 +30,7 @@ namespace DiskManager {
 class SdDeathRecipient;
 
 /**
- * 连接 storage_daemon 并转发卷管理相关 IStorageDaemon 调用。
- * 使用方式：StorageDaemonAdapter::GetInstance().Mount(...);
+ * 连接 storage_daemon 并透传 IStorageDaemon 调用。
  */
 class StorageDaemonAdapter : public NoCopyable {
     friend class SdDeathRecipient;
@@ -40,17 +39,34 @@ public:
     static StorageDaemonAdapter &GetInstance();
 
     int32_t Connect();
-
-    int32_t Mount(std::string volumeId, int32_t flag);
-    int32_t Unmount(std::string volumeId);
-    int32_t TryToFix(std::string volumeId, int32_t flag);
-    int32_t Check(std::string volumeId);
-    int32_t Partition(std::string diskId, int32_t type);
-    int32_t Format(std::string volumeId, std::string type);
-    int32_t SetVolumeDescription(std::string volumeId, std::string description);
     int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse);
-    int32_t GetOddCapacity(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize);
     int32_t MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd);
+    int32_t CreateBlockDeviceNode(const std::string &devPath, uint32_t mode, int32_t major, int32_t minor);
+    int32_t DestroyBlockDeviceNode(const std::string &devPath);
+    int32_t ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume);
+    int32_t ReadVolumeMetaData(const std::string &devPath,
+                               std::string &fsUuid,
+                               std::string &fsType,
+                               std::string &fsLabel);
+    int32_t Eject(const std::string &devPath);
+    int32_t GetCDStatus(const std::string &devPath, int32_t &status);
+    int32_t Mount(const std::string &devPath,
+                  const std::string &mountPath,
+                  const std::string &fsType,
+                  const std::string &mountData);
+    int32_t Unmount(const std::string &mountPath, bool force);
+    int32_t FormatVolume(const std::string &devPath, const std::string &fsType);
+    int32_t Check(const std::string &devPath, const std::string &fsType, bool autoFix);
+    int32_t Repair(const std::string &devPath, const std::string &fsType);
+    int32_t SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label);
+    int32_t ReadMetadata(const std::string &devPath, std::string &uuid, std::string &type, std::string &label);
+    int32_t GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize);
+    int32_t OpenFuseDevice(int32_t &fuseFd);
+    int32_t MountFuseDevice(int32_t fuseFd,
+                            const std::string &mountPath,
+                            const std::string &fsUuid,
+                            const std::string &options);
+    int32_t Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags);
 
 private:
     StorageDaemonAdapter();
