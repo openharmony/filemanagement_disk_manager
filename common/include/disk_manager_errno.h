@@ -33,6 +33,11 @@ enum DiskManagerErrNo : int32_t {
     E_REMOTE_IS_NULLPTR = 11,
     E_SERVICE_IS_NULLPTR = 12,
     E_DEATH_RECIPIENT_IS_NULLPTR = 13,
+
+    E_DISK_NOT_FOUND = 20,
+    E_VOLUME_NOT_FOUND = 21,
+    E_UEVENT_PARSE_FAILED = 22,
+    E_DAEMON_IPC_FAILED = 23,
 };
 
 } // namespace DiskManager

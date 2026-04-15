@@ -36,25 +36,10 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 14] void QueryUsbIsInUse([in] String diskPath, [out] boolean isInUse);
     [ipccode 15] void IsUsbFuseByType([in] int type, [out] boolean isUsbFuse);
 
-    /* ---------- storage_daemon 回调（原 Notify*） ---------- */
-    [ipccode 20] void NotifyDiskCreated([in] Disk disk);
-    [ipccode 21] void NotifyDiskDestroyed([in] String diskId);
-    [ipccode 22] void NotifyVolumeCreated([in] VolumeCore vc);
-    [ipccode 23] void NotifyVolumeMounted([in] VolumeInfoStr vis);
-    [ipccode 24] void NotifyVolumeStateChanged([in] String volumeId, [in] unsigned int state);
-    [ipccode 25] void NotifyVolumeDamaged([in] VolumeInfoStr vis);
+    /* ---------- storage_daemon 转发 block/disk 级 uevent（已由 daemon 过滤 DEVTYPE=disk） ---------- */
+    [ipccode 39] void OnBlockDiskUevent([in] String rawUeventMsg);
+
+    /* ---------- storage_daemon 回调 ---------- */
     [ipccode 26] void NotifyMtpMounted([in] String id, [in] String path, [in] String desc, [in] String uuid, [in] String fsType);
     [ipccode 27] void NotifyMtpUnmounted([in] String id, [in] boolean isBadRemove);
-    [ipccode 28] void NotifyEncryptVolumeStateChanged([in] VolumeInfoStr vis);
-
-    /* ---------- 加密卷（与 IStorageManager 磁盘加密段对齐） ---------- */
-    [ipccode 30] void Encrypt([in] String volumeId, [in] String pazzword);
-    [ipccode 31] void GetCryptProgressById([in] String volumeId, [out] int progress);
-    [ipccode 32] void GetCryptUuidById([in] String volumeId, [out] String uuid);
-    [ipccode 33] void BindRecoverKeyToPasswd([in] String volumeId, [in] String pazzword, [in] String recoverKey);
-    [ipccode 34] void UpdateCryptPasswd([in] String volumeId, [in] String pazzword, [in] String newPazzword);
-    [ipccode 35] void ResetCryptPasswd([in] String volumeId, [in] String recoverKey, [in] String newPazzword);
-    [ipccode 36] void VerifyCryptPasswd([in] String volumeId, [in] String pazzword);
-    [ipccode 37] void Unlock([in] String volumeId, [in] String pazzword);
-    [ipccode 38] void Decrypt([in] String volumeId, [in] String pazzword);
 }
