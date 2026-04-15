@@ -50,34 +50,13 @@ public:
     int32_t GetDiskById(const std::string &diskId, Disk &disk) override;
     int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) override;
     int32_t IsUsbFuseByType(int32_t type, bool &isUsbFuse) override;
-    int32_t NotifyDiskCreated(const Disk &disk) override;
-    int32_t NotifyDiskDestroyed(const std::string &diskId) override;
-    int32_t NotifyVolumeCreated(const VolumeCore &vc) override;
-    int32_t NotifyVolumeMounted(const VolumeInfoStr &volumeInfoStr) override;
-    int32_t NotifyVolumeStateChanged(const std::string &volumeId, uint32_t state) override;
-    int32_t NotifyVolumeDamaged(const VolumeInfoStr &volumeInfoStr) override;
+    int32_t OnBlockDiskUevent(const std::string &rawUeventMsg) override;
     int32_t NotifyMtpMounted(const std::string &id,
                              const std::string &path,
                              const std::string &desc,
                              const std::string &uuid,
                              const std::string &fsType) override;
     int32_t NotifyMtpUnmounted(const std::string &id, bool isBadRemove) override;
-    int32_t NotifyEncryptVolumeStateChanged(const VolumeInfoStr &volumeInfoStr) override;
-    int32_t Encrypt(const std::string &volumeId, const std::string &pazzword) override;
-    int32_t GetCryptProgressById(const std::string &volumeId, int32_t &progress) override;
-    int32_t GetCryptUuidById(const std::string &volumeId, std::string &uuid) override;
-    int32_t BindRecoverKeyToPasswd(const std::string &volumeId,
-                                   const std::string &pazzword,
-                                   const std::string &recoverKey) override;
-    int32_t UpdateCryptPasswd(const std::string &volumeId,
-                              const std::string &pazzword,
-                              const std::string &newPazzword) override;
-    int32_t ResetCryptPasswd(const std::string &volumeId,
-                             const std::string &recoverKey,
-                             const std::string &newPazzword) override;
-    int32_t VerifyCryptPasswd(const std::string &volumeId, const std::string &pazzword) override;
-    int32_t Unlock(const std::string &volumeId, const std::string &pazzword) override;
-    int32_t Decrypt(const std::string &volumeId, const std::string &pazzword) override;
 };
 } // namespace DiskManager
 } // namespace OHOS

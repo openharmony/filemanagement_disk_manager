@@ -48,20 +48,7 @@ public:
     int32_t GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize);
     int32_t GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize);
     int32_t Partition(const std::string &diskId, int32_t type);
-
-    int32_t Encrypt(const std::string &volumeId, const std::string &pazzword);
-    int32_t GetCryptProgressById(const std::string &volumeId, int32_t &progress);
-    int32_t GetCryptUuidById(const std::string &volumeId, std::string &uuid);
-    int32_t BindRecoverKeyToPasswd(const std::string &volumeId,
-                                   const std::string &pazzword,
-                                   const std::string &recoverKey);
-    int32_t UpdateCryptPasswd(const std::string &volumeId, const std::string &pazzword, const std::string &newPazzword);
-    int32_t ResetCryptPasswd(const std::string &volumeId,
-                             const std::string &recoverKey,
-                             const std::string &newPazzword);
-    int32_t VerifyCryptPasswd(const std::string &volumeId, const std::string &pazzword);
-    int32_t Unlock(const std::string &volumeId, const std::string &pazzword);
-    int32_t Decrypt(const std::string &volumeId, const std::string &pazzword);
+    int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
 
 private:
     int32_t Connect(sptr<IDiskManager> &proxy);
