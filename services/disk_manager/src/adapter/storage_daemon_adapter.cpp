@@ -20,6 +20,7 @@
 #include <system_ability_definition.h>
 
 #include "disk_manager_hilog.h"
+#include "errors.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -98,71 +99,6 @@ void SdDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)
     StorageDaemonAdapter::GetInstance().ResetSdProxy();
 }
 
-int32_t StorageDaemonAdapter::Mount(std::string volumeId, int32_t flag)
-{
-    LOGI("StorageDaemonAdapter::Mount");
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->Mount(volumeId, static_cast<uint32_t>(flag));
-}
-
-int32_t StorageDaemonAdapter::Unmount(std::string volumeId)
-{
-    LOGI("StorageDaemonAdapter::Unmount volumeId = %{public}s", volumeId.c_str());
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->UMount(volumeId);
-}
-
-int32_t StorageDaemonAdapter::TryToFix(std::string volumeId, int32_t flag)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->TryToFix(volumeId, static_cast<uint32_t>(flag));
-}
-
-int32_t StorageDaemonAdapter::Check(std::string volumeId)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->Check(volumeId);
-}
-
-int32_t StorageDaemonAdapter::Partition(std::string diskId, int32_t type)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->Partition(diskId, type);
-}
-
-int32_t StorageDaemonAdapter::Format(std::string volumeId, std::string type)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->Format(volumeId, type);
-}
-
-int32_t StorageDaemonAdapter::SetVolumeDescription(std::string volumeId, std::string description)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->SetVolumeDescription(volumeId, description);
-}
-
 int32_t StorageDaemonAdapter::QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)
 {
     int32_t err = EnsureProxyReady();
@@ -179,6 +115,174 @@ int32_t StorageDaemonAdapter::MountUsbFuse(const std::string &volumeId, std::str
         return err;
     }
     return storageDaemon_->MountUsbFuse(volumeId, fsUuid, fuseFd);
+}
+
+int32_t StorageDaemonAdapter::CreateBlockDeviceNode(const std::string &devPath,
+                                                    uint32_t mode,
+                                                    int32_t major,
+                                                    int32_t minor)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->CreateBlockDeviceNode(devPath, mode, major, minor);
+}
+
+int32_t StorageDaemonAdapter::DestroyBlockDeviceNode(const std::string &devPath)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->DestroyBlockDeviceNode(devPath);
+}
+
+int32_t StorageDaemonAdapter::ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->ReadPartitionTable(devPath, output, maxVolume);
+}
+
+int32_t StorageDaemonAdapter::ReadVolumeMetaData(const std::string &devPath,
+                                                 std::string &fsUuid,
+                                                 std::string &fsType,
+                                                 std::string &fsLabel)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->ReadVolumeMetaData(devPath, fsUuid, fsType, fsLabel);
+}
+
+int32_t StorageDaemonAdapter::Eject(const std::string &devPath)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->Eject(devPath);
+}
+
+int32_t StorageDaemonAdapter::GetCDStatus(const std::string &devPath, int32_t &status)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->GetCDStatus(devPath, status);
+}
+
+int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
+                                    const std::string &mountPath,
+                                    const std::string &fsType,
+                                    const std::string &mountData)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->Mount(devPath, mountPath, fsType, mountData);
+}
+
+int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, bool force)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->Unmount(mountPath, force);
+}
+
+int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std::string &fsType)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->FormatVolume(devPath, fsType);
+}
+
+int32_t StorageDaemonAdapter::Check(const std::string &devPath, const std::string &fsType, bool autoFix)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->Check(devPath, fsType, autoFix);
+}
+
+int32_t StorageDaemonAdapter::Repair(const std::string &devPath, const std::string &fsType)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->Repair(devPath, fsType);
+}
+
+int32_t StorageDaemonAdapter::SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->SetLabel(devPath, fsType, label);
+}
+
+int32_t StorageDaemonAdapter::ReadMetadata(const std::string &devPath,
+                                           std::string &uuid,
+                                           std::string &type,
+                                           std::string &label)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->ReadMetadata(devPath, uuid, type, label);
+}
+
+int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
+}
+
+int32_t StorageDaemonAdapter::OpenFuseDevice(int32_t &fuseFd)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->OpenFuseDevice(fuseFd);
+}
+
+int32_t StorageDaemonAdapter::MountFuseDevice(int32_t fuseFd,
+                                              const std::string &mountPath,
+                                              const std::string &fsUuid,
+                                              const std::string &options)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->MountFuseDevice(fuseFd, mountPath, fsUuid, options);
+}
+
+int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->Partition(diskPath, partitionType, partitionFlags);
 }
 
 } // namespace DiskManager

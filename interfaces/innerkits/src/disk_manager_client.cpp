@@ -222,118 +222,16 @@ int32_t DiskManagerClient::Partition(const std::string &diskId, int32_t type)
     return dm.Partition(diskId, type);
 }
 
-int32_t DiskManagerClient::Encrypt(const std::string &volumeId, const std::string &pazzword)
+int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
-    LOGI("Encrypt volumeId=%{public}s", volumeId.c_str());
+    LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.Encrypt(volumeId, pazzword);
-}
-
-int32_t DiskManagerClient::GetCryptProgressById(const std::string &volumeId, int32_t &progress)
-{
-    LOGI("GetCryptProgressById volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.GetCryptProgressById(volumeId, progress);
-}
-
-int32_t DiskManagerClient::GetCryptUuidById(const std::string &volumeId, std::string &uuid)
-{
-    LOGI("GetCryptUuidById volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.GetCryptUuidById(volumeId, uuid);
-}
-
-int32_t DiskManagerClient::BindRecoverKeyToPasswd(const std::string &volumeId,
-                                                  const std::string &pazzword,
-                                                  const std::string &recoverKey)
-{
-    LOGI("BindRecoverKeyToPasswd volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.BindRecoverKeyToPasswd(volumeId, pazzword, recoverKey);
-}
-
-int32_t DiskManagerClient::UpdateCryptPasswd(const std::string &volumeId,
-                                             const std::string &pazzword,
-                                             const std::string &newPazzword)
-{
-    LOGI("UpdateCryptPasswd volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.UpdateCryptPasswd(volumeId, pazzword, newPazzword);
-}
-
-int32_t DiskManagerClient::ResetCryptPasswd(const std::string &volumeId,
-                                            const std::string &recoverKey,
-                                            const std::string &newPazzword)
-{
-    LOGI("ResetCryptPasswd volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.ResetCryptPasswd(volumeId, recoverKey, newPazzword);
-}
-
-int32_t DiskManagerClient::VerifyCryptPasswd(const std::string &volumeId, const std::string &pazzword)
-{
-    LOGI("VerifyCryptPasswd volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.VerifyCryptPasswd(volumeId, pazzword);
-}
-
-int32_t DiskManagerClient::Unlock(const std::string &volumeId, const std::string &pazzword)
-{
-    LOGI("Unlock volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.Unlock(volumeId, pazzword);
-}
-
-int32_t DiskManagerClient::Decrypt(const std::string &volumeId, const std::string &pazzword)
-{
-    LOGI("Decrypt volumeId=%{public}s", volumeId.c_str());
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.Decrypt(volumeId, pazzword);
+    return dm.OnBlockDiskUevent(rawUeventMsg);
 }
 
 } // namespace DiskManager

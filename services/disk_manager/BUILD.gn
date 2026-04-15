@@ -17,6 +17,7 @@ import("//foundation/filemanagement/disk_manager/disk_manager.gni")
 config("disk_manager_config") {
   include_dirs = [
     "include",
+    "include/disk",
     "include/ipc",
     "include/notification",
     "include/adapter",
@@ -41,6 +42,10 @@ ohos_shared_library("disk_manager") {
   }
 
   sources = [
+    "src/disk/uevent_bootstrap.cpp",
+    "src/disk/disk_manager.cpp",
+    "src/disk/partition_table_parser.cpp",
+    "src/disk/uevent_env_parser.cpp",
     "src/ipc/disk_manager_provider.cpp",
     "src/notification/common_event_publisher.cpp",
     "src/adapter/storage_daemon_adapter.cpp",
