@@ -31,7 +31,7 @@ namespace OHOS {
 namespace DiskManager {
 
 namespace {
-constexpr int32_t SA_LOAD_WAIT_TIMEOUT_MS = 3000;
+constexpr int32_t SA_LOAD_WAIT_TIMEOUT_MS = 30000;
 constexpr int32_t IPC_OK = 0;
 
 class DmDeathRecipient : public IRemoteObject::DeathRecipient {
@@ -94,6 +94,36 @@ private:
     bool success_ = false;
     sptr<IRemoteObject> remoteObject_ = nullptr;
 };
+
+int32_t GetDiskManagerSaObject(ISystemAbilityManager &mgr, sptr<IRemoteObject> &object)
+{
+    object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
+    if (object != nullptr) {
+        return E_OK;
+    }
+    sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
+    if (loadCallback == nullptr) {
+        LOGE("GetDiskManagerSaObject load callback null");
+        return E_SERVICE_IS_NULLPTR;
+    }
+    int32_t loadRet = mgr.LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
+    if (loadRet != IPC_OK) {
+        LOGE("GetDiskManagerSaObject LoadSystemAbility failed ret=%{public}d", loadRet);
+        return E_REMOTE_IS_NULLPTR;
+    }
+    bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
+    if (!callbackNotified || !loadCallback->IsSuccess()) {
+        LOGE("GetDiskManagerSaObject wait callback failed timeout=%{public}dms", SA_LOAD_WAIT_TIMEOUT_MS);
+        return E_REMOTE_IS_NULLPTR;
+    }
+    object = loadCallback->GetRemoteObject();
+    if (object == nullptr) {
+        LOGE("GetDiskManagerSaObject object == nullptr");
+        return E_REMOTE_IS_NULLPTR;
+    }
+    return E_OK;
+}
+
 } // namespace
 
 DiskManagerClient::DiskManagerClient() {}
@@ -114,29 +144,10 @@ int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
             return E_SA_IS_NULLPTR;
         }
         ISystemAbilityManager &mgr = *sam;
-        sptr<IRemoteObject> object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
-        if (object == nullptr) {
-            sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
-            if (loadCallback == nullptr) {
-                LOGE("DiskManagerClient::Connect load callback null");
-                return E_SERVICE_IS_NULLPTR;
-            }
-            int32_t loadRet = mgr.LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
-            if (loadRet != IPC_OK) {
-                LOGE("DiskManagerClient::Connect LoadSystemAbility failed ret=%{public}d", loadRet);
-                return E_REMOTE_IS_NULLPTR;
-            }
-            bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
-            if (!callbackNotified || !loadCallback->IsSuccess()) {
-                LOGE("DiskManagerClient::Connect wait callback failed timeout=%{public}dms",
-                    SA_LOAD_WAIT_TIMEOUT_MS);
-                return E_REMOTE_IS_NULLPTR;
-            }
-            object = loadCallback->GetRemoteObject();
-        }
-        if (object == nullptr) {
-            LOGE("DiskManagerClient::Connect object == nullptr");
-            return E_REMOTE_IS_NULLPTR;
+        sptr<IRemoteObject> object = nullptr;
+        int32_t saRet = GetDiskManagerSaObject(mgr, object);
+        if (saRet != E_OK) {
+            return saRet;
         }
         diskManager_ = iface_cast<IDiskManager>(object);
         if (diskManager_ == nullptr) {
@@ -149,9 +160,9 @@ int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
             diskManager_ = nullptr;
             return E_SERVICE_IS_NULLPTR;
         }
-        sptr<IRemoteObject> ao = diskManager_->AsObject();
-        if (ao != nullptr) {
-            ao->AddDeathRecipient(deathRecipient_);
+        sptr<IRemoteObject> remote = diskManager_->AsObject();
+        if (remote != nullptr) {
+            remote->AddDeathRecipient(deathRecipient_);
         }
     }
     proxy = diskManager_;
