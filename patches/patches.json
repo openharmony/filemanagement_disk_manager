@@ -7,7 +7,7 @@
         },
         {
             "project":"arkui_ace_engine",
-            "path":"arkui/ace_engine",
+            "path":"foundation/arkui/ace_engine",
             "pr_url":"https://gitcode.com/openharmony/arkui_ace_engine/pull/83787"
         }
     ]
