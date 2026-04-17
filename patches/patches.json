@@ -4,11 +4,6 @@
             "project":"productdefine_common",
             "path":"productdefine/common",
             "pr_url":"https://gitcode.com/openharmony/productdefine_common/pull/1113"
-        },
-        {
-            "project":"arkui_ace_engine",
-            "path":"foundation/arkui/ace_engine",
-            "pr_url":"https://gitcode.com/openharmony/arkui_ace_engine/pull/83787"
         }
     ]
 }
