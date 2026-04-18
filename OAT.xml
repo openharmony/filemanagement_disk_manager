@@ -59,6 +59,11 @@ Note:If the text contains special characters, please escape them according to th
             <filefilter name="defaultFilter" desc="Files not to check">
                 <filteritem type="filepath" name="figures/.*" desc="Self-developed image"/>
             </filefilter>
+            <filefilter name="copyrightPolicyFilter" desc="copyright头文件校验过滤">
+                <filteritem type="filename" name="README.Opensource"/>
+                <filteritem type="filename" name="README"/>
+                <filteritem type="filepath" name=".*" desc="error report"/>
+            </filefilter>
         </filefilterlist>
     </oatconfig>
 </configuration>
