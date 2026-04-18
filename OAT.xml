@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (c) 2026 Huawei Device Co., Ltd.
+<!--  Copyright (c) 2026 Huawei Device Co., Ltd.
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -13,9 +13,7 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 
-     Notes:
-     This is project config file for OpenHarmony OSS Audit Tool, if you have any questions or concerns, please email chenyaxun.
--->
+ -->
 <!-- OAT(OSS Audit Tool) configuration guide:
 basedir: Root dir, the basedir + project path is the real source file location.
 licensefile: 
@@ -58,8 +56,8 @@ Note:If the text contains special characters, please escape them according to th
     <oatconfig>
         <licensefile>LICENSE</licensefile>
         <filefilterlist>
-            <filefilter name="defaultFilter" desc="Files that do not need to be scanned">
-                <filteritem type="filename" name="*.jpg" desc="jpg no need to add policy"/>
+            <filefilter name="defaultFilter" desc="Files not to check">
+                <filteritem type="filepath" name="figures/.*" desc="Self-developed image"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>
