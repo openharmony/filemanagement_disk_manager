@@ -44,10 +44,7 @@
     "build": {
       "group_type": {
         "base_group": [],
-        "fwk_group": [
-          "//foundation/filemanagement/disk_manager/interfaces/kits/js:disk_manager_js",
-          "//foundation/filemanagement/disk_manager/interfaces/kits/taihe:disk_manager_volume_manager_taihe"
-        ],
+        "fwk_group": [],
         "service_group": [
           "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_cfg",
           "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_sa_profile",

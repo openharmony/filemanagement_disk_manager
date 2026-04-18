@@ -29,7 +29,7 @@ class DiskManagerProvider : public SystemAbility, public DiskManagerStub {
     DECLARE_SYSTEM_ABILITY(DiskManagerProvider)
 
 public:
-    explicit DiskManagerProvider(int32_t saId = DISK_MANAGER_SA_ID, bool runOnCreate = true);
+    explicit DiskManagerProvider(int32_t saId = DISK_MANAGER_SA_ID, bool runOnCreate = false);
     ~DiskManagerProvider() override = default;
 
     void OnStart() override;

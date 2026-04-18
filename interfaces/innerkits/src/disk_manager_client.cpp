@@ -15,11 +15,14 @@
 
 #include "disk_manager_client.h"
 
+#include <chrono>
+#include <condition_variable>
 #include <iservice_registry.h>
 #include <new>
 #include <system_ability_definition.h>
 
 #include "idisk_manager.h"
+#include "system_ability_load_callback_stub.h"
 
 #include "disk_manager_hilog.h"
 #include "disk_manager_napi_errno.h"
@@ -28,6 +31,9 @@ namespace OHOS {
 namespace DiskManager {
 
 namespace {
+constexpr int32_t SA_LOAD_WAIT_TIMEOUT_MS = 30000;
+constexpr int32_t IPC_OK = 0;
+
 class DmDeathRecipient : public IRemoteObject::DeathRecipient {
 public:
     DmDeathRecipient() = default;
@@ -39,6 +45,85 @@ public:
         client.ResetProxy();
     }
 };
+
+class DmLoadCallback final : public SystemAbilityLoadCallbackStub {
+public:
+    void OnLoadSystemAbilitySuccess(int32_t systemAbilityId, const sptr<IRemoteObject> &remoteObject) override
+    {
+        (void)systemAbilityId;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            finished_ = true;
+            success_ = true;
+            remoteObject_ = remoteObject;
+        }
+        cv_.notify_all();
+    }
+
+    void OnLoadSystemAbilityFail(int32_t systemAbilityId) override
+    {
+        (void)systemAbilityId;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            finished_ = true;
+            success_ = false;
+        }
+        cv_.notify_all();
+    }
+
+    bool WaitResult(int32_t timeoutMs)
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return cv_.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this]() { return finished_; });
+    }
+
+    bool IsSuccess() const
+    {
+        return success_;
+    }
+
+    sptr<IRemoteObject> GetRemoteObject() const
+    {
+        return remoteObject_;
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::condition_variable cv_;
+    bool finished_ = false;
+    bool success_ = false;
+    sptr<IRemoteObject> remoteObject_ = nullptr;
+};
+
+int32_t GetDiskManagerSaObject(ISystemAbilityManager &mgr, sptr<IRemoteObject> &object)
+{
+    object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
+    if (object != nullptr) {
+        return E_OK;
+    }
+    sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
+    if (loadCallback == nullptr) {
+        LOGE("GetDiskManagerSaObject load callback null");
+        return E_SERVICE_IS_NULLPTR;
+    }
+    int32_t loadRet = mgr.LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
+    if (loadRet != IPC_OK) {
+        LOGE("GetDiskManagerSaObject LoadSystemAbility failed ret=%{public}d", loadRet);
+        return E_REMOTE_IS_NULLPTR;
+    }
+    bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
+    if (!callbackNotified || !loadCallback->IsSuccess()) {
+        LOGE("GetDiskManagerSaObject wait callback failed timeout=%{public}dms", SA_LOAD_WAIT_TIMEOUT_MS);
+        return E_REMOTE_IS_NULLPTR;
+    }
+    object = loadCallback->GetRemoteObject();
+    if (object == nullptr) {
+        LOGE("GetDiskManagerSaObject object == nullptr");
+        return E_REMOTE_IS_NULLPTR;
+    }
+    return E_OK;
+}
+
 } // namespace
 
 DiskManagerClient::DiskManagerClient() {}
@@ -59,10 +144,10 @@ int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
             return E_SA_IS_NULLPTR;
         }
         ISystemAbilityManager &mgr = *sam;
-        sptr<IRemoteObject> object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
-        if (object == nullptr) {
-            LOGE("DiskManagerClient::Connect object == nullptr");
-            return E_REMOTE_IS_NULLPTR;
+        sptr<IRemoteObject> object = nullptr;
+        int32_t saRet = GetDiskManagerSaObject(mgr, object);
+        if (saRet != E_OK) {
+            return saRet;
         }
         diskManager_ = iface_cast<IDiskManager>(object);
         if (diskManager_ == nullptr) {
@@ -75,9 +160,9 @@ int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
             diskManager_ = nullptr;
             return E_SERVICE_IS_NULLPTR;
         }
-        sptr<IRemoteObject> ao = diskManager_->AsObject();
-        if (ao != nullptr) {
-            ao->AddDeathRecipient(deathRecipient_);
+        sptr<IRemoteObject> remote = diskManager_->AsObject();
+        if (remote != nullptr) {
+            remote->AddDeathRecipient(deathRecipient_);
         }
     }
     proxy = diskManager_;
