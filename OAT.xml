@@ -59,8 +59,11 @@ Note:If the text contains special characters, please escape them according to th
             <filefilter name="defaultFilter" desc="Files not to check">
                 <filteritem type="filepath" name="figures/.*" desc="Self-developed image"/>
             </filefilter>
-            <filefilter name="copyrightFileFilter" desc="Skip copyright check for all XML files">
-                <filteritem type="filepath" name=".*\.xml" desc="All XML files"/>
+            <filefilter name="defaultPolicyFilter" desc="Filters for compatibility, license header policies">
+                <filteritem type="filepath" name="*.xml" desc="config file,can not add license head"/>
+            </filefilter>
+            <filefilter name="copyrightPolicyFilter" desc="Filters for copyright header policies">
+                <filteritem type="filepath" name="*.xml" desc="config file,can not add license head"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>
