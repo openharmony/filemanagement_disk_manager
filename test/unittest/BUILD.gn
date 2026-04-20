@@ -14,11 +14,14 @@
 import("//build/ohos.gni")
 import("//build/test.gni")
 
-# 本目录下多个 ohos_unittest 共用的 include / 编译宏；目标级字段见各 ohos_unittest 块。
+# 本目录下 ohos_unittest 共用：聚合 innerkits IDL 公开头、子系统 config、utils/mock 等；新增用例 configs 仅填本项即可。
 config("disk_manager_unittest_common") {
-  include_dirs = [
-    "//foundation/filemanagement/disk_manager/services/disk_manager/include",
-    "//foundation/filemanagement/disk_manager/interfaces/innerkits/include",
+  configs = [
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_idl_public_config",
+    "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager_config",
+    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
+    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
   ]
   defines = [
     "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
@@ -35,11 +38,7 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
   ]
 
-  configs = [
-    ":disk_manager_unittest_common",
-    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
-    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
-  ]
+  configs = [ ":disk_manager_unittest_common" ]
 
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
@@ -58,7 +57,38 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("storage_daemon_proxy_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "storage_daemon_proxy_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/storage_daemon_proxy.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  deps = [
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 group("disk_manager_ut") {
   testonly = true
-  deps = [ ":disk_manager_common_event_publisher_test" ]
+  deps = [
+    ":disk_manager_common_event_publisher_test",
+    ":storage_daemon_proxy_test",
+  ]
 }

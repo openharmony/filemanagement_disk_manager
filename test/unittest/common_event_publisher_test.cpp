@@ -82,14 +82,14 @@ public:
 };
 
 /**
- * @tc.name: PublishVolumeChangeSmokeAndUnmapped001
+ * @tc.name: PublishVolumeChange_TestCase_001
  * @tc.desc: 静态 API 冒烟（已映射 UNMOUNTED）及 CHECKING、FUSE_REMOVED 无 STATE_INFOS 映射时的提前返回分支。
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeSmokeAndUnmapped001, TestSize.Level1)
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "PublishVolumeChangeSmokeAndUnmapped001 Start";
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_001 Start";
 
     VolumeExternal vMapped = MakeSampleVolume();
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vMapped));
@@ -100,18 +100,18 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeSmokeAndUnmapped001, TestS
     VolumeExternal vFuseRemoved = MakeSampleVolume();
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(FUSE_REMOVED, vFuseRemoved));
 
-    GTEST_LOG_(INFO) << "PublishVolumeChangeSmokeAndUnmapped001 End";
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_001 End";
 }
 
 /**
- * @tc.name: PublishVolumeChangeMappedStatesLoop001
+ * @tc.name: PublishVolumeChange_TestCase_002
  * @tc.desc: STATE_INFOS 中除 MOUNTED 外的状态各调用一次，覆盖循环内匹配与 break，以及非 MOUNTED 路径。
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeMappedStatesLoop001, TestSize.Level1)
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_002, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "PublishVolumeChangeMappedStatesLoop001 Start";
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_002 Start";
 
     const VolumeState nonMountedMapped[] = {
         REMOVED,
@@ -130,18 +130,18 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeMappedStatesLoop001, TestS
         EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(s, vol));
     }
 
-    GTEST_LOG_(INFO) << "PublishVolumeChangeMappedStatesLoop001 End";
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_002 End";
 }
 
 /**
- * @tc.name: PublishVolumeChangeMountedBranches001
+ * @tc.name: PublishVolumeChange_TestCase_003
  * @tc.desc: UNMOUNTED 与 MOUNTED 组合：覆盖已映射非 MOUNTED 与 MOUNTED 下 path/fsType 附加及发布路径。
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeMountedBranches001, TestSize.Level1)
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_003, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "PublishVolumeChangeMountedBranches001 Start";
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_003 Start";
 
     VolumeExternal vUnmounted = MakeSampleVolume();
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vUnmounted));
@@ -155,18 +155,18 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChangeMountedBranches001, TestSi
     vMountedExfat.SetFsType(static_cast<int32_t>(EXFAT));
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vMountedExfat));
 
-    GTEST_LOG_(INFO) << "PublishVolumeChangeMountedBranches001 End";
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_003 End";
 }
 
 /**
- * @tc.name: PublishDiskChangeMountedAndRemoved001
+ * @tc.name: PublishDiskChange_TestCase_001
  * @tc.desc: kind==MOUNTED 的 if 分支与 kind==REMOVED 的 else 分支各执行一次。
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(CommonEventPublisherTest, PublishDiskChangeMountedAndRemoved001, TestSize.Level1)
+HWTEST_F(CommonEventPublisherTest, PublishDiskChange_TestCase_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "PublishDiskChangeMountedAndRemoved001 Start";
+    GTEST_LOG_(INFO) << "PublishDiskChange_TestCase_001 Start";
 
     Disk diskMounted = MakeSampleDisk();
     EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskMounted));
@@ -174,7 +174,7 @@ HWTEST_F(CommonEventPublisherTest, PublishDiskChangeMountedAndRemoved001, TestSi
     Disk diskRemoved("disk-removed-ut", kUtRemovedDiskSizeBytes, "/sys/block/rm0", "rm-vendor", CD_FLAG);
     EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::REMOVED, diskRemoved));
 
-    GTEST_LOG_(INFO) << "PublishDiskChangeMountedAndRemoved001 End";
+    GTEST_LOG_(INFO) << "PublishDiskChange_TestCase_001 End";
 }
 
 } // namespace DiskManager
