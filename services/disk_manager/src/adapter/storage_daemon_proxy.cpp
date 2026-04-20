@@ -44,9 +44,10 @@ ErrCode StorageDaemonProxy::QueryUsbIsInUse(const std::string &diskPath, bool &i
     }
 
     int32_t result = reply.ReadInt32();
-    if (result == ERR_OK) {
-        isInUse = reply.ReadBool();
+    if (result != ERR_OK) {
+        return result;
     }
+    isInUse = reply.ReadBool();
     return result;
 }
 
@@ -70,10 +71,11 @@ ErrCode StorageDaemonProxy::MountUsbFuse(const std::string &volumeId, std::strin
     }
 
     int32_t result = reply.ReadInt32();
-    if (result == ERR_OK) {
-        fsUuid = Str16ToStr8(reply.ReadString16());
-        fuseFd = reply.ReadFileDescriptor();
+    if (result != ERR_OK) {
+        return result;
     }
+    fsUuid = Str16ToStr8(reply.ReadString16());
+    fuseFd = reply.ReadFileDescriptor();
     return result;
 }
 
@@ -138,10 +140,11 @@ ErrCode StorageDaemonProxy::ReadPartitionTable(const std::string &devPath, std::
         return ret;
     }
     int32_t res = reply.ReadInt32();
-    if (res == ERR_OK) {
-        output = Str16ToStr8(reply.ReadString16());
-        maxVolume = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
     }
+    output = Str16ToStr8(reply.ReadString16());
+    maxVolume = reply.ReadInt32();
     return res;
 }
 
@@ -168,11 +171,12 @@ ErrCode StorageDaemonProxy::ReadVolumeMetaData(const std::string &devPath,
         return ret;
     }
     int32_t res = reply.ReadInt32();
-    if (res == ERR_OK) {
-        fsUuid = Str16ToStr8(reply.ReadString16());
-        fsType = Str16ToStr8(reply.ReadString16());
-        fsLabel = Str16ToStr8(reply.ReadString16());
+    if (res != ERR_OK) {
+        return res;
     }
+    fsUuid = Str16ToStr8(reply.ReadString16());
+    fsType = Str16ToStr8(reply.ReadString16());
+    fsLabel = Str16ToStr8(reply.ReadString16());
     return res;
 }
 
@@ -213,9 +217,10 @@ ErrCode StorageDaemonProxy::GetCDStatus(const std::string &devPath, int32_t &sta
         return ret;
     }
     int32_t res = reply.ReadInt32();
-    if (res == ERR_OK) {
-        status = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
     }
+    status = reply.ReadInt32();
     return res;
 }
 
@@ -236,7 +241,10 @@ ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_MOUNT), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, bool force)
@@ -252,7 +260,10 @@ ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, bool force)
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_UNMOUNT), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::string &fsType)
@@ -268,7 +279,10 @@ ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_FORMAT_VOLUME), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::Check(const std::string &devPath, const std::string &fsType, bool autoFix)
@@ -285,7 +299,10 @@ ErrCode StorageDaemonProxy::Check(const std::string &devPath, const std::string 
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_CHECK), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::Repair(const std::string &devPath, const std::string &fsType)
@@ -301,7 +318,10 @@ ErrCode StorageDaemonProxy::Repair(const std::string &devPath, const std::string
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_REPAIR), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::SetLabel(const std::string &devPath,
@@ -320,7 +340,10 @@ ErrCode StorageDaemonProxy::SetLabel(const std::string &devPath,
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_SET_LABEL), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::ReadMetadata(const std::string &devPath,
@@ -344,6 +367,10 @@ ErrCode StorageDaemonProxy::ReadMetadata(const std::string &devPath,
         static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_READ_METADATA), data, reply, option);
     if (ret != ERR_OK) {
         return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
     }
     uuid = Str16ToStr8(reply.ReadString16());
     type = Str16ToStr8(reply.ReadString16());
@@ -369,6 +396,10 @@ ErrCode StorageDaemonProxy::GetCapacity(const std::string &mountPath, int64_t &t
     if (ret != ERR_OK) {
         return ret;
     }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
     if (!reply.ReadInt64(totalSize) || !reply.ReadInt64(freeSize)) {
         return ERR_INVALID_DATA;
     }
@@ -388,6 +419,10 @@ ErrCode StorageDaemonProxy::OpenFuseDevice(int32_t &fuseFd)
         static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_OPEN_FUSE_DEVICE), data, reply, option);
     if (ret != ERR_OK) {
         return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
     }
     fuseFd = static_cast<int32_t>(reply.ReadFileDescriptor());
     return ERR_OK;
@@ -410,7 +445,10 @@ ErrCode StorageDaemonProxy::MountFuseDevice(int32_t fuseFd,
     }
     int32_t ret = Remote()->SendRequest(
         static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags)
@@ -427,7 +465,10 @@ ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t parti
     }
     int32_t ret =
         Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_PARTITION), data, reply, option);
-    return ret != ERR_OK ? ret : ERR_OK;
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 } // namespace StorageDaemon
