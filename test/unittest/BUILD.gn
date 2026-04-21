@@ -85,10 +85,74 @@ ohos_unittest("storage_daemon_proxy_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("disk_manager_client_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_manager_client_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk_manager_client.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
+  ]
+
+  configs = [
+    ":disk_manager_unittest_common",
+    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
+  ]
+
+  deps = [
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_ipc_native",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_header",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("uevent_env_parser_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "uevent_env_parser_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_env_parser.cpp",
+  ]
+
+  configs = [
+    ":disk_manager_unittest_common",
+    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 group("disk_manager_ut") {
   testonly = true
   deps = [
     ":disk_manager_common_event_publisher_test",
     ":storage_daemon_proxy_test",
+    ":disk_manager_client_test",
+    ":uevent_env_parser_test",
   ]
 }
