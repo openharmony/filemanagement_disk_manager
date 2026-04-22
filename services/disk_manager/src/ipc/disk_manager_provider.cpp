@@ -16,6 +16,7 @@
 #include "disk_manager_provider.h"
 
 #include "uevent_bootstrap.h"
+#include "usb_fuse_adapter.h"
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
@@ -145,7 +146,13 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
 int32_t DiskManagerProvider::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
 {
     LOGI("IsUsbFuseByType type=%{public}d", type);
-    isUsbFuse = false;
+    static constexpr const char *UNDEFINED_FS_TYPE = "undefined";
+    std::string fsTypeStr = UNDEFINED_FS_TYPE;
+    auto it = FS_TYPE_MAP.find(type);
+    if (it != FS_TYPE_MAP.end()) {
+        fsTypeStr = it->second;
+    }
+    isUsbFuse = UsbFuseAdapter::GetInstance().IsUsbFuseByType(fsTypeStr);
     return DiskManagerErrNo::E_OK;
 }
 

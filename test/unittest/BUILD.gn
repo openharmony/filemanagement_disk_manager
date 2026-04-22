@@ -97,11 +97,7 @@ ohos_unittest("disk_manager_client_test") {
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
   ]
 
-  configs = [
-    ":disk_manager_unittest_common",
-    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
-    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
-  ]
+  configs = [ ":disk_manager_unittest_common" ]
 
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_ipc_native",
@@ -131,11 +127,7 @@ ohos_unittest("uevent_env_parser_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_env_parser.cpp",
   ]
 
-  configs = [
-    ":disk_manager_unittest_common",
-    "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
-    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
-  ]
+  configs = [ ":disk_manager_unittest_common" ]
 
   external_deps = [
     "c_utils:utils",
