@@ -43,6 +43,7 @@ ohos_shared_library("disk_manager") {
 
   sources = [
     "src/disk/uevent_bootstrap.cpp",
+    "src/disk/disk_config.cpp",
     "src/disk/disk_manager.cpp",
     "src/disk/partition_table_parser.cpp",
     "src/disk/uevent_env_parser.cpp",

@@ -36,6 +36,7 @@ void DiskManagerProvider::OnStart()
     if (!published) {
         LOGE("Publish failed");
     }
+    UeventBootstrap::Init();
     LOGI("OnStart end");
 }
 
