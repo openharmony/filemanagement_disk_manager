@@ -77,7 +77,7 @@ int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, con
 
 int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 {
-    const int32_t err = DiskDataManager::GetInstance().GetAllVolumes(vecOfVol);
+    int32_t err = DiskDataManager::GetInstance().GetAllVolumes(vecOfVol);
     LOGI("GetAllVolumes count=%{public}zu err=%{public}d", vecOfVol.size(), err);
     return err;
 }
