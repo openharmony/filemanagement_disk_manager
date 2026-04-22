@@ -54,7 +54,7 @@ public:
                   const std::string &mountPath,
                   const std::string &fsType,
                   const std::string &mountData);
-    int32_t Unmount(const std::string &mountPath, bool force);
+    int32_t Unmount(const std::string &mountPath, const std::string &fsType, bool force);
     int32_t FormatVolume(const std::string &devPath, const std::string &fsType);
     int32_t Check(const std::string &devPath, const std::string &fsType, bool autoFix);
     int32_t Repair(const std::string &devPath, const std::string &fsType);
@@ -67,6 +67,8 @@ public:
                             const std::string &fsUuid,
                             const std::string &options);
     int32_t Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags);
+    int32_t EnsureMountPath(const std::string &mountPath);
+    int32_t RemoveMountPath(const std::string &mountPath);
 
 private:
     StorageDaemonAdapter();

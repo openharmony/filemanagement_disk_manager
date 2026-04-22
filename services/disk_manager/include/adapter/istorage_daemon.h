@@ -46,6 +46,8 @@ enum class IStorageDaemonIpcCode {
     ADDON_OPEN_FUSE_DEVICE = 215,
     ADDON_MOUNT_FUSE_DEVICE = 216,
     ADDON_PARTITION = 217,
+    ADDON_ENSURE_MOUNT_PATH = 218,
+    ADDON_REMOVE_MOUNT_PATH = 219,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -73,7 +75,7 @@ public:
                           const std::string &mountPath,
                           const std::string &fsType,
                           const std::string &mountData) = 0;
-    virtual ErrCode Unmount(const std::string &mountPath, bool force) = 0;
+    virtual ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) = 0;
     virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) = 0;
     virtual ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) = 0;
     virtual ErrCode Repair(const std::string &devPath, const std::string &fsType) = 0;
@@ -91,6 +93,8 @@ public:
                                     const std::string &fsUuid,
                                     const std::string &options) = 0;
     virtual ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) = 0;
+    virtual ErrCode EnsureMountPath(const std::string &mountPath) = 0;
+    virtual ErrCode RemoveMountPath(const std::string &mountPath) = 0;
 
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};

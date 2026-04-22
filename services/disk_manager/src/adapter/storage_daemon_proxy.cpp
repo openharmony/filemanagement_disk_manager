@@ -19,6 +19,7 @@
 #include "message_parcel.h"
 #include "string_ex.h"
 
+#include "disk_manager_hilog.h"
 namespace OHOS {
 namespace StorageDaemon {
 
@@ -247,7 +248,7 @@ ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, bool force)
+ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, const std::string &fsType, bool force)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -255,7 +256,8 @@ ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, bool force)
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(mountPath)) || !data.WriteBool(force)) {
+    if (!data.WriteString16(Str8ToStr16(mountPath)) || !data.WriteString16(Str8ToStr16(fsType)) ||
+        !data.WriteBool(force)) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =
@@ -471,5 +473,78 @@ ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t parti
     return reply.ReadInt32();
 }
 
+ErrCode StorageDaemonProxy::RemoveMountPath(const std::string &mountPath)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        LOGE("StorageDaemonProxy::RemoveMountPath - Failed to write interface token");
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(mountPath))) {
+        LOGE("StorageDaemonProxy::RemoveMountPath - Failed to write mountPath");
+        return ERR_INVALID_DATA;
+    }
+
+    sptr<IRemoteObject> remote = Remote();
+    if (!remote) {
+        LOGE("StorageDaemonProxy::RemoveMountPath - Remote is nullptr!");
+        return ERR_INVALID_DATA;
+    }
+
+    int32_t ret = remote->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_REMOVE_MOUNT_PATH), data, reply, option);
+    if (ret != ERR_OK) {
+        LOGE("StorageDaemonProxy::RemoveMountPath - SendRequest failed, ret: %{public}d", ret);
+        return ret;
+    }
+
+    ErrCode errCode = reply.ReadInt32();
+    if (errCode != ERR_OK) {
+        LOGE("StorageDaemonProxy::RemoveMountPath - Remove mount path failed, errCode: %{public}d", errCode);
+        return errCode;
+    }
+
+    LOGI("StorageDaemonProxy::RemoveMountPath - Success, mountPath: %{public}s", mountPath.c_str());
+    return ERR_OK;
+}
+
+ErrCode StorageDaemonProxy::EnsureMountPath(const std::string &mountPath)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        LOGE("StorageDaemonProxy::EnsureMountPath - Failed to write interface token");
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(mountPath))) {
+        LOGE("StorageDaemonProxy::EnsureMountPath - Failed to write mountPath");
+        return ERR_INVALID_DATA;
+    }
+
+    sptr<IRemoteObject> remote = Remote();
+    if (!remote) {
+        LOGE("StorageDaemonProxy::EnsureMountPath - Remote is nullptr!");
+        return ERR_INVALID_DATA;
+    }
+
+    int32_t ret = remote->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_ENSURE_MOUNT_PATH), data, reply, option);
+    if (ret != ERR_OK) {
+        LOGE("StorageDaemonProxy::EnsureMountPath - SendRequest failed, ret: %{public}d", ret);
+        return ret;
+    }
+
+    ErrCode errCode = reply.ReadInt32();
+    if (errCode != ERR_OK) {
+        LOGE("StorageDaemonProxy::EnsureMountPath - Remove mount path failed, errCode: %{public}d", errCode);
+        return errCode;
+    }
+
+    LOGI("StorageDaemonProxy::EnsureMountPath - Success, mountPath: %{public}s", mountPath.c_str());
+    return ERR_OK;
+}
 } // namespace StorageDaemon
 } // namespace OHOS

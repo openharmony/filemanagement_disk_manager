@@ -44,7 +44,7 @@ public:
                          const std::string &mountPath,
                          const std::string &fsType,
                          const std::string &mountData));
-    MOCK_METHOD2(Unmount, ErrCode(const std::string &mountPath, bool force));
+    MOCK_METHOD3(Unmount, ErrCode(const std::string &mountPath, const std::string &fsType, bool force));
     MOCK_METHOD2(FormatVolume, ErrCode(const std::string &devPath, const std::string &fsType));
     MOCK_METHOD3(Check, ErrCode(const std::string &devPath, const std::string &fsType, bool autoFix));
     MOCK_METHOD2(Repair, ErrCode(const std::string &devPath, const std::string &fsType));
@@ -57,6 +57,8 @@ public:
         MountFuseDevice,
         ErrCode(int32_t fuseFd, const std::string &mountPath, const std::string &fsUuid, const std::string &options));
     MOCK_METHOD3(Partition, ErrCode(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags));
+    MOCK_METHOD1(EnsureMountPath, ErrCode(const std::string &mountPath));
+    MOCK_METHOD1(RemoveMountPath, ErrCode(const std::string &mountPath));
 };
 
 } // namespace DiskManager

@@ -200,14 +200,14 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
     return storageDaemon_->Mount(devPath, mountPath, fsType, mountData);
 }
 
-int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, bool force)
+int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::string &fsType, bool force)
 {
     LOGI("Unmount enter, mountPath=%{public}s, force=%{public}d", mountPath.c_str(), static_cast<int32_t>(force));
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         return err;
     }
-    return storageDaemon_->Unmount(mountPath, force);
+    return storageDaemon_->Unmount(mountPath, fsType, force);
 }
 
 int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std::string &fsType)
@@ -310,5 +310,22 @@ int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, int32_t par
     return storageDaemon_->Partition(diskPath, partitionType, partitionFlags);
 }
 
+int32_t StorageDaemonAdapter::RemoveMountPath(const std::string &mountPath)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->RemoveMountPath(mountPath);
+}
+
+int32_t StorageDaemonAdapter::EnsureMountPath(const std::string &mountPath)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        return err;
+    }
+    return storageDaemon_->EnsureMountPath(mountPath);
+}
 } // namespace DiskManager
 } // namespace OHOS
