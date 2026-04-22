@@ -2,88 +2,93 @@
 
 ## Introduction
 
-Disk Management is the disk management component in the OpenHarmony file management subsystem. It uses open-source third-party disk operation tools integrated in OpenHarmony (such as `gptdisk`) and is responsible for disk and volume identification, mount/unmount, partitioning, checking, repair, formatting, and related event handling.
+Disk Management is the disk-management component of the OpenHarmony file management subsystem. It builds on open-source third-party disk utilities shipped with OpenHarmony (such as gptdisk and f2fs-tools) to discover disks and volumes, handle mount and unmount, partitioning, filesystem check and repair, formatting, and the related events.
 
-Disk Management provides the following common capabilities:
+## System architecture
 
-- Supports disk device information query.
-- Supports functional operations on disk devices.
+**Figure 1** OpenHarmony disk management architecture
 
-## System Architecture
+![OpenHarmony disk management architecture](figures/disk-management-architecture.png)
 
-**Figure 1** OpenHarmony Disk Management Architecture
+### Architecture description
 
-![OpenHarmony Disk Management Architecture](figures/disk-management-architecture.png)
+As shown in the diagram, the stack consists of the **application layer**, **framework layer**, **system service layer**, and **kernel layer**:
 
-### Architecture Description
+- **Application layer**
+  - **File Management**: Sends volume-management requests for file and volume scenarios.
+  - **System Settings**: Sends disk and partition management requests for device maintenance.
+- **Framework layer**
+  - **Core File Kit**: Exposes a unified API upward and forwards requests to system services.
+- **System service layer**
+  - **Disk Management Service**: Core orchestration—state management, policy, and the outward-facing capability surface.
+  - **Disk query**: Aggregates disk and partition information and status.
+  - **Disk partitioning**: Creates, resizes, and deletes partitions.
+  - **Disk check**: Runs filesystem check operations.
+  - **Mount / unmount**: Performs volume mount, unmount, and state transitions.
+  - **Formatting**: Runs filesystem formatting.
+  - **Check and repair**: Runs filesystem repair operations.
+  - [**Storage Management Service**](https://gitcode.com/openharmony/filemanagement_storage_service): Runs privileged operations, talks to lower-level facilities, and returns results upstream.
+- **Kernel layer**
+  - **Disk utilities**: Low-level execution for partitioning, formatting, check, and repair.
+  - **Kernel filesystems**: Supplies disk information queries and reports state changes.
 
-As shown in the diagram, the system is composed of the application layer, SystemAPI, the system service layer, and the kernel layer:
+**Call flow:** **File Management** and **System Settings** reach **Disk Management Service** through **Core File Kit**; it then works with **Storage Management Service** over IPC, and the kernel layer performs the actual disk work and reports status back.
 
-- **Application Layer**
-  - `File Management`: Initiates volume management requests for file and volume scenarios.
-  - `System Settings`: Initiates disk/partition management requests for device maintenance scenarios.
-- **SystemAPI**
-  - `Core File Kit`: Provides a unified interface to upper layers and connects to system services through `napi/taihe`.
-- **System Service Layer**
-  - `Disk Management Service`: Core orchestration module responsible for state management, policy control, and external capability exposure.
-  - `Disk Query`: Aggregates disk/partition information and status.
-  - `Disk Partitioning`: Executes partition creation, adjustment, and deletion.
-  - `Disk Encryption`: Handles disk encryption capabilities and workflows.
-  - `Mount/Unmount`: Executes volume mount, unmount, and state transitions.
-  - `Formatting`: Executes filesystem formatting.
-  - `Check & Repair`: Executes filesystem check and repair.
-  - [Storage Management Service](https://gitcode.com/openharmony/filemanagement_storage_service): Handles privileged operation execution, interacts with lower-level capabilities, and returns execution results.
-- **Kernel Layer**
-  - `Disk Operation Tools`: Provides low-level execution capabilities such as partitioning, formatting, checking, and repairing.
-  - `Kernel File System`: Provides disk query and status reporting capabilities.
-
-In terms of call flow, `File Management/System Settings` enter `Disk Management Service` through `Core File Kit`; then `Disk Management Service` collaborates with `Storage Management Service` through IPC; finally, the kernel layer completes actual disk operations and status reporting.
-
-## Directory Structure
+## Directory structure
 
 ```text
 .
-├── interfaces/                  # Public interface layer (IDL, innerkits, JS, Taihe)
+├── interfaces/                  # Public API layer (IDL, innerkits, JS)
 │   ├── innerkits/
 │   └── kits/
-├── services/disk_manager/       # SA service implementation (Provider, business management, daemon adapter)
+├── services/disk_manager/       # SystemAbility implementation (provider, business logic, daemon adapters)
 ├── sa_profile/                  # SystemAbility and process configuration
-├── common/                      # Common error codes and base definitions
+├── common/                      # Shared error codes and base definitions
+├── etc/                         # Business configuration
+├── figures/                     # Diagrams for this component
 ├── utils/                       # Logging and common utilities
 └── test/                        # Unit tests and fuzz tests
 ```
 
-## Key Capabilities
+## Key capabilities
 
 - Disk and partition event handling
 - Volume information query
-- Volume mount/unmount, formatting, checking, and repair
+- Volume mount and unmount, formatting, check, and repair
 
-## Build and Integration
+## Build and integration
 
-This repository is integrated as an OpenHarmony code segment. The target path is defined in `bundle.json`:
+Disk Management is delivered as a **system service component** in the OpenHarmony **filemanagement** subsystem and is compiled into the system image:
 
-- `foundation/filemanagement/disk_manager`
+- **Source placement**: Place this repository in the path defined in `bundle.json` inside the tree—namely `foundation/filemanagement/disk_manager`—aligned with the upstream layout so it takes part in full system builds.
+- **Product integration**: In a product or board solution, depend on the **disk_manager** component through component dependencies (`deps` / component lists). Exact dependency entries follow the integration rules of your distribution or product baseline.
 
-## Usage Guide
+## Usage
 
-### Developer Workflow
+### Developer workflow (application development)
 
-1. Add the corresponding `disk_manager` component target in your project.
-2. Select the invocation method as needed (innerkits / JS / Taihe).
-3. Use a volume ID or UUID to perform operations such as query, mount, unmount, format, and partition.
+For **application developers** who use volume and disk management capabilities in **system applications** (on a system image that already includes this component):
 
-## Guide and API
+1. **Use the APIs**: In ArkTS, import via **Core File Kit**, for example `import { volumeManager } from '@kit.CoreFileKit';`. For native C++, use **innerkits** where your project allows; if you use **Taihe** or other stacks, follow your project template.
+2. **System APIs and identity**: `@ohos.file.volumeManager` is a **system API** and can only be called from **system applications**. Declare the application type and request matching **ohos.permission** entries in `module.json5` (for example `STORAGE_MANAGER` for volume query, `MOUNT_UNMOUNT_MANAGER` for mount/unmount, `MOUNT_FORMAT_MANAGER` for format/partition—the official permission-to-API matrix is authoritative).
+3. **Inputs and behavior**: Use a volume **ID** (for example `vol-{major}-{minor}`) or **UUID** with `getAllVolumes`, `getVolumeById`, `getVolumeByUuid`, `mount`, `unmount`, `format`, `partition`, `setVolumeDescription`, and related APIs. Observe per-API prerequisites such as supported filesystem types and volume state (for example some operations require an **unmounted** volume), and the documented error codes.
+4. **Documentation**: Interface descriptions, parameters, error codes, and samples are in **API reference** below—**@ohos.file.volumeManager (system API)** and the Core File Kit overview.
 
-[Guide and API](https://gitcode.com/openharmony/docs/blob/master/zh-cn/application-dev/reference/apis-core-file-kit/Readme-CN.md)
+## API reference
 
-## API Reference
+[Core File Kit overview](https://github.com/openharmony/docs/blob/master/en/application-dev/reference/apis-core-file-kit/Readme-EN.md)
 
-[System API Reference](https://gitcode.com/openharmony/docs/blob/ca6a74112dca41d78b4bb2ca2612aca7d2bce450/zh-cn/application-dev/reference/apis-core-file-kit/js-apis-file-volumemanager-sys.md)
+[Volume and disk management (system APIs)](https://github.com/openharmony/docs/blob/master/en/application-dev/reference/apis-core-file-kit/js-apis-file-volumemanager-sys.md)
 
-This document describes the interfaces. System applications can identify, mount/unmount, partition, check, repair, and format supported disk devices. It helps developers quickly locate detailed interface behavior and invocation methods.
+These pages document the public interfaces. System applications can manage supported disk devices—discovery, mount and unmount, partitioning, check, repair, formatting, and more—and provide the authoritative definitions and usage patterns.
 
-## Related Repositories
+## Related repositories
 
 - [filemanagement_disk_manager](https://gitcode.com/openharmony-sig/filemanagement_disk_manager)
 - [filemanagement_storage_service](https://gitcode.com/openharmony/filemanagement_storage_service)
+- [applications_settings_data](https://gitcode.com/openharmony/applications_settings_data)
+- [third_party_gptfdisk](https://gitcode.com/openharmony/third_party_gptfdisk)
+- [third_party_e2fsprogs](https://gitcode.com/openharmony/third_party_e2fsprogs)
+- [third_party_f2fs-tools](https://gitcode.com/openharmony/third_party_f2fs-tools)
+- [third_party_ntfs-3g](https://gitcode.com/openharmony/third_party_ntfs-3g)
+- [third_party_exfatprogs](https://gitcode.com/openharmony/third_party_exfatprogs)
