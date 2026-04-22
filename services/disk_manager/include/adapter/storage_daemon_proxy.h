@@ -46,7 +46,7 @@ public:
                   const std::string &mountPath,
                   const std::string &fsType,
                   const std::string &mountData) override;
-    ErrCode Unmount(const std::string &mountPath, bool force) override;
+    ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) override;
     ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) override;
     ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) override;
     ErrCode Repair(const std::string &devPath, const std::string &fsType) override;
@@ -62,6 +62,8 @@ public:
                             const std::string &fsUuid,
                             const std::string &options) override;
     ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) override;
+    ErrCode EnsureMountPath(const std::string &mountPath) override;
+    ErrCode RemoveMountPath(const std::string &mountPath) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

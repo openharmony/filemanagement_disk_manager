@@ -23,6 +23,8 @@
 #include "volume_external.h"
 
 #include <cstdint>
+#include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -43,22 +45,23 @@ public:
     int32_t OnDiskCreated(const Disk &disk);
     /** uevent 引导等写入 define.md 对齐的磁盘快照（与 Notify 路径的 OnDiskCreated 可并存合并）。 */
     int32_t UpsertDiskSnapshot(const DiskStoreRecord &rec);
-    bool HasDisk(const std::string &diskId) const;
+    bool HasDisk(const std::string &diskId);
 
     int32_t OnDiskDestroyed(const std::string &diskId);
 
-    int32_t OnVolumeCreated(const VolumeCore &vc);
-    int32_t OnVolumeMounted(const VolumeInfoStr &vis);
+    int32_t OnVolumeCreated(const VolumeExternal &volExternal);
+    int32_t OnVolumeMounted(const std::string &volumeId, const std::string &mountPath, int32_t state);
     int32_t OnVolumeStateChanged(const std::string &volumeId, uint32_t state);
+    int32_t OnVolumeDestroyed(const std::string &volumeId);
     int32_t OnVolumeDamaged(const VolumeInfoStr &vis);
 
     int32_t ReplacePartitionsForDisk(const std::string &diskId, const std::vector<PartitionRecord> &partitions);
 
-    int32_t GetAllDisks(std::vector<Disk> &out) const;
-    int32_t GetDiskById(const std::string &diskId, Disk &out) const;
-    int32_t GetAllVolumes(std::vector<VolumeExternal> &out) const;
-    int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &out) const;
-    int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &out) const;
+    int32_t GetAllDisks(std::vector<Disk> &out);
+    int32_t GetDiskById(const std::string &diskId, Disk &out);
+    int32_t GetAllVolumes(std::vector<VolumeExternal> &out);
+    int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &out);
+    int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &out);
 
     int32_t UpdateVolumeMetadata(const std::string &volumeId,
                                  const std::string &fsUuid,
@@ -70,6 +73,10 @@ private:
     ~DiskDataManager();
     DiskDataManager(const DiskDataManager &) = delete;
     DiskDataManager &operator=(const DiskDataManager &) = delete;
+    std::map<std::string, VolumeExternal> volumeMap_;
+    std::mutex volumeMapMutex_;
+    std::map<std::string, Disk> diskMap_;
+    std::mutex diskMapMutex_;
 };
 
 } // namespace DiskManager
