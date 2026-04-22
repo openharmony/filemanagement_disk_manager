@@ -37,7 +37,8 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
     disk_manager_path + "/services/disk_manager/src/disk/partition_table_parser.cpp",
     disk_manager_path + "/services/disk_manager/src/notification/common_event_publisher.cpp",
     disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_adapter.cpp",
-    disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_proxy.cpp"
+    disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_proxy.cpp",
+    disk_manager_path + "/services/disk_manager/src/adapter/usb_fuse_adapter.cpp"
   ]
 
   configs = [

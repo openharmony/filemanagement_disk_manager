@@ -38,6 +38,7 @@ enum DiskManagerErrNo : int32_t {
     E_VOLUME_NOT_FOUND = 21,
     E_UEVENT_PARSE_FAILED = 22,
     E_DAEMON_IPC_FAILED = 23,
+    E_DISK_HAS_EXIST = 24,
 };
 
 } // namespace DiskManager
