@@ -17,6 +17,7 @@
 #define OHOS_FILEMANAGEMENT_DISK_MANAGER_HILOG_H
 
 #include "hilog/log.h"
+#include <string>
 
 #ifndef LOG_DOMAIN
 #define LOG_DOMAIN 0xD00430F
@@ -25,24 +26,36 @@
 #define DISK_MANAGER_LOG_TAG "DiskManager"
 #endif
 
-#define LOGI(fmt, ...)                                                                                      \
-    ((void)HILOG_IMPL(LOG_CORE, LOG_INFO, LOG_DOMAIN, DISK_MANAGER_LOG_TAG, "[%{public}s:%{public}d] " fmt, \
-                      __FUNCTION__, __LINE__, ##__VA_ARGS__))
+inline std::string GetFileNameFromFullPath(const char *str)
+{
+    std::string fullPath(str);
+    size_t pos = fullPath.find_last_of("/");
+    return (pos == std::string::npos) ? std::string() : fullPath.substr(pos + 1);
+}
 
-#define LOGW(fmt, ...)                                                                                      \
-    ((void)HILOG_IMPL(LOG_CORE, LOG_WARN, LOG_DOMAIN, DISK_MANAGER_LOG_TAG, "[%{public}s:%{public}d] " fmt, \
-                      __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define LOGD(fmt, ...)                                                                                                 \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_DEBUG, LOG_DOMAIN, DISK_MANAGER_LOG_TAG,                                           \
+                      "[%{public}s:%{public}d->%{public}s] " fmt, GetFileNameFromFullPath(__FILE__).c_str(), __LINE__, \
+                      __FUNCTION__, ##__VA_ARGS__))
 
-#define LOGE(fmt, ...)                                                                                       \
-    ((void)HILOG_IMPL(LOG_CORE, LOG_ERROR, LOG_DOMAIN, DISK_MANAGER_LOG_TAG, "[%{public}s:%{public}d] " fmt, \
-                      __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define LOGI(fmt, ...)                                                                                                 \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_INFO, LOG_DOMAIN, DISK_MANAGER_LOG_TAG,                                            \
+                      "[%{public}s:%{public}d->%{public}s] " fmt, GetFileNameFromFullPath(__FILE__).c_str(), __LINE__, \
+                      __FUNCTION__, ##__VA_ARGS__))
 
-#define LOGF(fmt, ...)                                                                                       \
-    ((void)HILOG_IMPL(LOG_CORE, LOG_FATAL, LOG_DOMAIN, DISK_MANAGER_LOG_TAG, "[%{public}s:%{public}d] " fmt, \
-                      __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define LOGW(fmt, ...)                                                                                                 \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_WARN, LOG_DOMAIN, DISK_MANAGER_LOG_TAG,                                            \
+                      "[%{public}s:%{public}d->%{public}s] " fmt, GetFileNameFromFullPath(__FILE__).c_str(), __LINE__, \
+                      __FUNCTION__, ##__VA_ARGS__))
 
-#define LOGD(fmt, ...)                                                                                       \
-    ((void)HILOG_IMPL(LOG_CORE, LOG_DEBUG, LOG_DOMAIN, DISK_MANAGER_LOG_TAG, "[%{public}s:%{public}d] " fmt, \
-                      __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define LOGE(fmt, ...)                                                                                                 \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_ERROR, LOG_DOMAIN, DISK_MANAGER_LOG_TAG,                                           \
+                      "[%{public}s:%{public}d->%{public}s] " fmt, GetFileNameFromFullPath(__FILE__).c_str(), __LINE__, \
+                      __FUNCTION__, ##__VA_ARGS__))
+
+#define LOGF(fmt, ...)                                                                                                 \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_FATAL, LOG_DOMAIN, DISK_MANAGER_LOG_TAG,                                           \
+                      "[%{public}s:%{public}d->%{public}s] " fmt, GetFileNameFromFullPath(__FILE__).c_str(), __LINE__, \
+                      __FUNCTION__, ##__VA_ARGS__))
 
 #endif // OHOS_FILEMANAGEMENT_DISK_MANAGER_HILOG_H

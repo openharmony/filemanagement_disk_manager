@@ -408,6 +408,34 @@ ErrCode StorageDaemonProxy::GetCapacity(const std::string &mountPath, int64_t &t
     return ERR_OK;
 }
 
+ErrCode StorageDaemonProxy::GetOddCapacity(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    totalSize = 0;
+    freeSize = 0;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(volumeId))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::COMMAND_GET_ODD_CAPACITY), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    if (!reply.ReadInt64(totalSize) || !reply.ReadInt64(freeSize)) {
+        return ERR_INVALID_DATA;
+    }
+    return ERR_OK;
+}
+
 ErrCode StorageDaemonProxy::OpenFuseDevice(int32_t &fuseFd)
 {
     MessageParcel data;
