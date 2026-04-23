@@ -57,7 +57,6 @@ bool IsOddDevice(DiskDataManager &dm, const std::string &volumeUuid)
     return false;
 }
 
-/** 对齐 VolumeStorageStatusService::GetOddSize */
 int32_t GetOddSize(DiskDataManager &dm, const std::string &volumeUuid, int64_t &totalSize, int64_t &freeSize)
 {
     VolumeExternal vol;
@@ -65,9 +64,12 @@ int32_t GetOddSize(DiskDataManager &dm, const std::string &volumeUuid, int64_t &
         LOGE("GetOddSize: volExternalInfo is null");
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
-    const std::string volumeId = vol.GetId();
-    LOGI("get odd size : volumeid is %{public}s", volumeId.c_str());
-    return StorageDaemonAdapter::GetInstance().GetOddCapacity(volumeId, totalSize, freeSize);
+    const std::string &mountPath = vol.GetPath();
+    LOGI("get odd size : mountPath is %{public}s", mountPath.c_str());
+    if (mountPath.empty()) {
+        return DiskManagerErrNo::DISK_MGR_ERR;
+    }
+    return StorageDaemonAdapter::GetInstance().GetCapacity(mountPath, totalSize, freeSize);
 }
 
 } // namespace
