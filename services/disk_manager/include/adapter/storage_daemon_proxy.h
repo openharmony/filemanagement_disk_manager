@@ -56,7 +56,6 @@ public:
                          std::string &type,
                          std::string &label) override;
     ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) override;
-    ErrCode GetOddCapacity(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize) override;
     ErrCode OpenFuseDevice(int32_t &fuseFd) override;
     ErrCode MountFuseDevice(int32_t fuseFd,
                             const std::string &mountPath,

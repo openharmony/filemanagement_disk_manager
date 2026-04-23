@@ -52,7 +52,6 @@ public:
     MOCK_METHOD4(ReadMetadata,
                  ErrCode(const std::string &devPath, std::string &uuid, std::string &type, std::string &label));
     MOCK_METHOD3(GetCapacity, ErrCode(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize));
-    MOCK_METHOD3(GetOddCapacity, ErrCode(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize));
     MOCK_METHOD1(OpenFuseDevice, ErrCode(int32_t &fuseFd));
     MOCK_METHOD4(
         MountFuseDevice,

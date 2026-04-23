@@ -275,16 +275,6 @@ int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t 
     return storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
 }
 
-int32_t StorageDaemonAdapter::GetOddCapacity(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize)
-{
-    LOGI("GetOddCapacity enter, volumeId=%{public}s", volumeId.c_str());
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        return err;
-    }
-    return storageDaemon_->GetOddCapacity(volumeId, totalSize, freeSize);
-}
-
 int32_t StorageDaemonAdapter::OpenFuseDevice(int32_t &fuseFd)
 {
     LOGI("OpenFuseDevice enter");
