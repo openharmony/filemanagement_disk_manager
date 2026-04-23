@@ -28,6 +28,8 @@ enum class IStorageDaemonIpcCode {
     /** 旧版 volId 系 COMMAND(2–7, 51) 已废弃；disk_manager 仅保留下列与 IStorageDaemon.idl 对齐的码。 */
     COMMAND_QUERY_USB_IS_IN_USE = 45,
     COMMAND_MOUNT_USB_FUSE = 54,
+    /** IStorageDaemon.idl — GetOddCapacity，ipccode 81（光驱 udf/iso9660 容量）。 */
+    COMMAND_GET_ODD_CAPACITY = 81,
     /* IStorageDaemon_addon.idl — OHOS.StorageService.IStorageDaemon，ipccode 201–217 */
     ADDON_CREATE_BLOCK_DEVICE_NODE = 201,
     ADDON_DESTROY_BLOCK_DEVICE_NODE = 202,
@@ -87,6 +89,7 @@ public:
                                  std::string &type,
                                  std::string &label) = 0;
     virtual ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) = 0;
+    virtual ErrCode GetOddCapacity(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize) = 0;
     virtual ErrCode OpenFuseDevice(int32_t &fuseFd) = 0;
     virtual ErrCode MountFuseDevice(int32_t fuseFd,
                                     const std::string &mountPath,

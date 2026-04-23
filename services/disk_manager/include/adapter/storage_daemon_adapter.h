@@ -61,6 +61,7 @@ public:
     int32_t SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label);
     int32_t ReadMetadata(const std::string &devPath, std::string &uuid, std::string &type, std::string &label);
     int32_t GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize);
+    int32_t GetOddCapacity(const std::string &volumeId, int64_t &totalSize, int64_t &freeSize);
     int32_t OpenFuseDevice(int32_t &fuseFd);
     int32_t MountFuseDevice(int32_t fuseFd,
                             const std::string &mountPath,

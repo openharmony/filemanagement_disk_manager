@@ -241,7 +241,6 @@ int32_t UeventBootstrap::OnBlockDiskUevent(const std::string &rawUeventMsg)
 int32_t UeventBootstrap::HandleDiskRemove(const UeventEnv &env)
 {
     LOGI("UeventBootstrap::HandleDiskRemove enter external=IDiskManager::OnBlockDiskUevent branch=remove");
-    LogUeventEnvForHandler("HandleDiskRemove", env);
 
     const std::string diskId = DiskIdFrom(env.major, env.minor);
     std::vector<VolumeExternal> vols;
@@ -273,7 +272,6 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     LOGI("UeventBootstrap::DiscoverPartitionsAndVolumes enter "
          "external=IDiskManager::OnBlockDiskUevent publishNewDisk=%{public}d",
          static_cast<int>(publishNewDiskEvent));
-    LogUeventEnvForHandler("DiscoverPartitionsAndVolumes", env);
 
     const std::string diskId = DiskIdFrom(env.major, env.minor);
     const std::string diskDevPath = BlockPathForId(diskId);
@@ -302,7 +300,6 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
 int32_t UeventBootstrap::HandleDiskAdd(const UeventEnv &env)
 {
     LOGI("UeventBootstrap::HandleDiskAdd enter external=IDiskManager::OnBlockDiskUevent branch=add");
-    LogUeventEnvForHandler("HandleDiskAdd", env);
 
     const std::string diskId = DiskIdFrom(env.major, env.minor);
     const bool publishNew = !DiskDataManager::GetInstance().HasDisk(diskId);
@@ -312,7 +309,6 @@ int32_t UeventBootstrap::HandleDiskAdd(const UeventEnv &env)
 int32_t UeventBootstrap::HandleDiskChange(const UeventEnv &env)
 {
     LOGI("UeventBootstrap::HandleDiskChange enter external=IDiskManager::OnBlockDiskUevent branch=change");
-    LogUeventEnvForHandler("HandleDiskChange", env);
 
     const std::string diskDevPath = BlockPathForId(DiskIdFrom(env.major, env.minor));
     if (env.ejectRequest) {

@@ -20,11 +20,57 @@
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
 #include "notification/common_event_publisher.h"
+
+#include <cinttypes>
 #include <cstdint>
 #include <mutex>
+#include <sys/statvfs.h>
 
 namespace OHOS {
 namespace DiskManager {
+
+namespace {
+
+/** 对齐 storage_manager::VolumeStorageStatusService::GetVolumePath */
+std::string GetVolumePath(DiskDataManager &dm, const std::string &volumeUuid)
+{
+    VolumeExternal vol;
+    if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
+        LOGE("GetVolumePath fail.");
+        return "";
+    }
+    return vol.GetPath();
+}
+
+/** 对齐 VolumeStorageStatusService::IsOddDevice */
+bool IsOddDevice(DiskDataManager &dm, const std::string &volumeUuid)
+{
+    VolumeExternal vol;
+    if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
+        LOGE("IsOddDevice: volExternalInfo is null");
+        return false;
+    }
+    const std::string fsType = vol.GetFsTypeString();
+    if (fsType == "udf" || fsType == "iso9660") {
+        return true;
+    }
+    return false;
+}
+
+/** 对齐 VolumeStorageStatusService::GetOddSize */
+int32_t GetOddSize(DiskDataManager &dm, const std::string &volumeUuid, int64_t &totalSize, int64_t &freeSize)
+{
+    VolumeExternal vol;
+    if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
+        LOGE("GetOddSize: volExternalInfo is null");
+        return DiskManagerErrNo::DISK_MGR_ERR;
+    }
+    const std::string volumeId = vol.GetId();
+    LOGI("get odd size : volumeid is %{public}s", volumeId.c_str());
+    return StorageDaemonAdapter::GetInstance().GetOddCapacity(volumeId, totalSize, freeSize);
+}
+
+} // namespace
 
 DiskDataManager::DiskDataManager() = default;
 
@@ -294,6 +340,59 @@ int32_t DiskDataManager::UpdateVolumeMetadata(const std::string &volumeId,
     volExternal.SetDescription(description);
     LOGI("Updated metadata for volume %{public}s: uuid=%{public}s, fsType=%{public}d, description=%{public}s",
          volumeId.c_str(), fsUuid.c_str(), volExternal.GetFsType(), description.c_str());
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskDataManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
+{
+    freeSize = 0;
+    std::string path = GetVolumePath(*this, volumeUuid);
+    LOGI("GetFreeSizeOfVolume path is %{public}s", path.c_str());
+    if (path == "") {
+        return DiskManagerErrNo::E_NON_EXIST;
+    }
+    struct statvfs diskInfo {};
+    int ret = statvfs(path.c_str(), &diskInfo);
+    if (ret != DiskManagerErrNo::E_OK) {
+        return DiskManagerErrNo::E_STATVFS;
+    }
+    if (IsOddDevice(*this, volumeUuid)) {
+        int64_t totalSize = 0;
+        int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
+        int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+        const int32_t oddRet = GetOddSize(*this, volumeUuid, totalSize, freeSize);
+        LOGI("totalSize is %{public}" PRIu64 " freeSize is %{public}" PRIu64 ", ret val is %{public}d",
+             static_cast<uint64_t>(totalSize), static_cast<uint64_t>(freeSize), oddRet);
+        if (freeSize != 0) {
+            return oddRet;
+        }
+        if (startFreeSize == 0) {
+            freeSize = totalSize - startTotalSize;
+            return DiskManagerErrNo::E_OK;
+        }
+    }
+    freeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskDataManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
+{
+    totalSize = 0;
+    std::string path = GetVolumePath(*this, volumeUuid);
+    if (path == "") {
+        return DiskManagerErrNo::E_NON_EXIST;
+    }
+    struct statvfs diskInfo {};
+    int ret = statvfs(path.c_str(), &diskInfo);
+    if (ret != DiskManagerErrNo::E_OK) {
+        return DiskManagerErrNo::E_STATVFS;
+    }
+    if (IsOddDevice(*this, volumeUuid)) {
+        int64_t freeSize = 0;
+        (void)GetOddSize(*this, volumeUuid, totalSize, freeSize);
+        return DiskManagerErrNo::E_OK;
+    }
+    totalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
     return DiskManagerErrNo::E_OK;
 }
 } // namespace DiskManager
