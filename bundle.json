@@ -46,6 +46,7 @@
         "base_group": [],
         "fwk_group": [],
         "service_group": [
+          "//foundation/filemanagement/disk_manager/etc:disk_manager_disk_config",
           "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_cfg",
           "//foundation/filemanagement/disk_manager/sa_profile:disk_manager_sa_profile",
           "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager"

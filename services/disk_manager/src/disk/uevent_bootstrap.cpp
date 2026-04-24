@@ -27,12 +27,15 @@
 #include "notification/common_event_publisher.h"
 #include "volume_core.h"
 
+#include <fstream>
 #include <string_view>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 
 namespace OHOS {
 namespace DiskManager {
+std::list<DiskConfig> UeventBootstrap::diskConfigList_;
+std::mutex UeventBootstrap::diskConfigListMutex_;
 
 namespace {
 
@@ -40,8 +43,12 @@ constexpr const char *DEV_BLOCK = "/dev/block/";
 constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr bool AUTO_MOUNT_EXTERNAL_VOLUMES = true;
 constexpr uint32_t NODE_PERM = 0660u;
-constexpr uint32_t kDiskBlockDeviceNodeMode = NODE_PERM | static_cast<uint32_t>(S_IFBLK);
-constexpr uint32_t kVolumeBlockDeviceNodeMode = static_cast<uint32_t>(S_IFBLK);
+constexpr uint32_t K_DISK_BLOCK_DEVICE_NODE_MODE = NODE_PERM | static_cast<uint32_t>(S_IFBLK);
+constexpr uint32_t K_VOLUME_BLOCK_DEVICE_NODE_MODE = static_cast<uint32_t>(S_IFBLK);
+constexpr int DISK_MMC_MAJOR = 179;
+constexpr int DISK_CD_MAJOR = 11;
+const int32_t CONFIG_PARAM_NUM = 6;
+const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
 
 constexpr uint32_t ActionHash(std::string_view sv)
 {
@@ -113,7 +120,7 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
                                std::vector<PartitionRecord> &parts)
 {
     int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
-        diskDevPath, kDiskBlockDeviceNodeMode, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
+        diskDevPath, K_DISK_BLOCK_DEVICE_NODE_MODE, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
     if (err != ERR_OK) {
         LOGE("CreateDiskBlockDeviceNode disk failed err=%{public}d", err);
         return err;
@@ -161,7 +168,7 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env, const std::string &disk
 
     int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
         volDevPath,
-        kVolumeBlockDeviceNodeMode,
+        K_VOLUME_BLOCK_DEVICE_NODE_MODE,
         static_cast<int32_t>(major(pDev)),
         static_cast<int32_t>(minor(pDev)));
     if (err != ERR_OK) {
@@ -324,5 +331,112 @@ int32_t UeventBootstrap::HandleDiskChange(const UeventEnv &env)
     return DiscoverPartitionsAndVolumes(env, publishNew);
 }
 
+void UeventBootstrap::Init()
+{
+    LOGI("UeventBootstrap::Init enter");
+    ParasConfig();
+}
+
+std::vector<std::string> UeventBootstrap::SplitLine(std::string &line, std::string &token)
+{
+    std::vector<std::string> result;
+    std::string::size_type start;
+    std::string::size_type end;
+
+    start = 0;
+    end = line.find(token);
+    while (std::string::npos != end) {
+        result.push_back(line.substr(start, end - start));
+        start = end + token.size();
+        end = line.find(token, start);
+    }
+
+    if (start != line.length()) {
+        result.push_back(line.substr(start));
+    }
+
+    return result;
+}
+
+bool UeventBootstrap::ParasConfig()
+{
+    LOGI("UeventBootstrap::ParasConfig enter");
+    std::ifstream infile;
+    infile.open(CONFIG_PTAH);
+    if (!infile) {
+        LOGE("Cannot open config");
+        return false;
+    }
+
+    while (infile) {
+        std::string line;
+        std::getline(infile, line);
+        if (line.empty()) {
+            LOGI("Param config complete");
+            break;
+        }
+
+        std::string token = " ";
+        auto split = SplitLine(line, token);
+        if (split.size() != CONFIG_PARAM_NUM) {
+            LOGE("Invalids config line: number of parameters is incorrect");
+            continue;
+        }
+
+        auto it = split.begin();
+        if (*it != "sysPattern") {
+            LOGE("Invalids config line: no sysPattern");
+            continue;
+        }
+
+        auto sysPattern = *(++it);
+        if (*(++it) != "label") {
+            LOGE("Invalids config line: no label");
+            continue;
+        }
+
+        auto label = *(++it);
+        if (*(++it) != "flag") {
+            LOGE("Invalids config line: no flag");
+            continue;
+        }
+
+        it++;
+        int flag = std::atoi((*it).c_str());
+        auto diskConfig =  std::make_shared<DiskConfig>(sysPattern, label, flag);
+        {
+            std::lock_guard<std::mutex> lock(diskConfigListMutex_);
+            diskConfigList_.push_back(*diskConfig);
+        }
+    }
+
+    infile.close();
+    return true;
+}
+
+uint32_t UeventBootstrap::MatchConfig(const UeventEnv &env)
+{
+    LOGI("DiskManager::MatchConfig enter");
+    std::string devPath = env.devPath;
+    unsigned int major = (unsigned int)env.major;
+    uint32_t flag = 0;
+    for (auto config : diskConfigList_) {
+        if (config.IsMatch(devPath)) {
+            LOGI("DiskManager::MatchConfig: devPath=%{public}s, matched", devPath.c_str());
+            uint32_t flag = static_cast<uint32_t>(config.GetFlag());
+            if (major == DISK_MMC_MAJOR) {
+                flag |= DiskManager::SD_FLAG;
+            } else if (major == DISK_CD_MAJOR) {
+                flag |= DiskManager::CD_FLAG;
+            } else {
+                flag |= DiskManager::USB_FLAG;
+            }
+            return flag;
+        }
+    }
+
+    LOGI("DiskManager::MatchConfig: No matching configuration found");
+    return flag;
+}
 } // namespace DiskManager
 } // namespace OHOS
