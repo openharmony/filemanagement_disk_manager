@@ -99,15 +99,13 @@ int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeEx
 int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
     LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
-    freeSize = 0;
-    return DiskManagerErrNo::E_OK;
+    return DiskDataManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
 }
 
 int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
 {
     LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
-    totalSize = 0;
-    return DiskManagerErrNo::E_OK;
+    return DiskDataManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
 }
 
 int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
