@@ -39,6 +39,10 @@ enum DiskManagerErrNo : int32_t {
     E_UEVENT_PARSE_FAILED = 22,
     E_DAEMON_IPC_FAILED = 23,
     E_DISK_HAS_EXIST = 24,
+
+    /** 与 storage_service_errno.h / VolumeStorageStatusService 数值一致（13600000 基址）。 */
+    E_NON_EXIST = 13600000 + 4,
+    E_STATVFS = 13600000 + 1204,
 };
 
 } // namespace DiskManager

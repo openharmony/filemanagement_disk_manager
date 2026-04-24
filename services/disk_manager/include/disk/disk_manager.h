@@ -68,6 +68,9 @@ public:
                                  const std::string &fsTypeStr,
                                  const std::string &description);
 
+    int32_t GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize);
+    int32_t GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize);
+
 private:
     DiskDataManager();
     ~DiskDataManager();
