@@ -17,7 +17,10 @@
 #define OHOS_DISK_MANAGER_DISK_UEVENT_BOOTSTRAP_H
 
 #include "disk/uevent_env_parser.h"
+#include "disk_config.h"
 
+#include <list>
+#include <mutex>
 #include <string>
 
 namespace OHOS {
@@ -30,6 +33,7 @@ namespace DiskManager {
 class UeventBootstrap {
 public:
     static int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
+    static void Init();
 
 private:
     static int32_t HandleDiskRemove(const UeventEnv &env);
@@ -38,6 +42,13 @@ private:
     /** DISK_EJECT_REQUEST 走 Eject；否则刷新分区与卷状态，不重复发布「新盘」事件。 */
     static int32_t HandleDiskChange(const UeventEnv &env);
     static int32_t DiscoverPartitionsAndVolumes(const UeventEnv &env, bool publishNewDiskEvent);
+    static std::vector<std::string> SplitLine(std::string &line, std::string &token);
+    static bool ParasConfig();
+    static uint32_t MatchConfig(const UeventEnv &env);
+
+private:
+    static std::list<DiskConfig> diskConfigList_;
+    static std::mutex diskConfigListMutex_;
 };
 
 } // namespace DiskManager
