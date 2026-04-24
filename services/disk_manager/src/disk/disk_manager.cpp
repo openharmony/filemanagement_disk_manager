@@ -143,6 +143,7 @@ int32_t DiskDataManager::Format(const std::string &volumeId, const std::string &
         return err;
     }
     volExternal.SetState(UNMOUNTED);
+    volExternal.SetFsType(volExternal.GetFsTypeByStr(fsType));
     return DiskManagerErrNo::E_OK;
 }
 
@@ -169,6 +170,7 @@ int32_t DiskDataManager::SetVolumeDescription(const std::string &fsUuid, const s
         return err;
     }
     volExternal.SetState(UNMOUNTED);
+    volExternal.SetDescription(description);
     return DiskManagerErrNo::E_OK;
 }
 
