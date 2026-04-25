@@ -38,13 +38,13 @@ namespace {
 std::string BuildUsbFuseOptions(int32_t fuseFd)
 {
     std::stringstream ss;
-    ss << "fd=" << fuseFd << ","
-       << "rootmode=40000,"
-       << "default_permissions,"
-       << "allow_other,"
-       << "user_id=0,group_id=0,"
-       << "context=\"u:object_r:mnt_external_file:s0\","
-       << "fscontext=u:object_r:mnt_external_file:s0";
+    ss << "fd=" << fuseFd << ",";
+    ss << "rootmode=40000,";
+    ss << "default_permissions,";
+    ss << "allow_other,";
+    ss << "user_id=0,group_id=0,";
+    ss << "context=\"u:object_r:mnt_external_file:s0\",";
+    ss << "fscontext=u:object_r:mnt_external_file:s0";
     return ss.str();
 }
 
@@ -54,15 +54,14 @@ bool IsSafeFsUuid(const std::string &fsUuid)
 }
 
 /** 对齐 storage_manager::VolumeStorageStatusService::GetVolumePath */
-std::string GetVolumePath(DiskManager &dm, const std::string &volumeUuid)
-{
+auto g_getVolumePath = [](DiskManager &dm, const std::string &volumeUuid) -> std::string {
     VolumeExternal vol;
     if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
         LOGE("GetVolumePath fail.");
         return "";
     }
     return vol.GetPath();
-}
+};
 
 /** 对齐 VolumeStorageStatusService::IsOddDevice */
 bool IsOddDevice(DiskManager &dm, const std::string &volumeUuid)
@@ -379,8 +378,8 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
 
 int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
 {
-    static constexpr const char *UNDEFINED_FS_TYPE = "undefined";
-    if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(UNDEFINED_FS_TYPE)) {
+    static constexpr const char *undefinedFsType = "undefined";
+    if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(undefinedFsType)) {
         LOGE("Partition: diskId=%{public}s is fuse, not support", diskId.c_str());
         return E_NOT_SUPPORT;
     }
@@ -571,7 +570,7 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
 int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
     freeSize = 0;
-    std::string path = GetVolumePath(*this, volumeUuid);
+    std::string path = g_getVolumePath(*this, volumeUuid);
     LOGI("GetFreeSizeOfVolume path is %{public}s", path.c_str());
     if (path == "") {
         return DiskManagerErrNo::E_NON_EXIST;
@@ -603,7 +602,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
 int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
 {
     totalSize = 0;
-    std::string path = GetVolumePath(*this, volumeUuid);
+    std::string path = g_getVolumePath(*this, volumeUuid);
     if (path == "") {
         return DiskManagerErrNo::E_NON_EXIST;
     }
