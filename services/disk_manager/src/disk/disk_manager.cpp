@@ -135,8 +135,8 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
 }
 
 int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
-                                         VolumeExternal &volExternal,
-                                         const std::string &fsType)
+                                          VolumeExternal &volExternal,
+                                          const std::string &fsType)
 {
     if (!UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)) {
         return DiskManagerErrNo::E_OK;
