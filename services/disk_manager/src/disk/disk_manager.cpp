@@ -64,8 +64,7 @@ auto g_getVolumePath = [](DiskManager &dm, const std::string &volumeUuid) -> std
 };
 
 /** 对齐 VolumeStorageStatusService::IsOddDevice */
-bool IsOddDevice(DiskManager &dm, const std::string &volumeUuid)
-{
+auto g_isOddDevice = [](DiskManager &dm, const std::string &volumeUuid) -> bool {
     VolumeExternal vol;
     if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
         LOGE("IsOddDevice: volExternalInfo is null");
@@ -76,7 +75,7 @@ bool IsOddDevice(DiskManager &dm, const std::string &volumeUuid)
         return true;
     }
     return false;
-}
+};
 
 int32_t GetOddSize(DiskManager &dm, const std::string &volumeUuid, int64_t &totalSize, int64_t &freeSize)
 {
@@ -580,7 +579,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     if (ret != DiskManagerErrNo::E_OK) {
         return DiskManagerErrNo::E_STATVFS;
     }
-    if (IsOddDevice(*this, volumeUuid)) {
+    if (g_isOddDevice(*this, volumeUuid)) {
         int64_t totalSize = 0;
         int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
         int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
@@ -611,7 +610,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     if (ret != DiskManagerErrNo::E_OK) {
         return DiskManagerErrNo::E_STATVFS;
     }
-    if (IsOddDevice(*this, volumeUuid)) {
+    if (g_isOddDevice(*this, volumeUuid)) {
         int64_t freeSize = 0;
         (void)GetOddSize(*this, volumeUuid, totalSize, freeSize);
         return DiskManagerErrNo::E_OK;
