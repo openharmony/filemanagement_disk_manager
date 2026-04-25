@@ -108,11 +108,10 @@ int32_t LegacyDiskFlagFromDevPath(const std::string &devPath)
 
 void LogUeventEnvForHandler(const char *handler, const UeventEnv &env)
 {
-    LOGI(
-        "%{public}s uevent: action=%{public}s subsystem=%{public}s devtype=%{public}s major=%{public}u "
-        "minor=%{public}u devpath=%{public}s devname=%{public}s ejectRequest=%{public}d sysPath=%{public}s",
-        handler, env.action.c_str(), env.subsystem.c_str(), env.devType.c_str(), env.major, env.minor,
-        env.devPath.c_str(), env.devName.c_str(), static_cast<int>(env.ejectRequest), env.sysPath.c_str());
+    LOGI("%{public}s uevent: action=%{public}s subsystem=%{public}s devtype=%{public}s major=%{public}u "
+         "minor=%{public}u devpath=%{public}s devname=%{public}s ejectRequest=%{public}d sysPath=%{public}s",
+         handler, env.action.c_str(), env.subsystem.c_str(), env.devType.c_str(), env.major, env.minor,
+         env.devPath.c_str(), env.devName.c_str(), static_cast<int>(env.ejectRequest), env.sysPath.c_str());
 }
 
 int32_t BuildAndSyncPartitions(const UeventEnv &env,
@@ -215,10 +214,8 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env, const std::string &disk
 
 int32_t UeventBootstrap::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
-    LOGI(
-        "UeventBootstrap::OnBlockDiskUevent enter external=IDiskManager::OnBlockDiskUevent "
-        "rawLen=%{public}zu",
-        rawUeventMsg.size());
+    LOGI("UeventBootstrap::OnBlockDiskUevent enter external=IDiskManager::OnBlockDiskUevent rawLen=%{public}zu",
+         rawUeventMsg.size());
 
     UeventEnv env;
     if (!UeventEnvParser::Parse(rawUeventMsg, env)) {
@@ -276,10 +273,9 @@ int32_t UeventBootstrap::HandleDiskRemove(const UeventEnv &env)
 
 int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool publishNewDiskEvent)
 {
-    LOGI(
-        "UeventBootstrap::DiscoverPartitionsAndVolumes enter "
-        "external=IDiskManager::OnBlockDiskUevent publishNewDisk=%{public}d",
-        static_cast<int>(publishNewDiskEvent));
+    LOGI("UeventBootstrap::DiscoverPartitionsAndVolumes enter "
+         "external=IDiskManager::OnBlockDiskUevent publishNewDisk=%{public}d",
+         static_cast<int>(publishNewDiskEvent));
 
     const std::string diskId = DiskIdFrom(env.major, env.minor);
     const std::string diskDevPath = BlockPathForId(diskId);
