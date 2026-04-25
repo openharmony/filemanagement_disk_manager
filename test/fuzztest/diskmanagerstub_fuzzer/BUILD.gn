@@ -33,12 +33,13 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
     disk_manager_path + "/services/disk_manager/src/ipc/disk_manager_provider.cpp",
     disk_manager_path + "/services/disk_manager/src/disk/uevent_bootstrap.cpp",
     disk_manager_path + "/services/disk_manager/src/disk/uevent_env_parser.cpp",
+    disk_manager_path + "/services/disk_manager/src/disk/disk_config.cpp",
     disk_manager_path + "/services/disk_manager/src/disk/disk_manager.cpp",
     disk_manager_path + "/services/disk_manager/src/disk/partition_table_parser.cpp",
     disk_manager_path + "/services/disk_manager/src/notification/common_event_publisher.cpp",
     disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_adapter.cpp",
     disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_proxy.cpp",
-    disk_manager_path + "/services/disk_manager/src/adapter/usb_fuse_adapter.cpp"
+    disk_manager_path + "/services/disk_manager/src/adapter/usb_fuse_adapter.cpp",
   ]
 
   configs = [
@@ -63,6 +64,7 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "hilog:libhilog",
+    "init:libbegetutil",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",

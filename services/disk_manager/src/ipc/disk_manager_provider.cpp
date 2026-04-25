@@ -15,11 +15,12 @@
 
 #include "disk_manager_provider.h"
 
-#include "uevent_bootstrap.h"
-#include "usb_fuse_adapter.h"
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "storage_daemon_adapter.h"
+#include "uevent_bootstrap.h"
+#include "usb_fuse_adapter.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -49,50 +50,50 @@ void DiskManagerProvider::OnStop()
 int32_t DiskManagerProvider::Mount(const std::string &volumeId)
 {
     LOGI("Mount volumeId=%{public}s", volumeId.c_str());
-    return DiskDataManager::GetInstance().Mount(volumeId);
+    return DiskManager::GetInstance().Mount(volumeId);
 }
 
 int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
 {
     LOGI("Unmount volumeId=%{public}s", volumeId.c_str());
-    return DiskDataManager::GetInstance().Unmount(volumeId);
+    return DiskManager::GetInstance().Unmount(volumeId);
 }
 
 int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::string &fsType)
 {
     LOGI("Format volumeId=%{public}s fsType=%{public}s", volumeId.c_str(), fsType.c_str());
-    return DiskDataManager::GetInstance().Format(volumeId, fsType);
+    return DiskManager::GetInstance().Format(volumeId, fsType);
 }
 
 int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
 {
     LOGI("TryToFix volumeId=%{public}s", volumeId.c_str());
-    return DiskDataManager::GetInstance().TryToFix(volumeId);
+    return DiskManager::GetInstance().TryToFix(volumeId);
 }
 
 int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
 {
     LOGI("SetVolumeDescription fsUuid=%{public}s", fsUuid.c_str());
-    return DiskDataManager::GetInstance().SetVolumeDescription(fsUuid, description);
+    return DiskManager::GetInstance().SetVolumeDescription(fsUuid, description);
 }
 
 int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 {
-    int32_t err = DiskDataManager::GetInstance().GetAllVolumes(vecOfVol);
+    int32_t err = DiskManager::GetInstance().GetAllVolumes(vecOfVol);
     LOGI("GetAllVolumes count=%{public}zu err=%{public}d", vecOfVol.size(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &vc)
 {
-    const int32_t err = DiskDataManager::GetInstance().GetVolumeByUuid(fsUuid, vc);
+    const int32_t err = DiskManager::GetInstance().GetVolumeByUuid(fsUuid, vc);
     LOGI("GetVolumeByUuid fsUuid=%{public}s err=%{public}d", fsUuid.c_str(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeExternal &vc)
 {
-    const int32_t err = DiskDataManager::GetInstance().GetVolumeById(volumeId, vc);
+    const int32_t err = DiskManager::GetInstance().GetVolumeById(volumeId, vc);
     LOGI("GetVolumeById volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
     return err;
 }
@@ -100,19 +101,19 @@ int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeEx
 int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
     LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
-    return DiskDataManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
+    return DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
 }
 
 int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
 {
     LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
-    return DiskDataManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
+    return DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
 }
 
 int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
 {
     LOGI("Partition diskId=%{public}s type=%{public}d", diskId.c_str(), type);
-    return DiskDataManager::GetInstance().Partition(diskId, type);
+    return DiskManager::GetInstance().Partition(diskId, type);
 }
 
 int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
@@ -123,14 +124,14 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 
 int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 {
-    const int32_t err = DiskDataManager::GetInstance().GetAllDisks(vecOfDisk);
+    const int32_t err = DiskManager::GetInstance().GetAllDisks(vecOfDisk);
     LOGI("GetAllDisks count=%{public}zu err=%{public}d", vecOfDisk.size(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
 {
-    const int32_t err = DiskDataManager::GetInstance().GetDiskById(diskId, disk);
+    const int32_t err = DiskManager::GetInstance().GetDiskById(diskId, disk);
     LOGI("GetDiskById diskId=%{public}s err=%{public}d", diskId.c_str(), err);
     return err;
 }
@@ -139,7 +140,9 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
 {
     LOGI("QueryUsbIsInUse pathLen=%{public}zu", diskPath.size());
     isInUse = false;
-    return DiskManagerErrNo::E_OK;
+    const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
+    LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
+    return err;
 }
 
 int32_t DiskManagerProvider::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
@@ -151,7 +154,7 @@ int32_t DiskManagerProvider::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
     if (it != FS_TYPE_MAP.end()) {
         fsTypeStr = it->second;
     }
-    isUsbFuse = UsbFuseAdapter::GetInstance().IsUsbFuseByType(fsTypeStr);
+    isUsbFuse = UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsTypeStr);
     return DiskManagerErrNo::E_OK;
 }
 
