@@ -33,9 +33,7 @@
 namespace OHOS {
 namespace DiskManager {
 
-namespace {
-
-std::string BuildUsbFuseOptions(int32_t fuseFd)
+std::string DiskManager::BuildUsbFuseOptions(int32_t fuseFd)
 {
     std::stringstream ss;
     ss << "fd=" << fuseFd << ",";
@@ -48,39 +46,36 @@ std::string BuildUsbFuseOptions(int32_t fuseFd)
     return ss.str();
 }
 
-bool IsSafeFsUuid(const std::string &fsUuid)
+bool DiskManager::IsSafeFsUuid(const std::string &fsUuid)
 {
     return !(fsUuid.find("..") != std::string::npos || fsUuid.find('/') != std::string::npos);
 }
 
-/** 对齐 storage_manager::VolumeStorageStatusService::GetVolumePath */
-auto g_getVolumePath = [](DiskManager &dm, const std::string &volumeUuid) -> std::string {
+std::string DiskManager::GetVolumePath(const std::string &volumeUuid)
+{
     VolumeExternal vol;
-    if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
+    if (GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
         LOGE("GetVolumePath fail.");
         return "";
     }
     return vol.GetPath();
-};
+}
 
-/** 对齐 VolumeStorageStatusService::IsOddDevice */
-auto g_isOddDevice = [](DiskManager &dm, const std::string &volumeUuid) -> bool {
+bool DiskManager::IsOddDevice(const std::string &volumeUuid)
+{
     VolumeExternal vol;
-    if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
+    if (GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
         LOGE("IsOddDevice: volExternalInfo is null");
         return false;
     }
     const std::string fsType = vol.GetFsTypeString();
-    if (fsType == "udf" || fsType == "iso9660") {
-        return true;
-    }
-    return false;
-};
+    return (fsType == "udf" || fsType == "iso9660");
+}
 
-int32_t GetOddSize(DiskManager &dm, const std::string &volumeUuid, int64_t &totalSize, int64_t &freeSize)
+int32_t DiskManager::GetOddSize(const std::string &volumeUuid, int64_t &totalSize, int64_t &freeSize)
 {
     VolumeExternal vol;
-    if (dm.GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
+    if (GetVolumeByUuid(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
         LOGE("GetOddSize: volExternalInfo is null");
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
@@ -92,7 +87,7 @@ int32_t GetOddSize(DiskManager &dm, const std::string &volumeUuid, int64_t &tota
     return StorageDaemonAdapter::GetInstance().GetCapacity(mountPath, totalSize, freeSize);
 }
 
-bool IsPathMounted(std::string path)
+bool DiskManager::IsPathMounted(std::string path)
 {
     if (path.empty()) {
         return true;
@@ -118,7 +113,7 @@ bool IsPathMounted(std::string path)
     return false;
 }
 
-int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid)
+int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid)
 {
     outFsUuid = volExternal.GetUuid();
     if (!outFsUuid.empty()) {
@@ -139,7 +134,9 @@ int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid)
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t MountUsbFuseIfNeeded(const std::string &volumeId, VolumeExternal &volExternal, const std::string &fsType)
+int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
+                                         VolumeExternal &volExternal,
+                                         const std::string &fsType)
 {
     if (!UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)) {
         return DiskManagerErrNo::E_OK;
@@ -189,8 +186,6 @@ int32_t MountUsbFuseIfNeeded(const std::string &volumeId, VolumeExternal &volExt
     }
     return DiskManagerErrNo::E_OK;
 }
-
-} // namespace
 
 DiskManager::DiskManager() = default;
 
@@ -569,7 +564,7 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
 int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
     freeSize = 0;
-    std::string path = g_getVolumePath(*this, volumeUuid);
+    std::string path = GetVolumePath(volumeUuid);
     LOGI("GetFreeSizeOfVolume path is %{public}s", path.c_str());
     if (path == "") {
         return DiskManagerErrNo::E_NON_EXIST;
@@ -579,11 +574,11 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     if (ret != DiskManagerErrNo::E_OK) {
         return DiskManagerErrNo::E_STATVFS;
     }
-    if (g_isOddDevice(*this, volumeUuid)) {
+    if (IsOddDevice(volumeUuid)) {
         int64_t totalSize = 0;
         int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
         int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
-        const int32_t oddRet = GetOddSize(*this, volumeUuid, totalSize, freeSize);
+        const int32_t oddRet = GetOddSize(volumeUuid, totalSize, freeSize);
         LOGI("totalSize is %{public}" PRIu64 " freeSize is %{public}" PRIu64 ", ret val is %{public}d",
              static_cast<uint64_t>(totalSize), static_cast<uint64_t>(freeSize), oddRet);
         if (freeSize != 0) {
@@ -601,7 +596,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
 int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
 {
     totalSize = 0;
-    std::string path = g_getVolumePath(*this, volumeUuid);
+    std::string path = GetVolumePath(volumeUuid);
     if (path == "") {
         return DiskManagerErrNo::E_NON_EXIST;
     }
@@ -610,9 +605,9 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     if (ret != DiskManagerErrNo::E_OK) {
         return DiskManagerErrNo::E_STATVFS;
     }
-    if (g_isOddDevice(*this, volumeUuid)) {
+    if (IsOddDevice(volumeUuid)) {
         int64_t freeSize = 0;
-        (void)GetOddSize(*this, volumeUuid, totalSize, freeSize);
+        (void)GetOddSize(volumeUuid, totalSize, freeSize);
         return DiskManagerErrNo::E_OK;
     }
     totalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
