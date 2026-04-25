@@ -19,6 +19,7 @@
 
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -27,6 +28,8 @@ namespace {
 using FuncMount = int32_t (*)(int, const std::string &, const std::string &);
 using FuncUMount = int32_t (*)(const std::string &);
 using FuncUsbFuseByType = int32_t (*)(const std::string &, bool &);
+
+constexpr const char *FUSE_PARAM_SERVICE_ENTERPRISE_ENABLE = "const.enterprise.external_storage_device.manage.enable";
 } // namespace
 
 UsbFuseAdapter &UsbFuseAdapter::GetInstance()
@@ -65,7 +68,8 @@ void UsbFuseAdapter::UnInit()
 
 int32_t UsbFuseAdapter::NotifyUsbFuseMount(int fuseFd, const std::string &volumeId, const std::string &fsUuid)
 {
-    LOGI("NotifyUsbFuseMount enter");
+    LOGI("NotifyUsbFuseMount enter fuseFd=%{public}d volumeId=%{public}s fsUuidLen=%{public}zu", fuseFd,
+         volumeId.c_str(), fsUuid.size());
     if (handler_ == nullptr) {
         LOGE("NotifyUsbFuseMount: handler is nullptr");
         return DiskManagerErrNo::E_DAEMON_IPC_FAILED;
@@ -84,7 +88,7 @@ int32_t UsbFuseAdapter::NotifyUsbFuseMount(int fuseFd, const std::string &volume
 
 int32_t UsbFuseAdapter::NotifyUsbFuseUmount(const std::string &volumeId)
 {
-    LOGI("NotifyUsbFuseUmount enter");
+    LOGI("NotifyUsbFuseUmount enter volumeId=%{public}s", volumeId.c_str());
     if (handler_ == nullptr) {
         LOGE("NotifyUsbFuseUmount: handler is nullptr");
         return DiskManagerErrNo::E_DAEMON_IPC_FAILED;
@@ -103,7 +107,7 @@ int32_t UsbFuseAdapter::NotifyUsbFuseUmount(const std::string &volumeId)
 
 bool UsbFuseAdapter::IsUsbFuseByType(const std::string &fsType)
 {
-    LOGI("IsUsbFuseByType enter");
+    LOGI("IsUsbFuseByType enter fsType=%{public}s", fsType.c_str());
     bool enabled = true;
     if (handler_ == nullptr) {
         LOGE("IsUsbFuseByType: handler is nullptr, default enabled=%{public}d", static_cast<int>(enabled));
@@ -119,6 +123,22 @@ bool UsbFuseAdapter::IsUsbFuseByType(const std::string &fsType)
         return enabled;
     }
     return enabled;
+}
+
+bool UsbFuseAdapter::IsUsbFuseEnabledForFsType(const std::string &fsType)
+{
+    LOGI("IsUsbFuseEnabledForFsType enter fsType=%{public}s", fsType.c_str());
+    const bool enabledByCcm = OHOS::system::GetBoolParameter(FUSE_PARAM_SERVICE_ENTERPRISE_ENABLE, false);
+    if (!enabledByCcm || fsType.empty()) {
+        LOGI("IsUsbFuseEnabledForFsType enabledByCcm=%{public}d enabledByType=%{public}d fsType=%{public}s",
+             static_cast<int32_t>(enabledByCcm), 0, fsType.c_str());
+        return false;
+    }
+
+    const bool enabledByType = IsUsbFuseByType(fsType);
+    LOGI("IsUsbFuseEnabledForFsType enabledByCcm=%{public}d enabledByType=%{public}d fsType=%{public}s",
+         static_cast<int32_t>(enabledByCcm), static_cast<int32_t>(enabledByType), fsType.c_str());
+    return enabledByType;
 }
 
 } // namespace DiskManager

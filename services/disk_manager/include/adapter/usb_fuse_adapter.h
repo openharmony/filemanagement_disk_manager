@@ -35,6 +35,7 @@ public:
     int32_t NotifyUsbFuseMount(int fuseFd, const std::string &volumeId, const std::string &fsUuid);
     int32_t NotifyUsbFuseUmount(const std::string &volumeId);
     bool IsUsbFuseByType(const std::string &fsType);
+    bool IsUsbFuseEnabledForFsType(const std::string &fsType);
 
 private:
     UsbFuseAdapter();
