@@ -292,7 +292,7 @@ int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t 
         return err;
     }
     const int32_t ret = storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
-    LOGI("GetCapacity exit ret=%{public}d totalSize=%{public}ld freeSize=%{public}ld", ret, totalSize, freeSize);
+    LOGI("GetCapacity exit ret=%{public}d totalSize=%{public}lld freeSize=%{public}lld", ret, totalSize, freeSize);
     return ret;
 }
 
