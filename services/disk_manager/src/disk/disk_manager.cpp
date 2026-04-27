@@ -25,10 +25,14 @@
 
 #include <cinttypes>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <mutex>
 #include <sstream>
+#include <sys/mount.h>
 #include <sys/statvfs.h>
+
+#include "parameter.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -37,6 +41,10 @@ namespace {
 constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
+
+constexpr int32_t TRUE_LEN = 5;
+constexpr int32_t RD_ENABLE_LENGTH = 255;
+constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 } // namespace
 
 bool DiskManager::IsSafeFsUuid(const std::string &fsUuid)
@@ -238,9 +246,22 @@ int32_t DiskManager::Mount(const std::string &volumeId)
     const std::string dataMountPath = UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)
                                           ? std::string(EXTERNAL_FUSE_DATA_ROOT) + fsUuid
                                           : std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
+    uint32_t mountFlag = 0;
+    if (!UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)) {
+        int handle = static_cast<int>(FindParameter(PERSIST_FILEMANAGEMENT_USB_READONLY));
+        if (handle != -1) {
+            char rdOnlyEnable[RD_ENABLE_LENGTH] = {"false"};
+            auto res = GetParameterValue(handle, rdOnlyEnable, RD_ENABLE_LENGTH);
+            if (res >= 0 && strncmp(rdOnlyEnable, "true", TRUE_LEN) == 0) {
+                mountFlag |= static_cast<uint32_t>(MS_RDONLY);
+            } else {
+                mountFlag &= ~static_cast<uint32_t>(MS_RDONLY);
+            }
+        }
+    }
 
-    int32_t err =
-        StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType, "");
+    int32_t err = StorageDaemonAdapter::GetInstance().Mount(
+        "/dev/block/" + volExternal.GetId(), dataMountPath, fsType, mountFlag);
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         volExternal.SetState(VolumeState::UNMOUNTED);

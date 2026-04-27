@@ -40,7 +40,7 @@ public:
     ErrCode Mount(const std::string &devPath,
                   const std::string &mountPath,
                   const std::string &fsType,
-                  const std::string &mountData) override;
+                  uint32_t mountFlag) override;
     ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) override;
     ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) override;
     ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) override;

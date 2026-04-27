@@ -687,7 +687,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "Mount_TestCase_001 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_001 End";
@@ -704,7 +704,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_002, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_002 End";
@@ -721,7 +721,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_003, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_003 End";
@@ -741,7 +741,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_004, TestSize.Level0)
         .WillOnce(Return(true))
         .WillOnce(Return(true))
         .WillOnce(Return(false));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_004 End";
@@ -749,7 +749,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_004, TestSize.Level0)
 
 /**
  * @tc.name: Mount_TestCase_005
- * @tc.desc: Mount: fourth WriteString16 (mountData) returns false.
+ * @tc.desc: Mount: WriteUint32 (mountFlag) returns false.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_005, TestSize.Level0)
@@ -760,9 +760,9 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_005, TestSize.Level0)
     EXPECT_CALL(*messageParcelMock_, WriteString16(_))
         .WillOnce(Return(true))
         .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(false));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+        .WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_005 End";
@@ -778,11 +778,12 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_006, TestSize.Level0)
     GTEST_LOG_(INFO) << "Mount_TestCase_006 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT), _, _, _))
         .WillOnce(Return(IPC_FAILED));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, IPC_FAILED);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_006 End";
@@ -798,12 +799,13 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_007, TestSize.Level0)
     GTEST_LOG_(INFO) << "Mount_TestCase_007 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT), _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, REMOTE_FAILED);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_007 End";
@@ -819,12 +821,13 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_008, TestSize.Level0)
     GTEST_LOG_(INFO) << "Mount_TestCase_008 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT), _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", "rw");
+    int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_OK);
 
     GTEST_LOG_(INFO) << "Mount_TestCase_008 End";
