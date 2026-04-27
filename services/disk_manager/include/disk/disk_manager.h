@@ -84,6 +84,10 @@ private:
     bool IsPathMounted(std::string path);
     int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid);
     int32_t MountUsbFuseIfNeeded(const std::string &volumeId, VolumeExternal &volExternal, const std::string &fsType);
+    /** 在已持 volumeMapMutex_ 且完成 FUSE 前置后，执行块设备挂载并更新卷状态。 */
+    int32_t MountVolumeFilesystemLocked(VolumeExternal &volExternal,
+                                        const std::string &fsType,
+                                        const std::string &fsUuid);
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
 
     std::map<std::string, VolumeExternal> volumeMap_;
