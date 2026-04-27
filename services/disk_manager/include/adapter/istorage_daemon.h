@@ -62,10 +62,11 @@ public:
                                        int32_t &maxVolume) = 0;
     virtual ErrCode Eject(const std::string &devPath) = 0;
     virtual ErrCode GetCDStatus(const std::string &devPath, int32_t &status) = 0;
+    /** @param mountFlag 传给底层 mount(2) 的标志位（如 MS_RDONLY），与块设备挂载语义一致。 */
     virtual ErrCode Mount(const std::string &devPath,
                           const std::string &mountPath,
                           const std::string &fsType,
-                          const std::string &mountData) = 0;
+                          uint32_t mountFlag) = 0;
     virtual ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) = 0;
     virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) = 0;
     virtual ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) = 0;
