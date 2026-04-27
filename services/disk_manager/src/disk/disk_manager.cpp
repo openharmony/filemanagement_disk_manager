@@ -247,6 +247,13 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         return fuseErr;
     }
 
+    return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid);
+}
+
+int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
+                                                 const std::string &fsType,
+                                                 const std::string &fsUuid)
+{
     const std::string dataMountPath = UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)
                                           ? std::string(EXTERNAL_FUSE_DATA_ROOT) + fsUuid
                                           : std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
@@ -264,8 +271,8 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         }
     }
 
-    int32_t err = StorageDaemonAdapter::GetInstance().Mount(
-        "/dev/block/" + volExternal.GetId(), dataMountPath, fsType, mountFlag);
+    int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
+                                                            mountFlag);
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         volExternal.SetState(VolumeState::UNMOUNTED);
