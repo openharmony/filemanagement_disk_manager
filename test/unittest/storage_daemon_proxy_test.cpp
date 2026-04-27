@@ -182,112 +182,6 @@ HWTEST_F(StorageDaemonProxyTest, QueryUsbIsInUse_TestCase_005, TestSize.Level0)
 }
 
 /**
- * @tc.name: MountUsbFuse_TestCase_001
- * @tc.desc: MountUsbFuse: WriteInterfaceToken returns false.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountUsbFuse_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_001 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    std::string fsUuid;
-    int fuseFd = -1;
-    int32_t ret = proxy_->MountUsbFuse("vol-1", fsUuid, fuseFd);
-    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
-
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_001 End";
-}
-
-/**
- * @tc.name: MountUsbFuse_TestCase_002
- * @tc.desc: MountUsbFuse: WriteString16 returns false.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountUsbFuse_TestCase_002, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_002 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
-    std::string fsUuid;
-    int fuseFd = -1;
-    int32_t ret = proxy_->MountUsbFuse("vol-1", fsUuid, fuseFd);
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
-
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_002 End";
-}
-
-/**
- * @tc.name: MountUsbFuse_TestCase_003
- * @tc.desc: MountUsbFuse: SendRequest returns non-ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountUsbFuse_TestCase_003, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_003 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(
-        *remote_,
-        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::COMMAND_MOUNT_USB_FUSE), _, _, _))
-        .WillOnce(Return(IPC_FAILED));
-    std::string fsUuid;
-    int fuseFd = -1;
-    int32_t ret = proxy_->MountUsbFuse("vol-1", fsUuid, fuseFd);
-    EXPECT_EQ(ret, IPC_FAILED);
-
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_003 End";
-}
-
-/**
- * @tc.name: MountUsbFuse_TestCase_004
- * @tc.desc: MountUsbFuse: reply ReadInt32 is not ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountUsbFuse_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_004 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
-    std::string fsUuid;
-    int fuseFd = -1;
-    int32_t ret = proxy_->MountUsbFuse("vol-1", fsUuid, fuseFd);
-    EXPECT_EQ(ret, REMOTE_FAILED);
-
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_004 End";
-}
-
-/**
- * @tc.name: MountUsbFuse_TestCase_005
- * @tc.desc: MountUsbFuse: success path reads uuid and fd.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountUsbFuse_TestCase_005, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_005 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadString16()).WillOnce(Return(u"uuid-x"));
-    EXPECT_CALL(*messageParcelMock_, ReadFileDescriptor()).WillOnce(Return(88));
-    std::string fsUuid;
-    int fuseFd = -1;
-    int32_t ret = proxy_->MountUsbFuse("vol-1", fsUuid, fuseFd);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(fsUuid, "uuid-x");
-    EXPECT_EQ(fuseFd, 88);
-
-    GTEST_LOG_(INFO) << "MountUsbFuse_TestCase_005 End";
-}
-
-/**
  * @tc.name: CreateBlockDeviceNode_TestCase_001
  * @tc.desc: CreateBlockDeviceNode: WriteInterfaceToken returns false.
  * @tc.type: FUNC
@@ -607,126 +501,6 @@ HWTEST_F(StorageDaemonProxyTest, ReadPartitionTable_TestCase_005, TestSize.Level
     EXPECT_EQ(maxVolume, 7);
 
     GTEST_LOG_(INFO) << "ReadPartitionTable_TestCase_005 End";
-}
-
-/**
- * @tc.name: ReadVolumeMetaData_TestCase_001
- * @tc.desc: ReadVolumeMetaData: WriteInterfaceToken returns false.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, ReadVolumeMetaData_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_001 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    std::string fsUuid = "keep";
-    std::string fsType = "keep";
-    std::string fsLabel = "keep";
-    int32_t ret = proxy_->ReadVolumeMetaData("/dev/block/sda1", fsUuid, fsType, fsLabel);
-    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
-    EXPECT_TRUE(fsUuid.empty());
-    EXPECT_TRUE(fsType.empty());
-    EXPECT_TRUE(fsLabel.empty());
-
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_001 End";
-}
-
-/**
- * @tc.name: ReadVolumeMetaData_TestCase_002
- * @tc.desc: ReadVolumeMetaData: WriteString16 returns false.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, ReadVolumeMetaData_TestCase_002, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_002 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
-    std::string fsUuid;
-    std::string fsType;
-    std::string fsLabel;
-    int32_t ret = proxy_->ReadVolumeMetaData("/dev/block/sda1", fsUuid, fsType, fsLabel);
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
-
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_002 End";
-}
-
-/**
- * @tc.name: ReadVolumeMetaData_TestCase_003
- * @tc.desc: ReadVolumeMetaData: SendRequest returns non-ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, ReadVolumeMetaData_TestCase_003, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_003 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(
-        *remote_,
-        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_READ_VOLUME_META_DATA), _, _, _))
-        .WillOnce(Return(IPC_FAILED));
-    std::string fsUuid;
-    std::string fsType;
-    std::string fsLabel;
-    int32_t ret = proxy_->ReadVolumeMetaData("/dev/block/sda1", fsUuid, fsType, fsLabel);
-    EXPECT_EQ(ret, IPC_FAILED);
-
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_003 End";
-}
-
-/**
- * @tc.name: ReadVolumeMetaData_TestCase_004
- * @tc.desc: ReadVolumeMetaData: first ReadInt32 is not ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, ReadVolumeMetaData_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_004 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
-    std::string fsUuid;
-    std::string fsType;
-    std::string fsLabel;
-    int32_t ret = proxy_->ReadVolumeMetaData("/dev/block/sda1", fsUuid, fsType, fsLabel);
-    EXPECT_EQ(ret, REMOTE_FAILED);
-
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_004 End";
-}
-
-/**
- * @tc.name: ReadVolumeMetaData_TestCase_005
- * @tc.desc: ReadVolumeMetaData: success reads uuid, type and label.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, ReadVolumeMetaData_TestCase_005, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_005 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(
-        *remote_,
-        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_READ_VOLUME_META_DATA), _, _, _))
-        .WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadString16())
-        .WillOnce(Return(u"u-1"))
-        .WillOnce(Return(u"ext4"))
-        .WillOnce(Return(u"label-1"));
-    std::string fsUuid;
-    std::string fsType;
-    std::string fsLabel;
-    int32_t ret = proxy_->ReadVolumeMetaData("/dev/block/sda1", fsUuid, fsType, fsLabel);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(fsUuid, "u-1");
-    EXPECT_EQ(fsType, "ext4");
-    EXPECT_EQ(fsLabel, "label-1");
-
-    GTEST_LOG_(INFO) << "ReadVolumeMetaData_TestCase_005 End";
 }
 
 /**
@@ -1846,88 +1620,6 @@ HWTEST_F(StorageDaemonProxyTest, GetCapacity_TestCase_007, TestSize.Level0)
 }
 
 /**
- * @tc.name: OpenFuseDevice_TestCase_001
- * @tc.desc: OpenFuseDevice: WriteInterfaceToken returns false.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, OpenFuseDevice_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_001 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    int32_t fuseFd = -1;
-    int32_t ret = proxy_->OpenFuseDevice(fuseFd);
-    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
-
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_001 End";
-}
-
-/**
- * @tc.name: OpenFuseDevice_TestCase_002
- * @tc.desc: OpenFuseDevice: SendRequest returns non-ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, OpenFuseDevice_TestCase_002, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_002 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(
-        *remote_,
-        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_OPEN_FUSE_DEVICE), _, _, _))
-        .WillOnce(Return(IPC_FAILED));
-    int32_t fuseFd = -1;
-    int32_t ret = proxy_->OpenFuseDevice(fuseFd);
-    EXPECT_EQ(ret, IPC_FAILED);
-
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_002 End";
-}
-
-/**
- * @tc.name: OpenFuseDevice_TestCase_003
- * @tc.desc: OpenFuseDevice: first ReadInt32 is not ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, OpenFuseDevice_TestCase_003, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_003 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
-    int32_t fuseFd = -1;
-    int32_t ret = proxy_->OpenFuseDevice(fuseFd);
-    EXPECT_EQ(ret, REMOTE_FAILED);
-    EXPECT_EQ(fuseFd, -1);
-
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_003 End";
-}
-
-/**
- * @tc.name: OpenFuseDevice_TestCase_004
- * @tc.desc: OpenFuseDevice: success reads file descriptor.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, OpenFuseDevice_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_004 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(
-        *remote_,
-        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_OPEN_FUSE_DEVICE), _, _, _))
-        .WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadFileDescriptor()).WillOnce(Return(66));
-    int32_t fuseFd = -1;
-    int32_t ret = proxy_->OpenFuseDevice(fuseFd);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(fuseFd, 66);
-
-    GTEST_LOG_(INFO) << "OpenFuseDevice_TestCase_004 End";
-}
-
-/**
  * @tc.name: MountFuseDevice_TestCase_001
  * @tc.desc: MountFuseDevice: WriteInterfaceToken returns false.
  * @tc.type: FUNC
@@ -1937,15 +1629,17 @@ HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_001 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
+    int32_t fuseFd = 42;
+    int32_t ret = proxy_->MountFuseDevice("/mnt/fuse", fuseFd);
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+    EXPECT_EQ(fuseFd, -1);
 
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_001 End";
 }
 
 /**
  * @tc.name: MountFuseDevice_TestCase_002
- * @tc.desc: MountFuseDevice: WriteFileDescriptor returns false.
+ * @tc.desc: MountFuseDevice: WriteString16 (mountPath) returns false.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_002, TestSize.Level0)
@@ -1953,16 +1647,18 @@ HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_002 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteFileDescriptor(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t fuseFd = -1;
+    int32_t ret = proxy_->MountFuseDevice("/mnt/fuse", fuseFd);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_EQ(fuseFd, -1);
 
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_002 End";
 }
 
 /**
  * @tc.name: MountFuseDevice_TestCase_003
- * @tc.desc: MountFuseDevice: WriteString16 (mountPath) returns false.
+ * @tc.desc: MountFuseDevice: first ReadInt32 is not ERR_OK.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_003, TestSize.Level0)
@@ -1970,17 +1666,20 @@ HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_003 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteFileDescriptor(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    int32_t fuseFd = -1;
+    int32_t ret = proxy_->MountFuseDevice("/mnt/fuse", fuseFd);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+    EXPECT_EQ(fuseFd, -1);
 
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_003 End";
 }
 
 /**
  * @tc.name: MountFuseDevice_TestCase_004
- * @tc.desc: MountFuseDevice: WriteString16 (fsUuid) returns false.
+ * @tc.desc: MountFuseDevice: SendRequest returns non-ERR_OK.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_004, TestSize.Level0)
@@ -1988,17 +1687,22 @@ HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_004 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteFileDescriptor(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(
+        *remote_,
+        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t fuseFd = -1;
+    int32_t ret = proxy_->MountFuseDevice("/mnt/fuse", fuseFd);
+    EXPECT_EQ(ret, IPC_FAILED);
+    EXPECT_EQ(fuseFd, -1);
 
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_004 End";
 }
 
 /**
  * @tc.name: MountFuseDevice_TestCase_005
- * @tc.desc: MountFuseDevice: WriteString16 (options) returns false.
+ * @tc.desc: MountFuseDevice: success reads result and fuse file descriptor.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_005, TestSize.Level0)
@@ -2006,60 +1710,19 @@ HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_005 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteFileDescriptor(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(false));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
-
-    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_005 End";
-}
-
-/**
- * @tc.name: MountFuseDevice_TestCase_006
- * @tc.desc: MountFuseDevice: SendRequest returns non-ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_006, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_006 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteFileDescriptor(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
-    EXPECT_CALL(
-        *remote_,
-        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), _, _, _))
-        .WillOnce(Return(IPC_FAILED));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
-    EXPECT_EQ(ret, IPC_FAILED);
-
-    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_006 End";
-}
-
-/**
- * @tc.name: MountFuseDevice_TestCase_007
- * @tc.desc: MountFuseDevice: success returns reply ReadInt32.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_007, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_007 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteFileDescriptor(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     EXPECT_CALL(
         *remote_,
         SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    int32_t ret = proxy_->MountFuseDevice(66, "/mnt/fuse", "uuid-1", "rw");
+    EXPECT_CALL(*messageParcelMock_, ReadFileDescriptor()).WillOnce(Return(88));
+    int32_t fuseFd = -1;
+    int32_t ret = proxy_->MountFuseDevice("/mnt/fuse", fuseFd);
     EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(fuseFd, 88);
 
-    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_007 End";
+    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_005 End";
 }
 
 /**
