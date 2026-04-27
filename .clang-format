@@ -52,7 +52,11 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 
 # 总是在多行string字面量前换行
-AlwaysBreakBeforeMultilineStrings: true
+# 该项对宏调用里“拼接字符串 + 参数换行”的可读性影响较大，关闭以减少奇怪的断行。
+AlwaysBreakBeforeMultilineStrings: false
+
+# 避免自动拆分字符串字面量（尤其是日志宏的格式串）
+BreakStringLiterals: false
 
 # 总是在template声明后换行
 AlwaysBreakTemplateDeclarations: true

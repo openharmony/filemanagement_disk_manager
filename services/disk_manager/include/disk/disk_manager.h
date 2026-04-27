@@ -31,9 +31,9 @@
 namespace OHOS {
 namespace DiskManager {
 
-class DiskDataManager {
+class DiskManager {
 public:
-    static DiskDataManager &GetInstance();
+    static DiskManager &GetInstance();
 
     int32_t Mount(const std::string &volumeId);
     int32_t Unmount(const std::string &volumeId);
@@ -72,10 +72,20 @@ public:
     int32_t GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize);
 
 private:
-    DiskDataManager();
-    ~DiskDataManager();
-    DiskDataManager(const DiskDataManager &) = delete;
-    DiskDataManager &operator=(const DiskDataManager &) = delete;
+    DiskManager();
+    ~DiskManager();
+    DiskManager(const DiskManager &) = delete;
+    DiskManager &operator=(const DiskManager &) = delete;
+
+    std::string BuildUsbFuseOptions(int32_t fuseFd);
+    bool IsSafeFsUuid(const std::string &fsUuid);
+    std::string GetVolumePath(const std::string &volumeUuid);
+    bool IsOddDevice(const std::string &volumeUuid);
+    int32_t GetOddSize(const std::string &volumeUuid, int64_t &totalSize, int64_t &freeSize);
+    bool IsPathMounted(std::string path);
+    int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid);
+    int32_t MountUsbFuseIfNeeded(const std::string &volumeId, VolumeExternal &volExternal, const std::string &fsType);
+
     std::map<std::string, VolumeExternal> volumeMap_;
     std::mutex volumeMapMutex_;
     std::map<std::string, Disk> diskMap_;
