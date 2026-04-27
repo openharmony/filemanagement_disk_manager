@@ -184,7 +184,11 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
             return err;
         }
         const std::string fusePath = std::string(EXTERNAL_MOUNT_ROOT) + uuid;
-        return StorageDaemonAdapter::GetInstance().Unmount(fusePath, FUSE_UMOUNT_FS_TYPE, force);
+        err = StorageDaemonAdapter::GetInstance().Unmount(fusePath, FUSE_UMOUNT_FS_TYPE, force);
+        if (err != ERR_OK) {
+            return err;
+        }
+        return UsbFuseAdapter::GetInstance().NotifyUsbFuseUmount(volExternal.GetId());
     }
     return StorageDaemonAdapter::GetInstance().Unmount(std::string(EXTERNAL_MOUNT_ROOT) + uuid, fsType, force);
 }
