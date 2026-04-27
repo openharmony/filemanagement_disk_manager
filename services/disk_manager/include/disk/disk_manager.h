@@ -77,7 +77,6 @@ private:
     DiskManager(const DiskManager &) = delete;
     DiskManager &operator=(const DiskManager &) = delete;
 
-    std::string BuildUsbFuseOptions(int32_t fuseFd);
     bool IsSafeFsUuid(const std::string &fsUuid);
     std::string GetVolumePath(const std::string &volumeUuid);
     bool IsOddDevice(const std::string &volumeUuid);
@@ -85,6 +84,7 @@ private:
     bool IsPathMounted(std::string path);
     int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid);
     int32_t MountUsbFuseIfNeeded(const std::string &volumeId, VolumeExternal &volExternal, const std::string &fsType);
+    int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
 
     std::map<std::string, VolumeExternal> volumeMap_;
     std::mutex volumeMapMutex_;

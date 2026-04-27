@@ -112,19 +112,6 @@ int32_t StorageDaemonAdapter::QueryUsbIsInUse(const std::string &diskPath, bool 
     return ret;
 }
 
-int32_t StorageDaemonAdapter::MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd)
-{
-    LOGI("MountUsbFuse enter, volumeId=%{public}s", volumeId.c_str());
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("MountUsbFuse exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->MountUsbFuse(volumeId, fsUuid, fuseFd);
-    LOGI("MountUsbFuse exit ret=%{public}d fuseFd=%{public}d fsUuidLen=%{public}zu", ret, fuseFd, fsUuid.size());
-    return ret;
-}
-
 int32_t StorageDaemonAdapter::CreateBlockDeviceNode(const std::string &devPath,
                                                     uint32_t mode,
                                                     int32_t major,
@@ -166,23 +153,6 @@ int32_t StorageDaemonAdapter::ReadPartitionTable(const std::string &devPath, std
     const int32_t ret = storageDaemon_->ReadPartitionTable(devPath, output, maxVolume);
     LOGI("ReadPartitionTable exit ret=%{public}d outputLen=%{public}zu maxVolume=%{public}d", ret, output.size(),
          maxVolume);
-    return ret;
-}
-
-int32_t StorageDaemonAdapter::ReadVolumeMetaData(const std::string &devPath,
-                                                 std::string &fsUuid,
-                                                 std::string &fsType,
-                                                 std::string &fsLabel)
-{
-    LOGI("ReadVolumeMetaData enter, devPath=%{public}s", devPath.c_str());
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("ReadVolumeMetaData exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->ReadVolumeMetaData(devPath, fsUuid, fsType, fsLabel);
-    LOGI("ReadVolumeMetaData exit ret=%{public}d fsUuidLen=%{public}zu fsType=%{public}s fsLabelLen=%{public}zu", ret,
-         fsUuid.size(), fsType.c_str(), fsLabel.size());
     return ret;
 }
 
@@ -326,33 +296,16 @@ int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t 
     return ret;
 }
 
-int32_t StorageDaemonAdapter::OpenFuseDevice(int32_t &fuseFd)
+int32_t StorageDaemonAdapter::MountFuseDevice(const std::string &mountPath, int32_t &fuseFd)
 {
-    LOGI("OpenFuseDevice enter");
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("OpenFuseDevice exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->OpenFuseDevice(fuseFd);
-    LOGI("OpenFuseDevice exit ret=%{public}d fuseFd=%{public}d", ret, fuseFd);
-    return ret;
-}
-
-int32_t StorageDaemonAdapter::MountFuseDevice(int32_t fuseFd,
-                                              const std::string &mountPath,
-                                              const std::string &fsUuid,
-                                              const std::string &options)
-{
-    LOGI("MountFuseDevice enter, fuseFd=%{public}d, mountPath=%{public}s, fsUuid=%{public}s, options=%{public}s",
-         fuseFd, mountPath.c_str(), fsUuid.c_str(), options.c_str());
+    LOGI("MountFuseDevice enter, mountPath=%{public}s", mountPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("MountFuseDevice exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->MountFuseDevice(fuseFd, mountPath, fsUuid, options);
-    LOGI("MountFuseDevice exit ret=%{public}d", ret);
+    const int32_t ret = storageDaemon_->MountFuseDevice(mountPath, fuseFd);
+    LOGI("MountFuseDevice exit ret=%{public}d fuseFd=%{public}d", ret, fuseFd);
     return ret;
 }
 
@@ -367,30 +320,6 @@ int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, int32_t par
     }
     const int32_t ret = storageDaemon_->Partition(diskPath, partitionType, partitionFlags);
     LOGI("Partition exit ret=%{public}d", ret);
-    return ret;
-}
-
-int32_t StorageDaemonAdapter::RemoveMountPath(const std::string &mountPath)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("RemoveMountPath exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->RemoveMountPath(mountPath);
-    LOGI("RemoveMountPath mountPath=%{public}s ret=%{public}d", mountPath.c_str(), ret);
-    return ret;
-}
-
-int32_t StorageDaemonAdapter::EnsureMountPath(const std::string &mountPath)
-{
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("EnsureMountPath exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->EnsureMountPath(mountPath);
-    LOGI("EnsureMountPath mountPath=%{public}s ret=%{public}d", mountPath.c_str(), ret);
     return ret;
 }
 } // namespace DiskManager

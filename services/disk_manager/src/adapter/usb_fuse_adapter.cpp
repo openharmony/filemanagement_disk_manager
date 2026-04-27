@@ -129,16 +129,13 @@ bool UsbFuseAdapter::IsUsbFuseEnabledForFsType(const std::string &fsType)
 {
     LOGI("IsUsbFuseEnabledForFsType enter fsType=%{public}s", fsType.c_str());
     const bool enabledByCcm = OHOS::system::GetBoolParameter(FUSE_PARAM_SERVICE_ENTERPRISE_ENABLE, false);
-    if (!enabledByCcm || fsType.empty()) {
-        LOGI("IsUsbFuseEnabledForFsType enabledByCcm=%{public}d enabledByType=%{public}d fsType=%{public}s",
-             static_cast<int32_t>(enabledByCcm), 0, fsType.c_str());
-        return false;
+    bool enabledByType = true;
+    if (enabledByCcm) {
+        enabledByType = IsUsbFuseByType(fsType);
     }
-
-    const bool enabledByType = IsUsbFuseByType(fsType);
     LOGI("IsUsbFuseEnabledForFsType enabledByCcm=%{public}d enabledByType=%{public}d fsType=%{public}s",
          static_cast<int32_t>(enabledByCcm), static_cast<int32_t>(enabledByType), fsType.c_str());
-    return enabledByType;
+    return enabledByCcm && enabledByType && !fsType.empty();
 }
 
 } // namespace DiskManager

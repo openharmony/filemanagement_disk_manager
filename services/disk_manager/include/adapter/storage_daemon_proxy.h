@@ -28,7 +28,6 @@ public:
     ~StorageDaemonProxy() = default;
 
     ErrCode QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) override;
-    ErrCode MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd) override;
 
     ErrCode CreateBlockDeviceNode(const std::string &devPath,
                                   uint32_t mode,
@@ -36,10 +35,6 @@ public:
                                   int32_t minor) override;
     ErrCode DestroyBlockDeviceNode(const std::string &devPath) override;
     ErrCode ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume) override;
-    ErrCode ReadVolumeMetaData(const std::string &devPath,
-                               std::string &fsUuid,
-                               std::string &fsType,
-                               std::string &fsLabel) override;
     ErrCode Eject(const std::string &devPath) override;
     ErrCode GetCDStatus(const std::string &devPath, int32_t &status) override;
     ErrCode Mount(const std::string &devPath,
@@ -56,14 +51,8 @@ public:
                          std::string &type,
                          std::string &label) override;
     ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) override;
-    ErrCode OpenFuseDevice(int32_t &fuseFd) override;
-    ErrCode MountFuseDevice(int32_t fuseFd,
-                            const std::string &mountPath,
-                            const std::string &fsUuid,
-                            const std::string &options) override;
+    ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) override;
     ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) override;
-    ErrCode EnsureMountPath(const std::string &mountPath) override;
-    ErrCode RemoveMountPath(const std::string &mountPath) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

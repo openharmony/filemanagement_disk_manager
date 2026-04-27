@@ -40,7 +40,6 @@ std::mutex UeventBootstrap::diskConfigListMutex_;
 namespace {
 
 constexpr const char *DEV_BLOCK = "/dev/block/";
-constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr bool AUTO_MOUNT_EXTERNAL_VOLUMES = true;
 constexpr uint32_t NODE_PERM = 0660u;
 constexpr uint32_t K_DISK_BLOCK_DEVICE_NODE_MODE = NODE_PERM | static_cast<uint32_t>(S_IFBLK);
@@ -78,11 +77,6 @@ std::string VolIdFromDev(dev_t d)
 std::string BlockPathForId(const std::string &id)
 {
     return std::string(DEV_BLOCK) + id;
-}
-
-std::string MountPathForUuid(const std::string &uuid)
-{
-    return std::string(EXTERNAL_MOUNT_ROOT) + uuid;
 }
 
 dev_t PartitionDev(unsigned int diskMaj, unsigned int diskMin, uint32_t partIndex)
@@ -191,24 +185,10 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env, const std::string &disk
         return;
     }
 
-    const std::string mountPath = MountPathForUuid(uuid);
-
-    err = StorageDaemonAdapter::GetInstance().EnsureMountPath(mountPath);
+    err = DiskManager::GetInstance().Mount(volId);
     if (err != ERR_OK) {
-        LOGE("EnsureMountPath vol %{public}s err=%{public}d", volId.c_str(), err);
-        return;
+        LOGE("DiskManager::Mount vol %{public}s err=%{public}d", volId.c_str(), err);
     }
-
-    err = StorageDaemonAdapter::GetInstance().Mount(volDevPath, mountPath, type, "");
-    if (err != ERR_OK) {
-        LOGE("MountFs vol %{public}s err=%{public}d", volId.c_str(), err);
-        return;
-    }
-
-    volExternal.SetState(MOUNTED);
-    volExternal.SetFlags(0);                                                     // need get flag form disk
-    (void)DiskManager::GetInstance().OnVolumeMounted(volId, mountPath, MOUNTED); // only change new information
-    CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
 }
 } // namespace
 
@@ -253,10 +233,9 @@ int32_t UeventBootstrap::HandleDiskRemove(const UeventEnv &env)
         if (v.GetDiskId() != diskId) {
             continue;
         }
-        (void)StorageDaemonAdapter::GetInstance().Unmount(MountPathForUuid(v.GetUuid()), v.GetFsTypeString(), true);
+        (void)DiskManager::GetInstance().Unmount(v.GetId());
         // Send BAD_REMOVE when mount status, otherwise send REMOVE
         CommonEventPublisher::PublishVolumeChange(BAD_REMOVAL, v);
-        (void)StorageDaemonAdapter::GetInstance().RemoveMountPath(MountPathForUuid(v.GetUuid()));
         (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(BlockPathForId(v.GetId()));
         (void)DiskManager::GetInstance().OnVolumeDestroyed(v.GetId());
     }
