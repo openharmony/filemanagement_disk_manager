@@ -104,9 +104,12 @@ int32_t StorageDaemonAdapter::QueryUsbIsInUse(const std::string &diskPath, bool 
     LOGI("QueryUsbIsInUse enter, diskPath=%{public}s", diskPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("QueryUsbIsInUse exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->QueryUsbIsInUse(diskPath, isInUse);
+    const int32_t ret = storageDaemon_->QueryUsbIsInUse(diskPath, isInUse);
+    LOGI("QueryUsbIsInUse exit ret=%{public}d isInUse=%{public}d", ret, static_cast<int32_t>(isInUse));
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd)
@@ -114,9 +117,12 @@ int32_t StorageDaemonAdapter::MountUsbFuse(const std::string &volumeId, std::str
     LOGI("MountUsbFuse enter, volumeId=%{public}s", volumeId.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("MountUsbFuse exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->MountUsbFuse(volumeId, fsUuid, fuseFd);
+    const int32_t ret = storageDaemon_->MountUsbFuse(volumeId, fsUuid, fuseFd);
+    LOGI("MountUsbFuse exit ret=%{public}d fuseFd=%{public}d fsUuidLen=%{public}zu", ret, fuseFd, fsUuid.size());
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::CreateBlockDeviceNode(const std::string &devPath,
@@ -128,9 +134,12 @@ int32_t StorageDaemonAdapter::CreateBlockDeviceNode(const std::string &devPath,
          devPath.c_str(), mode, major, minor);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("CreateBlockDeviceNode exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->CreateBlockDeviceNode(devPath, mode, major, minor);
+    const int32_t ret = storageDaemon_->CreateBlockDeviceNode(devPath, mode, major, minor);
+    LOGI("CreateBlockDeviceNode exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::DestroyBlockDeviceNode(const std::string &devPath)
@@ -138,9 +147,12 @@ int32_t StorageDaemonAdapter::DestroyBlockDeviceNode(const std::string &devPath)
     LOGI("DestroyBlockDeviceNode enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("DestroyBlockDeviceNode exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->DestroyBlockDeviceNode(devPath);
+    const int32_t ret = storageDaemon_->DestroyBlockDeviceNode(devPath);
+    LOGI("DestroyBlockDeviceNode exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume)
@@ -148,9 +160,13 @@ int32_t StorageDaemonAdapter::ReadPartitionTable(const std::string &devPath, std
     LOGI("ReadPartitionTable enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("ReadPartitionTable exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->ReadPartitionTable(devPath, output, maxVolume);
+    const int32_t ret = storageDaemon_->ReadPartitionTable(devPath, output, maxVolume);
+    LOGI("ReadPartitionTable exit ret=%{public}d outputLen=%{public}zu maxVolume=%{public}d", ret, output.size(),
+         maxVolume);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::ReadVolumeMetaData(const std::string &devPath,
@@ -161,9 +177,13 @@ int32_t StorageDaemonAdapter::ReadVolumeMetaData(const std::string &devPath,
     LOGI("ReadVolumeMetaData enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("ReadVolumeMetaData exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->ReadVolumeMetaData(devPath, fsUuid, fsType, fsLabel);
+    const int32_t ret = storageDaemon_->ReadVolumeMetaData(devPath, fsUuid, fsType, fsLabel);
+    LOGI("ReadVolumeMetaData exit ret=%{public}d fsUuidLen=%{public}zu fsType=%{public}s fsLabelLen=%{public}zu", ret,
+         fsUuid.size(), fsType.c_str(), fsLabel.size());
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::Eject(const std::string &devPath)
@@ -171,9 +191,12 @@ int32_t StorageDaemonAdapter::Eject(const std::string &devPath)
     LOGI("Eject enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("Eject exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->Eject(devPath);
+    const int32_t ret = storageDaemon_->Eject(devPath);
+    LOGI("Eject exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::GetCDStatus(const std::string &devPath, int32_t &status)
@@ -181,9 +204,12 @@ int32_t StorageDaemonAdapter::GetCDStatus(const std::string &devPath, int32_t &s
     LOGI("GetCDStatus enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("GetCDStatus exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->GetCDStatus(devPath, status);
+    const int32_t ret = storageDaemon_->GetCDStatus(devPath, status);
+    LOGI("GetCDStatus exit ret=%{public}d status=%{public}d", ret, status);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
@@ -195,9 +221,12 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
          devPath.c_str(), mountPath.c_str(), fsType.c_str(), mountData.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("Mount exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->Mount(devPath, mountPath, fsType, mountData);
+    const int32_t ret = storageDaemon_->Mount(devPath, mountPath, fsType, mountData);
+    LOGI("Mount exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::string &fsType, bool force)
@@ -205,9 +234,12 @@ int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::s
     LOGI("Unmount enter, mountPath=%{public}s, force=%{public}d", mountPath.c_str(), static_cast<int32_t>(force));
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("Unmount exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->Unmount(mountPath, fsType, force);
+    const int32_t ret = storageDaemon_->Unmount(mountPath, fsType, force);
+    LOGI("Unmount exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std::string &fsType)
@@ -215,20 +247,26 @@ int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std
     LOGI("FormatVolume enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("FormatVolume exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->FormatVolume(devPath, fsType);
+    const int32_t ret = storageDaemon_->FormatVolume(devPath, fsType);
+    LOGI("FormatVolume exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::Check(const std::string &devPath, const std::string &fsType, bool autoFix)
 {
-    LOGI("Check enter, devPath=%{public}s, fsType=%{public}s, autoFix=%{public}d",
-         devPath.c_str(), fsType.c_str(), static_cast<int32_t>(autoFix));
+    LOGI("Check enter, devPath=%{public}s, fsType=%{public}s, autoFix=%{public}d", devPath.c_str(), fsType.c_str(),
+         static_cast<int32_t>(autoFix));
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("Check exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->Check(devPath, fsType, autoFix);
+    const int32_t ret = storageDaemon_->Check(devPath, fsType, autoFix);
+    LOGI("Check exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::Repair(const std::string &devPath, const std::string &fsType)
@@ -236,20 +274,26 @@ int32_t StorageDaemonAdapter::Repair(const std::string &devPath, const std::stri
     LOGI("Repair enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("Repair exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->Repair(devPath, fsType);
+    const int32_t ret = storageDaemon_->Repair(devPath, fsType);
+    LOGI("Repair exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label)
 {
-    LOGI("SetLabel enter, devPath=%{public}s, fsType=%{public}s, label=%{public}s",
-         devPath.c_str(), fsType.c_str(), label.c_str());
+    LOGI("SetLabel enter, devPath=%{public}s, fsType=%{public}s, label=%{public}s", devPath.c_str(), fsType.c_str(),
+         label.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("SetLabel exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->SetLabel(devPath, fsType, label);
+    const int32_t ret = storageDaemon_->SetLabel(devPath, fsType, label);
+    LOGI("SetLabel exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::ReadMetadata(const std::string &devPath,
@@ -260,9 +304,13 @@ int32_t StorageDaemonAdapter::ReadMetadata(const std::string &devPath,
     LOGI("ReadMetadata enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("ReadMetadata exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->ReadMetadata(devPath, uuid, type, label);
+    const int32_t ret = storageDaemon_->ReadMetadata(devPath, uuid, type, label);
+    LOGI("ReadMetadata exit ret=%{public}d uuidLen=%{public}zu type=%{public}s labelLen=%{public}zu", ret, uuid.size(),
+         type.c_str(), label.size());
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize)
@@ -270,9 +318,12 @@ int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t 
     LOGI("GetCapacity enter, mountPath=%{public}s", mountPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("GetCapacity exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
+    const int32_t ret = storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
+    LOGI("GetCapacity exit ret=%{public}d totalSize=%{public}lld freeSize=%{public}lld", ret, totalSize, freeSize);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::OpenFuseDevice(int32_t &fuseFd)
@@ -280,9 +331,12 @@ int32_t StorageDaemonAdapter::OpenFuseDevice(int32_t &fuseFd)
     LOGI("OpenFuseDevice enter");
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("OpenFuseDevice exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->OpenFuseDevice(fuseFd);
+    const int32_t ret = storageDaemon_->OpenFuseDevice(fuseFd);
+    LOGI("OpenFuseDevice exit ret=%{public}d fuseFd=%{public}d", ret, fuseFd);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::MountFuseDevice(int32_t fuseFd,
@@ -294,38 +348,50 @@ int32_t StorageDaemonAdapter::MountFuseDevice(int32_t fuseFd,
          fuseFd, mountPath.c_str(), fsUuid.c_str(), options.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("MountFuseDevice exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->MountFuseDevice(fuseFd, mountPath, fsUuid, options);
+    const int32_t ret = storageDaemon_->MountFuseDevice(fuseFd, mountPath, fsUuid, options);
+    LOGI("MountFuseDevice exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags)
 {
-    LOGI("Partition enter, diskPath=%{public}s, partitionType=%{public}d, partitionFlags=%{public}u",
-         diskPath.c_str(), partitionType, partitionFlags);
+    LOGI("Partition enter, diskPath=%{public}s, partitionType=%{public}d, partitionFlags=%{public}u", diskPath.c_str(),
+         partitionType, partitionFlags);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("Partition exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->Partition(diskPath, partitionType, partitionFlags);
+    const int32_t ret = storageDaemon_->Partition(diskPath, partitionType, partitionFlags);
+    LOGI("Partition exit ret=%{public}d", ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::RemoveMountPath(const std::string &mountPath)
 {
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("RemoveMountPath exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->RemoveMountPath(mountPath);
+    const int32_t ret = storageDaemon_->RemoveMountPath(mountPath);
+    LOGI("RemoveMountPath mountPath=%{public}s ret=%{public}d", mountPath.c_str(), ret);
+    return ret;
 }
 
 int32_t StorageDaemonAdapter::EnsureMountPath(const std::string &mountPath)
 {
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
+        LOGE("EnsureMountPath exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    return storageDaemon_->EnsureMountPath(mountPath);
+    const int32_t ret = storageDaemon_->EnsureMountPath(mountPath);
+    LOGI("EnsureMountPath mountPath=%{public}s ret=%{public}d", mountPath.c_str(), ret);
+    return ret;
 }
 } // namespace DiskManager
 } // namespace OHOS
