@@ -87,8 +87,10 @@ private:
     /** 在已持 volumeMapMutex_ 且完成 FUSE 前置后，执行块设备挂载并更新卷状态。 */
     int32_t MountVolumeFilesystemLocked(VolumeExternal &volExternal,
                                         const std::string &fsType,
-                                        const std::string &fsUuid);
+                                        const std::string &fsUuid,
+                                        const std::string &volumeId);
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
+    int32_t GetFlagFromMajorInfo(const std::string &volumeId);
 
     std::map<std::string, VolumeExternal> volumeMap_;
     std::mutex volumeMapMutex_;
