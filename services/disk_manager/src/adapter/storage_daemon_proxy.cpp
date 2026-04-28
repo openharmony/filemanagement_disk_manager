@@ -52,34 +52,6 @@ ErrCode StorageDaemonProxy::QueryUsbIsInUse(const std::string &diskPath, bool &i
     return result;
 }
 
-ErrCode StorageDaemonProxy::MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteString16(Str8ToStr16(volumeId))) {
-        return ERR_INVALID_DATA;
-    }
-
-    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::COMMAND_MOUNT_USB_FUSE), data,
-                                        reply, option);
-    if (ret != ERR_OK) {
-        return ret;
-    }
-
-    int32_t result = reply.ReadInt32();
-    if (result != ERR_OK) {
-        return result;
-    }
-    fsUuid = Str16ToStr8(reply.ReadString16());
-    fuseFd = reply.ReadFileDescriptor();
-    return result;
-}
-
 ErrCode StorageDaemonProxy::CreateBlockDeviceNode(const std::string &devPath,
                                                   uint32_t mode,
                                                   int32_t major,
@@ -149,38 +121,6 @@ ErrCode StorageDaemonProxy::ReadPartitionTable(const std::string &devPath, std::
     return res;
 }
 
-ErrCode StorageDaemonProxy::ReadVolumeMetaData(const std::string &devPath,
-                                               std::string &fsUuid,
-                                               std::string &fsType,
-                                               std::string &fsLabel)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-    fsUuid.clear();
-    fsType.clear();
-    fsLabel.clear();
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteString16(Str8ToStr16(devPath))) {
-        return ERR_INVALID_DATA;
-    }
-    int32_t ret = Remote()->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_READ_VOLUME_META_DATA), data, reply, option);
-    if (ret != ERR_OK) {
-        return ret;
-    }
-    int32_t res = reply.ReadInt32();
-    if (res != ERR_OK) {
-        return res;
-    }
-    fsUuid = Str16ToStr8(reply.ReadString16());
-    fsType = Str16ToStr8(reply.ReadString16());
-    fsLabel = Str16ToStr8(reply.ReadString16());
-    return res;
-}
-
 ErrCode StorageDaemonProxy::Eject(const std::string &devPath)
 {
     MessageParcel data;
@@ -228,7 +168,7 @@ ErrCode StorageDaemonProxy::GetCDStatus(const std::string &devPath, int32_t &sta
 ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
                                   const std::string &mountPath,
                                   const std::string &fsType,
-                                  const std::string &mountData)
+                                  uint32_t mountFlag)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -237,7 +177,7 @@ ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
         return ERR_TRANSACTION_FAILED;
     }
     if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(mountPath)) ||
-        !data.WriteString16(Str8ToStr16(fsType)) || !data.WriteString16(Str8ToStr16(mountData))) {
+        !data.WriteString16(Str8ToStr16(fsType)) || !data.WriteUint32(mountFlag)) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =
@@ -408,7 +348,7 @@ ErrCode StorageDaemonProxy::GetCapacity(const std::string &mountPath, int64_t &t
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::OpenFuseDevice(int32_t &fuseFd)
+ErrCode StorageDaemonProxy::MountFuseDevice(const std::string &mountPath, int32_t &fuseFd)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -417,8 +357,11 @@ ErrCode StorageDaemonProxy::OpenFuseDevice(int32_t &fuseFd)
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
+    if (!data.WriteString16(Str8ToStr16(mountPath))) {
+        return ERR_INVALID_DATA;
+    }
     int32_t ret = Remote()->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_OPEN_FUSE_DEVICE), data, reply, option);
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), data, reply, option);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -428,29 +371,6 @@ ErrCode StorageDaemonProxy::OpenFuseDevice(int32_t &fuseFd)
     }
     fuseFd = static_cast<int32_t>(reply.ReadFileDescriptor());
     return ERR_OK;
-}
-
-ErrCode StorageDaemonProxy::MountFuseDevice(int32_t fuseFd,
-                                            const std::string &mountPath,
-                                            const std::string &fsUuid,
-                                            const std::string &options)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteFileDescriptor(fuseFd) || !data.WriteString16(Str8ToStr16(mountPath)) ||
-        !data.WriteString16(Str8ToStr16(fsUuid)) || !data.WriteString16(Str8ToStr16(options))) {
-        return ERR_INVALID_DATA;
-    }
-    int32_t ret = Remote()->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), data, reply, option);
-    if (ret != ERR_OK) {
-        return ret;
-    }
-    return reply.ReadInt32();
 }
 
 ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags)
@@ -471,80 +391,6 @@ ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t parti
         return ret;
     }
     return reply.ReadInt32();
-}
-
-ErrCode StorageDaemonProxy::RemoveMountPath(const std::string &mountPath)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        LOGE("StorageDaemonProxy::RemoveMountPath - Failed to write interface token");
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteString16(Str8ToStr16(mountPath))) {
-        LOGE("StorageDaemonProxy::RemoveMountPath - Failed to write mountPath");
-        return ERR_INVALID_DATA;
-    }
-
-    sptr<IRemoteObject> remote = Remote();
-    if (!remote) {
-        LOGE("StorageDaemonProxy::RemoveMountPath - Remote is nullptr!");
-        return ERR_INVALID_DATA;
-    }
-
-    int32_t ret = remote->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_REMOVE_MOUNT_PATH), data, reply, option);
-    if (ret != ERR_OK) {
-        LOGE("StorageDaemonProxy::RemoveMountPath - SendRequest failed, ret: %{public}d", ret);
-        return ret;
-    }
-
-    ErrCode errCode = reply.ReadInt32();
-    if (errCode != ERR_OK) {
-        LOGE("StorageDaemonProxy::RemoveMountPath - Remove mount path failed, errCode: %{public}d", errCode);
-        return errCode;
-    }
-
-    LOGI("StorageDaemonProxy::RemoveMountPath - Success, mountPath: %{public}s", mountPath.c_str());
-    return ERR_OK;
-}
-
-ErrCode StorageDaemonProxy::EnsureMountPath(const std::string &mountPath)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        LOGE("StorageDaemonProxy::EnsureMountPath - Failed to write interface token");
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteString16(Str8ToStr16(mountPath))) {
-        LOGE("StorageDaemonProxy::EnsureMountPath - Failed to write mountPath");
-        return ERR_INVALID_DATA;
-    }
-
-    sptr<IRemoteObject> remote = Remote();
-    if (!remote) {
-        LOGE("StorageDaemonProxy::EnsureMountPath - Remote is nullptr!");
-        return ERR_INVALID_DATA;
-    }
-
-    int32_t ret = remote->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_ENSURE_MOUNT_PATH), data, reply, option);
-    if (ret != ERR_OK) {
-        LOGE("StorageDaemonProxy::EnsureMountPath - SendRequest failed, ret: %{public}d", ret);
-        return ret;
-    }
-
-    ErrCode errCode = reply.ReadInt32();
-    if (errCode != ERR_OK) {
-        LOGE("StorageDaemonProxy::EnsureMountPath - Remove mount path failed, errCode: %{public}d", errCode);
-        return errCode;
-    }
-
-    LOGI("StorageDaemonProxy::EnsureMountPath - Success, mountPath: %{public}s", mountPath.c_str());
-    return ERR_OK;
 }
 } // namespace StorageDaemon
 } // namespace OHOS

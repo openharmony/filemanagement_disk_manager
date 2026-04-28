@@ -25,29 +25,25 @@ namespace OHOS {
 namespace StorageDaemon {
 
 enum class IStorageDaemonIpcCode {
-    /** 旧版 volId 系 COMMAND(2–7, 51) 已废弃；disk_manager 仅保留下列与 IStorageDaemon.idl 对齐的码。 */
     COMMAND_QUERY_USB_IS_IN_USE = 45,
-    COMMAND_MOUNT_USB_FUSE = 54,
-    /* IStorageDaemon_addon.idl — OHOS.StorageService.IStorageDaemon，ipccode 201–217 */
+    /* IStorageDaemon.idl addon ipccode 201–212 */
     ADDON_CREATE_BLOCK_DEVICE_NODE = 201,
     ADDON_DESTROY_BLOCK_DEVICE_NODE = 202,
     ADDON_READ_PARTITION_TABLE = 203,
-    ADDON_READ_VOLUME_META_DATA = 204,
-    ADDON_EJECT = 205,
-    ADDON_GET_CD_STATUS = 206,
-    ADDON_MOUNT = 207,
-    ADDON_UNMOUNT = 208,
-    ADDON_FORMAT_VOLUME = 209,
-    ADDON_CHECK = 210,
-    ADDON_REPAIR = 211,
-    ADDON_SET_LABEL = 212,
-    ADDON_READ_METADATA = 213,
-    ADDON_GET_CAPACITY = 214,
-    ADDON_OPEN_FUSE_DEVICE = 215,
-    ADDON_MOUNT_FUSE_DEVICE = 216,
-    ADDON_PARTITION = 217,
-    ADDON_ENSURE_MOUNT_PATH = 218,
-    ADDON_REMOVE_MOUNT_PATH = 219,
+    ADDON_MOUNT = 204,
+    ADDON_UNMOUNT = 205,
+    ADDON_FORMAT_VOLUME = 206,
+    ADDON_CHECK = 207,
+    ADDON_REPAIR = 208,
+    ADDON_SET_LABEL = 209,
+    ADDON_READ_METADATA = 210,
+    ADDON_MOUNT_FUSE_DEVICE = 211,
+    ADDON_PARTITION = 212,
+
+    /** 上段 addon 未列方法，自 251 起（须与 storage_daemon 侧一致）。 */
+    ADDON_GET_CAPACITY = 251,
+    ADDON_EJECT = 252,
+    ADDON_GET_CD_STATUS = 253,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -55,7 +51,6 @@ public:
     DECLARE_INTERFACE_DESCRIPTOR(u"OHOS.StorageDaemon.IStorageDaemon");
 
     virtual ErrCode QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) = 0;
-    virtual ErrCode MountUsbFuse(const std::string &volumeId, std::string &fsUuid, int &fuseFd) = 0;
 
     virtual ErrCode CreateBlockDeviceNode(const std::string &devPath,
                                           uint32_t mode,
@@ -65,16 +60,13 @@ public:
     virtual ErrCode ReadPartitionTable(const std::string &devPath,
                                        std::string &output,
                                        int32_t &maxVolume) = 0;
-    virtual ErrCode ReadVolumeMetaData(const std::string &devPath,
-                                       std::string &fsUuid,
-                                       std::string &fsType,
-                                       std::string &fsLabel) = 0;
     virtual ErrCode Eject(const std::string &devPath) = 0;
     virtual ErrCode GetCDStatus(const std::string &devPath, int32_t &status) = 0;
+    /** @param mountFlag 传给底层 mount(2) 的标志位（如 MS_RDONLY），与块设备挂载语义一致。 */
     virtual ErrCode Mount(const std::string &devPath,
                           const std::string &mountPath,
                           const std::string &fsType,
-                          const std::string &mountData) = 0;
+                          uint32_t mountFlag) = 0;
     virtual ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) = 0;
     virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) = 0;
     virtual ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) = 0;
@@ -87,14 +79,8 @@ public:
                                  std::string &type,
                                  std::string &label) = 0;
     virtual ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) = 0;
-    virtual ErrCode OpenFuseDevice(int32_t &fuseFd) = 0;
-    virtual ErrCode MountFuseDevice(int32_t fuseFd,
-                                    const std::string &mountPath,
-                                    const std::string &fsUuid,
-                                    const std::string &options) = 0;
+    virtual ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) = 0;
     virtual ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) = 0;
-    virtual ErrCode EnsureMountPath(const std::string &mountPath) = 0;
-    virtual ErrCode RemoveMountPath(const std::string &mountPath) = 0;
 
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};

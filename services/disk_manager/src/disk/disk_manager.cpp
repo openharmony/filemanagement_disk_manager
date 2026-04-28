@@ -25,26 +25,27 @@
 
 #include <cinttypes>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <mutex>
 #include <sstream>
+#include <sys/mount.h>
 #include <sys/statvfs.h>
+
+#include "parameter.h"
 
 namespace OHOS {
 namespace DiskManager {
 
-std::string DiskManager::BuildUsbFuseOptions(int32_t fuseFd)
-{
-    std::stringstream ss;
-    ss << "fd=" << fuseFd << ",";
-    ss << "rootmode=40000,";
-    ss << "default_permissions,";
-    ss << "allow_other,";
-    ss << "user_id=0,group_id=0,";
-    ss << "context=\"u:object_r:mnt_external_file:s0\",";
-    ss << "fscontext=u:object_r:mnt_external_file:s0";
-    return ss.str();
-}
+namespace {
+constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
+constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
+constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
+
+constexpr int32_t TRUE_LEN = 5;
+constexpr int32_t RD_ENABLE_LENGTH = 255;
+constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
+} // namespace
 
 bool DiskManager::IsSafeFsUuid(const std::string &fsUuid)
 {
@@ -152,30 +153,15 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
         return E_PARAMS_INVALID;
     }
 
-    const std::string mountPath = "/mnt/data/external/" + fsUuid;
+    const std::string mountPath = std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
     if (IsPathMounted(mountPath)) {
         return DiskManagerErrNo::E_OK;
     }
 
-    err = StorageDaemonAdapter::GetInstance().EnsureMountPath(mountPath);
-    if (err != ERR_OK) {
-        LOGE("MountUsbFuseIfNeeded: EnsureMountPath failed path=%{public}s err=%{public}d", mountPath.c_str(), err);
-        return err;
-    }
-
     int32_t fuseFd = -1;
-    err = StorageDaemonAdapter::GetInstance().OpenFuseDevice(fuseFd);
-    if (err != ERR_OK) {
-        LOGE("MountUsbFuseIfNeeded: OpenFuseDevice failed err=%{public}d", err);
-        (void)StorageDaemonAdapter::GetInstance().RemoveMountPath(mountPath);
-        return err;
-    }
-
-    const std::string options = BuildUsbFuseOptions(fuseFd);
-    err = StorageDaemonAdapter::GetInstance().MountFuseDevice(fuseFd, mountPath, fsUuid, options);
+    err = StorageDaemonAdapter::GetInstance().MountFuseDevice(mountPath, fuseFd);
     if (err != ERR_OK) {
         LOGE("MountUsbFuseIfNeeded: MountFuseDevice failed err=%{public}d", err);
-        (void)StorageDaemonAdapter::GetInstance().RemoveMountPath(mountPath);
         return err;
     }
 
@@ -185,6 +171,26 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
         return err;
     }
     return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force)
+{
+    const std::string fsType = volExternal.GetFsTypeString();
+    const std::string &uuid = volExternal.GetUuid();
+    if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)) {
+        const std::string dataPath = std::string(EXTERNAL_FUSE_DATA_ROOT) + uuid;
+        int32_t err = StorageDaemonAdapter::GetInstance().Unmount(dataPath, fsType, force);
+        if (err != ERR_OK) {
+            return err;
+        }
+        const std::string fusePath = std::string(EXTERNAL_MOUNT_ROOT) + uuid;
+        err = StorageDaemonAdapter::GetInstance().Unmount(fusePath, FUSE_UMOUNT_FS_TYPE, force);
+        if (err != ERR_OK) {
+            return err;
+        }
+        return UsbFuseAdapter::GetInstance().NotifyUsbFuseUmount(volExternal.GetId());
+    }
+    return StorageDaemonAdapter::GetInstance().Unmount(std::string(EXTERNAL_MOUNT_ROOT) + uuid, fsType, force);
 }
 
 DiskManager::DiskManager() = default;
@@ -224,7 +230,6 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         volExternal.SetState(VolumeState::UNMOUNTED);
         return E_PARAMS_INVALID;
     }
-    const std::string mountPath = "/mnt/data/external/" + fsUuid;
 
     if (volExternal.GetFsType() != FsType::MTP) {
         int32_t checkErr =
@@ -242,11 +247,38 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         return fuseErr;
     }
 
-    int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), mountPath, fsType, "");
+    return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid);
+}
+
+int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
+                                                 const std::string &fsType,
+                                                 const std::string &fsUuid)
+{
+    const std::string dataMountPath = UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)
+                                          ? std::string(EXTERNAL_FUSE_DATA_ROOT) + fsUuid
+                                          : std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
+    uint32_t mountFlag = 0;
+    if (!UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)) {
+        int handle = static_cast<int>(FindParameter(PERSIST_FILEMANAGEMENT_USB_READONLY));
+        if (handle != -1) {
+            char rdOnlyEnable[RD_ENABLE_LENGTH] = {"false"};
+            auto res = GetParameterValue(handle, rdOnlyEnable, RD_ENABLE_LENGTH);
+            if (res >= 0 && strncmp(rdOnlyEnable, "true", TRUE_LEN) == 0) {
+                mountFlag |= static_cast<uint32_t>(MS_RDONLY);
+            } else {
+                mountFlag &= ~static_cast<uint32_t>(MS_RDONLY);
+            }
+        }
+    }
+
+    int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
+                                                            mountFlag);
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
+        volExternal.SetState(VolumeState::UNMOUNTED);
         return err;
     }
+    volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
     return DiskManagerErrNo::E_OK;
@@ -269,12 +301,12 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         return E_VOL_UMOUNT_ERR;
     }
 
-    int32_t err = StorageDaemonAdapter::GetInstance().Unmount("/mnt/data/external/" + volExternal.GetUuid(),
-                                                              volExternal.GetFsTypeString(), true);
+    int32_t err = UnmountVolumeMountPoints(volExternal, true);
     if (err != ERR_OK) {
         LOGE("Unmount vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         return err;
     }
+    volExternal.SetPath("");
     volExternal.SetState(UNMOUNTED);
     CommonEventPublisher::PublishVolumeChange(UNMOUNTED, volExternal);
     return DiskManagerErrNo::E_OK;
@@ -297,6 +329,19 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     if (volExternal.GetState() != VolumeState::UNMOUNTED) {
         LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted", volumeId.c_str(), volExternal.GetState());
         return E_VOL_STATE;
+    }
+
+    if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(volExternal.GetFsTypeString())) {
+        const std::string &mountPath = volExternal.GetPath();
+        if (!mountPath.empty() && IsPathMounted(mountPath)) {
+            int32_t umErr =
+                StorageDaemonAdapter::GetInstance().Unmount(mountPath, volExternal.GetFsTypeString(), true);
+            if (umErr != ERR_OK) {
+                LOGE("Format: usb fuse pre-unmount failed path=%{public}s err=%{public}d", mountPath.c_str(), umErr);
+                return umErr;
+            }
+            volExternal.SetPath("");
+        }
     }
 
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume("/dev/block/" + volExternal.GetId(), fsType);
@@ -323,12 +368,12 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
     VolumeExternal &volExternal = it->second;
 
     if (volExternal.GetState() == VolumeState::DAMAGED_MOUNTED || volExternal.GetState() == VolumeState::MOUNTED) {
-        const int32_t umErr = StorageDaemonAdapter::GetInstance().Unmount("/mnt/data/external/" + volExternal.GetUuid(),
-                                                                          volExternal.GetFsTypeString(), true);
+        const int32_t umErr = UnmountVolumeMountPoints(volExternal, true);
         if (umErr != ERR_OK) {
             LOGE("TryToFix: Unmount failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), umErr);
             return umErr;
         }
+        volExternal.SetPath("");
         volExternal.SetState(UNMOUNTED);
     }
 
