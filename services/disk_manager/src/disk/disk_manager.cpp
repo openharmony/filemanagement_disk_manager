@@ -44,6 +44,8 @@ constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 
 constexpr int32_t TRUE_LEN = 5;
 constexpr int32_t RD_ENABLE_LENGTH = 255;
+constexpr int DISK_MMC_MAJOR = 179;
+constexpr int DISK_CD_MAJOR = 11;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 } // namespace
 
@@ -247,12 +249,13 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         return fuseErr;
     }
 
-    return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid);
+    return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid, volumeId);
 }
 
 int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
                                                  const std::string &fsType,
-                                                 const std::string &fsUuid)
+                                                 const std::string &fsUuid,
+                                                 const std::string &volumeId)
 {
     const std::string dataMountPath = UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)
                                           ? std::string(EXTERNAL_FUSE_DATA_ROOT) + fsUuid
@@ -280,8 +283,51 @@ int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
+    int32_t flag = GetFlagFromMajorInfo(volumeId);
+    volExternal.SetFlags(flag);
+    if (volExternal.GetDescription() == "") {
+        std::string label;
+        if (flag == SD_FLAG) {
+            label = "MySDCard";
+        } else if (flag == USB_FLAG) {
+            label = "MyUSB";
+        } else if (flag == CD_FLAG) {
+            label = "MyDVD";
+        } else {
+            label = "Default";
+        }
+        volExternal.SetDescription(label);
+    }
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
     return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::GetFlagFromMajorInfo(const std::string &volumeId)
+{
+    size_t firstDash = volumeId.find('-');
+    if (firstDash == std::string::npos) {
+        LOGE("GetFlagFromMajorInfo can not find first split symbol");
+        return 0;
+    }
+
+    size_t secondDash = volumeId.find('-', firstDash + 1);
+    if (secondDash == std::string::npos) {
+        LOGE("GetFlagFromMajorInfo canot find second split symbol");
+        return 0;
+    }
+
+    std::string majorStr = volumeId.substr(firstDash + 1, secondDash - firstDash - 1);
+    int32_t flag = 0;
+    int32_t major = stoi(majorStr);
+    LOGI("GetFlagFromMajorInfo major=%{public}d", major);
+    if (major == DISK_MMC_MAJOR) {
+        flag |= SD_FLAG;
+    } else if (major == DISK_CD_MAJOR) {
+        flag |= CD_FLAG;
+    } else {
+        flag |= USB_FLAG;
+    }
+    return flag;
 }
 
 int32_t DiskManager::Unmount(const std::string &volumeId)
@@ -352,6 +398,12 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(volExternal.GetFsTypeString())) {
         (void)UsbFuseAdapter::GetInstance().NotifyUsbFuseUmount(volumeId);
     }
+    std::string uuid;
+    std::string type;
+    std::string label;
+    StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + volExternal.GetId(), uuid, type, label);
+    volExternal.SetFsUuid(uuid);
+    volExternal.SetDescription(label);
     volExternal.SetState(UNMOUNTED);
     volExternal.SetFsType(volExternal.GetFsTypeByStr(fsType));
     return DiskManagerErrNo::E_OK;

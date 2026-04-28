@@ -16,6 +16,7 @@
 #include "storage_daemon_adapter.h"
 #include "disk_manager_errno.h"
 
+#include <cinttypes>
 #include <iservice_registry.h>
 #include <system_ability_definition.h>
 
@@ -292,7 +293,8 @@ int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t 
         return err;
     }
     const int32_t ret = storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
-    LOGI("GetCapacity exit ret=%{public}d totalSize=%{public}lld freeSize=%{public}lld", ret, totalSize, freeSize);
+    LOGI("GetCapacity exit ret=%{public}d totalSize=%{public}" PRId64 " freeSize=%{public}" PRId64, ret, totalSize,
+         freeSize);
     return ret;
 }
 
