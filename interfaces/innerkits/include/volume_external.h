@@ -64,6 +64,8 @@ public:
     std::string GetDescription() const;
     int32_t GetFsTypeByStr(const std::string &fsTypeStr) const;
     void Reset();
+    void SetExtraInfo(const std::string &extraInfo);
+    std::string GetExtraInfo() const;
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeExternal *Unmarshalling(Parcel &parcel);
@@ -74,6 +76,7 @@ private:
     std::string fsUuid_;
     std::string path_;
     std::string description_;
+    std::string extraInfo_;
 };
 } // namespace DiskManager
 } // namespace OHOS

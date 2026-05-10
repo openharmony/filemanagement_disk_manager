@@ -150,6 +150,16 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
         return;
     }
     Disk diskForEvent(diskId, 0, env.sysPath, "", LegacyDiskFlagFromDevPath(env.devPath));
+    std::string blockInfosByDiskId;
+    const int32_t biErr =
+        StorageDaemonAdapter::GetInstance().GetBlockInfoByType(diskId, blockInfosByDiskId);
+    if (biErr == ERR_OK && !blockInfosByDiskId.empty()) {
+        diskForEvent.SetExtInfo(std::move(blockInfosByDiskId));
+        LOGI("UpsertDiskAndPublishEvent extInfo populated for %{public}s len=%{public}zu", diskId.c_str(),
+             diskForEvent.GetExtInfo().size());
+    } else {
+        LOGW("UpsertDiskAndPublishEvent GetBlockInfoByType diskId=%{public}s err=%{public}d", diskId.c_str(), biErr);
+    }
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);
 }

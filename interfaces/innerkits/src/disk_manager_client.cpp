@@ -307,6 +307,90 @@ int32_t DiskManagerClient::Partition(const std::string &diskId, int32_t type)
     return dm.Partition(diskId, type);
 }
 
+int32_t DiskManagerClient::GetAllDisks(std::vector<Disk> &vecOfDisk)
+{
+    LOGI("GetAllDisks enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetAllDisks(vecOfDisk);
+}
+
+int32_t DiskManagerClient::GetDiskById(const std::string &diskId, Disk &disk)
+{
+    LOGI("GetDiskById diskId=%{public}s", diskId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetDiskById(diskId, disk);
+}
+
+int32_t DiskManagerClient::EraseVolume(const std::string &volumeId)
+{
+    LOGI("EraseVolume volumeId=%{public}s", volumeId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.EraseVolume(volumeId);
+}
+
+int32_t DiskManagerClient::EjectVolume(const std::string &volumeId)
+{
+    LOGI("EjectVolume volumeId=%{public}s", volumeId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.EjectVolume(volumeId);
+}
+
+int32_t DiskManagerClient::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
+{
+    LOGI("CreateIsoImage volumeId=%{public}s", volumeId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.CreateIsoImage(volumeId, filePath);
+}
+
+int32_t DiskManagerClient::BurnVolume(const std::string &volumeId, const std::string &burnOptions)
+{
+    LOGI("BurnVolume volumeId=%{public}s", volumeId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.BurnVolume(volumeId, burnOptions);
+}
+
+int32_t DiskManagerClient::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
+{
+    LOGI("GetVolumeOpProcess volumeId=%{public}s", volumeId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetVolumeOpProcess(volumeId, progressPct);
+}
+
 int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
@@ -317,6 +401,18 @@ int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
     }
     IDiskManager &dm = *proxy;
     return dm.OnBlockDiskUevent(rawUeventMsg);
+}
+
+int32_t DiskManagerClient::VerifyBurnData(const std::string &volumeId, int32_t verifyType)
+{
+    LOGI("VerifyBurnData volumeId=%{public}s type=%{public}d", volumeId.c_str(), verifyType);
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.VerifyBurnData(volumeId, verifyType);
 }
 
 } // namespace DiskManager

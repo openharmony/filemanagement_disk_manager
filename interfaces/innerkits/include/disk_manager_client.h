@@ -25,6 +25,7 @@
 #include <refbase.h>
 #include <singleton.h>
 
+#include "disk.h"
 #include "volume_external.h"
 
 namespace OHOS {
@@ -49,6 +50,14 @@ public:
     int32_t GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize);
     int32_t Partition(const std::string &diskId, int32_t type);
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
+    int32_t GetAllDisks(std::vector<Disk> &vecOfDisk);
+    int32_t GetDiskById(const std::string &diskId, Disk &disk);
+    int32_t EraseVolume(const std::string &volumeId);
+    int32_t EjectVolume(const std::string &volumeId);
+    int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath);
+    int32_t BurnVolume(const std::string &volumeId, const std::string &burnOptions);
+    int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
+    int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 
 private:
     int32_t Connect(sptr<IDiskManager> &proxy);

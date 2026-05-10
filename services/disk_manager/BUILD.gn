@@ -21,6 +21,7 @@ config("disk_manager_config") {
     "include/ipc",
     "include/notification",
     "include/adapter",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/include",
   ]
 
   cflags = [
