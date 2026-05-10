@@ -23,11 +23,12 @@
 namespace OHOS {
 namespace DiskManager {
 
-/** 与 define.md 5.2.3 MediaType 对齐 */
+/** 与 define.md 5.2.3 MediaType 对齐；块设备及存储模型共用。 */
 enum class DiskStoreMediaType : uint8_t {
     SSD = 0,
     HDD = 1,
     UNKNOWN = 2,
+    USB = 3,
 };
 
 /** 与 define.md 5.2.4 DiskType 对齐 */
@@ -79,6 +80,28 @@ struct PartitionRecord {
     uint64_t sizeBytes = 0;
     std::string partitionType;
     std::string fsTypeRaw;
+};
+
+/**
+ * 块设备详细信息（进程内/解析用；经 storage_daemon GetBlockInfoByType 时一般以字符串载荷由对端约定格式返回）。
+ */
+struct BlockInfo {
+    uint64_t sizeBytes {};
+    std::string vendor;
+    std::string model;
+    std::string interfaceType;
+    uint32_t rpm {};
+    std::string state;
+    DiskStoreMediaType mediaType {DiskStoreMediaType::UNKNOWN};
+    bool removable {};
+    std::string serialNumber;
+    std::string pciePath;
+    std::string location;
+    std::string diskId;
+    uint64_t usedBytes {};
+    uint64_t availableBytes {};
+    std::string devicePath;
+    std::string port;
 };
 
 /**

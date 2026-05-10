@@ -51,6 +51,12 @@ public:
     int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) override;
     int32_t IsUsbFuseByType(int32_t type, bool &isUsbFuse) override;
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg) override;
+    int32_t EraseVolume(const std::string &volumeId) override;
+    int32_t EjectVolume(const std::string &volumeId) override;
+    int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath) override;
+    int32_t BurnVolume(const std::string &volumeId, const std::string &burnOptions) override;
+    int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) override;
+    int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType) override;
     int32_t NotifyMtpMounted(const std::string &id,
                              const std::string &path,
                              const std::string &desc,

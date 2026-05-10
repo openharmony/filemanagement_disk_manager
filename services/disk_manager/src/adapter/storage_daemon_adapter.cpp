@@ -324,5 +324,20 @@ int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, int32_t par
     LOGI("Partition exit ret=%{public}d", ret);
     return ret;
 }
+
+int32_t StorageDaemonAdapter::GetBlockInfoByType(const std::string &type, std::string &blockInfos)
+{
+    LOGI("GetBlockInfoByType enter, type=%{public}s", type.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetBlockInfoByType exit err=%{public}d (proxy not ready)", err);
+        blockInfos.clear();
+        return err;
+    }
+    const ErrCode ret = storageDaemon_->GetBlockInfoByType(type, blockInfos);
+    LOGI("GetBlockInfoByType exit ret=%{public}d bytes=%{public}zu",
+         static_cast<int32_t>(ret), blockInfos.size());
+    return static_cast<int32_t>(ret);
+}
 } // namespace DiskManager
 } // namespace OHOS
