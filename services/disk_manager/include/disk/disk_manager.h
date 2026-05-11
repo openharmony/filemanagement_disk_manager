@@ -108,7 +108,6 @@ private:
 
     /** 执行挂载主体；调用前须已持有 mapsRwMutex_ 写锁且 volumeId 与 volExternal 一致。 */
     int32_t MountVolumeEntryUnlocked(VolumeExternal &volExternal, const std::string &volumeId);
-    int32_t GetFlagFromMajorInfo(const std::string &volumeId);
 
     uint32_t AllocateVoldataMountIndexLocked();
 

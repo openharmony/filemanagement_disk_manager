@@ -362,13 +362,12 @@ int32_t DiskManager::MountVolumeEntryUnlocked(VolumeExternal &volExternal, const
         return fuseErr;
     }
 
-    return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid, volumeId);
+    return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid);
 }
 
 int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
                                                  const std::string &fsType,
-                                                 const std::string &fsUuid,
-                                                 const std::string &volumeId)
+                                                 const std::string &fsUuid)
 {
     const std::string fsNormLower = NormalizeFsTypeAsciiLower(fsType);
     const std::string &diskId = volExternal.GetDiskId();
@@ -409,7 +408,7 @@ int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
-    int32_t flag = GetFlagFromMajorInfo(volumeId);
+    int32_t flag = GetFlagFromMajorInfo(volExternal.GetId());
     volExternal.SetFlags(flag);
     if (volExternal.GetDescription() == "") {
         std::string label;
