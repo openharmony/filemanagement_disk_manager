@@ -51,6 +51,7 @@ public:
     MOCK_METHOD3(GetCapacity, ErrCode(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize));
     MOCK_METHOD2(MountFuseDevice, ErrCode(const std::string &mountPath, int32_t &fuseFd));
     MOCK_METHOD3(Partition, ErrCode(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags));
+    MOCK_METHOD2(GetBlockInfoByType, ErrCode(const std::string &type, std::string &blockInfos));
 };
 
 } // namespace DiskManager

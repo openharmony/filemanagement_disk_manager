@@ -100,6 +100,16 @@ void VolumeExternal::Reset()
     path_ = "";
 }
 
+void VolumeExternal::SetExtraInfo(const std::string &extraInfo)
+{
+    extraInfo_ = extraInfo;
+}
+
+std::string VolumeExternal::GetExtraInfo() const
+{
+    return extraInfo_;
+}
+
 bool VolumeExternal::Marshalling(Parcel &parcel) const
 {
     if (!VolumeCore::Marshalling(parcel)) {
@@ -126,6 +136,10 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
         return false;
     }
 
+    if (!parcel.WriteString(extraInfo_)) {
+        return false;
+    }
+
     return true;
 }
 
@@ -141,6 +155,7 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->fsUuid_ = parcel.ReadString();
     obj->path_ = parcel.ReadString();
     obj->description_ = parcel.ReadString();
+    obj->extraInfo_ = parcel.ReadString();
     return obj;
 }
 } // namespace DiskManager

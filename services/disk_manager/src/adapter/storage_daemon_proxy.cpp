@@ -20,6 +20,7 @@
 #include "string_ex.h"
 
 #include "disk_manager_hilog.h"
+
 namespace OHOS {
 namespace StorageDaemon {
 
@@ -370,6 +371,32 @@ ErrCode StorageDaemonProxy::MountFuseDevice(const std::string &mountPath, int32_
         return res;
     }
     fuseFd = static_cast<int32_t>(reply.ReadFileDescriptor());
+    return ERR_OK;
+}
+
+ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &type, std::string &blockInfos)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    blockInfos.clear();
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(type))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret =
+        Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_BLOCK_INFO_BY_TYPE), data, reply,
+                              option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    blockInfos = Str16ToStr8(reply.ReadString16());
     return ERR_OK;
 }
 

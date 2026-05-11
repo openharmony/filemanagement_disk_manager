@@ -26,7 +26,6 @@ namespace StorageDaemon {
 
 enum class IStorageDaemonIpcCode {
     COMMAND_QUERY_USB_IS_IN_USE = 45,
-    /* IStorageDaemon.idl addon ipccode 201–212 */
     ADDON_CREATE_BLOCK_DEVICE_NODE = 201,
     ADDON_DESTROY_BLOCK_DEVICE_NODE = 202,
     ADDON_READ_PARTITION_TABLE = 203,
@@ -39,6 +38,7 @@ enum class IStorageDaemonIpcCode {
     ADDON_READ_METADATA = 210,
     ADDON_MOUNT_FUSE_DEVICE = 211,
     ADDON_PARTITION = 212,
+    ADDON_GET_BLOCK_INFO_BY_TYPE = 213,
 
     /** 上段 addon 未列方法，自 251 起（须与 storage_daemon 侧一致）。 */
     ADDON_GET_CAPACITY = 251,
@@ -62,7 +62,6 @@ public:
                                        int32_t &maxVolume) = 0;
     virtual ErrCode Eject(const std::string &devPath) = 0;
     virtual ErrCode GetCDStatus(const std::string &devPath, int32_t &status) = 0;
-    /** @param mountFlag 传给底层 mount(2) 的标志位（如 MS_RDONLY），与块设备挂载语义一致。 */
     virtual ErrCode Mount(const std::string &devPath,
                           const std::string &mountPath,
                           const std::string &fsType,
@@ -81,6 +80,12 @@ public:
     virtual ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) = 0;
     virtual ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) = 0;
     virtual ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) = 0;
+
+    /**
+     * 按类型枚举块设备详情（由 storage_daemon 实现；IPC：ADDON_GET_BLOCK_INFO_BY_TYPE）。
+     * Reply（成功）：int32 errno，utf-8 内容由 String16 传递；载荷格式（JSON/自定行文本等）由 storage_daemon 与调用方约定。
+     */
+    virtual ErrCode GetBlockInfoByType(const std::string &type, std::string &blockInfos) = 0;
 
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};

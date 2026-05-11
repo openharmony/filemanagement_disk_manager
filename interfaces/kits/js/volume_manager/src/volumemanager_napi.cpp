@@ -36,6 +36,16 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("setVolumeDescription", SetVolumeDescription),
         DECLARE_NAPI_FUNCTION("format", Format),
         DECLARE_NAPI_FUNCTION("partition", Partition),
+        DECLARE_NAPI_FUNCTION("getAllDisks", GetAllDisks),
+        DECLARE_NAPI_FUNCTION("getDiskById", GetDiskById),
+        DECLARE_NAPI_FUNCTION("erase", Erase),
+        DECLARE_NAPI_FUNCTION("eject", Eject),
+        DECLARE_NAPI_FUNCTION("createIsoImage", CreateIsoImage),
+        DECLARE_NAPI_FUNCTION("burn", Burn),
+        DECLARE_NAPI_FUNCTION("getOpProcess", GetOpProcess),
+        /* 与 storage_service 既有命名兼容（见 kits_impl/volumemanager_napi.cpp） */
+        DECLARE_NAPI_FUNCTION("getOpticalDriveOpsProgress", GetOpProcess),
+        DECLARE_NAPI_FUNCTION("verifyBurnData", VerifyBurnData),
 #ifdef HMDFS_FILE_MANAGER
         DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
         DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),
@@ -48,6 +58,15 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
 #endif
     };
     FILEMGMT_CALL(napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
+    napi_value verifyTypeEnum = nullptr;
+    FILEMGMT_CALL(napi_create_object(env, &verifyTypeEnum));
+    napi_value keyData = nullptr;
+    napi_value fullData = nullptr;
+    FILEMGMT_CALL(napi_create_int32(env, 0, &keyData));
+    FILEMGMT_CALL(napi_create_int32(env, 1, &fullData));
+    FILEMGMT_CALL(napi_set_named_property(env, verifyTypeEnum, "KEY_DATA", keyData));
+    FILEMGMT_CALL(napi_set_named_property(env, verifyTypeEnum, "FULL_DATA", fullData));
+    FILEMGMT_CALL(napi_set_named_property(env, exports, "VerifyType", verifyTypeEnum));
     return exports;
 }
 
