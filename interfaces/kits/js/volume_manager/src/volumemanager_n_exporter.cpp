@@ -159,6 +159,45 @@ NVal MakeDiskJsArrayFromVector(napi_env env, const std::vector<Disk> &disks)
     }
     return {NVal(env, arr)};
 }
+
+napi_value ScheduleVolumeGetOpProcess(napi_env env, const std::string &sid, NVal &thisVar, NFuncArg &funcArg)
+{
+    struct ProgressGuard {
+        std::mutex mtx;
+        int32_t value {0};
+    };
+    auto progress = std::make_shared<ProgressGuard>();
+    auto cbExec = [sid, progress]() -> NError {
+        int32_t v = 0;
+        int32_t errNum =
+            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeOpProcess(sid, v);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        std::lock_guard<std::mutex> lock(progress->mtx);
+        progress->value = v;
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [progress](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        int32_t v = 0;
+        {
+            std::lock_guard<std::mutex> lock(progress->mtx);
+            v = progress->value;
+        }
+        return {NVal::CreateInt32(env, v)};
+    };
+    constexpr const char *kProcName = "GetOpProcess";
+    if (funcArg.GetArgc() == (uint)NARG_CNT::ONE) {
+        return NAsyncWorkPromise(env, thisVar).Schedule(kProcName, cbExec, cbComplete).val_;
+    }
+    NVal cb(env, funcArg[(int)NARG_POS::SECOND]);
+    return NAsyncWorkCallback(env, thisVar, cb, FEATURE_STR + __FUNCTION__)
+        .Schedule(kProcName, cbExec, cbComplete)
+        .val_;
+}
 } // namespace
 
 bool CheckVolumes(napi_env env, napi_callback_info info, NFuncArg &funcArg)
@@ -858,43 +897,8 @@ napi_value GetOpProcess(napi_env env, napi_callback_info info)
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::string sid(vid.get());
-    struct ProgressGuard {
-        std::mutex mtx;
-        int32_t value {0};
-    };
-    auto progress = std::make_shared<ProgressGuard>();
-    auto cbExec = [sid, progress]() -> NError {
-        int32_t v = 0;
-        int32_t errNum =
-            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeOpProcess(sid, v);
-        if (errNum != E_OK) {
-            return NError(Convert2JsErrNum(errNum));
-        }
-        std::lock_guard<std::mutex> lock(progress->mtx);
-        progress->value = v;
-        return NError(ERRNO_NOERR);
-    };
-    auto cbComplete = [progress](napi_env env, NError err) -> NVal {
-        if (err) {
-            return {env, err.GetNapiErr(env)};
-        }
-        int32_t v = 0;
-        {
-            std::lock_guard<std::mutex> lock(progress->mtx);
-            v = progress->value;
-        }
-        return {NVal::CreateInt32(env, v)};
-    };
-    std::string procedureName = "GetOpProcess";
     NVal thisVar(env, funcArg.GetThisVar());
-    if (funcArg.GetArgc() == (uint)NARG_CNT::ONE) {
-        return NAsyncWorkPromise(env, thisVar).Schedule(procedureName, cbExec, cbComplete).val_;
-    }
-    NVal cb(env, funcArg[(int)NARG_POS::SECOND]);
-    return NAsyncWorkCallback(env, thisVar, cb, FEATURE_STR + __FUNCTION__)
-        .Schedule(procedureName, cbExec, cbComplete)
-        .val_;
+    return ScheduleVolumeGetOpProcess(env, std::string(vid.get()), thisVar, funcArg);
 }
 
 napi_value VerifyBurnData(napi_env env, napi_callback_info info)

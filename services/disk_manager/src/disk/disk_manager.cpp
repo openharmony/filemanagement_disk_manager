@@ -72,6 +72,45 @@ bool UiTypeIsInternalSsdOrHdd(const std::string &ui)
     return ui == "SSD" || ui == "HDD";
 }
 
+/** useFuseData 分支下不套用 USB 只读持久化参数（与原先 MountVolumeFilesystemLocked 语义一致）。 */
+uint32_t ReadPersistUsbReadonlyMountFlagBits(bool useFuseData)
+{
+    uint32_t mountFlag = 0;
+    if (useFuseData) {
+        return mountFlag;
+    }
+    int handle = static_cast<int>(FindParameter(PERSIST_FILEMANAGEMENT_USB_READONLY));
+    if (handle == -1) {
+        return mountFlag;
+    }
+    char rdOnlyEnable[RD_ENABLE_LENGTH] = {"false"};
+    auto res = GetParameterValue(handle, rdOnlyEnable, RD_ENABLE_LENGTH);
+    if (res >= 0 && strncmp(rdOnlyEnable, "true", TRUE_LEN) == 0) {
+        mountFlag |= static_cast<uint32_t>(MS_RDONLY);
+    } else {
+        mountFlag &= ~static_cast<uint32_t>(MS_RDONLY);
+    }
+    return mountFlag;
+}
+
+void ApplyDefaultVolumeDescriptionIfUnset(VolumeExternal &volExternal, int32_t flag)
+{
+    if (!volExternal.GetDescription().empty()) {
+        return;
+    }
+    std::string label;
+    if (flag == SD_FLAG) {
+        label = "MySDCard";
+    } else if (flag == USB_FLAG) {
+        label = "MyUSB";
+    } else if (flag == CD_FLAG) {
+        label = "MyDVD";
+    } else {
+        label = "Default";
+    }
+    volExternal.SetDescription(label);
+}
+
 static void AttachVolumeIdsToDisk(const std::map<std::string, VolumeExternal> &volumeMap, Disk &disk)
 {
     std::vector<std::string> ids;
@@ -84,7 +123,8 @@ static void AttachVolumeIdsToDisk(const std::map<std::string, VolumeExternal> &v
 }
 } // namespace
 
-bool DiskManager::EffectiveUsbStackForVolumeDiskUnlocked(const std::string &diskId, const std::string &fsTypeRaw) const
+bool DiskManager::EffectiveUsbStackForVolumeDiskUnlocked(const std::string &diskId,
+                                                         const std::string &fsTypeRaw) const
 {
     if (!UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsTypeRaw)) {
         return false;
@@ -96,7 +136,8 @@ bool DiskManager::EffectiveUsbStackForVolumeDiskUnlocked(const std::string &disk
     return !UiTypeIsInternalSsdOrHdd(dit->second.GetUiType());
 }
 
-bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId, const std::string &fsNormLower) const
+bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId,
+                                                           const std::string &fsNormLower) const
 {
     auto dit = diskMap_.find(diskId);
     if (dit == diskMap_.end()) {
@@ -365,14 +406,12 @@ int32_t DiskManager::MountVolumeEntryUnlocked(VolumeExternal &volExternal, const
     return MountVolumeFilesystemLocked(volExternal, fsType, fsUuid);
 }
 
-int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
-                                                 const std::string &fsType,
-                                                 const std::string &fsUuid)
+std::string DiskManager::BuildMountDataPathForFilesystemLocked(VolumeExternal &volExternal,
+                                                               const std::string &fsUuid,
+                                                               bool useFuseData,
+                                                               const std::string &fsNormLower)
 {
-    const std::string fsNormLower = NormalizeFsTypeAsciiLower(fsType);
     const std::string &diskId = volExternal.GetDiskId();
-    const bool useFuseData = EffectiveUsbStackForVolumeDiskUnlocked(diskId, fsType);
-
     std::string dataMountPath;
     if (ShouldUseVoldataMountPathForDiskUnlocked(diskId, fsNormLower)) {
         const uint32_t slot = AllocateVoldataMountIndexLocked();
@@ -384,20 +423,20 @@ int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
     } else {
         dataMountPath = std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
     }
+    return dataMountPath;
+}
 
-    uint32_t mountFlag = 0;
-    if (!useFuseData) {
-        int handle = static_cast<int>(FindParameter(PERSIST_FILEMANAGEMENT_USB_READONLY));
-        if (handle != -1) {
-            char rdOnlyEnable[RD_ENABLE_LENGTH] = {"false"};
-            auto res = GetParameterValue(handle, rdOnlyEnable, RD_ENABLE_LENGTH);
-            if (res >= 0 && strncmp(rdOnlyEnable, "true", TRUE_LEN) == 0) {
-                mountFlag |= static_cast<uint32_t>(MS_RDONLY);
-            } else {
-                mountFlag &= ~static_cast<uint32_t>(MS_RDONLY);
-            }
-        }
-    }
+int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
+                                                 const std::string &fsType,
+                                                 const std::string &fsUuid)
+{
+    const std::string fsNormLower = NormalizeFsTypeAsciiLower(fsType);
+    const std::string &diskId = volExternal.GetDiskId();
+    const bool useFuseData = EffectiveUsbStackForVolumeDiskUnlocked(diskId, fsType);
+    std::string dataMountPath =
+        BuildMountDataPathForFilesystemLocked(volExternal, fsUuid, useFuseData, fsNormLower);
+
+    const uint32_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(useFuseData);
 
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
                                                             mountFlag);
@@ -408,21 +447,9 @@ int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
-    int32_t flag = GetFlagFromMajorInfo(volExternal.GetId());
+    const int32_t flag = GetFlagFromMajorInfo(volExternal.GetId());
     volExternal.SetFlags(flag);
-    if (volExternal.GetDescription() == "") {
-        std::string label;
-        if (flag == SD_FLAG) {
-            label = "MySDCard";
-        } else if (flag == USB_FLAG) {
-            label = "MyUSB";
-        } else if (flag == CD_FLAG) {
-            label = "MyDVD";
-        } else {
-            label = "Default";
-        }
-        volExternal.SetDescription(label);
-    }
+    ApplyDefaultVolumeDescriptionIfUnset(volExternal, flag);
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
     return DiskManagerErrNo::E_OK;
 }
@@ -607,7 +634,8 @@ int32_t DiskManager::OnDiskCreated(const Disk &disk)
     Disk diskToStore = disk;
     if (diskToStore.GetExtInfo().empty()) {
         std::string blockInfos;
-        const int32_t biErr = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(diskToStore.GetDiskId(), blockInfos);
+        const int32_t biErr =
+            StorageDaemonAdapter::GetInstance().GetBlockInfoByType(diskToStore.GetDiskId(), blockInfos);
         if (biErr == ERR_OK && !blockInfos.empty()) {
             diskToStore.SetExtInfo(std::move(blockInfos));
         } else if (biErr != ERR_OK) {
