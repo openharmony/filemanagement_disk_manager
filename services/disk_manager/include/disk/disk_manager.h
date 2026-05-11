@@ -97,11 +97,21 @@ private:
      * 在已持有 mapsRwMutex_（读或写）的前提下按 diskId 查 diskMap_；内部不再加锁。
      * （Mount/Unmount/Format/TryToFix 等已持写锁，同线程不可再套 shared_lock，否则会死锁。）
      */
-    bool EffectiveUsbStackForVolumeDiskUnlocked(const std::string &diskId, const std::string &fsTypeRaw) const;
-    bool ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId, const std::string &fsNormLower) const;
+    bool EffectiveUsbStackForVolumeDiskUnlocked(const std::string &diskId,
+                                                const std::string &fsTypeRaw) const;
+    bool ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId,
+                                                  const std::string &fsNormLower) const;
 
     /** 在已持 mapsRwMutex_ 写锁且完成 FUSE 前置后，执行块设备挂载并更新卷状态。 */
-    int32_t MountVolumeFilesystemLocked(VolumeExternal &volExternal, const std::string &fsType, const std::string &fsUuid);
+    int32_t MountVolumeFilesystemLocked(VolumeExternal &volExternal,
+                                        const std::string &fsType,
+                                        const std::string &fsUuid);
+
+    /** 已由调用方求得 useFuseData；须在已持 mapsRwMutex_ 写锁时调用。 */
+    std::string BuildMountDataPathForFilesystemLocked(VolumeExternal &volExternal,
+                                                       const std::string &fsUuid,
+                                                       bool useFuseData,
+                                                       const std::string &fsNormLower);
     /** 调用前须已持有 mapsRwMutex_ 写锁。 */
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
     int32_t GetFlagFromMajorInfo(const std::string &volumeId);
