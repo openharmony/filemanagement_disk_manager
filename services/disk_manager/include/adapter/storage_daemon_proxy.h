@@ -53,6 +53,7 @@ public:
     ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) override;
     ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) override;
     ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) override;
+    ErrCode GetBlockInfoByType(const std::string &type, std::string &blockInfos) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

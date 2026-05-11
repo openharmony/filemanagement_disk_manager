@@ -50,6 +50,12 @@ public:
     MOCK_METHOD(int32_t, QueryUsbIsInUse, (const std::string &diskPath, bool &isInUse), (override));
     MOCK_METHOD(int32_t, IsUsbFuseByType, (int32_t type, bool &isUsbFuse), (override));
     MOCK_METHOD(int32_t, OnBlockDiskUevent, (const std::string &rawUeventMsg), (override));
+    MOCK_METHOD(int32_t, EraseVolume, (const std::string &volumeId), (override));
+    MOCK_METHOD(int32_t, EjectVolume, (const std::string &volumeId), (override));
+    MOCK_METHOD(int32_t, CreateIsoImage, (const std::string &volumeId, const std::string &filePath), (override));
+    MOCK_METHOD(int32_t, BurnVolume, (const std::string &volumeId, const std::string &burnOptions), (override));
+    MOCK_METHOD(int32_t, GetVolumeOpProcess, (const std::string &volumeId, int32_t &progressPct), (override));
+    MOCK_METHOD(int32_t, VerifyBurnData, (const std::string &volumeId, int32_t verifyType), (override));
     MOCK_METHOD(int32_t, NotifyMtpMounted,
                 (const std::string &id, const std::string &path, const std::string &desc, const std::string &uuid,
                  const std::string &fsType),

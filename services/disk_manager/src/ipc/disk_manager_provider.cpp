@@ -177,5 +177,41 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
     return DiskManagerErrNo::E_OK;
 }
 
+int32_t DiskManagerProvider::EraseVolume(const std::string &volumeId)
+{
+    LOGI("EraseVolume volumeId=%{public}s", volumeId.c_str());
+    return DiskManager::GetInstance().EraseVolume(volumeId);
+}
+
+int32_t DiskManagerProvider::EjectVolume(const std::string &volumeId)
+{
+    LOGI("EjectVolume volumeId=%{public}s", volumeId.c_str());
+    return DiskManager::GetInstance().EjectVolume(volumeId);
+}
+
+int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
+{
+    LOGI("CreateIsoImage volumeId=%{public}s pathLen=%{public}zu", volumeId.c_str(), filePath.size());
+    return DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
+}
+
+int32_t DiskManagerProvider::BurnVolume(const std::string &volumeId, const std::string &burnOptions)
+{
+    LOGI("BurnVolume volumeId=%{public}s optsLen=%{public}zu", volumeId.c_str(), burnOptions.size());
+    return DiskManager::GetInstance().BurnVolume(volumeId, burnOptions);
+}
+
+int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
+{
+    LOGI("GetVolumeOpProcess volumeId=%{public}s", volumeId.c_str());
+    return DiskManager::GetInstance().GetVolumeOpProcess(volumeId, progressPct);
+}
+
+int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t verifyType)
+{
+    LOGI("VerifyBurnData volumeId=%{public}s type=%{public}d", volumeId.c_str(), verifyType);
+    return DiskManager::GetInstance().VerifyBurnData(volumeId, verifyType);
+}
+
 } // namespace DiskManager
 } // namespace OHOS
