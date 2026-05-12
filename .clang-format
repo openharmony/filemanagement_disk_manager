@@ -1,5 +1,4 @@
 # Language: Cpp
-# BasedOnStyle: Google
 # OpenHarmony C/C++ 语言编程规范综合优化版
 
 # 访问说明符(public、private等)的偏移
