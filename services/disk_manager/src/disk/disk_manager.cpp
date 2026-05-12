@@ -38,6 +38,7 @@
 #include <string>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
+#include <sys/xattr.h>
 
 #include "parameter.h"
 
@@ -55,6 +56,7 @@ constexpr int32_t TRUE_LEN = 5;
 constexpr int32_t RD_ENABLE_LENGTH = 255;
 constexpr int DISK_MMC_MAJOR = 179;
 constexpr int DISK_CD_MAJOR = 11;
+const int32_t MTP_DEVICE_NAME_LEN = 512;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 
 std::string NormalizeFsTypeAsciiLower(const std::string &fs)
@@ -281,7 +283,9 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force)
+int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
+                                              bool force,
+                                              const std::string &volumeId)
 {
     const std::string fsType = volExternal.GetFsTypeString();
     const std::string &uuid = volExternal.GetUuid();
@@ -302,7 +306,15 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
     if (!mountedPath.empty()) {
         return StorageDaemonAdapter::GetInstance().Unmount(mountedPath, fsType, force);
     }
-    return StorageDaemonAdapter::GetInstance().Unmount(std::string(EXTERNAL_MOUNT_ROOT) + uuid, fsType, force);
+    std::string mountPath;
+    if (fsType == "mtp" || fsType == "ptp") {
+        mountPath = std::string(EXTERNAL_MOUNT_ROOT) + volumeId;
+    } else {
+        mountPath = std::string(EXTERNAL_MOUNT_ROOT) + uuid;
+    }
+    LOGI("UnmountVolumeMountPoints, fsType=%{public}s, volumeId=%{public}s, mountPath=%{public}s", fsType.c_str(),
+         volumeId.c_str(), mountPath.c_str());
+    return StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, force);
 }
 
 DiskManager::DiskManager() = default;
@@ -498,8 +510,10 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         LOGE("Unmount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(), volExternal.GetState());
         return E_VOL_UMOUNT_ERR;
     }
-
-    int32_t err = UnmountVolumeMountPoints(volExternal, true);
+    if (volumeId.find("mtp") != std::string::npos || volumeId.find("ptp") != std::string::npos) {
+        writelock.unlock();
+    }
+    int32_t err = UnmountVolumeMountPoints(volExternal, true, volumeId);
     if (err != ERR_OK) {
         LOGE("Unmount vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         return err;
@@ -572,7 +586,7 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
     VolumeExternal &volExternal = it->second;
 
     if (volExternal.GetState() == VolumeState::DAMAGED_MOUNTED || volExternal.GetState() == VolumeState::MOUNTED) {
-        const int32_t umErr = UnmountVolumeMountPoints(volExternal, true);
+        const int32_t umErr = UnmountVolumeMountPoints(volExternal, true, volumeId);
         if (umErr != ERR_OK) {
             LOGE("TryToFix: Unmount failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), umErr);
             return umErr;
@@ -894,5 +908,67 @@ int32_t DiskManager::VerifyBurnData(const std::string &volumeId, int32_t verifyT
     return DiskManagerErrNo::E_OK;
 }
 
+void DiskManager::NotifyMtpMounted(const std::string &id,
+                                   const std::string &path,
+                                   const std::string &desc,
+                                   const std::string &uuid,
+                                   const std::string &fsType)
+{
+    LOGI("DiskManager NotifyMtpMounted");
+    std::string key = "user.getfriendlyname";
+    char *value = (char *)malloc(sizeof(char) * (MTP_DEVICE_NAME_LEN + 1));
+    int32_t len = 0;
+    if (value != nullptr) {
+        len = getxattr(path.c_str(), key.c_str(), value, MTP_DEVICE_NAME_LEN);
+        if (len >= 0 && len <= MTP_DEVICE_NAME_LEN) {
+            value[len] = '\0';
+            LOGI("MTP get namelen=%{public}d, name=%{public}s", len, value);
+        }
+    }
+
+    VolumeExternal volExternal(VolumeCore(id, 0, ""));
+    volExternal.SetPath(path);
+    if (fsType == "mtpfs") {
+        volExternal.SetFsType(volExternal.GetFsTypeByStr("mtp"));
+    } else if (fsType == "gphotofs") {
+        volExternal.SetFsType(volExternal.GetFsTypeByStr("ptp"));
+    } else {
+        LOGI("Unknown type:%{public}s", fsType.c_str());
+    }
+    volExternal.SetDescription(desc);
+    if (len > 0) {
+        LOGI("set MTP device name:%{public}s", value);
+        volExternal.SetDescription(std::string(value));
+    }
+    if (value != nullptr) {
+        free(value);
+        value = nullptr;
+    }
+    volExternal.SetState(MOUNTED);
+    volExternal.SetFsUuid(uuid);
+    {
+        std::unique_lock<std::shared_mutex> writelock(mapsRwMutex_);
+        volumeMap_.insert(make_pair(volExternal.GetId(), volExternal));
+    }
+    CommonEventPublisher::PublishVolumeChange(VolumeState::MOUNTED, volExternal);
+}
+
+void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemove)
+{
+    LOGI("DiskManager NotifyMtpUnmounted");
+    std::unique_lock<std::shared_mutex> writelock(mapsRwMutex_);
+    auto it = volumeMap_.find(id);
+    if (it == volumeMap_.end()) {
+        LOGE("DiskManager::Unmount id %{public}s not exists", id.c_str());
+        return;
+    }
+    VolumeExternal &volExternal = it->second;
+    if (!isBadRemove) {
+        CommonEventPublisher::PublishVolumeChange(VolumeState::UNMOUNTED, volExternal);
+    } else {
+        CommonEventPublisher::PublishVolumeChange(VolumeState::BAD_REMOVAL, volExternal);
+    }
+    volumeMap_.erase(id);
+}
 } // namespace DiskManager
 } // namespace OHOS

@@ -58,6 +58,9 @@ public:
     int32_t BurnVolume(const std::string &volumeId, const std::string &burnOptions);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
+    int32_t NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
+                             const std::string &uuid, const std::string &fsType);
+    int32_t NotifyMtpUnmounted(const std::string &id, const bool isBadRemove);
 
 private:
     int32_t Connect(sptr<IDiskManager> &proxy);
