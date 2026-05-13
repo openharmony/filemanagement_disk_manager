@@ -415,5 +415,35 @@ int32_t DiskManagerClient::VerifyBurnData(const std::string &volumeId, int32_t v
     return dm.VerifyBurnData(volumeId, verifyType);
 }
 
+int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
+                                            const std::string &uuid, const std::string &fsType)
+{
+    LOGI("[L1:DiskManagerClient] NotifyMtpMounted: >>> ENTER <<< id=%{public}s, path=%{public}s, desc=%{public}s",
+         id.c_str(), path.c_str(), desc.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    dm.NotifyMtpMounted(id, path, desc, uuid, fsType);
+    LOGI("[L1:DiskManagerClient] NotifyMtpMounted: <<< EXIT SUCCESS <<< id=%{public}s", id.c_str());
+    return E_OK;
+}
+
+int32_t DiskManagerClient::NotifyMtpUnmounted(const std::string &id, const bool isBadRemove)
+{
+    LOGI("[L1:DiskManagerClient] NotifyMtpUnmounted: >>> ENTER <<< id=%{public}s, isBadRemove=%{public}d",
+         id.c_str(), isBadRemove);
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    dm.NotifyMtpUnmounted(id, isBadRemove);
+    LOGI("[L1:DiskManagerClient] NotifyMtpUnmounted: <<< EXIT SUCCESS <<< id=%{public}s", id.c_str());
+    return E_OK;
+}
 } // namespace DiskManager
 } // namespace OHOS
