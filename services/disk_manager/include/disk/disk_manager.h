@@ -74,6 +74,13 @@ public:
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 
+    void NotifyMtpMounted(const std::string &id,
+                          const std::string &path,
+                          const std::string &desc,
+                          const std::string &uuid,
+                          const std::string &fsType);
+    void NotifyMtpUnmounted(const std::string &id, bool isBadRemove);
+
 private:
     DiskManager();
     ~DiskManager();
@@ -113,7 +120,7 @@ private:
                                                        bool useFuseData,
                                                        const std::string &fsNormLower);
     /** 调用前须已持有 mapsRwMutex_ 写锁。 */
-    int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
+    int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force, const std::string &volumeId);
     int32_t GetFlagFromMajorInfo(const std::string &volumeId);
 
     /** 执行挂载主体；调用前须已持有 mapsRwMutex_ 写锁且 volumeId 与 volExternal 一致。 */

@@ -164,16 +164,15 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
                                               const std::string &uuid,
                                               const std::string &fsType)
 {
-    (void)path;
-    (void)desc;
-    (void)uuid;
     LOGI("NotifyMtpMounted id=%{public}s fsType=%{public}s", id.c_str(), fsType.c_str());
+    DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
     return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
 {
     LOGI("NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(), static_cast<int>(isBadRemove));
+    DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
     return DiskManagerErrNo::E_OK;
 }
 
