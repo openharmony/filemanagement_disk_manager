@@ -49,6 +49,16 @@ void VolumeExternal::SetDescription(const std::string &description)
     description_ = description;
 }
 
+void VolumeExternal::SetUserData(const bool &isUserData)
+{
+    isUserData_ = isUserData;
+}
+
+bool VolumeExternal::GetUserData() const
+{
+    return isUserData_;
+}
+
 int32_t VolumeExternal::GetFlags() const
 {
     return flags_;
