@@ -166,9 +166,12 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
             isUserData = true;
             LOGI("BuildAndSyncPartitions: detected userdata partition in disk=%{public}s lines=%{public}zu",
                  diskId.c_str(), lines.size());
+            auto diskIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
+                return str.find("DISK") != std::string::npos;
+            });
             rawDump.clear();
-            rawDump += lines.front() + "\n";
-            rawDump += *userdataIt + "\n";
+            rawDump += (diskIt != lines.end() ? *diskIt : "") + "\n";
+            rawDump += *userdataIt;
         }
     }
     if (!rawDump.empty()) {

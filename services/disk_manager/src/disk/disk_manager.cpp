@@ -221,7 +221,7 @@ int32_t DiskManager::LookupVolumeByUuidUnlocked(const std::string &fsUuid, Volum
             return DiskManagerErrNo::E_OK;
         }
     }
-    return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+    return E_NON_EXIST;
 }
 
 std::string DiskManager::GetVolumePath(const std::string &volumeUuid)
@@ -381,7 +381,7 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+            return E_NON_EXIST;
         }
         if ((it->second.GetState() != VolumeState::UNMOUNTED) &&
             (it->second.GetState() != VolumeState::DECRYPTING)) {
@@ -398,7 +398,7 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
-            return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+            return E_NON_EXIST;
         }
         if (mountErr == DiskManagerErrNo::E_OK &&
             it->second.GetState() != VolumeState::UNMOUNTED && it->second.GetState() != VolumeState::DECRYPTING) {
@@ -537,7 +537,7 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+            return E_NON_EXIST;
         }
         if (it->second.GetState() != VolumeState::MOUNTED &&
             it->second.GetState() != VolumeState::DAMAGED_MOUNTED &&
@@ -563,7 +563,7 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
-        return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+        return E_NON_EXIST;
     }
     it->second.SetPath("");
     it->second.SetState(UNMOUNTED);
@@ -578,7 +578,7 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+            return E_NON_EXIST;
         }
         if (it->second.GetFsType() == FsType::MTP) {
             LOGE("MTP device not support to format.");
@@ -605,7 +605,7 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
-        return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+        return E_NON_EXIST;
     }
     VolumeExternal &volExternal = it->second;
     volExternal.SetFsUuid(uuid);
@@ -679,7 +679,7 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
                                      [&fsUuid](const auto &pair) { return pair.second.GetUuid() == fsUuid; });
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", fsUuid.c_str());
-            return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+            return E_NON_EXIST;
         }
         volumeId = it->first;
         blockVolId = it->second.GetId();
@@ -696,7 +696,7 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
-        return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+        return E_NON_EXIST;
     }
     it->second.SetState(UNMOUNTED);
     it->second.SetDescription(description);
@@ -824,7 +824,7 @@ int32_t DiskManager::GetVolumeById(const std::string &volumeId, VolumeExternal &
     std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
     auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
-        return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+        return E_NON_EXIST;
     }
     LOGI("VolumeManagerService::GetVolumeByUuid volumeUuid %{public}s exists", volumeId.c_str());
     out = it->second;
