@@ -15,7 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#include "disk/uevent_env_parser.h"
+#include "uevent_env_parser.h"
 
 namespace OHOS {
 namespace DiskManager {

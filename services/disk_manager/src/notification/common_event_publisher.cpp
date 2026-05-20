@@ -94,8 +94,7 @@ void CommonEventPublisher::PublishDiskChange(DiskEventKind kind, const Disk &dis
     wantParams.SetParam("diskId", AAFwk::String::Box(disk.GetDiskId()));
     wantParams.SetParam("sizeBytes", AAFwk::Integer::Box(disk.GetSizeBytes()));
     wantParams.SetParam("sysPath", AAFwk::String::Box(disk.GetSysPath()));
-    wantParams.SetParam("vendor", AAFwk::String::Box(disk.GetVendor()));
-    wantParams.SetParam("flag", AAFwk::Integer::Box(disk.GetFlag()));
+    wantParams.SetParam("flag", AAFwk::Integer::Box(disk.GetDiskType()));
 
     if (kind == DiskEventKind::MOUNTED) {
         // 与 storage_daemon DiskInfo::DiskState::MOUNTED 一致（枚举首项为 0）

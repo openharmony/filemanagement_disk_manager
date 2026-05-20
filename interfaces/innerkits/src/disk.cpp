@@ -18,31 +18,28 @@
 namespace OHOS {
 namespace DiskManager {
 namespace {
-/** Parcel 反序列化时 volumeIds 条数上限，防止异常大包拖垮进程。 */
 constexpr uint32_t DISK_VOLUME_IDS_PARCEL_MAX = 256U;
 
-/** 光驱：sysfs 多为 /block/srx。 */
+bool IsInternalDataDiskType(int32_t diskType)
+{
+    return diskType == DATA_DISK_SSD || diskType == DATA_DISK_HDD;
+}
+
 bool SysPathHasOpticalBlock(const std::string &p)
 {
     return p.find("/block/sr") != std::string::npos;
 }
 
-/** NVMe：约定为 SSD（不读 rotational）。 */
 bool SysPathHasNvme(const std::string &p)
 {
     return p.find("/nvme") != std::string::npos;
 }
 
-/** 内置 SATA 链路：AHCI ataN 或 platform *.sata（不含 USB 转接场景则见 USB 规则）。 */
 bool SysPathHasDirectSata(const std::string &p)
 {
     return p.find("/ata/") != std::string::npos || p.find(".sata/") != std::string::npos;
 }
 
-/**
- * USB 存储拓扑：通用 /usb…、hiusb，及与 etc/disk_config 相近的 host 控制器关键字。
- * 须在 SATA 直判之后，避免误判；且应在 MMC 之前，以便 U 盘读卡器走 USB 而非 SD。
- */
 bool SysPathHasUsbTopology(const std::string &p)
 {
     if (p.find("/usb") != std::string::npos || p.find("usbhost") != std::string::npos) {
@@ -62,7 +59,6 @@ bool SysPathHasUsbTopology(const std::string &p)
     return false;
 }
 
-/** MMC/SD 主机：与 disk_config 中 dwmmc、hi_mci、mmc_host 同源形态。 */
 bool SysPathHasMmcHost(const std::string &p)
 {
     return p.find("mmc_host") != std::string::npos || p.find("dwmmc") != std::string::npos ||
@@ -70,14 +66,18 @@ bool SysPathHasMmcHost(const std::string &p)
 }
 } // namespace
 
-Disk::Disk() {}
+Disk::Disk()
+{
+    UpdateRemovableFromDiskType();
+}
+
 Disk::Disk(const std::string &diskId,
            int64_t sizeBytes,
-           const std::string &sysPath,
-           const std::string &vendor,
-           int32_t flag)
-    : diskId_(diskId), sizeBytes_(sizeBytes), sysPath_(sysPath), vendor_(vendor), flag_(flag)
+           const std::string &blockDevPath,
+           int32_t diskType)
+    : diskId_(diskId), sizeBytes_(sizeBytes), diskType_(diskType), sysPath_(blockDevPath)
 {
+    UpdateRemovableFromDiskType();
 }
 
 std::string Disk::GetDiskId() const
@@ -90,24 +90,30 @@ int64_t Disk::GetSizeBytes() const
     return sizeBytes_;
 }
 
-std::string Disk::GetSysPath() const
+void Disk::SetSizeBytes(int64_t sizeBytes)
 {
-    return sysPath_;
+    sizeBytes_ = sizeBytes;
 }
 
-std::string Disk::GetVendor() const
+int32_t Disk::GetDiskType() const
 {
-    return vendor_;
+    return diskType_;
 }
 
-int32_t Disk::GetFlag() const
+void Disk::SetDiskType(int32_t diskType)
 {
-    return flag_;
+    diskType_ = diskType;
+    UpdateRemovableFromDiskType();
 }
 
-void Disk::SetFlag(int32_t flag)
+bool Disk::GetRemovable() const
 {
-    flag_ = flag;
+    return removable_;
+}
+
+bool Disk::IsRemovable() const
+{
+    return GetRemovable();
 }
 
 void Disk::SetVolumeIds(const std::vector<std::string> &volumeIds)
@@ -125,80 +131,81 @@ const std::vector<std::string> &Disk::GetVolumeIds() const
     return volumeIds_;
 }
 
-void Disk::SetExtInfo(const std::string &extInfo)
+void Disk::SetExtraInfo(const std::string &extraInfo)
 {
-    extInfo_ = extInfo;
+    extraInfo_ = extraInfo;
 }
 
-const std::string &Disk::GetExtInfo() const
+const std::string &Disk::GetExtraInfo() const
 {
-    return extInfo_;
+    return extraInfo_;
 }
 
-bool Disk::IsRemovable() const
+std::string Disk::GetSysPath() const
 {
-    return flag_ == SD_FLAG || flag_ == USB_FLAG || flag_ == CD_FLAG;
+    return sysPath_;
 }
 
-std::string Disk::GetUiType() const
+bool Disk::IsInternalDataDisk() const
 {
-    const std::string &p = sysPath_;
-
-    /* 1. CD / sr* */
-    if (flag_ == CD_FLAG || SysPathHasOpticalBlock(p)) {
-        return "ODD";
-    }
-    /* 2. NVMe -> SSD */
-    if (SysPathHasNvme(p)) {
-        return "SSD";
-    }
-    /* 3. 直出 SATA -> HDD（含 SATA 固态盘，本阶段不按 rotational 细分） */
-    if (SysPathHasDirectSata(p)) {
-        return "HDD";
-    }
-    /* 4. USB 拓扑 */
-    if (SysPathHasUsbTopology(p)) {
-        return "USB";
-    }
-    /* 5. SD / MMC 卡类 */
-    if (SysPathHasMmcHost(p)) {
-        return "SD";
-    }
-    /* 6. 无可靠路径时沿用 uevent/MatchConfig flag */
-    switch (flag_) {
-        case SD_FLAG:
-            return "SD";
-        case USB_FLAG:
-            return "USB";
-        case CD_FLAG:
-            return "ODD";
-        default:
-            return "Unknown";
-    }
+    return IsInternalDataDiskType(diskType_);
 }
+
+void Disk::UpdateRemovableFromDiskType()
+{
+    removable_ = IsInternalDataDiskType(diskType_) ? false : true;
+}
+
+void Disk::RefreshClassificationFromSysfs(const std::string &sysfsPath)
+{
+    const std::string &p = sysfsPath;
+    int32_t classifiedType = DISK_TYPE_UNKNOWN;
+
+    if (!p.empty()) {
+        if (diskType_ == CD_FLAG || SysPathHasOpticalBlock(p)) {
+            classifiedType = CD_FLAG;
+        } else if (SysPathHasNvme(p)) {
+            classifiedType = DATA_DISK_SSD;
+        } else if (SysPathHasDirectSata(p)) {
+            classifiedType = DATA_DISK_HDD;
+        } else if (SysPathHasUsbTopology(p)) {
+            classifiedType = USB_FLAG;
+        } else if (SysPathHasMmcHost(p)) {
+            classifiedType = SD_FLAG;
+        }
+    }
+    if (classifiedType == DISK_TYPE_UNKNOWN) {
+        switch (diskType_) {
+            case SD_FLAG:
+            case USB_FLAG:
+            case CD_FLAG:
+                classifiedType = diskType_;
+                break;
+            default:
+                classifiedType = DISK_TYPE_UNKNOWN;
+                break;
+        }
+    }
+
+    diskType_ = classifiedType;
+    UpdateRemovableFromDiskType();
+}
+
 bool Disk::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteString(diskId_)) {
         return false;
     }
-
     if (!parcel.WriteInt64(sizeBytes_)) {
         return false;
     }
-
-    if (!parcel.WriteString(sysPath_)) {
+    if (!parcel.WriteInt32(diskType_)) {
         return false;
     }
-
-    if (!parcel.WriteString(vendor_)) {
+    if (!parcel.WriteBool(removable_)) {
         return false;
     }
-
-    if (!parcel.WriteInt32(flag_)) {
-        return false;
-    }
-
-    uint32_t nVolumes = volumeIds_.size();
+    const uint32_t nVolumes = static_cast<uint32_t>(volumeIds_.size());
     if (!parcel.WriteUint32(nVolumes)) {
         return false;
     }
@@ -207,35 +214,33 @@ bool Disk::Marshalling(Parcel &parcel) const
             return false;
         }
     }
-    if (!parcel.WriteString(extInfo_)) {
+    if (!parcel.WriteString(extraInfo_)) {
         return false;
     }
-
     return true;
 }
 
 Disk *Disk::Unmarshalling(Parcel &parcel)
 {
     Disk *obj = new (std::nothrow) Disk();
-    if (!obj) {
+    if (obj == nullptr) {
         return nullptr;
     }
     obj->diskId_ = parcel.ReadString();
     obj->sizeBytes_ = parcel.ReadInt64();
-    obj->sysPath_ = parcel.ReadString();
-    obj->vendor_ = parcel.ReadString();
-    obj->flag_ = parcel.ReadInt32();
-    uint32_t nVolumes = parcel.ReadUint32();
+    obj->diskType_ = parcel.ReadInt32();
+    obj->removable_ = parcel.ReadBool();
+    const uint32_t nVolumes = parcel.ReadUint32();
     if (nVolumes > DISK_VOLUME_IDS_PARCEL_MAX) {
         delete obj;
         return nullptr;
     }
     obj->volumeIds_.clear();
     obj->volumeIds_.reserve(nVolumes);
-    for (uint32_t i = 0; i < nVolumes; i++) {
+    for (uint32_t i = 0; i < nVolumes; ++i) {
         obj->volumeIds_.push_back(parcel.ReadString());
     }
-    obj->extInfo_ = parcel.ReadString();
+    obj->extraInfo_ = parcel.ReadString();
     return obj;
 }
 } // namespace DiskManager

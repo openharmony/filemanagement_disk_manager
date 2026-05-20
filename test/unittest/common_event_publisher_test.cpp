@@ -53,7 +53,7 @@ VolumeExternal MakeSampleVolume()
 
 Disk MakeSampleDisk()
 {
-    return Disk("disk-ut-1", kUtDiskSizeBytes, "/sys/block/ut0", "ut-vendor", USB_FLAG);
+    return Disk("disk-ut-1", kUtDiskSizeBytes, "/dev/block/disk-ut-1", USB_FLAG);
 }
 
 } // namespace
@@ -171,7 +171,7 @@ HWTEST_F(CommonEventPublisherTest, PublishDiskChange_TestCase_001, TestSize.Leve
     Disk diskMounted = MakeSampleDisk();
     EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskMounted));
 
-    Disk diskRemoved("disk-removed-ut", kUtRemovedDiskSizeBytes, "/sys/block/rm0", "rm-vendor", CD_FLAG);
+    Disk diskRemoved("disk-removed-ut", kUtRemovedDiskSizeBytes, "/dev/block/disk-removed-ut", CD_FLAG);
     EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::REMOVED, diskRemoved));
 
     GTEST_LOG_(INFO) << "PublishDiskChange_TestCase_001 End";

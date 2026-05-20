@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "disk/partition_table_parser.h"
+#include "partition_table_parser.h"
 
 #include <cctype>
 #include <cstdlib>

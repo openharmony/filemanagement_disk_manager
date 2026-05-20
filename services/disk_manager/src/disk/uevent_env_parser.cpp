@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "disk/uevent_env_parser.h"
+#include "uevent_env_parser.h"
 
 #include <algorithm>
 #include <cctype>
