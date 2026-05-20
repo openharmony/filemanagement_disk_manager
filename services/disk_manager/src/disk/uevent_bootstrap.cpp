@@ -27,6 +27,7 @@
 #include "notification/common_event_publisher.h"
 #include "volume_core.h"
 
+#include <dirent.h>
 #include <fstream>
 #include <string_view>
 #include <sys/stat.h>
@@ -46,8 +47,14 @@ constexpr uint32_t K_DISK_BLOCK_DEVICE_NODE_MODE = NODE_PERM | static_cast<uint3
 constexpr uint32_t K_VOLUME_BLOCK_DEVICE_NODE_MODE = static_cast<uint32_t>(S_IFBLK);
 constexpr int DISK_MMC_MAJOR = 179;
 constexpr int DISK_CD_MAJOR = 11;
+constexpr int32_t MIN_LINES = 32;
+constexpr int32_t MAJORID_BLKEXT = 259;
+constexpr int32_t MAX_PARTITION = 16;
+constexpr int32_t MAX_INTERVAL_PARTITION = 15;
+constexpr int32_t VOL_LENGTH = 3;
 const int32_t CONFIG_PARAM_NUM = 6;
 const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
+constexpr const char *BLOCK_PATH = "/dev/block";
 
 constexpr uint32_t ActionHash(std::string_view sv)
 {
@@ -108,10 +115,39 @@ void LogUeventEnvForHandler(const char *handler, const UeventEnv &env)
          env.devPath.c_str(), env.devName.c_str(), static_cast<int>(env.ejectRequest), env.sysPath.c_str());
 }
 
+std::vector<std::string> SplitRawDumpToLines(const std::string &rawDump)
+{
+    std::vector<std::string> lines;
+    if (rawDump.empty()) {
+        return lines;
+    }
+
+    std::string::size_type start = 0;
+    std::string::size_type end = rawDump.find('\n');
+
+    while (end != std::string::npos) {
+        if (start < end) {
+            lines.push_back(rawDump.substr(start, end - start));
+        }
+        start = end + 1;
+        end = rawDump.find('\n', start);
+    }
+
+    if (start < rawDump.size()) {
+        lines.push_back(rawDump.substr(start));
+    }
+
+    for (auto &i : lines) {
+        LOGI("SplitRawDumpToLines lines info:%{public}s", i.c_str());
+    }
+    return lines;
+}
+
 int32_t BuildAndSyncPartitions(const UeventEnv &env,
                                const std::string &diskId,
                                const std::string &diskDevPath,
-                               std::vector<PartitionRecord> &parts)
+                               std::vector<PartitionRecord> &parts,
+                               bool &isUserData)
 {
     int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
         diskDevPath, K_DISK_BLOCK_DEVICE_NODE_MODE, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
@@ -125,6 +161,21 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
     err = StorageDaemonAdapter::GetInstance().ReadPartitionTable(diskDevPath, rawDump, maxVolume);
     if (err != ERR_OK) {
         LOGE("ReadPartitionTable failed err=%{public}d", err);
+    }
+
+    std::vector<std::string> lines = SplitRawDumpToLines(rawDump);
+    if (lines.size() > MIN_LINES) {
+        auto userdataIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
+            return str.find("userdata") != std::string::npos;
+        });
+        if (userdataIt != lines.end()) {
+            isUserData = true;
+            LOGI("BuildAndSyncPartitions: detected userdata partition in disk=%{public}s lines=%{public}zu",
+                 diskId.c_str(), lines.size());
+            rawDump.clear();
+            rawDump += lines.front() + "\n";
+            rawDump += *userdataIt + "\n";
+        }
     }
     if (!rawDump.empty()) {
         std::string tableType;
@@ -164,9 +215,55 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);
 }
 
-void DiscoverSinglePartitionVolume(const UeventEnv &env, const std::string &diskId, const PartitionRecord &p)
+int32_t GetMaxMinor(int32_t major)
 {
-    const dev_t pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
+    LOGD("[L3:DiskInfo] GetMaxMinor: >>> ENTER <<< major=%{public}d", major);
+    DIR* dir;
+    struct dirent* entry;
+    int32_t maxMinor = -1;
+    if ((dir = opendir(BLOCK_PATH)) == nullptr) {
+        LOGE("[L3:DiskInfo] GetMaxMinor: <<< EXIT FAILED <<< open=%{public}s failed, errno=%{public}d",
+             BLOCK_PATH, errno);
+        return maxMinor;
+    }
+    while ((entry = readdir(dir)) != nullptr) {
+        if (entry->d_name[0] == '.' || strncmp(entry->d_name, "vol", VOL_LENGTH) != 0) {
+            continue;
+        }
+        std::string devicePath = std::string(BLOCK_PATH) + "/" + entry->d_name;
+        struct stat statbuf;
+        if (stat(devicePath.c_str(), &statbuf) == 0) {
+            int32_t majorNum = static_cast<int32_t>major(statbuf.st_rdev);
+            int32_t minorNum = static_cast<int32_t>minor(statbuf.st_rdev);
+
+            if (majorNum == major) {
+                maxMinor = minorNum > maxMinor ? minorNum : maxMinor;
+            }
+        }
+    }
+    closedir(dir);
+    LOGD("[L3:DiskInfo] GetMaxMinor: <<< EXIT SUCCESS <<< maxMinor=%{public}d", maxMinor);
+    return maxMinor;
+}
+
+void DiscoverSinglePartitionVolume(const UeventEnv &env,
+                                   const std::string &diskId,
+                                   const PartitionRecord &p,
+                                   const bool &isUserData)
+{
+    dev_t pDev = makedev(0, 0);
+    if (isUserData) {
+        int32_t maxMinor = GetMaxMinor(MAJORID_BLKEXT);
+        if (maxMinor == -1) {
+            pDev = makedev(MAJORID_BLKEXT, static_cast<uint32_t>(p.partitionNumber) - MAX_PARTITION);
+        } else {
+            pDev = makedev(MAJORID_BLKEXT, static_cast<uint32_t>(maxMinor) + static_cast<uint32_t>(p.partitionNumber) -
+                                               MAX_INTERVAL_PARTITION);
+        }
+    } else {
+        pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
+    }
+
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
 
@@ -178,6 +275,7 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env, const std::string &disk
         return;
     }
     VolumeExternal volExternal(VolumeCore(volId, EXTERNAL, diskId));
+    volExternal.SetUserData(isUserData);
     (void)DiskManager::GetInstance().OnVolumeCreated(volExternal);
 
     std::string uuid;
@@ -273,7 +371,8 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     LOGI("Disk ID: %{public}s, Disk Dev Path: %{public}s", diskId.c_str(), diskDevPath.c_str());
 
     std::vector<PartitionRecord> parts;
-    int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts);
+    bool isUserData = false;
+    int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts, isUserData);
     if (err != ERR_OK) {
         LOGE("BuildAndSyncPartitions failed with error: %{public}d", err);
         return err;
@@ -284,7 +383,7 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s", diskId.c_str());
     for (const auto &p : parts) {
         LOGI("Discovering volume for partition number: %{public}d", p.partitionNumber);
-        DiscoverSinglePartitionVolume(env, diskId, p);
+        DiscoverSinglePartitionVolume(env, diskId, p, isUserData);
     }
 
     return DiskManagerErrNo::E_OK;

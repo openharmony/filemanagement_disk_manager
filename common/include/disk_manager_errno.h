@@ -43,6 +43,8 @@ enum DiskManagerErrNo : int32_t {
     /** 与 storage_service_errno.h / VolumeStorageStatusService 数值一致（13600000 基址）。 */
     E_NON_EXIST = 13600000 + 4,
     E_STATVFS = 13600000 + 1204,
+
+    E_OTHER_MOUNT = 13600000 + 1715,
 };
 
 } // namespace DiskManager

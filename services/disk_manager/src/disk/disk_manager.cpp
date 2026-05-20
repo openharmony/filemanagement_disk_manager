@@ -57,6 +57,7 @@ constexpr int32_t RD_ENABLE_LENGTH = 255;
 constexpr int DISK_MMC_MAJOR = 179;
 constexpr int DISK_CD_MAJOR = 11;
 const int32_t MTP_DEVICE_NAME_LEN = 512;
+constexpr uint32_t HMFS_FLAG = 0x8000;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 
 std::string NormalizeFsTypeAsciiLower(const std::string &fs)
@@ -442,14 +443,20 @@ int32_t DiskManager::MountVolumeFilesystemLocked(VolumeExternal &volExternal,
                                                  const std::string &fsType,
                                                  const std::string &fsUuid)
 {
+    if ((fsType == "hmfs" || fsType == "f2fs") && !volExternal.GetUserData()) {
+        LOGE("MountVolumeFilesystemLocked fsType is %{public}s, but is not userdata", fsType.c_str());
+        return DiskManagerErrNo::E_OTHER_MOUNT;
+    }
     const std::string fsNormLower = NormalizeFsTypeAsciiLower(fsType);
     const std::string &diskId = volExternal.GetDiskId();
     const bool useFuseData = EffectiveUsbStackForVolumeDiskUnlocked(diskId, fsType);
     std::string dataMountPath =
         BuildMountDataPathForFilesystemLocked(volExternal, fsUuid, useFuseData, fsNormLower);
 
-    const uint32_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(useFuseData);
-
+    uint32_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(useFuseData);
+    if ((fsType == "hmfs" || fsType == "f2fs") && volExternal.GetUserData()) {
+        mountFlag = HMFS_FLAG;
+    }
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
                                                             mountFlag);
     if (err != ERR_OK) {

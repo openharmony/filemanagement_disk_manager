@@ -56,6 +56,8 @@ public:
     void SetFsUuid(const std::string &fsUuid);
     void SetPath(const std::string &path);
     void SetDescription(const std::string &description);
+    void SetUserData(const bool &isUserData);
+    bool GetUserData() const;
     int32_t GetFlags() const;
     int32_t GetFsType() const;
     std::string GetFsTypeString() const;
@@ -77,6 +79,7 @@ private:
     std::string path_;
     std::string description_;
     std::string extraInfo_;
+    bool isUserData_ = false;
 };
 } // namespace DiskManager
 } // namespace OHOS

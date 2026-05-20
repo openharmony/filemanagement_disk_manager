@@ -178,7 +178,7 @@ ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
         return ERR_TRANSACTION_FAILED;
     }
     if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(mountPath)) ||
-        !data.WriteString16(Str8ToStr16(fsType)) || !data.WriteUint32(mountFlag)) {
+        !data.WriteString16(Str8ToStr16(fsType)) || !data.WriteUint64(static_cast<uint64_t>(mountFlag))) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =
