@@ -16,7 +16,7 @@
 #ifndef OHOS_DISK_MANAGER_DISK_PARTITION_TABLE_PARSER_H
 #define OHOS_DISK_MANAGER_DISK_PARTITION_TABLE_PARSER_H
 
-#include "disk/storage_spec_models.h"
+#include "storage_spec_models.h"
 
 #include <string>
 #include <vector>

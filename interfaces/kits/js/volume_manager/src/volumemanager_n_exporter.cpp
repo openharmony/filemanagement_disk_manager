@@ -123,22 +123,24 @@ void FillVolumeJSObject(napi_env env, NVal &volObj, const VolumeExternal &v)
 napi_value BuildDiskJSObject(napi_env env, const Disk &d)
 {
     NVal diskObj = NVal::CreateObject(env);
-    diskObj.AddProp("id", NVal::CreateUTF8String(env, d.GetDiskId()).val_);
-    diskObj.AddProp("description", NVal::CreateUTF8String(env, d.GetVendor()).val_);
-    diskObj.AddProp("type", NVal::CreateUTF8String(env, d.GetUiType()).val_);
-    napi_value capacityVal = nullptr;
-    FILEMGMT_CALL_BASE(napi_create_int64(env, d.GetSizeBytes(), &capacityVal), nullptr);
-    diskObj.AddProp("capacity", capacityVal);
-    diskObj.AddProp("removable", NVal::CreateBool(env, d.IsRemovable()).val_);
-    diskObj.AddProp("deviceNode", NVal::CreateUTF8String(env, d.GetSysPath()).val_);
-    napi_value vidArr = nullptr;
-    FILEMGMT_CALL_BASE(napi_create_array(env, &vidArr), nullptr);
-    uint32_t idx = 0;
-    for (const auto &vid : d.GetVolumeIds()) {
-        napi_set_element(env, vidArr, idx++, NVal::CreateUTF8String(env, vid).val_);
+    diskObj.AddProp("diskId", NVal::CreateUTF8String(env, d.GetDiskId()).val_);
+    napi_value sizeBytesVal = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_int64(env, d.GetSizeBytes(), &sizeBytesVal), nullptr);
+    diskObj.AddProp("sizeBytes", sizeBytesVal);
+    diskObj.AddProp("diskType", NVal::CreateInt32(env, d.GetDiskType()).val_);
+    diskObj.AddProp("removable", NVal::CreateBool(env, d.GetRemovable()).val_);
+    const std::vector<std::string> &volumeIds = d.GetVolumeIds();
+    napi_value volIdArr = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_array(env, &volIdArr), nullptr);
+    for (size_t i = 0; i < volumeIds.size(); ++i) {
+        napi_value vid = NVal::CreateUTF8String(env, volumeIds[i]).val_;
+        FILEMGMT_CALL_BASE(napi_set_element(env, volIdArr, static_cast<uint32_t>(i), vid), nullptr);
     }
-    diskObj.AddProp("volumeIds", vidArr);
-    diskObj.AddProp("extInfo", NVal::CreateUTF8String(env, d.GetExtInfo()).val_);
+    diskObj.AddProp("volumeIds", volIdArr);
+    const std::string &extra = d.GetExtraInfo();
+    if (!extra.empty()) {
+        diskObj.AddProp("extraInfo", NVal::CreateUTF8String(env, extra).val_);
+    }
     return diskObj.val_;
 }
 

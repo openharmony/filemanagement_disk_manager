@@ -18,6 +18,7 @@ config("disk_manager_config") {
   include_dirs = [
     "include",
     "include/disk",
+    "include/db",
     "include/ipc",
     "include/notification",
     "include/adapter",
@@ -43,11 +44,14 @@ ohos_shared_library("disk_manager") {
   }
 
   sources = [
+    "../../utils/src/ipc_caller_auth.cpp",
     "src/disk/uevent_bootstrap.cpp",
+    "src/disk/uevent_env_parser.cpp",
     "src/disk/disk_config.cpp",
     "src/disk/disk_manager.cpp",
     "src/disk/partition_table_parser.cpp",
-    "src/disk/uevent_env_parser.cpp",
+    "src/db/block_info_table.cpp",
+    "src/db/voldata_uuid_store.cpp",
     "src/ipc/disk_manager_provider.cpp",
     "src/notification/common_event_publisher.cpp",
     "src/adapter/storage_daemon_adapter.cpp",
@@ -71,6 +75,7 @@ ohos_shared_library("disk_manager") {
   ]
 
   external_deps = [
+    "access_token:libaccesstoken_sdk",
     "ability_base:base",
     "ability_base:want",
     "c_utils:utils",
@@ -78,6 +83,7 @@ ohos_shared_library("disk_manager") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
+    "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]

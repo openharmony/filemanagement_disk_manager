@@ -23,20 +23,20 @@
 namespace OHOS {
 namespace DiskManager {
 
-/** 与 define.md 5.2.3 MediaType 对齐；块设备及存储模型共用。 */
+/** 与 @ohos.file.volumeManager MediaType（new_api）对齐。 */
 enum class DiskStoreMediaType : uint8_t {
     SSD = 0,
     HDD = 1,
     UNKNOWN = 2,
-    USB = 3,
 };
 
-/** 与 define.md 5.2.4 DiskType 对齐 */
+/** 与 @ohos.file.volumeManager DiskType（new_api）对齐。 */
 enum class DiskStoreDiskType : uint8_t {
-    SD_CARD = 0,
-    CD_DVD_BD = 1,
+    SD_CARD = 1,
     USB_FLASH = 2,
-    MTP_PTP = 3,
+    CD_DVD_BD = 3,
+    DATA_DISK_SSD = 4,
+    DATA_DISK_HDD = 5,
     UNKNOWN = 255,
 };
 
@@ -83,7 +83,10 @@ struct PartitionRecord {
 };
 
 /**
- * 块设备详细信息（进程内/解析用；经 storage_daemon GetBlockInfoByType 时一般以字符串载荷由对端约定格式返回）。
+ * 块设备详细信息（进程内/解析用）。GetBlockInfoByType 载荷约定为 UTF-8 JSON，
+ * camelCase：diskId, sizeBytes, vendor, model, removable, mediaType, devicePath…；
+ * BlockInfoTable（blockInfoTable）将 JSON 解析为 BlockInfo 写入 map，可按 diskId TryCopyByDiskId；
+ * 并可通过 ToJsonStringWithExtras 追加任意 key-value 后转成 JSON 字符串。
  */
 struct BlockInfo {
     uint64_t sizeBytes {};
@@ -92,7 +95,7 @@ struct BlockInfo {
     std::string interfaceType;
     uint32_t rpm {};
     std::string state;
-    DiskStoreMediaType mediaType {DiskStoreMediaType::UNKNOWN};
+    std::string mediaType;
     bool removable {};
     std::string serialNumber;
     std::string pciePath;
@@ -102,22 +105,6 @@ struct BlockInfo {
     uint64_t availableBytes {};
     std::string devicePath;
     std::string port;
-};
-
-/**
- * 与 define.md DiskInfo 对齐的进程内权威快照（字段逐步填满，未解析项保持默认）。
- */
-struct DiskStoreRecord {
-    std::string diskId;
-    std::string diskName;
-    int64_t sizeBytes = 0;
-    int64_t usedBytes = 0;
-    int64_t availableBytes = 0;
-    DiskStoreMediaType mediaType = DiskStoreMediaType::UNKNOWN;
-    DiskStoreDiskType diskType = DiskStoreDiskType::UNKNOWN;
-    std::vector<std::string> volumeIds;
-    bool removable = false;
-    std::string sysPath;
 };
 
 /**

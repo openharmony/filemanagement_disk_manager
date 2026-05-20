@@ -18,63 +18,65 @@
 
 #include "parcel.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace OHOS {
 namespace DiskManager {
-enum {
+/** 与 uevent/disk_config、@ohos.file.volumeManager DiskType（new_api）一致。 */
+enum DiskType : int32_t {
     SD_FLAG = 1,
     USB_FLAG = 2,
     CD_FLAG = 3,
+    DATA_DISK_SSD = 4,
+    DATA_DISK_HDD = 5,
+    DISK_TYPE_UNKNOWN = 255,
 };
+
 class Disk : public Parcelable {
 public:
     Disk();
-    Disk(const std::string &diskId, int64_t sizeBytes, const std::string &sysPath,
-         const std::string &vendor, int32_t flag);
+    /** blockDevPath 为 /dev/block/{diskId}，不导出 JS。 */
+    Disk(const std::string &diskId, int64_t sizeBytes, const std::string &blockDevPath, int32_t diskType);
 
+    // --- volumeManager.Disk（new_api）---
     std::string GetDiskId() const;
     int64_t GetSizeBytes() const;
-    std::string GetSysPath() const;
-    std::string GetVendor() const;
-    int32_t GetFlag() const;
-    void SetFlag(int32_t flag);
+    void SetSizeBytes(int64_t sizeBytes);
+    int32_t GetDiskType() const;
+    void SetDiskType(int32_t diskType);
+    bool GetRemovable() const;
+    bool IsRemovable() const;
     void SetVolumeIds(const std::vector<std::string> &volumeIds);
     void SetVolumeIds(std::vector<std::string> &&volumeIds);
     const std::vector<std::string> &GetVolumeIds() const;
-    void SetExtInfo(const std::string &extInfo);
-    const std::string &GetExtInfo() const;
+    void SetExtraInfo(const std::string &extraInfo);
+    const std::string &GetExtraInfo() const;
 
-    /** volumeManager.Disk.removable：是否与 SD/USB/光驱等可移动盘 flag 一致（由 flag_ 推导）。 */
-    bool IsRemovable() const;
-    /** volumeManager.Disk.type：据 sysPath_ 子串优先级（CD>NVMe(SSD)>SATA(HDD)>USB>SD）再结合 flag_ 回退。 */
-    std::string GetUiType() const;
+    // --- 进程内 ---
+    /** 块设备节点路径，如 /dev/block/disk-8-0。 */
+    std::string GetSysPath() const;
+    bool IsInternalDataDisk() const;
+    /** 据 uevent 的 /sys{DEVPATH} 刷新 diskType，不持久化 sysfs 路径。 */
+    void RefreshClassificationFromSysfs(const std::string &sysfsPath);
 
     bool Marshalling(Parcel &parcel) const override;
     static Disk *Unmarshalling(Parcel &parcel);
 
 private:
-    /*
-     * 与 ArkTS volumeManager.Disk 各属性的对应（实现侧见 volumemanager_n_exporter BuildDiskJSObject）：
-     *   Disk.id          -> diskId_            / GetDiskId()
-     *   Disk.description -> vendor_           / GetVendor()
-     *   Disk.type       -> （无单独成员）       / GetUiType()，见 disk.cpp：sysPath 规则 + flag_ 回退，含 SSD|HDD|SD|USB|ODD|Unknown
-     *   Disk.capacity    -> sizeBytes_        / GetSizeBytes()
-     *   Disk.removable   -> （无单独成员）       / IsRemovable()，由 flag_（SD/USB/CD）推导
-     *   Disk.deviceNode  -> sysPath_          / GetSysPath()（通常为 sysfs 路径 /sys+DEVPATH，非挂载目录）
-     *   Disk.volumeIds   -> volumeIds_        / GetVolumeIds()
-     *   Disk.extInfo     -> extInfo_          / GetExtInfo()
-     * IPC Parcel 序列化字段仅含磁盘侧持久数据；flag_ 同时为 GetUiType/IsRemovable 的推导依据。
-     */
-    std::string diskId_; ///< JS Disk.id
-    int64_t sizeBytes_ {}; ///< JS Disk.capacity
-    std::string sysPath_; ///< JS Disk.deviceNode（内容实为 sysfs 设备路径语义）
-    std::string vendor_; ///< JS Disk.description
-    int32_t flag_ {}; ///< 与 disk_config/uevent MatchConfig 等一致；推导 JS type、removable
-    std::vector<std::string> volumeIds_; ///< JS Disk.volumeIds
-    /** JS Disk.extInfo；由 storage_daemon ADDON_GET_BLOCK_INFO_BY_TYPE(213) GetBlockInfoByType 填入（见磁盘创建路径）。 */
-    std::string extInfo_;
+    void UpdateRemovableFromDiskType();
+
+    // volumeManager.Disk（new_api，与 JS 字段顺序一致）
+    std::string diskId_;                         // diskId
+    int64_t sizeBytes_ {};                       // sizeBytes
+    int32_t diskType_ {DISK_TYPE_UNKNOWN};       // diskType
+    bool removable_ {true};                      // removable，默认 true；仅 HDD/SSD 为 false
+    std::vector<std::string> volumeIds_;          // volumeIds
+    std::string extraInfo_;                        // extraInfo
+
+    // 进程内扩展（CommonEvent），不导出 JS
+    std::string sysPath_;    // /dev/block/{diskId}
 };
 } // namespace DiskManager
 } // namespace OHOS

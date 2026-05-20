@@ -34,6 +34,7 @@
         "hitrace",
         "init",
         "ipc",
+        "json",
         "napi",
         "runtime_core",
         "safwk",

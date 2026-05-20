@@ -16,7 +16,7 @@
 #ifndef OHOS_DISK_MANAGER_DISK_UEVENT_BOOTSTRAP_H
 #define OHOS_DISK_MANAGER_DISK_UEVENT_BOOTSTRAP_H
 
-#include "disk/uevent_env_parser.h"
+#include "uevent_env_parser.h"
 #include "disk_config.h"
 
 #include <list>

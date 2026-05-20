@@ -13,20 +13,22 @@
  * limitations under the License.
  */
 
-#include "disk/uevent_bootstrap.h"
+#include "block_info_table.h"
+#include "uevent_bootstrap.h"
 
 #include "adapter/storage_daemon_adapter.h"
 #include "disk.h"
-#include "disk/disk_manager.h"
-#include "disk/partition_table_parser.h"
-#include "disk/storage_spec_models.h"
-#include "disk/uevent_env_parser.h"
+#include "disk_manager.h"
+#include "partition_table_parser.h"
+#include "storage_spec_models.h"
+#include "uevent_env_parser.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
 #include "errors.h"
 #include "notification/common_event_publisher.h"
 #include "volume_core.h"
 
+#include <cctype>
 #include <dirent.h>
 #include <fstream>
 #include <string_view>
@@ -89,14 +91,6 @@ std::string BlockPathForId(const std::string &id)
 dev_t PartitionDev(unsigned int diskMaj, unsigned int diskMin, uint32_t partIndex)
 {
     return makedev(diskMaj, diskMin + partIndex);
-}
-
-DiskStoreDiskType DiskTypeFromDevPath(const std::string &devPath)
-{
-    if (devPath.find("usb") != std::string::npos) {
-        return DiskStoreDiskType::USB_FLASH;
-    }
-    return DiskStoreDiskType::SD_CARD;
 }
 
 int32_t LegacyDiskFlagFromDevPath(const std::string &devPath)
@@ -187,29 +181,25 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
 
 void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, bool publishNewDiskEvent)
 {
-    DiskStoreRecord drec;
-    drec.diskId = diskId;
-    drec.diskName = env.devName;
-    drec.sysPath = env.sysPath;
-    drec.removable = true;
-    drec.diskType = DiskTypeFromDevPath(env.devPath);
-    drec.mediaType = DiskStoreMediaType::UNKNOWN;
-    drec.sizeBytes = 0;
-    (void)DiskManager::GetInstance().UpsertDiskSnapshot(drec);
+    BlockInfo blockInfo {};
+    const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo);
 
     if (!publishNewDiskEvent) {
         return;
     }
-    Disk diskForEvent(diskId, 0, env.sysPath, "", LegacyDiskFlagFromDevPath(env.devPath));
-    std::string blockInfosByDiskId;
-    const int32_t biErr =
-        StorageDaemonAdapter::GetInstance().GetBlockInfoByType(diskId, blockInfosByDiskId);
-    if (biErr == ERR_OK && !blockInfosByDiskId.empty()) {
-        diskForEvent.SetExtInfo(std::move(blockInfosByDiskId));
-        LOGI("UpsertDiskAndPublishEvent extInfo populated for %{public}s len=%{public}zu", diskId.c_str(),
-             diskForEvent.GetExtInfo().size());
+    Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, BlockPathForId(diskId),
+                      LegacyDiskFlagFromDevPath(env.devPath));
+    if (hasBlockInfo) {
+        diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(
+            blockInfo, {{"diskId", diskId}, {"diskName", env.devName}}));
     } else {
-        LOGW("UpsertDiskAndPublishEvent GetBlockInfoByType diskId=%{public}s err=%{public}d", diskId.c_str(), biErr);
+        LOGW("UpsertDiskAndPublishEvent block info cache miss diskId=%{public}s", diskId.c_str());
+    }
+    diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
+    if (!diskForEvent.GetExtraInfo().empty()) {
+        LOGI("UpsertDiskAndPublishEvent extraInfo len=%{public}zu diskId=%{public}s",
+             diskForEvent.GetExtraInfo().size(),
+             diskId.c_str());
     }
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);
