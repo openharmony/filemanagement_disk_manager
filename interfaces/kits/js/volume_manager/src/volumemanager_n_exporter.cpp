@@ -1046,6 +1046,53 @@ bool ParseFormatParamsFromJSObject(napi_env env, napi_value obj, OHOS::DiskManag
 
     return true;
 }
+
+struct FormatPartitionArgs {
+    std::string diskId;
+    int32_t partitionNum;
+    OHOS::DiskManager::FormatParams params;
+    bool valid;
+};
+
+FormatPartitionArgs ParseFormatPartitionArgs(napi_env env, NFuncArg &funcArg)
+{
+    FormatPartitionArgs result;
+    result.valid = false;
+
+    bool succ = false;
+    std::unique_ptr<char[]> diskId;
+    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    int32_t partitionNum = 0;
+    std::tie(succ, partitionNum) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    napi_valuetype paramsType = napi_undefined;
+    napi_typeof(env, funcArg[(int)NARG_POS::THIRD], &paramsType);
+    if (paramsType != napi_object) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    OHOS::DiskManager::FormatParams params;
+    if (!ParseFormatParamsFromJSObject(env, funcArg[(int)NARG_POS::THIRD], params)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    result.diskId = std::string(diskId.get());
+    result.partitionNum = partitionNum;
+    result.params = params;
+    result.valid = true;
+    return result;
+}
 } // namespace
 
 // ---------- Partition management APIs (@since 26.0.0) ----------
@@ -1205,44 +1252,21 @@ napi_value FormatPartition(napi_env env, napi_callback_info info)
         NError(E_PERMISSION_SYS).ThrowErr(env);
         return nullptr;
     }
+
     NFuncArg funcArg(env, info);
     if (!funcArg.InitArgs((int)NARG_CNT::THREE, (int)NARG_CNT::THREE)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
 
-    bool succ = false;
-    std::unique_ptr<char[]> diskId;
-    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
-    if (!succ) {
-        NError(E_PARAMS).ThrowErr(env);
+    auto args = ParseFormatPartitionArgs(env, funcArg);
+    if (!args.valid) {
         return nullptr;
     }
 
-    int32_t partitionNum = 0;
-    std::tie(succ, partitionNum) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
-    if (!succ) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-
-    napi_valuetype paramsType = napi_undefined;
-    napi_typeof(env, funcArg[(int)NARG_POS::THIRD], &paramsType);
-    if (paramsType != napi_object) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-
-    OHOS::DiskManager::FormatParams params;
-    if (!ParseFormatParamsFromJSObject(env, funcArg[(int)NARG_POS::THIRD], params)) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-
-    std::string diskIdStr(diskId.get());
-    auto cbExec = [diskIdStr, partitionNum, params]() -> NError {
+    auto cbExec = [args]() -> NError {
         int32_t result = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->FormatPartition(
-            diskIdStr, partitionNum, params);
+            args.diskId, args.partitionNum, args.params);
         if (result != E_OK) {
             return NError(Convert2JsErrNum(result));
         }
