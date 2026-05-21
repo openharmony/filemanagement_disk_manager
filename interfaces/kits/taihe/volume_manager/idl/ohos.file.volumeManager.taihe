@@ -28,6 +28,7 @@ struct Volume {
     state: i32;
     path: String;
     fsType: String;
+    extraInfo: String;
 }
 
 struct Disk {

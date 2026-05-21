@@ -22,7 +22,7 @@
 namespace ANI::VolumeManager {
 ohos::file::volumeManager::Volume GetVolumeByUuidSync(taihe::string_view uuid);
 taihe::array<ohos::file::volumeManager::Volume> GetAllVolumesSync();
-void GetVolumeByIdSync(taihe::string_view volumeId);
+ohos::file::volumeManager::Volume GetVolumeByIdSync(taihe::string_view volumeId);
 void MountSync(taihe::string_view volumeId);
 void UnmountSync(taihe::string_view volumeId);
 void FormatSync(taihe::string_view volumeId, taihe::string_view fsType);
@@ -35,10 +35,11 @@ taihe::array<ohos::file::volumeManager::Disk> GetAllDisksSync();
 
 // Partition management APIs (new_api @since 26.0.0)
 ohos::file::volumeManager::PartitionTableInfo GetPartitionTableSync(taihe::string_view diskId);
-void CreatePartitionSync(taihe::string_view diskId, ohos::file::volumeManager::PartitionParams partitionParams);
+void CreatePartitionSync(taihe::string_view diskId,
+                         const ohos::file::volumeManager::PartitionParams &params);
 void DeletePartitionSync(taihe::string_view diskId, int32_t partitionNum);
 void FormatPartitionSync(taihe::string_view diskId,
                          int32_t partitionNum,
-                         ohos::file::volumeManager::FormatParams formatParams);
+                         const ohos::file::volumeManager::FormatParams &params);
 } // namespace ANI::VolumeManager
 #endif // OHOS_FILE_VOLUMEMANAGER_IMPL_H
