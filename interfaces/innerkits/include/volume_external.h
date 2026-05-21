@@ -31,6 +31,7 @@ enum FsType {
     MTP,
     UDF,
     ISO9660,
+    PTP,
     EXT4
 };
 

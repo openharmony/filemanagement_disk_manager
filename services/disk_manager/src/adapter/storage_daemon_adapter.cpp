@@ -170,16 +170,16 @@ int32_t StorageDaemonAdapter::Eject(const std::string &devPath)
     return ret;
 }
 
-int32_t StorageDaemonAdapter::GetCDStatus(const std::string &devPath, int32_t &status)
+int32_t StorageDaemonAdapter::QueryCDStatus(const std::string &devPath, int32_t &status)
 {
-    LOGI("GetCDStatus enter, devPath=%{public}s", devPath.c_str());
+    LOGI("QueryCDStatus enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
-        LOGE("GetCDStatus exit err=%{public}d (proxy not ready)", err);
+        LOGE("QueryCDStatus exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->GetCDStatus(devPath, status);
-    LOGI("GetCDStatus exit ret=%{public}d status=%{public}d", ret, status);
+    const int32_t ret = storageDaemon_->QueryCDStatus(devPath, status);
+    LOGI("QueryCDStatus exit ret=%{public}d status=%{public}d", ret, status);
     return ret;
 }
 

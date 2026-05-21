@@ -28,6 +28,7 @@
 
 #include <cctype>
 #include <cerrno>
+#include <algorithm>
 #include <cinttypes>
 #include <cstdint>
 #include <cstdlib>
@@ -93,6 +94,17 @@ uint32_t ReadPersistUsbReadonlyMountFlagBits(bool useFuseData)
         mountFlag &= ~static_cast<uint32_t>(MS_RDONLY);
     }
     return mountFlag;
+}
+
+int32_t IsDiskSupported(const std::string &diskId)
+{
+    Disk disk;
+    int32_t ret = DiskManager::GetInstance().GetDiskById(diskId, disk);
+    if (ret != E_OK || disk.GetDiskType() == CD_FLAG) {
+        LOGE("GetDiskById failed or CD not support, diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return E_NOT_SUPPORT;
+    }
+    return E_OK;
 }
 
 void ApplyDefaultVolumeDescriptionIfUnset(VolumeExternal &volExternal, int32_t flag)
@@ -584,6 +596,10 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             LOGE("MTP device not support to format.");
             return E_NOT_SUPPORT;
         }
+        if (IsDiskSupported(it->second.GetDiskId()) != E_OK) {
+            LOGE("Not support file system, volumeId=%{public}s", volumeId.c_str());
+            return E_NOT_SUPPORT;
+        }
         if (it->second.GetState() != VolumeState::UNMOUNTED) {
             LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted", volumeId.c_str(),
                  it->second.GetState());
@@ -681,6 +697,10 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
             LOGE("Volume with id %{public}s not found", fsUuid.c_str());
             return E_NON_EXIST;
         }
+        if (IsDiskSupported(it->second.GetDiskId()) != E_OK) {
+            LOGE("SetVolumeDescription failed, not support, fsUuid=%{public}s", fsUuid.c_str());
+            return E_NOT_SUPPORT;
+        }
         volumeId = it->first;
         blockVolId = it->second.GetId();
         fsTypeStr = it->second.GetFsTypeString();
@@ -709,6 +729,12 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(undefinedFsType)) {
         LOGE("Partition: diskId=%{public}s is fuse, not support", diskId.c_str());
         return E_NOT_SUPPORT;
+    }
+
+    int32_t ret = IsDiskSupported(diskId);
+    if (ret != E_OK) {
+        LOGE("Partition failed, not support diskId=%{public}s, ret=%{public}d", diskId.c_str(), ret);
+        return ret;
     }
     return StorageDaemonAdapter::GetInstance().Partition(diskId, type, 0);
 }
@@ -810,8 +836,29 @@ int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
 {
     std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
     std::vector<VolumeExternal> result;
+    std::vector<std::string> dvdDiskIds;
     for (auto it = volumeMap_.begin(); it != volumeMap_.end(); ++it) {
         VolumeExternal volExternal = it->second;
+        if (volExternal.GetFsType() == UDF || volExternal.GetFsType() == ISO9660) {
+            dvdDiskIds.push_back(volExternal.GetDiskId());
+        }
+        result.push_back(volExternal);
+    }
+
+    for (auto it = diskMap_.begin(); it != diskMap_.end(); ++it) {
+        const Disk &disk = it->second;
+        if (disk.GetDiskType() != CD_FLAG) {
+            continue;
+        }
+        auto iter = std::find(dvdDiskIds.begin(), dvdDiskIds.end(), disk.GetDiskId());
+        if (iter != dvdDiskIds.end()) {
+            LOGE("This disk has real volume, diskId: %{public}s", disk.GetDiskId().c_str());
+            continue;
+        }
+        VolumeCore core("0", CD_FLAG, disk.GetDiskId(), MOUNTED);
+        VolumeExternal volExternal(core);
+        volExternal.SetFsType(volExternal.GetFsTypeByStr("udf"));
+        volExternal.SetDescription("DVD RW");
         result.push_back(volExternal);
     }
     out = result;

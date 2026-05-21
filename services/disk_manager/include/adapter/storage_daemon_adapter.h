@@ -42,8 +42,8 @@ public:
     int32_t CreateBlockDeviceNode(const std::string &devPath, uint32_t mode, int32_t major, int32_t minor);
     int32_t DestroyBlockDeviceNode(const std::string &devPath);
     int32_t ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume);
-    int32_t Eject(const std::string &devPath);
-    int32_t GetCDStatus(const std::string &devPath, int32_t &status);
+    int32_t Eject(const std::string &volId);
+    int32_t QueryCDStatus(const std::string &devPath, int32_t &status);
     int32_t Mount(const std::string &devPath,
                   const std::string &mountPath,
                   const std::string &fsType,

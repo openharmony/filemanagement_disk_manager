@@ -61,7 +61,7 @@ public:
                                        std::string &output,
                                        int32_t &maxVolume) = 0;
     virtual ErrCode Eject(const std::string &devPath) = 0;
-    virtual ErrCode GetCDStatus(const std::string &devPath, int32_t &status) = 0;
+    virtual ErrCode QueryCDStatus(const std::string &devPath, int32_t &status) = 0;
     virtual ErrCode Mount(const std::string &devPath,
                           const std::string &mountPath,
                           const std::string &fsType,
