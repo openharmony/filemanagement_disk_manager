@@ -54,7 +54,7 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 45] void VerifyBurnData([in] String volumeId, [in] int verifyType);
 
     /* ---------- 分区管理操作（与 @ohos.file.volumeManager 26.0.0 分区扩展对齐） ---------- */
-    [ipccode 46] void GetPartitionTable([in] String diskId, [out] PartitionTableInfo PartitionTableInfo);
+    [ipccode 46] void GetPartitionTable([in] String diskId, [out] PartitionTableInfo tableInfo);
     [ipccode 47] void CreatePartition([in] String diskId, [in] int partitionNum, [in] long startSector, [in] long endSector, [in] String typeCode);
     [ipccode 48] void DeletePartition([in] String diskId, [in] int partitionNum);
     [ipccode 49] void FormatPartition([in] String diskId, [in] int partitionNum, [in] String fsType, [in] boolean quickFormat, [in] String volumeName);

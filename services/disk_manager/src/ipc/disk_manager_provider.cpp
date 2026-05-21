@@ -19,6 +19,7 @@
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "errors.h"
 #include "partition_types.h"
 #include "storage_daemon_adapter.h"
 #include "uevent_bootstrap.h"
@@ -223,7 +224,7 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
 {
     (void)out;
     LOGI("GetPartitionTable diskId=%{public}s - stub, not yet implemented", diskId.c_str());
-    return DiskManagerErrNo::E_NOT_SUPPORT;
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
@@ -237,14 +238,14 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
     (void)typeCode;
     LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
          diskId.c_str(), partitionNum);
-    return DiskManagerErrNo::E_NOT_SUPPORT;
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
 {
     LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
          diskId.c_str(), partitionNum);
-    return DiskManagerErrNo::E_NOT_SUPPORT;
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
@@ -258,7 +259,7 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
     (void)volumeName;
     LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
          diskId.c_str(), partitionNum);
-    return DiskManagerErrNo::E_NOT_SUPPORT;
+    return DiskManagerErrNo::E_OK;
 }
 
 } // namespace DiskManager

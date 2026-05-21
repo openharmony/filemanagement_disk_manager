@@ -242,8 +242,11 @@ ohos::file::volumeManager::Disk GetDiskByIdSync(::taihe::string_view diskId)
 
     // Convert volumeIds vector to taihe array
     auto &volumeIds = diskInfo->GetVolumeIds();
-    std::vector<std::string> volIdStrs(volumeIds.begin(), volumeIds.end());
-    auto volIdArray = taihe::array<std::string>(taihe::copy_data_t{}, volIdStrs.data(), volIdStrs.size());
+    std::vector<taihe::string> volIdStrs;
+    for (const auto &id : volumeIds) {
+        volIdStrs.push_back(taihe::string(id));
+    }
+    auto volIdArray = taihe::array<taihe::string>(taihe::copy_data_t{}, volIdStrs.data(), volIdStrs.size());
 
     return {diskInfo->GetDiskId(),
             diskInfo->GetSizeBytes(),
@@ -271,10 +274,14 @@ taihe::array<ohos::file::volumeManager::Disk> GetAllDisksSync()
     std::vector<ohos::file::volumeManager::Disk> taiheDisks;
     for (const auto &disk : *disks) {
         auto &volumeIds = disk.GetVolumeIds();
-        std::vector<std::string> volIdStrs(volumeIds.begin(), volumeIds.end());
-        auto volIdArray = taihe::array<std::string>(taihe::copy_data_t{}, volIdStrs.data(), volIdStrs.size());
-        taiheDisks.push_back({disk.GetDiskId(), disk.GetSizeBytes(), disk.GetDiskType(), disk.GetRemovable(),
-                              volIdArray, disk.GetExtraInfo()});
+        std::vector<taihe::string> volIdStrs;
+        for (const auto &id : volumeIds) {
+            volIdStrs.push_back(taihe::string(id));
+        }
+        auto volIdArray = taihe::array<taihe::string>(taihe::copy_data_t{}, volIdStrs.data(), volIdStrs.size());
+        ohos::file::volumeManager::Disk taiheDisk{disk.GetDiskId(),   disk.GetSizeBytes(), disk.GetDiskType(),
+                                                  disk.GetRemovable(), volIdArray,         disk.GetExtraInfo()};
+        taiheDisks.push_back(taiheDisk);
     }
     return taihe::array<ohos::file::volumeManager::Disk>(taihe::copy_data_t{}, taiheDisks.data(), taiheDisks.size());
 }
