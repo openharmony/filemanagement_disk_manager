@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 @!namespace("@ohos.file.volumeManager", "volumeManager")
 
 @!sts_inject("""
@@ -30,6 +30,47 @@ struct Volume {
     fsType: String;
 }
 
+struct Disk {
+    diskId: String;
+    sizeBytes: i64;
+    diskType: i32;
+    removable: bool;
+    volumeIds: Array<String>;
+    extraInfo: String;
+}
+
+struct PartitionInfo {
+    partitionNum: i32;
+    diskId: String;
+    startSector: i64;
+    endSector: i64;
+    sizeBytes: i64;
+    fsType: String;
+}
+
+struct PartitionTableInfo {
+    diskId: String;
+    tableType: String;
+    partitionCount: i32;
+    totalSector: i64;
+    sectorSize: i32;
+    alignSector: i32;
+    partitions: Array<PartitionInfo>;
+}
+
+struct PartitionParams {
+    partitionNum: i32;
+    startSector: i64;
+    endSector: i64;
+    typeCode: String;
+}
+
+struct FormatParams {
+    fsType: String;
+    quickFormat: bool;
+    volumeName: String;
+}
+
 @gen_async("getVolumeByUuid")
 @gen_promise("getVolumeByUuid")
 function GetVolumeByUuidSync(uuid: String): Volume;
@@ -44,7 +85,7 @@ function FormatSync(volumeId: String, fsType: String): void;
 
 @gen_async("getVolumeById")
 @gen_promise("getVolumeById")
-function GetVolumeByIdSync(volumeId: String): void;
+function GetVolumeByIdSync(volumeId: String): Volume;
 
 @gen_async("mount")
 @gen_promise("mount")
@@ -61,3 +102,27 @@ function PartitionSync(diskId: String, type: i32): void;
 @gen_async("setVolumeDescription")
 @gen_promise("setVolumeDescription")
 function SetVolumeDescriptionSync(uuid: String, description: String): void;
+
+@gen_async("getAllDisks")
+@gen_promise("getAllDisks")
+function GetAllDisksSync(): Array<Disk>;
+
+@gen_async("getDiskById")
+@gen_promise("getDiskById")
+function GetDiskByIdSync(diskId: String): Disk;
+
+@gen_async("getPartitionTable")
+@gen_promise("getPartitionTable")
+function GetPartitionTableSync(diskId: String): PartitionTableInfo;
+
+@gen_async("createPartition")
+@gen_promise("createPartition")
+function CreatePartitionSync(diskId: String, params: PartitionParams): void;
+
+@gen_async("deletePartition")
+@gen_promise("deletePartition")
+function DeletePartitionSync(diskId: String, partitionNum: i32): void;
+
+@gen_async("formatPartition")
+@gen_promise("formatPartition")
+function FormatPartitionSync(diskId: String, partitionNum: i32, params: FormatParams): void;

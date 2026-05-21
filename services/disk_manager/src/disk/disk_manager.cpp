@@ -15,6 +15,7 @@
 
 #include "block_info_table.h"
 #include "disk_manager.h"
+#include "partition_table_parser.h"
 #include "voldata_uuid_store.h"
 
 #include "storage_daemon_adapter.h"
@@ -1032,5 +1033,41 @@ void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemo
     }
     volumeMap_.erase(id);
 }
+
+// ---------- Partition management APIs (@since 26.0.0) ----------
+
+int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
+{
+    (void)diskId;
+    (void)out;
+    LOGW("GetPartitionTable: stub implementation, not yet supported");
+    return E_NOT_SUPPORT;
+}
+
+int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionParams &params)
+{
+    (void)diskId;
+    (void)params;
+    LOGW("CreatePartition: stub implementation, not yet supported");
+    return E_NOT_SUPPORT;
+}
+
+int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitionNum)
+{
+    (void)diskId;
+    (void)partitionNum;
+    LOGW("DeletePartition: stub implementation, not yet supported");
+    return E_NOT_SUPPORT;
+}
+
+int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
+{
+    (void)diskId;
+    (void)partitionNum;
+    (void)params;
+    LOGW("FormatPartition: stub implementation, not yet supported");
+    return E_NOT_SUPPORT;
+}
+
 } // namespace DiskManager
 } // namespace OHOS

@@ -37,6 +37,12 @@ napi_value CreateIsoImage(napi_env env, napi_callback_info info);
 napi_value Burn(napi_env env, napi_callback_info info);
 napi_value GetOpProcess(napi_env env, napi_callback_info info);
 napi_value VerifyBurnData(napi_env env, napi_callback_info info);
+
+// Partition management APIs (new_api @since 26.0.0)
+napi_value GetPartitionTable(napi_env env, napi_callback_info info);
+napi_value CreatePartition(napi_env env, napi_callback_info info);
+napi_value DeletePartition(napi_env env, napi_callback_info info);
+napi_value FormatPartition(napi_env env, napi_callback_info info);
 } // namespace ModuleVolumeManager
 } // namespace DiskManager
 } // namespace OHOS

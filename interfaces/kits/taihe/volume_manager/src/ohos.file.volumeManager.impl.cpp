@@ -17,6 +17,7 @@
 #include "disk_manager_client.h"
 #include "disk_manager_hilog.h"
 #include "disk_manager_napi_errno.h"
+#include "partition_types.h"
 #include "storageStatistics_taihe_error.h"
 
 namespace ANI::VolumeManager {
@@ -27,17 +28,23 @@ ohos::file::volumeManager::Volume GetVolumeByUuidSync(taihe::string_view uuid)
     if (instance == nullptr) {
         LOGE("Get DiskManagerClient instance failed");
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return {"", "", "", "", true, 0, "", ""};
+        return {"", "", "", "", true, 0, "", "", ""};
     }
     auto volumeInfo = std::make_shared<OHOS::DiskManager::VolumeExternal>();
     int32_t errNum = instance->GetVolumeByUuid(uuid.c_str(), *volumeInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
-        return {"", "", "", "", true, 0, "", ""};
+        return {"", "", "", "", true, 0, "", "", ""};
     }
-    return {
-        volumeInfo->GetId(),    volumeInfo->GetUuid(), volumeInfo->GetDiskId(),      volumeInfo->GetDescription(), true,
-        volumeInfo->GetState(), volumeInfo->GetPath(), volumeInfo->GetFsTypeString()};
+    return {volumeInfo->GetId(),
+            volumeInfo->GetUuid(),
+            volumeInfo->GetDiskId(),
+            volumeInfo->GetDescription(),
+            true,
+            volumeInfo->GetState(),
+            volumeInfo->GetPath(),
+            volumeInfo->GetFsTypeString(),
+            volumeInfo->GetExtraInfo()};
 }
 
 taihe::array<ohos::file::volumeManager::Volume> GetAllVolumesSync()
@@ -86,26 +93,28 @@ void FormatSync(::taihe::string_view volumeId, ::taihe::string_view fsType)
     }
 }
 
-void GetVolumeByIdSync(::taihe::string_view volumeId)
+ohos::file::volumeManager::Volume GetVolumeByIdSync(::taihe::string_view volumeId)
 {
     std::string volumeIdString = std::string(volumeId);
     if (volumeIdString.empty()) {
         LOGE("Invalid volumeId parameter, volumeId is empty");
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
-        return;
+        return {"", "", "", "", true, 0, "", ""};
     }
     auto volumeInfo = std::make_shared<OHOS::DiskManager::VolumeExternal>();
     auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
     if (instance == nullptr) {
         LOGE("Get DiskManagerClient instance failed");
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
+        return {"", "", "", "", true, 0, "", ""};
     }
     int32_t errNum = instance->GetVolumeById(volumeIdString, *volumeInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
-        return;
+        return {"", "", "", "", true, 0, "", ""};
     }
+    return {volumeInfo->GetId(),    volumeInfo->GetUuid(), volumeInfo->GetDiskId(),      volumeInfo->GetDescription(),
+            true,                   volumeInfo->GetState(), volumeInfo->GetPath(),        volumeInfo->GetFsTypeString()};
 }
 
 void MountSync(::taihe::string_view volumeId)
@@ -193,6 +202,195 @@ void SetVolumeDescriptionSync(::taihe::string_view uuid, ::taihe::string_view de
         return;
     }
 }
+
+// ---------- Disk management APIs ----------
+
+ohos::file::volumeManager::Disk GetDiskByIdSync(::taihe::string_view diskId)
+{
+    std::string diskIdString = std::string(diskId);
+    if (diskIdString.empty()) {
+        LOGE("Invalid parameter, diskId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return {};
+    }
+    auto diskInfo = std::make_shared<OHOS::DiskManager::Disk>();
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return {};
+    }
+    int32_t errNum = instance->GetDiskById(diskIdString, *diskInfo);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return {};
+    }
+
+    // Convert volumeIds vector to taihe array
+    auto &volumeIds = diskInfo->GetVolumeIds();
+    std::vector<std::string> volIdStrs(volumeIds.begin(), volumeIds.end());
+
+    return {diskInfo->GetDiskId(),
+            diskInfo->GetSizeBytes(),
+            diskInfo->GetDiskType(),
+            diskInfo->GetRemovable(),
+            taihe::make_array<std::string>(volIdStrs),
+            diskInfo->GetExtraInfo()};
+}
+
+taihe::array<ohos::file::volumeManager::Disk> GetAllDisksSync()
+{
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return taihe::array<ohos::file::volumeManager::Disk>::make(0, ohos::file::volumeManager::Disk{});
+    }
+    auto disks = std::make_shared<std::vector<OHOS::DiskManager::Disk>>();
+    int32_t errNum = instance->GetAllDisks(*disks);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return taihe::array<ohos::file::volumeManager::Disk>::make(0, ohos::file::volumeManager::Disk{});
+    }
+
+    std::vector<ohos::file::volumeManager::Disk> taiheDisks;
+    for (const auto &disk : *disks) {
+        auto &volumeIds = disk.GetVolumeIds();
+        std::vector<std::string> volIdStrs(volumeIds.begin(), volumeIds.end());
+        taiheDisks.push_back({disk.GetDiskId(),
+                              disk.GetSizeBytes(),
+                              disk.GetDiskType(),
+                              disk.GetRemovable(),
+                              taihe::make_array<std::string>(volIdStrs),
+                              disk.GetExtraInfo()});
+    }
+    return taihe::array<ohos::file::volumeManager::Disk>(taihe::copy_data_t{}, taiheDisks.data(), taiheDisks.size());
+}
+
+// ---------- Partition management APIs (@since 26.0.0) ----------
+
+ohos::file::volumeManager::PartitionTableInfo GetPartitionTableSync(::taihe::string_view diskId)
+{
+    std::string diskIdString = std::string(diskId);
+    if (diskIdString.empty()) {
+        LOGE("Invalid parameter, diskId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return {};
+    }
+
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return {};
+    }
+
+    auto tableInfo = std::make_shared<OHOS::DiskManager::PartitionTableInfo>();
+    int32_t errNum = instance->GetPartitionTable(diskIdString, *tableInfo);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return {};
+    }
+
+    // Convert PartitionInfo vector
+    auto &partitions = tableInfo->GetPartitions();
+    std::vector<ohos::file::volumeManager::PartitionInfo> taihePartitions;
+    for (const auto &part : partitions) {
+        taihePartitions.push_back({part.GetPartitionNum(), part.GetDiskId(), part.GetStartSector(), part.GetEndSector(),
+                                   part.GetSizeBytes(), part.GetFsType()});
+    }
+
+    return {tableInfo->GetDiskId(),
+            tableInfo->GetTableType(),
+            tableInfo->GetPartitionCount(),
+            tableInfo->GetTotalSector(),
+            tableInfo->GetSectorSize(),
+            tableInfo->GetAlignSector(),
+            taihe::make_array<ohos::file::volumeManager::PartitionInfo>(taihePartitions)};
+}
+
+void CreatePartitionSync(::taihe::string_view diskId, const ohos::file::volumeManager::PartitionParams &params)
+{
+    std::string diskIdString = std::string(diskId);
+    if (diskIdString.empty()) {
+        LOGE("Invalid parameter, diskId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+
+    OHOS::DiskManager::PartitionParams nativeParams;
+    nativeParams.partitionNum = params.partitionNum;
+    nativeParams.startSector = params.startSector;
+    nativeParams.endSector = params.endSector;
+    nativeParams.typeCode = std::string(params.typeCode);
+
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+
+    int32_t errNum = instance->CreatePartition(diskIdString, nativeParams);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
+void DeletePartitionSync(::taihe::string_view diskId, int32_t partitionNum)
+{
+    std::string diskIdString = std::string(diskId);
+    if (diskIdString.empty() || partitionNum <= 0) {
+        LOGE("Invalid parameter, diskId is empty or partitionNum invalid");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+
+    int32_t errNum = instance->DeletePartition(diskIdString, partitionNum);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
+void FormatPartitionSync(::taihe::string_view diskId,
+                         int32_t partitionNum,
+                         const ohos::file::volumeManager::FormatParams &params)
+{
+    std::string diskIdString = std::string(diskId);
+    if (diskIdString.empty() || partitionNum <= 0) {
+        LOGE("Invalid parameter, diskId is empty or partitionNum invalid");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+
+    OHOS::DiskManager::FormatParams nativeParams;
+    nativeParams.fsType = std::string(params.fsType);
+    nativeParams.quickFormat = params.quickFormat;
+    nativeParams.volumeName = std::string(params.volumeName);
+
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+
+    int32_t errNum = instance->FormatPartition(diskIdString, partitionNum, nativeParams);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
 } // namespace ANI::VolumeManager
 
 // Since these macros are auto-generate, lint will cause false positive.
@@ -205,4 +403,14 @@ TH_EXPORT_CPP_API_MountSync(ANI::VolumeManager::MountSync);
 TH_EXPORT_CPP_API_UnmountSync(ANI::VolumeManager::UnmountSync);
 TH_EXPORT_CPP_API_PartitionSync(ANI::VolumeManager::PartitionSync);
 TH_EXPORT_CPP_API_SetVolumeDescriptionSync(ANI::VolumeManager::SetVolumeDescriptionSync);
+
+// Disk management exports
+TH_EXPORT_CPP_API_GetAllDisksSync(ANI::VolumeManager::GetAllDisksSync);
+TH_EXPORT_CPP_API_GetDiskByIdSync(ANI::VolumeManager::GetDiskByIdSync);
+
+// Partition management exports
+TH_EXPORT_CPP_API_GetPartitionTableSync(ANI::VolumeManager::GetPartitionTableSync);
+TH_EXPORT_CPP_API_CreatePartitionSync(ANI::VolumeManager::CreatePartitionSync);
+TH_EXPORT_CPP_API_DeletePartitionSync(ANI::VolumeManager::DeletePartitionSync);
+TH_EXPORT_CPP_API_FormatPartitionSync(ANI::VolumeManager::FormatPartitionSync);
 // NOLINTEND
