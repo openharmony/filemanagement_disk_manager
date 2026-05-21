@@ -19,6 +19,7 @@
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "partition_types.h"
 #include "storage_daemon_adapter.h"
 #include "uevent_bootstrap.h"
 #include "usb_fuse_adapter.h"
@@ -216,6 +217,39 @@ int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t
 {
     LOGI("VerifyBurnData volumeId=%{public}s type=%{public}d", volumeId.c_str(), verifyType);
     return DiskManager::GetInstance().VerifyBurnData(volumeId, verifyType);
+}
+
+int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
+{
+    LOGI("GetPartitionTable diskId=%{public}s", diskId.c_str());
+    return DiskManager::GetInstance().GetPartitionTable(diskId, out);
+}
+
+int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
+                                             int32_t partitionNum,
+                                             int64_t startSector,
+                                             int64_t endSector,
+                                             const std::string &typeCode)
+{
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
+    return DiskManager::GetInstance().CreatePartition(diskId, partitionNum, startSector, endSector, typeCode);
+}
+
+int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
+{
+    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
+    return DiskManager::GetInstance().DeletePartition(diskId, partitionNum);
+}
+
+int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
+                                             int32_t partitionNum,
+                                             const std::string &fsType,
+                                             bool quickFormat,
+                                             const std::string &volumeName)
+{
+    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s quick=%{public}d",
+         diskId.c_str(), partitionNum, fsType.c_str(), static_cast<int>(quickFormat));
+    return DiskManager::GetInstance().FormatPartition(diskId, partitionNum, fsType, quickFormat, volumeName);
 }
 
 } // namespace DiskManager
