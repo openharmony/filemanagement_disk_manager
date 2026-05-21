@@ -17,6 +17,7 @@
 #define OHOS_FILEMANAGEMENT_DISK_MANAGER_PROVIDER_H
 
 #include "disk_manager_stub.h"
+#include "partition_types.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
 
@@ -63,6 +64,20 @@ public:
                              const std::string &uuid,
                              const std::string &fsType) override;
     int32_t NotifyMtpUnmounted(const std::string &id, bool isBadRemove) override;
+
+    // Partition management APIs (new_api @since 26.0.0)
+    int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out) override;
+    int32_t CreatePartition(const std::string &diskId,
+                            int32_t partitionNum,
+                            int64_t startSector,
+                            int64_t endSector,
+                            const std::string &typeCode) override;
+    int32_t DeletePartition(const std::string &diskId, int32_t partitionNum) override;
+    int32_t FormatPartition(const std::string &diskId,
+                            int32_t partitionNum,
+                            const std::string &fsType,
+                            bool quickFormat,
+                            const std::string &volumeName) override;
 };
 } // namespace DiskManager
 } // namespace OHOS

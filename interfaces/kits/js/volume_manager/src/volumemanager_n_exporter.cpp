@@ -26,6 +26,7 @@
 #include "n_async/n_async_work_callback.h"
 #include "n_async/n_async_work_promise.h"
 #include "n_func_arg.h"
+#include "partition_types.h"
 #include "volume_core.h"
 
 #include <sstream>
@@ -166,7 +167,7 @@ napi_value ScheduleVolumeGetOpProcess(napi_env env, const std::string &sid, NVal
 {
     struct ProgressGuard {
         std::mutex mtx;
-        int32_t value {0};
+        int32_t value{0};
     };
     auto progress = std::make_shared<ProgressGuard>();
     auto cbExec = [sid, progress]() -> NError {
@@ -933,6 +934,357 @@ napi_value VerifyBurnData(napi_env env, napi_callback_info info)
         return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->VerifyBurnData(sv, vType);
     });
 }
+
+// ---------- Helper function to build PartitionTableInfo JS object ----------
+namespace {
+napi_value BuildPartitionInfoJSObject(napi_env env, const OHOS::DiskManager::PartitionInfo &info)
+{
+    NVal obj = NVal::CreateObject(env);
+    obj.AddProp("partitionNum", NVal::CreateInt32(env, info.GetPartitionNum()).val_);
+    obj.AddProp("diskId", NVal::CreateUTF8String(env, info.GetDiskId()).val_);
+    napi_value startSectorVal = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_int64(env, info.GetStartSector(), &startSectorVal), nullptr);
+    obj.AddProp("startSector", startSectorVal);
+    napi_value endSectorVal = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_int64(env, info.GetEndSector(), &endSectorVal), nullptr);
+    obj.AddProp("endSector", endSectorVal);
+    napi_value sizeBytesVal = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_int64(env, info.GetSizeBytes(), &sizeBytesVal), nullptr);
+    obj.AddProp("sizeBytes", sizeBytesVal);
+    obj.AddProp("fsType", NVal::CreateUTF8String(env, info.GetFsType()).val_);
+    return obj.val_;
+}
+
+napi_value BuildPartitionTableInfoJSObject(napi_env env, const OHOS::DiskManager::PartitionTableInfo &info)
+{
+    NVal obj = NVal::CreateObject(env);
+    obj.AddProp("diskId", NVal::CreateUTF8String(env, info.GetDiskId()).val_);
+    obj.AddProp("tableType", NVal::CreateUTF8String(env, info.GetTableType()).val_);
+    obj.AddProp("partitionCount", NVal::CreateInt32(env, info.GetPartitionCount()).val_);
+    napi_value totalSectorVal = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_int64(env, info.GetTotalSector(), &totalSectorVal), nullptr);
+    obj.AddProp("totalSector", totalSectorVal);
+    obj.AddProp("sectorSize", NVal::CreateInt32(env, info.GetSectorSize()).val_);
+    obj.AddProp("alignSector", NVal::CreateInt32(env, info.GetAlignSector()).val_);
+
+    // Build partitions array
+    const auto &partitions = info.GetPartitions();
+    napi_value partitionsArr = nullptr;
+    FILEMGMT_CALL_BASE(napi_create_array(env, &partitionsArr), nullptr);
+    for (size_t i = 0; i < partitions.size(); ++i) {
+        napi_value partObj = BuildPartitionInfoJSObject(env, partitions[i]);
+        FILEMGMT_CALL_BASE(napi_set_element(env, partitionsArr, static_cast<uint32_t>(i), partObj), nullptr);
+    }
+    obj.AddProp("partitions", partitionsArr);
+    return obj.val_;
+}
+
+bool ParsePartitionParamsFromJSObject(napi_env env, napi_value obj, OHOS::DiskManager::PartitionParams &params)
+{
+    bool succ = false;
+    int32_t partitionNum = 0;
+    std::tie(succ, partitionNum) = NVal(env, obj).GetProp("partitionNum").ToInt32();
+    if (!succ) {
+        return false;
+    }
+    params.partitionNum = partitionNum;
+
+    int64_t startSector = 0;
+    std::tie(succ, startSector) = NVal(env, obj).GetProp("startSector").ToInt64();
+    if (!succ) {
+        return false;
+    }
+    params.startSector = startSector;
+
+    int64_t endSector = 0;
+    std::tie(succ, endSector) = NVal(env, obj).GetProp("endSector").ToInt64();
+    if (!succ) {
+        return false;
+    }
+    params.endSector = endSector;
+
+    std::unique_ptr<char[]> typeCode;
+    std::tie(succ, typeCode, std::ignore) = NVal(env, obj).GetProp("typeCode").ToUTF8String();
+    if (!succ) {
+        return false;
+    }
+    params.typeCode = std::string(typeCode.get());
+
+    return true;
+}
+
+bool ParseFormatParamsFromJSObject(napi_env env, napi_value obj, OHOS::DiskManager::FormatParams &params)
+{
+    bool succ = false;
+
+    std::unique_ptr<char[]> fsType;
+    std::tie(succ, fsType, std::ignore) = NVal(env, obj).GetProp("fsType").ToUTF8String();
+    if (!succ) {
+        return false;
+    }
+    params.fsType = std::string(fsType.get());
+
+    // quickFormat is optional, default true
+    NVal quickFormatVal = NVal(env, obj).GetProp("quickFormat");
+    if (quickFormatVal.val_ != nullptr) {
+        bool quickFormat = true;
+        std::tie(succ, quickFormat) = quickFormatVal.ToBool();
+        if (succ) {
+            params.quickFormat = quickFormat;
+        }
+    }
+
+    // volumeName is optional
+    NVal volumeNameVal = NVal(env, obj).GetProp("volumeName");
+    if (volumeNameVal.val_ != nullptr) {
+        std::unique_ptr<char[]> volumeName;
+        std::tie(succ, volumeName, std::ignore) = volumeNameVal.ToUTF8String();
+        if (succ && volumeName != nullptr) {
+            params.volumeName = std::string(volumeName.get());
+        }
+    }
+
+    return true;
+}
+
+struct FormatPartitionArgs {
+    std::string diskId;
+    int32_t partitionNum;
+    OHOS::DiskManager::FormatParams params;
+    bool valid;
+};
+
+FormatPartitionArgs ParseFormatPartitionArgs(napi_env env, NFuncArg &funcArg)
+{
+    FormatPartitionArgs result;
+    result.valid = false;
+
+    bool succ = false;
+    std::unique_ptr<char[]> diskId;
+    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    int32_t partitionNum = 0;
+    std::tie(succ, partitionNum) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    napi_valuetype paramsType = napi_undefined;
+    napi_typeof(env, funcArg[(int)NARG_POS::THIRD], &paramsType);
+    if (paramsType != napi_object) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    OHOS::DiskManager::FormatParams params;
+    if (!ParseFormatParamsFromJSObject(env, funcArg[(int)NARG_POS::THIRD], params)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return result;
+    }
+
+    result.diskId = std::string(diskId.get());
+    result.partitionNum = partitionNum;
+    result.params = params;
+    result.valid = true;
+    return result;
+}
+} // namespace
+
+// ---------- Partition management APIs (@since 26.0.0) ----------
+
+napi_value GetPartitionTable(napi_env env, napi_callback_info info)
+{
+    if (!IsSystemApp()) {
+        NError(E_PERMISSION_SYS).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE, (int)NARG_CNT::ONE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    bool succ = false;
+    std::unique_ptr<char[]> diskId;
+    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    std::string diskIdStr(diskId.get());
+    auto tableInfo = std::make_shared<OHOS::DiskManager::PartitionTableInfo>();
+
+    auto cbExec = [diskIdStr, tableInfo]() -> NError {
+        int32_t errNum = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetPartitionTable(
+            diskIdStr, *tableInfo);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+
+    auto cbComplete = [tableInfo](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        napi_value obj = BuildPartitionTableInfoJSObject(env, *tableInfo);
+        return {NVal(env, obj)};
+    };
+
+    std::string procedureName = "GetPartitionTable";
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule(procedureName, cbExec, cbComplete).val_;
+}
+
+napi_value CreatePartition(napi_env env, napi_callback_info info)
+{
+    if (!IsSystemApp()) {
+        NError(E_PERMISSION_SYS).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::TWO)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    bool succ = false;
+    std::unique_ptr<char[]> diskId;
+    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    napi_valuetype paramsType = napi_undefined;
+    napi_typeof(env, funcArg[(int)NARG_POS::SECOND], &paramsType);
+    if (paramsType != napi_object) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    OHOS::DiskManager::PartitionParams params;
+    if (!ParsePartitionParamsFromJSObject(env, funcArg[(int)NARG_POS::SECOND], params)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    std::string diskIdStr(diskId.get());
+    auto cbExec = [diskIdStr, params]() -> NError {
+        int32_t result =
+            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->CreatePartition(diskIdStr, params);
+        if (result != E_OK) {
+            return NError(Convert2JsErrNum(result));
+        }
+        return NError(ERRNO_NOERR);
+    };
+
+    auto cbComplete = [](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return {NVal::CreateUndefined(env)};
+    };
+
+    std::string procedureName = "CreatePartition";
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule(procedureName, cbExec, cbComplete).val_;
+}
+
+napi_value DeletePartition(napi_env env, napi_callback_info info)
+{
+    if (!IsSystemApp()) {
+        NError(E_PERMISSION_SYS).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::TWO)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    bool succ = false;
+    std::unique_ptr<char[]> diskId;
+    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    int32_t partitionNum = 0;
+    std::tie(succ, partitionNum) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    std::string diskIdStr(diskId.get());
+    auto cbExec = [diskIdStr, partitionNum]() -> NError {
+        int32_t result = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->DeletePartition(
+            diskIdStr, partitionNum);
+        if (result != E_OK) {
+            return NError(Convert2JsErrNum(result));
+        }
+        return NError(ERRNO_NOERR);
+    };
+
+    auto cbComplete = [](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return {NVal::CreateUndefined(env)};
+    };
+
+    std::string procedureName = "DeletePartition";
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule(procedureName, cbExec, cbComplete).val_;
+}
+
+napi_value FormatPartition(napi_env env, napi_callback_info info)
+{
+    if (!IsSystemApp()) {
+        NError(E_PERMISSION_SYS).ThrowErr(env);
+        return nullptr;
+    }
+
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::THREE, (int)NARG_CNT::THREE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+
+    auto args = ParseFormatPartitionArgs(env, funcArg);
+    if (!args.valid) {
+        return nullptr;
+    }
+
+    auto cbExec = [args]() -> NError {
+        int32_t result = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->FormatPartition(
+            args.diskId, args.partitionNum, args.params);
+        if (result != E_OK) {
+            return NError(Convert2JsErrNum(result));
+        }
+        return NError(ERRNO_NOERR);
+    };
+
+    auto cbComplete = [](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return {NVal::CreateUndefined(env)};
+    };
+
+    std::string procedureName = "FormatPartition";
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule(procedureName, cbExec, cbComplete).val_;
+}
+
 } // namespace ModuleVolumeManager
 } // namespace DiskManager
 } // namespace OHOS

@@ -15,6 +15,7 @@
 
 #include "block_info_table.h"
 #include "disk_manager.h"
+#include "partition_table_parser.h"
 #include "voldata_uuid_store.h"
 
 #include "storage_daemon_adapter.h"
@@ -1032,5 +1033,6 @@ void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemo
     }
     volumeMap_.erase(id);
 }
+
 } // namespace DiskManager
 } // namespace OHOS

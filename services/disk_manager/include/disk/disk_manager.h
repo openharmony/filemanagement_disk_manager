@@ -19,6 +19,7 @@
 #include "storage_spec_models.h"
 
 #include "disk.h"
+#include "partition_types.h"
 #include "volume_external.h"
 
 #include <cstdint>

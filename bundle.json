@@ -61,7 +61,8 @@
               "disk.h",
               "disk_manager_client.h",
               "volume_core.h",
-              "volume_external.h"
+              "volume_external.h",
+              "partition_types.h"
             ],
             "header_base": "//foundation/filemanagement/disk_manager/interfaces/innerkits/include"
           }

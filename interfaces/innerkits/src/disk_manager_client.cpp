@@ -445,5 +445,57 @@ int32_t DiskManagerClient::NotifyMtpUnmounted(const std::string &id, const bool 
     LOGI("[L1:DiskManagerClient] NotifyMtpUnmounted: <<< EXIT SUCCESS <<< id=%{public}s", id.c_str());
     return E_OK;
 }
+
+// ---------- Partition management APIs (@since 26.0.0) ----------
+
+int32_t DiskManagerClient::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
+{
+    LOGI("GetPartitionTable diskId=%{public}s", diskId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetPartitionTable(diskId, out);
+}
+
+int32_t DiskManagerClient::CreatePartition(const std::string &diskId, const PartitionParams &params)
+{
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), params.partitionNum);
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.CreatePartition(diskId, params.partitionNum, params.startSector, params.endSector, params.typeCode);
+}
+
+int32_t DiskManagerClient::DeletePartition(const std::string &diskId, int32_t partitionNum)
+{
+    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.DeletePartition(diskId, partitionNum);
+}
+
+int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
+{
+    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s",
+         diskId.c_str(), partitionNum, params.fsType.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.FormatPartition(diskId, partitionNum, params.fsType, params.quickFormat, params.volumeName);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

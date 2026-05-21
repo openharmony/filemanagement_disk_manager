@@ -81,6 +81,7 @@ ohos_shared_library("disk_manager_innerkits") {
   sources = [
     "src/disk.cpp",
     "src/disk_manager_client.cpp",
+    "src/partition_types.cpp",
     "src/volume_core.cpp",
     "src/volume_external.cpp",
   ]

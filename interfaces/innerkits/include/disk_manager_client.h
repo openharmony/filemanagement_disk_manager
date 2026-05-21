@@ -26,6 +26,7 @@
 #include <singleton.h>
 
 #include "disk.h"
+#include "partition_types.h"
 #include "volume_external.h"
 
 namespace OHOS {
@@ -39,6 +40,7 @@ class DiskManagerClient : public NoCopyable {
 public:
     int32_t ResetProxy();
 
+    /* ---------- Volume Management ---------- */
     int32_t Mount(const std::string &volumeId);
     int32_t Unmount(const std::string &volumeId);
     int32_t Format(const std::string &volumeId, const std::string &fsType);
@@ -48,19 +50,33 @@ public:
     int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &vc);
     int32_t GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize);
     int32_t GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize);
+
+    /* ---------- Disk Management ---------- */
     int32_t Partition(const std::string &diskId, int32_t type);
-    int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
     int32_t GetAllDisks(std::vector<Disk> &vecOfDisk);
     int32_t GetDiskById(const std::string &diskId, Disk &disk);
+
+    /* ---------- Partition Management (@since 26.0.0) ---------- */
+    int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out);
+    int32_t CreatePartition(const std::string &diskId, const PartitionParams &params);
+    int32_t DeletePartition(const std::string &diskId, int32_t partitionNum);
+    int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params);
+
+    /* ---------- Optical Disc / Burn Operations ---------- */
     int32_t EraseVolume(const std::string &volumeId);
     int32_t EjectVolume(const std::string &volumeId);
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath);
     int32_t BurnVolume(const std::string &volumeId, const std::string &burnOptions);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
+
+    /* ---------- MTP Device Management ---------- */
     int32_t NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
                              const std::string &uuid, const std::string &fsType);
     int32_t NotifyMtpUnmounted(const std::string &id, const bool isBadRemove);
+
+    /* ---------- Internal Events ---------- */
+    int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
 
 private:
     int32_t Connect(sptr<IDiskManager> &proxy);

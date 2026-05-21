@@ -19,6 +19,8 @@
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "errors.h"
+#include "partition_types.h"
 #include "storage_daemon_adapter.h"
 #include "uevent_bootstrap.h"
 #include "usb_fuse_adapter.h"
@@ -216,6 +218,48 @@ int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t
 {
     LOGI("VerifyBurnData volumeId=%{public}s type=%{public}d", volumeId.c_str(), verifyType);
     return DiskManager::GetInstance().VerifyBurnData(volumeId, verifyType);
+}
+
+int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
+{
+    (void)out;
+    LOGI("GetPartitionTable diskId=%{public}s - stub, not yet implemented", diskId.c_str());
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
+                                             int32_t partitionNum,
+                                             int64_t startSector,
+                                             int64_t endSector,
+                                             const std::string &typeCode)
+{
+    (void)startSector;
+    (void)endSector;
+    (void)typeCode;
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
+         diskId.c_str(), partitionNum);
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
+{
+    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
+         diskId.c_str(), partitionNum);
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
+                                             int32_t partitionNum,
+                                             const std::string &fsType,
+                                             bool quickFormat,
+                                             const std::string &volumeName)
+{
+    (void)fsType;
+    (void)quickFormat;
+    (void)volumeName;
+    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
+         diskId.c_str(), partitionNum);
+    return DiskManagerErrNo::E_OK;
 }
 
 } // namespace DiskManager
