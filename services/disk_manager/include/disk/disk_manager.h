@@ -58,12 +58,6 @@ public:
     int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &out);
     int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &out);
 
-    // Partition management APIs (new_api @since 26.0.0)
-    int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out);
-    int32_t CreatePartition(const std::string &diskId, const PartitionParams &params);
-    int32_t DeletePartition(const std::string &diskId, int32_t partitionNum);
-    int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params);
-
     int32_t UpdateVolumeMetadata(const std::string &volumeId,
                                  const std::string &fsUuid,
                                  const std::string &fsTypeStr,

@@ -221,8 +221,9 @@ int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t
 
 int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
 {
-    LOGI("GetPartitionTable diskId=%{public}s", diskId.c_str());
-    return DiskManager::GetInstance().GetPartitionTable(diskId, out);
+    (void)out;
+    LOGI("GetPartitionTable diskId=%{public}s - stub, not yet implemented", diskId.c_str());
+    return DiskManagerErrNo::E_NOT_SUPPORT;
 }
 
 int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
@@ -231,14 +232,19 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
                                              int64_t endSector,
                                              const std::string &typeCode)
 {
-    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
-    return DiskManager::GetInstance().CreatePartition(diskId, partitionNum, startSector, endSector, typeCode);
+    (void)startSector;
+    (void)endSector;
+    (void)typeCode;
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
+         diskId.c_str(), partitionNum);
+    return DiskManagerErrNo::E_NOT_SUPPORT;
 }
 
 int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
 {
-    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
-    return DiskManager::GetInstance().DeletePartition(diskId, partitionNum);
+    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
+         diskId.c_str(), partitionNum);
+    return DiskManagerErrNo::E_NOT_SUPPORT;
 }
 
 int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
@@ -247,9 +253,12 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
                                              bool quickFormat,
                                              const std::string &volumeName)
 {
-    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s quick=%{public}d",
-         diskId.c_str(), partitionNum, fsType.c_str(), static_cast<int>(quickFormat));
-    return DiskManager::GetInstance().FormatPartition(diskId, partitionNum, fsType, quickFormat, volumeName);
+    (void)fsType;
+    (void)quickFormat;
+    (void)volumeName;
+    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
+         diskId.c_str(), partitionNum);
+    return DiskManagerErrNo::E_NOT_SUPPORT;
 }
 
 } // namespace DiskManager
