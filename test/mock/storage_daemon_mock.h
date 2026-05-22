@@ -35,7 +35,7 @@ public:
     MOCK_METHOD1(DestroyBlockDeviceNode, ErrCode(const std::string &devPath));
     MOCK_METHOD3(ReadPartitionTable, ErrCode(const std::string &devPath, std::string &output, int32_t &maxVolume));
     MOCK_METHOD1(Eject, ErrCode(const std::string &devPath));
-    MOCK_METHOD2(GetCDStatus, ErrCode(const std::string &devPath, int32_t &status));
+    MOCK_METHOD2(QueryCDStatus, ErrCode(const std::string &devPath, int32_t &status));
     MOCK_METHOD4(Mount,
                  ErrCode(const std::string &devPath,
                          const std::string &mountPath,

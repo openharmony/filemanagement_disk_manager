@@ -141,7 +141,7 @@ ErrCode StorageDaemonProxy::Eject(const std::string &devPath)
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::GetCDStatus(const std::string &devPath, int32_t &status)
+ErrCode StorageDaemonProxy::QueryCDStatus(const std::string &devPath, int32_t &status)
 {
     MessageParcel data;
     MessageParcel reply;

@@ -578,49 +578,49 @@ HWTEST_F(StorageDaemonProxyTest, Eject_TestCase_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: GetCDStatus_TestCase_001
- * @tc.desc: GetCDStatus: WriteInterfaceToken returns false.
+ * @tc.name: QueryCDStatus_TestCase_001
+ * @tc.desc: QueryCDStatus: WriteInterfaceToken returns false.
  * @tc.type: FUNC
  */
-HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonProxyTest, QueryCDStatus_TestCase_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_001 Start";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_001 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
     int32_t status = -1;
-    int32_t ret = proxy_->GetCDStatus("/dev/cdrom", status);
+    int32_t ret = proxy_->QueryCDStatus("/dev/cdrom", status);
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
     EXPECT_EQ(status, 0);
 
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_001 End";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_001 End";
 }
 
 /**
- * @tc.name: GetCDStatus_TestCase_002
- * @tc.desc: GetCDStatus: WriteString16 returns false.
+ * @tc.name: QueryCDStatus_TestCase_002
+ * @tc.desc: QueryCDStatus: WriteString16 returns false.
  * @tc.type: FUNC
  */
-HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_002, TestSize.Level0)
+HWTEST_F(StorageDaemonProxyTest, QueryCDStatus_TestCase_002, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_002 Start";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_002 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
     int32_t status = -1;
-    int32_t ret = proxy_->GetCDStatus("/dev/cdrom", status);
+    int32_t ret = proxy_->QueryCDStatus("/dev/cdrom", status);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_002 End";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_002 End";
 }
 
 /**
- * @tc.name: GetCDStatus_TestCase_003
- * @tc.desc: GetCDStatus: SendRequest returns value other than ERR_NONE.
+ * @tc.name: QueryCDStatus_TestCase_003
+ * @tc.desc: QueryCDStatus: SendRequest returns value other than ERR_NONE.
  * @tc.type: FUNC
  */
-HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_003, TestSize.Level0)
+HWTEST_F(StorageDaemonProxyTest, QueryCDStatus_TestCase_003, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_003 Start";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_003 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
@@ -628,40 +628,40 @@ HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_003, TestSize.Level0)
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_CD_STATUS), _, _, _))
         .WillOnce(Return(IPC_FAILED));
     int32_t status = -1;
-    int32_t ret = proxy_->GetCDStatus("/dev/cdrom", status);
+    int32_t ret = proxy_->QueryCDStatus("/dev/cdrom", status);
     EXPECT_EQ(ret, IPC_FAILED);
 
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_003 End";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_003 End";
 }
 
 /**
- * @tc.name: GetCDStatus_TestCase_004
- * @tc.desc: GetCDStatus: first ReadInt32 is not ERR_OK.
+ * @tc.name: QueryCDStatus_TestCase_004
+ * @tc.desc: QueryCDStatus: first ReadInt32 is not ERR_OK.
  * @tc.type: FUNC
  */
-HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_004, TestSize.Level0)
+HWTEST_F(StorageDaemonProxyTest, QueryCDStatus_TestCase_004, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_004 Start";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_004 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_NONE));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
     int32_t status = -1;
-    int32_t ret = proxy_->GetCDStatus("/dev/cdrom", status);
+    int32_t ret = proxy_->QueryCDStatus("/dev/cdrom", status);
     EXPECT_EQ(ret, REMOTE_FAILED);
 
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_004 End";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_004 End";
 }
 
 /**
- * @tc.name: GetCDStatus_TestCase_005
- * @tc.desc: GetCDStatus: success reads status after remote ERR_OK.
+ * @tc.name: QueryCDStatus_TestCase_005
+ * @tc.desc: QueryCDStatus: success reads status after remote ERR_OK.
  * @tc.type: FUNC
  */
-HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_005, TestSize.Level0)
+HWTEST_F(StorageDaemonProxyTest, QueryCDStatus_TestCase_005, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_005 Start";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_005 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
@@ -670,11 +670,11 @@ HWTEST_F(StorageDaemonProxyTest, GetCDStatus_TestCase_005, TestSize.Level0)
         .WillOnce(Return(ERR_NONE));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK)).WillOnce(Return(3));
     int32_t status = -1;
-    int32_t ret = proxy_->GetCDStatus("/dev/cdrom", status);
+    int32_t ret = proxy_->QueryCDStatus("/dev/cdrom", status);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(status, 3);
 
-    GTEST_LOG_(INFO) << "GetCDStatus_TestCase_005 End";
+    GTEST_LOG_(INFO) << "QueryCDStatus_TestCase_005 End";
 }
 
 /**
@@ -761,7 +761,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_005, TestSize.Level0)
         .WillOnce(Return(true))
         .WillOnce(Return(true))
         .WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(false));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).WillOnce(Return(false));
     int32_t ret = proxy_->Mount("/dev/block/sda1", "/mnt/usb", "vfat", 0);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
@@ -779,7 +779,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_006, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT), _, _, _))
         .WillOnce(Return(IPC_FAILED));
@@ -800,7 +800,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_007, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT), _, _, _))
         .WillOnce(Return(ERR_OK));
@@ -822,7 +822,7 @@ HWTEST_F(StorageDaemonProxyTest, Mount_TestCase_008, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT), _, _, _))
         .WillOnce(Return(ERR_OK));

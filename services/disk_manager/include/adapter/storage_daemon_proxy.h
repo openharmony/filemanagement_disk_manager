@@ -36,7 +36,7 @@ public:
     ErrCode DestroyBlockDeviceNode(const std::string &devPath) override;
     ErrCode ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume) override;
     ErrCode Eject(const std::string &devPath) override;
-    ErrCode GetCDStatus(const std::string &devPath, int32_t &status) override;
+    ErrCode QueryCDStatus(const std::string &devPath, int32_t &status) override;
     ErrCode Mount(const std::string &devPath,
                   const std::string &mountPath,
                   const std::string &fsType,
