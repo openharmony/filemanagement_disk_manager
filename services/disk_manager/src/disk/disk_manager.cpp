@@ -355,6 +355,9 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
         if (err != ERR_OK) {
             return err;
         }
+        force ? CommonEventPublisher::PublishVolumeChange(BAD_REMOVAL, volExternal)
+              : CommonEventPublisher::PublishVolumeChange(REMOVED, volExternal);
+        LOGI("UnmountVolumeMountPoints: umount fuse notify");
         err = StorageDaemonAdapter::GetInstance().Unmount(std::string(EXTERNAL_MOUNT_ROOT) + uuid, FUSE_UMOUNT_FS_TYPE,
                                                           force);
         if (err != ERR_OK) {
