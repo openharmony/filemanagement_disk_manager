@@ -44,6 +44,7 @@ static std::map<int32_t, std::string> FS_TYPE_MAP = {
     {MTP, "mtp"},
     {UDF, "udf"},
     {ISO9660, "iso9660"},
+    {PTP, "ptp"},
     {EXT4, "ext4"},
 };
 
