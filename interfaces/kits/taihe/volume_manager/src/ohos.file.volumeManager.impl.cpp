@@ -535,7 +535,7 @@ int32_t GetOpProcessSync(::taihe::string_view volumeId)
     return progress;
 }
 
-void VerifyBurnDataSync(::taihe::string_view volumeId, ohos::file::volumeManager::VerifyType verifyType)
+void VerifyBurnDataSync(::taihe::string_view volumeId, int32_t verifyType)
 {
     std::string volumeIdString = std::string(volumeId);
     if (volumeIdString.empty()) {

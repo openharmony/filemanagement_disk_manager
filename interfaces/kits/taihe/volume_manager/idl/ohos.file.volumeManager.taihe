@@ -72,22 +72,6 @@ struct FormatParams {
     volumeName: String;
 }
 
-// DiskType enum (@since 26.0.0)
-enum DiskType {
-    SD_CARD = 1,
-    USB_FLASH = 2,
-    CD_DVD_BD = 3,
-    DATA_DISK_SSD = 4,
-    DATA_DISK_HDD = 5,
-    UNKNOWN_DISK_TYPE = 255,
-}
-
-// VerifyType enum for optical drive operations (@since 26.0.0)
-enum VerifyType {
-    KEY_DATA = 0,
-    FULL_DATA = 1,
-}
-
 // Burn options for optical drive operations (@since 26.0.0)
 struct BurnOptions {
     diskName: String;
@@ -178,4 +162,4 @@ function GetOpProcessSync(volumeId: String): i32;
 
 @gen_async("verifyBurnData")
 @gen_promise("verifyBurnData")
-function VerifyBurnDataSync(volumeId: String, verifyType: VerifyType): void;
+function VerifyBurnDataSync(volumeId: String, verifyType: i32): void;
