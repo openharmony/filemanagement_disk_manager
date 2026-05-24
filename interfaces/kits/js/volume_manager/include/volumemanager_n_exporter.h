@@ -43,6 +43,10 @@ napi_value GetPartitionTable(napi_env env, napi_callback_info info);
 napi_value CreatePartition(napi_env env, napi_callback_info info);
 napi_value DeletePartition(napi_env env, napi_callback_info info);
 napi_value FormatPartition(napi_env env, napi_callback_info info);
+
+// 枚举导出函数
+napi_value CreateDiskTypeEnum(napi_env env);
+napi_value CreateVerifyTypeEnum(napi_env env);
 } // namespace ModuleVolumeManager
 } // namespace DiskManager
 } // namespace OHOS

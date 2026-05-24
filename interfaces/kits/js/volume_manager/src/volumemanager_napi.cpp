@@ -77,7 +77,6 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
     FILEMGMT_CALL(napi_set_named_property(env, exports, "VerifyType", verifyTypeEnum));
 
     // 导出 DiskType 枚举（调用 n_exporter 中的函数）
-    extern napi_value CreateDiskTypeEnum(napi_env env);
     napi_value diskTypeEnum = CreateDiskTypeEnum(env);
     FILEMGMT_CALL(napi_set_named_property(env, exports, "DiskType", diskTypeEnum));
 

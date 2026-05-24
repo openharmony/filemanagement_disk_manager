@@ -40,10 +40,6 @@ const std::string FEATURE_STR = "VolumeManager.";
 namespace {
 constexpr int32_t EXTERNAL_VOL_TYPE = static_cast<int32_t>(VolumeType::EXTERNAL);
 
-// VerifyType 枚举值定义（与 IDL 定义保持一致）
-constexpr int32_t VERIFY_TYPE_KEY_DATA = 0;
-constexpr int32_t VERIFY_TYPE_FULL_DATA = 1;
-
 bool AppendWantLineUtf8(std::ostringstream &oss, const char *key, napi_env env, napi_value want)
 {
     bool has = false;
@@ -206,6 +202,8 @@ napi_value ScheduleVolumeGetOpProcess(napi_env env, const std::string &sid, NVal
         .val_;
 }
 
+} // namespace
+
 // ========== 枚举导出函数 ==========
 
 /**
@@ -245,17 +243,13 @@ napi_value CreateVerifyTypeEnum(napi_env env)
     napi_create_object(env, &verifyTypeObj);
 
     napi_property_descriptor props[] = {
-        {"KEY_DATA", nullptr, nullptr, nullptr, nullptr, NVal::CreateInt32(env, VERIFY_TYPE_KEY_DATA).val_,
-         napi_enumerable},
-        {"FULL_DATA", nullptr, nullptr, nullptr, nullptr, NVal::CreateInt32(env, VERIFY_TYPE_FULL_DATA).val_,
-         napi_enumerable},
+        {"KEY_DATA", nullptr, nullptr, nullptr, nullptr, NVal::CreateInt32(env, 0).val_, napi_enumerable},
+        {"FULL_DATA", nullptr, nullptr, nullptr, nullptr, NVal::CreateInt32(env, 1).val_, napi_enumerable},
     };
     napi_define_properties(env, verifyTypeObj, sizeof(props) / sizeof(props[0]), props);
 
     return verifyTypeObj;
 }
-
-} // namespace
 
 // ========== 原有函数实现 ==========
 
@@ -532,6 +526,27 @@ static bool ParseTwoStringArgs(napi_env env, NFuncArg &funcArg, std::string &out
     return true;
 }
 
+static napi_value PromiseVoidOp(napi_env env,
+                                NVal thisVar,
+                                const std::string &procName,
+                                const std::function<int32_t()> &ipcCall)
+{
+    auto cbExec = [ipcCall]() -> NError {
+        int32_t result = ipcCall();
+        if (result != E_OK) {
+            return NError(Convert2JsErrNum(result));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return {NVal::CreateUndefined(env)};
+    };
+    return NAsyncWorkPromise(env, thisVar).Schedule(procName, cbExec, cbComplete).val_;
+}
+
 napi_value SetVolumeDescription(napi_env env, napi_callback_info info)
 {
     if (!IsSystemApp()) {
@@ -549,17 +564,11 @@ napi_value SetVolumeDescription(napi_env env, napi_callback_info info)
         return nullptr;
     }
 
-    auto cbExec = [uuidString, descStr]() -> NError {
-        int32_t result = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->SetVolumeDescription(
-            uuidString, descStr);
-        if (result != E_OK) {
-            return NError(Convert2JsErrNum(result));
-        }
-        return NError(ERRNO_NOERR);
-    };
-
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "SetVolumeDescription", cbExec);
+    return PromiseVoidOp(env, thisVar, "SetVolumeDescription", [uuidString, descStr]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->SetVolumeDescription(
+            uuidString, descStr);
+    });
 }
 
 napi_value Format(napi_env env, napi_callback_info info)
@@ -579,17 +588,11 @@ napi_value Format(napi_env env, napi_callback_info info)
         return nullptr;
     }
 
-    auto cbExec = [volumeIdString, fsTypeString]() -> NError {
-        int32_t result =
-            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Format(volumeIdString, fsTypeString);
-        if (result != E_OK) {
-            return NError(Convert2JsErrNum(result));
-        }
-        return NError(ERRNO_NOERR);
-    };
-
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "Format", cbExec);
+    return PromiseVoidOp(env, thisVar, "Format", [volumeIdString, fsTypeString]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Format(
+            volumeIdString, fsTypeString);
+    });
 }
 
 // 辅助函数：解析字符串和int32参数
@@ -704,27 +707,6 @@ napi_value GetDiskById(napi_env env, napi_callback_info info)
     return NAsyncWorkCallback(env, thisVar, cb, FEATURE_STR + __FUNCTION__)
         .Schedule(procedureName, cbExec, cbComplete)
         .val_;
-}
-
-static napi_value PromiseVoidOp(napi_env env,
-                                NVal thisVar,
-                                const std::string &procName,
-                                const std::function<int32_t()> &ipcCall)
-{
-    auto cbExec = [ipcCall]() -> NError {
-        int32_t result = ipcCall();
-        if (result != E_OK) {
-            return NError(Convert2JsErrNum(result));
-        }
-        return NError(ERRNO_NOERR);
-    };
-    auto cbComplete = [](napi_env env, NError err) -> NVal {
-        if (err) {
-            return {env, err.GetNapiErr(env)};
-        }
-        return {NVal::CreateUndefined(env)};
-    };
-    return NAsyncWorkPromise(env, thisVar).Schedule(procName, cbExec, cbComplete).val_;
 }
 
 napi_value Erase(napi_env env, napi_callback_info info)
