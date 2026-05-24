@@ -559,7 +559,8 @@ napi_value SetVolumeDescription(napi_env env, napi_callback_info info)
         return nullptr;
     }
 
-    std::string uuidString, descStr;
+    std::string uuidString;
+    std::string descStr;
     if (!ParseTwoStringArgs(env, funcArg, uuidString, descStr)) {
         return nullptr;
     }
@@ -583,7 +584,8 @@ napi_value Format(napi_env env, napi_callback_info info)
         return nullptr;
     }
 
-    std::string volumeIdString, fsTypeString;
+    std::string volumeIdString;
+    std::string fsTypeString;
     if (!ParseTwoStringArgs(env, funcArg, volumeIdString, fsTypeString)) {
         return nullptr;
     }
@@ -973,19 +975,23 @@ static bool ParsePartitionParams(napi_env env, napi_value paramsObj, PartitionPa
 {
     bool succ = false;
     std::tie(succ, params.partitionNum) = NVal(env, paramsObj).GetProp("partitionNum").ToInt32();
-    if (!succ)
+    if (!succ) {
         return false;
+    }
     std::tie(succ, params.startSector) = NVal(env, paramsObj).GetProp("startSector").ToInt64();
-    if (!succ)
+    if (!succ) {
         return false;
+    }
     std::tie(succ, params.endSector) = NVal(env, paramsObj).GetProp("endSector").ToInt64();
-    if (!succ)
+    if (!succ) {
         return false;
+    }
 
     std::unique_ptr<char[]> typeCode;
     std::tie(succ, typeCode, std::ignore) = NVal(env, paramsObj).GetProp("typeCode").ToUTF8String();
-    if (!succ)
+    if (!succ) {
         return false;
+    }
     params.typeCode = std::string(typeCode.get());
 
     return true;
@@ -1073,16 +1079,18 @@ static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &
     bool succ = false;
     std::unique_ptr<char[]> fsType;
     std::tie(succ, fsType, std::ignore) = NVal(env, paramsObj).GetProp("fsType").ToUTF8String();
-    if (!succ)
+    if (!succ) {
         return false;
+    }
     params.fsType = std::string(fsType.get());
 
     NVal quickFormatVal = NVal(env, paramsObj).GetProp("quickFormat");
     if (quickFormatVal.val_ != nullptr) {
         bool quickFormat = true;
         std::tie(succ, quickFormat) = quickFormatVal.ToBool();
-        if (succ)
+        if (succ) {
             params.quickFormat = quickFormat;
+        }
     }
 
     NVal volumeNameVal = NVal(env, paramsObj).GetProp("volumeName");
