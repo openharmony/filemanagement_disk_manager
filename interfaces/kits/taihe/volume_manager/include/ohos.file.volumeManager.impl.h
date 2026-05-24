@@ -41,5 +41,13 @@ void DeletePartitionSync(taihe::string_view diskId, int32_t partitionNum);
 void FormatPartitionSync(taihe::string_view diskId,
                          int32_t partitionNum,
                          const ohos::file::volumeManager::FormatParams &params);
+
+// Optical drive APIs (@since 26.0.0)
+void EraseSync(taihe::string_view volumeId);
+void EjectSync(taihe::string_view volumeId);
+void CreateIsoImageSync(taihe::string_view volumeId, taihe::string_view path);
+void BurnSync(taihe::string_view volumeId, const ohos::file::volumeManager::BurnOptions &options);
+int32_t GetOpProcessSync(taihe::string_view volumeId);
+void VerifyBurnDataSync(taihe::string_view volumeId, ohos::file::volumeManager::VerifyType verifyType);
 } // namespace ANI::VolumeManager
 #endif // OHOS_FILE_VOLUMEMANAGER_IMPL_H

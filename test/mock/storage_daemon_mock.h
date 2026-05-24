@@ -40,7 +40,8 @@ public:
                  ErrCode(const std::string &devPath,
                          const std::string &mountPath,
                          const std::string &fsType,
-                         uint32_t mountFlag));
+                         uint64_t mountFlag,
+                         const std::string &mountData));
     MOCK_METHOD3(Unmount, ErrCode(const std::string &mountPath, const std::string &fsType, bool force));
     MOCK_METHOD2(FormatVolume, ErrCode(const std::string &devPath, const std::string &fsType));
     MOCK_METHOD3(Check, ErrCode(const std::string &devPath, const std::string &fsType, bool autoFix));

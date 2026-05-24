@@ -169,7 +169,8 @@ ErrCode StorageDaemonProxy::QueryCDStatus(const std::string &devPath, int32_t &s
 ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
                                   const std::string &mountPath,
                                   const std::string &fsType,
-                                  uint32_t mountFlag)
+                                  uint64_t mountFlag,
+                                  const std::string &mountData)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -178,7 +179,8 @@ ErrCode StorageDaemonProxy::Mount(const std::string &devPath,
         return ERR_TRANSACTION_FAILED;
     }
     if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(mountPath)) ||
-        !data.WriteString16(Str8ToStr16(fsType)) || !data.WriteUint64(static_cast<uint64_t>(mountFlag))) {
+        !data.WriteString16(Str8ToStr16(fsType)) || !data.WriteUint64(mountFlag) ||
+        !data.WriteString16(Str8ToStr16(mountData))) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =

@@ -58,7 +58,7 @@ constexpr int32_t RD_ENABLE_LENGTH = 255;
 constexpr int DISK_MMC_MAJOR = 179;
 constexpr int DISK_CD_MAJOR = 11;
 const int32_t MTP_DEVICE_NAME_LEN = 512;
-constexpr uint32_t HMFS_FLAG = 0x8000;
+constexpr uint64_t HMFS_FLAG = 0x8000;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 
 std::string NormalizeFsTypeAsciiLower(const std::string &fs)
@@ -77,9 +77,9 @@ bool StartsWith(const std::string &value, const std::string &prefix)
 }
 
 /** useFuseData 分支下不套用 USB 只读持久化参数（与历史行为保持一致）。 */
-uint32_t ReadPersistUsbReadonlyMountFlagBits(bool useFuseData)
+uint64_t ReadPersistUsbReadonlyMountFlagBits(bool useFuseData)
 {
-    uint32_t mountFlag = 0;
+    uint64_t mountFlag = 0;
     if (useFuseData) {
         return mountFlag;
     }
@@ -90,9 +90,9 @@ uint32_t ReadPersistUsbReadonlyMountFlagBits(bool useFuseData)
     char rdOnlyEnable[RD_ENABLE_LENGTH] = {"false"};
     auto res = GetParameterValue(handle, rdOnlyEnable, RD_ENABLE_LENGTH);
     if (res >= 0 && strncmp(rdOnlyEnable, "true", TRUE_LEN) == 0) {
-        mountFlag |= static_cast<uint32_t>(MS_RDONLY);
+        mountFlag |= static_cast<uint64_t>(MS_RDONLY);
     } else {
-        mountFlag &= ~static_cast<uint32_t>(MS_RDONLY);
+        mountFlag &= ~static_cast<uint64_t>(MS_RDONLY);
     }
     return mountFlag;
 }
@@ -474,10 +474,6 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
                                            const std::string &fsType,
                                            const std::string &fsUuid)
 {
-    if ((fsType == "hmfs" || fsType == "f2fs") && !volExternal.GetUserData()) {
-        LOGE("MountVolumeFilesystem fsType is %{public}s, but is not userdata", fsType.c_str());
-        return DiskManagerErrNo::E_OTHER_MOUNT;
-    }
     const VolumeMountPolicy policy = ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType);
 
     int32_t fuseErr = MountUsbFuseIfNeeded(volExternal.GetId(), fsType, fsUuid, policy.useFuseData);
@@ -493,7 +489,7 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
-    uint32_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(policy.useFuseData);
+    uint64_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(policy.useFuseData);
     if ((fsType == "hmfs" || fsType == "f2fs") && volExternal.GetUserData()) {
         mountFlag = HMFS_FLAG;
     }
