@@ -181,7 +181,7 @@ bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &di
     if (!dit->second.IsInternalDataDisk()) {
         return false;
     }
-    if (fsNormLower != "hmfs") {
+    if (fsNormLower != "f2fs" && fsNormLower != "hmfs") {
         return false;
     }
 
