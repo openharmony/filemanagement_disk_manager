@@ -186,16 +186,17 @@ int32_t StorageDaemonAdapter::QueryCDStatus(const std::string &devPath, int32_t 
 int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
                                     const std::string &mountPath,
                                     const std::string &fsType,
-                                    uint32_t mountFlag)
+                                    uint64_t mountFlag,
+                                    const std::string &mountData)
 {
-    LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}u",
+    LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}" PRIu64,
          devPath.c_str(), mountPath.c_str(), fsType.c_str(), mountFlag);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Mount exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->Mount(devPath, mountPath, fsType, mountFlag);
+    const int32_t ret = storageDaemon_->Mount(devPath, mountPath, fsType, mountFlag, mountData);
     LOGI("Mount exit ret=%{public}d", ret);
     return ret;
 }

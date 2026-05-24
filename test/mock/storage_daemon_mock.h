@@ -36,11 +36,12 @@ public:
     MOCK_METHOD3(ReadPartitionTable, ErrCode(const std::string &devPath, std::string &output, int32_t &maxVolume));
     MOCK_METHOD1(Eject, ErrCode(const std::string &devPath));
     MOCK_METHOD2(QueryCDStatus, ErrCode(const std::string &devPath, int32_t &status));
-    MOCK_METHOD4(Mount,
+    MOCK_METHOD5(Mount,
                  ErrCode(const std::string &devPath,
                          const std::string &mountPath,
                          const std::string &fsType,
-                         uint32_t mountFlag));
+                         uint64_t mountFlag,
+                         const std::string &mountData));
     MOCK_METHOD3(Unmount, ErrCode(const std::string &mountPath, const std::string &fsType, bool force));
     MOCK_METHOD2(FormatVolume, ErrCode(const std::string &devPath, const std::string &fsType));
     MOCK_METHOD3(Check, ErrCode(const std::string &devPath, const std::string &fsType, bool autoFix));

@@ -47,7 +47,8 @@ public:
     int32_t Mount(const std::string &devPath,
                   const std::string &mountPath,
                   const std::string &fsType,
-                  uint32_t mountFlag);
+                  uint64_t mountFlag,
+                  const std::string &mountData = "");
     int32_t Unmount(const std::string &mountPath, const std::string &fsType, bool force);
     int32_t FormatVolume(const std::string &devPath, const std::string &fsType);
     int32_t Check(const std::string &devPath, const std::string &fsType, bool autoFix);

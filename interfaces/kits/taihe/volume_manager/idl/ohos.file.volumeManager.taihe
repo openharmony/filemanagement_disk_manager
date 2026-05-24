@@ -72,6 +72,16 @@ struct FormatParams {
     volumeName: String;
 }
 
+// Burn options for optical drive operations (@since 26.0.0)
+struct BurnOptions {
+    diskName: String;
+    burnPath: String;
+    isIsoImage: bool;
+    burnSpeed: i32;
+    fsType: String;
+    isIncBurnSupport: bool;
+}
+
 @gen_async("getVolumeByUuid")
 @gen_promise("getVolumeByUuid")
 function GetVolumeByUuidSync(uuid: String): Volume;
@@ -127,3 +137,29 @@ function DeletePartitionSync(diskId: String, partitionNum: i32): void;
 @gen_async("formatPartition")
 @gen_promise("formatPartition")
 function FormatPartitionSync(diskId: String, partitionNum: i32, params: FormatParams): void;
+
+// Optical drive APIs (@since 26.0.0)
+
+@gen_async("erase")
+@gen_promise("erase")
+function EraseSync(volumeId: String): void;
+
+@gen_async("eject")
+@gen_promise("eject")
+function EjectSync(volumeId: String): void;
+
+@gen_async("createIsoImage")
+@gen_promise("createIsoImage")
+function CreateIsoImageSync(volumeId: String, path: String): void;
+
+@gen_async("burn")
+@gen_promise("burn")
+function BurnSync(volumeId: String, options: BurnOptions): void;
+
+@gen_async("getOpProcess")
+@gen_promise("getOpProcess")
+function GetOpProcessSync(volumeId: String): i32;
+
+@gen_async("verifyBurnData")
+@gen_promise("verifyBurnData")
+function VerifyBurnDataSync(volumeId: String, verifyType: i32): void;

@@ -20,6 +20,8 @@
 #include "partition_types.h"
 #include "storageStatistics_taihe_error.h"
 
+#include <sstream>
+
 namespace ANI::VolumeManager {
 
 ohos::file::volumeManager::Volume GetVolumeByUuidSync(taihe::string_view uuid)
@@ -413,6 +415,148 @@ void FormatPartitionSync(::taihe::string_view diskId,
     }
 }
 
+// ---------- Optical drive APIs (@since 26.0.0) ----------
+
+void EraseSync(::taihe::string_view volumeId)
+{
+    std::string volumeIdString = std::string(volumeId);
+    if (volumeIdString.empty()) {
+        LOGE("Invalid parameter, volumeId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+    int32_t errNum = instance->EraseVolume(volumeIdString);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
+void EjectSync(::taihe::string_view volumeId)
+{
+    std::string volumeIdString = std::string(volumeId);
+    if (volumeIdString.empty()) {
+        LOGE("Invalid parameter, volumeId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+    int32_t errNum = instance->EjectVolume(volumeIdString);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
+void CreateIsoImageSync(::taihe::string_view volumeId, ::taihe::string_view path)
+{
+    std::string volumeIdString = std::string(volumeId);
+    std::string pathString = std::string(path);
+    if (volumeIdString.empty() || pathString.empty()) {
+        LOGE("Invalid parameter, volumeId or path is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+    int32_t errNum = instance->CreateIsoImage(volumeIdString, pathString);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
+void BurnSync(::taihe::string_view volumeId, const ohos::file::volumeManager::BurnOptions &options)
+{
+    std::string volumeIdString = std::string(volumeId);
+    if (volumeIdString.empty()) {
+        LOGE("Invalid parameter, volumeId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+
+    // Build burn options string
+    std::ostringstream oss;
+    oss << "diskName=" << std::string(options.diskName) << '\n';
+    oss << "burnPath=" << std::string(options.burnPath) << '\n';
+    oss << "isIsoImage=" << (options.isIsoImage ? "true" : "false") << '\n';
+    oss << "burnSpeed=" << options.burnSpeed << '\n';
+    oss << "fsType=" << std::string(options.fsType) << '\n';
+    oss << "isIncBurnSupport=" << (options.isIncBurnSupport ? "true" : "false") << '\n';
+
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+    int32_t errNum = instance->BurnVolume(volumeIdString, oss.str());
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
+int32_t GetOpProcessSync(::taihe::string_view volumeId)
+{
+    std::string volumeIdString = std::string(volumeId);
+    if (volumeIdString.empty()) {
+        LOGE("Invalid parameter, volumeId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return -1;
+    }
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return -1;
+    }
+    int32_t progress = 0;
+    int32_t errNum = instance->GetVolumeOpProcess(volumeIdString, progress);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return -1;
+    }
+    return progress;
+}
+
+void VerifyBurnDataSync(::taihe::string_view volumeId, int32_t verifyType)
+{
+    std::string volumeIdString = std::string(volumeId);
+    if (volumeIdString.empty()) {
+        LOGE("Invalid parameter, volumeId is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
+    if (instance == nullptr) {
+        LOGE("Get DiskManagerClient instance failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
+        return;
+    }
+    int32_t vType = static_cast<int32_t>(verifyType);
+    int32_t errNum = instance->VerifyBurnData(volumeIdString, vType);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return;
+    }
+}
+
 } // namespace ANI::VolumeManager
 
 // Since these macros are auto-generate, lint will cause false positive.
@@ -435,4 +579,12 @@ TH_EXPORT_CPP_API_GetPartitionTableSync(ANI::VolumeManager::GetPartitionTableSyn
 TH_EXPORT_CPP_API_CreatePartitionSync(ANI::VolumeManager::CreatePartitionSync);
 TH_EXPORT_CPP_API_DeletePartitionSync(ANI::VolumeManager::DeletePartitionSync);
 TH_EXPORT_CPP_API_FormatPartitionSync(ANI::VolumeManager::FormatPartitionSync);
+
+// Optical drive exports (@since 26.0.0)
+TH_EXPORT_CPP_API_EraseSync(ANI::VolumeManager::EraseSync);
+TH_EXPORT_CPP_API_EjectSync(ANI::VolumeManager::EjectSync);
+TH_EXPORT_CPP_API_CreateIsoImageSync(ANI::VolumeManager::CreateIsoImageSync);
+TH_EXPORT_CPP_API_BurnSync(ANI::VolumeManager::BurnSync);
+TH_EXPORT_CPP_API_GetOpProcessSync(ANI::VolumeManager::GetOpProcessSync);
+TH_EXPORT_CPP_API_VerifyBurnDataSync(ANI::VolumeManager::VerifyBurnDataSync);
 // NOLINTEND

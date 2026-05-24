@@ -22,8 +22,9 @@
 namespace OHOS {
 namespace DiskManager {
 namespace ModuleVolumeManager {
+
 /***********************************************
- * Module export and register
+ * Module export - 只保留导出函数，不注册模块
  ***********************************************/
 napi_value VolumeManagerExport(napi_env env, napi_value exports)
 {
@@ -43,9 +44,14 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("createIsoImage", CreateIsoImage),
         DECLARE_NAPI_FUNCTION("burn", Burn),
         DECLARE_NAPI_FUNCTION("getOpProcess", GetOpProcess),
-        /* 与 storage_service 既有命名兼容（见 kits_impl/volumemanager_napi.cpp） */
+        /* 与 storage_service 既有命名兼容 */
         DECLARE_NAPI_FUNCTION("getOpticalDriveOpsProgress", GetOpProcess),
         DECLARE_NAPI_FUNCTION("verifyBurnData", VerifyBurnData),
+        // 分区管理接口
+        DECLARE_NAPI_FUNCTION("getPartitionTable", GetPartitionTable),
+        DECLARE_NAPI_FUNCTION("createPartition", CreatePartition),
+        DECLARE_NAPI_FUNCTION("deletePartition", DeletePartition),
+        DECLARE_NAPI_FUNCTION("formatPartition", FormatPartition),
 #ifdef HMDFS_FILE_MANAGER
         DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
         DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),
@@ -58,6 +64,8 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
 #endif
     };
     FILEMGMT_CALL(napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
+
+    // 导出 VerifyType 枚举
     napi_value verifyTypeEnum = nullptr;
     FILEMGMT_CALL(napi_create_object(env, &verifyTypeEnum));
     napi_value keyData = nullptr;
@@ -67,21 +75,16 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
     FILEMGMT_CALL(napi_set_named_property(env, verifyTypeEnum, "KEY_DATA", keyData));
     FILEMGMT_CALL(napi_set_named_property(env, verifyTypeEnum, "FULL_DATA", fullData));
     FILEMGMT_CALL(napi_set_named_property(env, exports, "VerifyType", verifyTypeEnum));
+
+    // 导出 DiskType 枚举（调用 n_exporter 中的函数）
+    napi_value diskTypeEnum = CreateDiskTypeEnum(env);
+    FILEMGMT_CALL(napi_set_named_property(env, exports, "DiskType", diskTypeEnum));
+
     return exports;
 }
 
-static napi_module _module = {.nm_version = 1,
-                              .nm_flags = 0,
-                              .nm_filename = nullptr,
-                              .nm_register_func = VolumeManagerExport,
-                              .nm_modname = "file.volumeManager",
-                              .nm_priv = ((void *)0),
-                              .reserved = {0}};
+// ⚠️ 注意：删除了 RegisterModule 函数，避免重复定义
 
-extern "C" __attribute__((constructor)) void RegisterModule(void)
-{
-    napi_module_register(&_module);
-}
 } // namespace ModuleVolumeManager
 } // namespace DiskManager
 } // namespace OHOS
