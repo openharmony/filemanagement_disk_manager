@@ -210,6 +210,16 @@ void PartitionTableInfo::SetPartitions(std::vector<PartitionInfo> &&partitions)
     partitions_ = std::move(partitions);
 }
 
+int64_t PartitionTableInfo::GetLastUsableSector() const
+{
+    return lastUsableSector_;
+}
+
+void PartitionTableInfo::SetLastUsableSector(int64_t lastUsableSector)
+{
+    lastUsableSector_ = lastUsableSector;
+}
+
 bool PartitionTableInfo::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteString(diskId_)) {

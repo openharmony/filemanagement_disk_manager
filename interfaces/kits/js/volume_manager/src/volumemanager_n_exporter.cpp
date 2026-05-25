@@ -115,6 +115,7 @@ void FillVolumeJSObject(napi_env env, NVal &volObj, const VolumeExternal &v)
     volObj.AddProp("state", NVal::CreateInt32(env, v.GetState()).val_);
     volObj.AddProp("path", NVal::CreateUTF8String(env, v.GetPath()).val_);
     volObj.AddProp("fsType", NVal::CreateUTF8String(env, v.GetFsTypeString()).val_);
+    volObj.AddProp("partitionNum", NVal::CreateInt32(env, v.GetPartitionNum()).val_);
     const std::string &extra = v.GetExtraInfo();
     if (!extra.empty()) {
         volObj.AddProp("extraInfo", NVal::CreateUTF8String(env, extra).val_);

@@ -308,7 +308,8 @@ int32_t GetMaxMinor(int32_t major)
 
 int32_t CreateAndSetupVolume(const std::string &diskId,
                              dev_t pDev,
-                             const bool &isUserData)
+                             const bool &isUserData,
+                             int32_t partitionNUm)
 {
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
@@ -323,6 +324,7 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     }
     VolumeExternal volExternal(VolumeCore(volId, EXTERNAL, diskId));
     volExternal.SetUserData(isUserData);
+    volExternal.SetPartitionNum(partitionNUm);
     (void)DiskManager::GetInstance().OnVolumeCreated(volExternal);
     return ERR_OK;
 }

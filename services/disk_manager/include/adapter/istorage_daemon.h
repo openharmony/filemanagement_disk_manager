@@ -39,6 +39,10 @@ enum class IStorageDaemonIpcCode {
     ADDON_MOUNT_FUSE_DEVICE = 211,
     ADDON_PARTITION = 212,
     ADDON_GET_BLOCK_INFO_BY_TYPE = 213,
+    ADDON_GET_PARTITION_TABLE_INFO = 214,
+    ADDON_CREATE_PARTITION = 215,
+    ADDON_DELETE_PARTITION = 216,
+    ADDON_FORMAT_PARTITION = 217,
 
     /** 上段 addon 未列方法，自 251 起（须与 storage_daemon 侧一致）。 */
     ADDON_GET_CAPACITY = 251,
@@ -87,6 +91,14 @@ public:
      * Reply（成功）：int32 errno，utf-8 内容由 String16 传递；载荷格式（JSON/自定行文本等）由 storage_daemon 与调用方约定。
      */
     virtual ErrCode GetBlockInfoByType(const std::string &type, std::string &blockInfos) = 0;
+
+    virtual ErrCode GetPartitionTableInfo(const std::string &devPath, std::string &execRet) = 0;
+    virtual ErrCode CreatePartition(const std::string &devPath, int32_t partitionNum,
+                                    int64_t startSector, int64_t endSector,
+                                    const std::string &typeCode) = 0;
+    virtual ErrCode DeletePartition(const std::string &devPath, int32_t partitionNum) = 0;
+    virtual ErrCode FormatPartition(const std::string &devPath, const std::string &fsType,
+                                    const std::string &volumeName) = 0;
 
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};

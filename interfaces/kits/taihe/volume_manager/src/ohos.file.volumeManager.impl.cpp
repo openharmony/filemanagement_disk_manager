@@ -46,6 +46,7 @@ ohos::file::volumeManager::Volume GetVolumeByUuidSync(taihe::string_view uuid)
             volumeInfo->GetState(),
             volumeInfo->GetPath(),
             volumeInfo->GetFsTypeString(),
+            volumeInfo->GetPartitionNum(),
             volumeInfo->GetExtraInfo()};
 }
 
@@ -74,6 +75,7 @@ taihe::array<ohos::file::volumeManager::Volume> GetAllVolumesSync()
                 vol.GetState(),
                 vol.GetPath(),
                 vol.GetFsTypeString(),
+                vol.GetPartitionNum(),
                 vol.GetExtraInfo()};
     };
     std::transform(volumeInfo->begin(), volumeInfo->end(), result.begin(), volumeTransformer);
@@ -130,6 +132,7 @@ ohos::file::volumeManager::Volume GetVolumeByIdSync(::taihe::string_view volumeI
             volumeInfo->GetState(),
             volumeInfo->GetPath(),
             volumeInfo->GetFsTypeString(),
+            volumeInfo->GetPartitionNum(),
             volumeInfo->GetExtraInfo()};
 }
 

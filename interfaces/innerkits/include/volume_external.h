@@ -70,6 +70,8 @@ public:
     void Reset();
     void SetExtraInfo(const std::string &extraInfo);
     std::string GetExtraInfo() const;
+    int32_t GetPartitionNum() const;
+    void SetPartitionNum(int32_t partitionNum);
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeExternal *Unmarshalling(Parcel &parcel);
@@ -82,6 +84,7 @@ private:
     std::string description_;
     std::string extraInfo_;
     bool isUserData_ = false;
+    int32_t partitionNum_ = 0;
 };
 } // namespace DiskManager
 } // namespace OHOS

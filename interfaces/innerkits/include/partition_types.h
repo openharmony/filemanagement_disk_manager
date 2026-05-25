@@ -87,6 +87,8 @@ public:
     const std::vector<PartitionInfo> &GetPartitions() const;
     void SetPartitions(const std::vector<PartitionInfo> &partitions);
     void SetPartitions(std::vector<PartitionInfo> &&partitions);
+    int64_t GetLastUsableSector() const;
+    void SetLastUsableSector(int64_t lastUsableSector);
 
     bool Marshalling(Parcel &parcel) const override;
     static PartitionTableInfo *Unmarshalling(Parcel &parcel);
@@ -100,6 +102,7 @@ private:
     int64_t totalSector_ {0};                 // totalSector
     int32_t sectorSize_ {512};                // sectorSize
     int32_t alignSector_ {2048};              // alignSector
+    int32_t lastUsableSector_ {0};             // lastUsableSector
     std::vector<PartitionInfo> partitions_;   // partitions array
 };
 

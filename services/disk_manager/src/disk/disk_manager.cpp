@@ -36,6 +36,7 @@
 #include <cstring>
 #include <fstream>
 #include <mutex>
+#include <regex>
 #include <shared_mutex>
 #include <sstream>
 #include <string>
@@ -59,7 +60,21 @@ constexpr int DISK_MMC_MAJOR = 179;
 constexpr int DISK_CD_MAJOR = 11;
 const int32_t MTP_DEVICE_NAME_LEN = 512;
 constexpr uint64_t HMFS_FLAG = 0x8000;
+constexpr uint32_t BASE_DECIMAL = 10;
+constexpr int64_t VFAT_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
+constexpr int64_t EXFAT_TYPECODE_MIN_SIZE = 32 * 1024 * 1024;
+constexpr int64_t NTFS_TYPECODE_MIN_SIZE = 4 * 1024 * 1024;
+constexpr int64_t EXT4_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
+constexpr int64_t F2FS_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
+const std::map<std::string, std::string> typeCodeMap_ = {
+    {"vfat", "0x0700"},
+    {"exfat", "0x0700"},
+    {"ntfs", "0x0700"},
+    {"ext4", "0x8300"},
+    {"f2fs", "0x8300"},
+    {"hmfs", "0x8300"},
+};
 
 std::string NormalizeFsTypeAsciiLower(const std::string &fs)
 {
@@ -1080,5 +1095,483 @@ void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemo
     volumeMap_.erase(id);
 }
 
+int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTableInfo &info)
+{
+    if (!HasDisk(diskId)) {
+        LOGE("diskId not exist.");
+        return E_NON_EXIST;
+    }
+    std::string execRet;
+    std::string devPath = "/dev/block/" + diskId;
+    int32_t ret = StorageDaemonAdapter::GetInstance().GetPartitionTableInfo(devPath, execRet);
+    if (ret != E_OK || execRet.empty()) {
+        LOGE("get partition table info failed.");
+        return E_GET_PARTITION_ERROR;
+    }
+    std::vector<std::string> tempInfo;
+    for (auto &buf : execRet) {
+        tempInfo = SplitRawDumpToLines(execRet);
+    }
+    if (!SetTotalSector(tempInfo, info, devPath)) {
+        return E_GET_PARTITION_ERROR;
+    }
+    if (!SetSectorSize(tempInfo, info)) {
+        return E_GET_PARTITION_ERROR;
+    }
+    if (!SetAlignSector(tempInfo,info)) {
+        return E_GET_PARTITION_ERROR;
+    }
+    if (!SetUsableSector(tempInfo, info)) {
+        return E_GET_PARTITION_ERROR;
+    }
+    info.SetDiskId(diskId);
+    SetTableType(tempInfo, info);
+    SetPartitions(tempInfo, info);
+    info.SetPartitionCount(static_cast<int32_t>(info.GetPartitions().size()));
+    UpsertPartitionTable(info);
+    LOGI("GetPartitionTable success");
+    return DiskManagerErrNo::E_OK;
+}
+
+void DiskManager::UpsertPartitionTable(PartitionTableInfo &info)
+{
+    std::shared_lock<std::shared_mutex> partLock(partitionTableMapMutex_);
+    partitionTableMap_[info.GetDiskId()] = info;
+}
+
+void DiskManager::SetPartitions(std::vector<std::string> &content, PartitionTableInfo &tableInfo)
+{
+    auto count = static_cast<int32_t>(content.size());
+    int32_t partitionIndex = -1;
+    for (int32_t i = 0; i < count; i++) {
+        std::string buf = content[i];
+        if (buf.find("Number") == 0 && buf.find("Start") != std::string::npos) {
+            partitionIndex = i + 1;
+            break;
+        }
+    }
+    if (partitionIndex < 0 || partitionIndex >= count) {
+        return;
+    }
+    std::vector<PartitionInfo> partitions;
+    for (int32_t i = partitionIndex; i < count; i++) {
+        std::string buf = content[i];
+        PartitionInfo info;
+        if (ParsePartitionInfo(buf, info)) {
+            int64_t sizeBytes = (info.GetEndSector() - info.GetStartSector() + 1) * tableInfo.GetSectorSize();
+            info.SetSizeBytes(sizeBytes);
+            info.SetFsType(GetFsTypeByDiskIdAndPartNum(tableInfo.GetDiskId(), info.GetPartitionNum()));
+            partitions.push_back(info);
+            LOGI("partition info is partitionNum=%{public}d, startSector=%{public}lld, endSector=%{public}lld, "
+                 "sizeBytes=%{public}lld, fsType=%{public}s", info.GetPartitionNum(),
+                 static_cast<long long>(info.GetStartSector()), static_cast<long long>(info.GetEndSector()),
+                 static_cast<long long>(info.GetSizeBytes()), info.GetFsType().c_str());
+        }
+    }
+    tableInfo.SetPartitions(partitions);
+}
+
+std::string DiskManager::GetFsTypeByDiskIdAndPartNum(const std::string &diskId, int32_t partitionNum)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return "";
+    }
+    for (const auto &item: disk.GetVolumeIds()) {
+        VolumeExternal external;
+        if (GetVolumeById(item, external) != E_OK) {
+            continue;
+        }
+        if (external.GetPartitionNum() != partitionNum) {
+            continue;
+        }
+        return external.GetFsTypeString();
+    }
+    return "";
+}
+
+bool DiskManager::ParsePartitionInfo(const std::string &context, PartitionInfo &info)
+{
+    if (context.empty()) {
+        return false;
+    }
+    std::stringstream ss(context);
+    std::string item;
+    ss >> item;
+    if (item.empty()) {
+        return false;
+    }
+    int32_t partitionNum;
+    if (!ConvertStringToInt32(item, partitionNum)) {
+        LOGE("convert partition num failed, %{public}s", item.c_str());
+        return false;
+    }
+    info.SetPartitionNum(partitionNum);
+    ss >> item;
+    if (item.empty()) {
+        return false;
+    }
+    int64_t startSector;
+    if (!ConvertStringToInt(item, startSector)) {
+        LOGE("convert start sector failed, %{public}s", item.c_str());
+        return false;
+    }
+    info.SetStartSector(startSector);
+    ss >> item;
+    if (item.empty()) {
+        return false;
+    }
+    int64_t endSector;
+    if (!ConvertStringToInt(item, endSector)) {
+        LOGE("convert end sector failed, %{public}s", item.c_str());
+        return false;
+    }
+    info.SetEndSector(endSector);
+    return true;
+}
+
+bool DiskManager::SetUsableSector(std::vector<std::string> &content, PartitionTableInfo &info)
+{
+    auto count = static_cast<int32_t>(content.size());
+    std::string prefix = "First usable sector is";
+    std::string target;
+    for (int32_t i = 0; i < count; i++) {
+        std::string buf = content[i];
+        if (buf.find(prefix) == 0) {
+            target = buf;
+            break;
+        }
+    }
+    if (target.empty()) {
+        LOGE("not found usable sector");
+        return false;
+    }
+    std::regex pattern(R"(last usable sector is (\d+))");
+    std::smatch match;
+    if (!std::regex_search(target, match, pattern)) {
+        LOGE("usable sector not match, target=%{public}s", target.c_str());
+        return false;
+    }
+    std::string result = match[1].str();
+    int64_t lastUsableSector = 0;
+    if (!ConvertStringToInt(result, lastUsableSector)) {
+        LOGE("convert last usable sector failed, result=%{public}s", result.c_str());
+        return false;
+    }
+    info.SetLastUsableSector(lastUsableSector);
+    LOGI("parse lastUsableSector success, %{public}lld", static_cast<long long>(lastUsableSector));
+    return true;
+}
+
+bool DiskManager::SetTotalSector(std::vector<std::string> &content, PartitionTableInfo &info,
+                                 const std::string &devPath)
+{
+    auto count = static_cast<int32_t>(content.size());
+    std::string prefix = "Disk " + devPath;
+    std::string target;
+    for (int32_t i = 0; i < count; i++) {
+        std::string buf = content[i];
+        if (buf.find(prefix) == 0) {
+            target = buf;
+            break;
+        }
+    }
+    if (target.empty()) {
+        LOGE("not found total sector");
+        return false;
+    }
+    std::regex pattern(R"((\d+)\s+sectors)");
+    std::smatch match;
+    if (!std::regex_search(target, match, pattern)) {
+        LOGE("total sector not match, target=%{public}s", target.c_str());
+        return false;
+    }
+    std::string result = match[1].str();
+    int64_t totalSector = 0;
+    if (!ConvertStringToInt(result, totalSector)) {
+        LOGE("convert total sector failed, result=%{public}s", result.c_str());
+        return false;
+    }
+    info.SetTotalSector(totalSector);
+    LOGI("parse totalSector success, %{public}lld", static_cast<long long>(totalSector));
+    return true;
+}
+
+bool DiskManager::SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info)
+{
+    auto count = static_cast<int32_t>(content.size());
+    std::string prefix = "Sector size (logical/physical)";
+    std::string target;
+    for (int32_t i = 0; i < count; i++) {
+        std::string buf = content[i];
+        if (buf.find(prefix) == 0) {
+            target = buf;
+            break;
+        }
+    }
+    if (target.empty()) {
+        LOGE("not found sector size");
+        return false;
+    }
+    std::regex pattern(R"(Sector size \(logical/physical\):\s*(\d+)/\d+)");
+    std::smatch match;
+    if (!std::regex_search(target, match, pattern)) {
+        LOGE("sector size not match, target=%{public}s", target.c_str());
+        return false;
+    }
+    std::string result = match[1].str();
+    int32_t sectorSize = 0;
+    if (!ConvertStringToInt32(result, sectorSize)) {
+        LOGE("convert sector size failed, result=%{public}s", result.c_str());
+        return false;
+    }
+    info.SetSectorSize(sectorSize);
+    LOGI("parse sectorSize success, %{public}lld", static_cast<long long>(sectorSize));
+    return true;
+}
+
+bool DiskManager::SetAlignSector(std::vector<std::string> &content, PartitionTableInfo &info)
+{
+    auto count = static_cast<int32_t>(content.size());
+    std::string prefix = "Partitions will be aligned on";
+    std::string target;
+    for (int32_t i = 0; i < count; i++) {
+        std::string buf = content[i];
+        if (buf.find(prefix) == 0) {
+            target = buf;
+            break;
+        }
+    }
+    if (target.empty()) {
+        LOGE("not found align sector");
+        return false;
+    }
+    std::regex pattern(R"(Partitions will be aligned on (\d+)-sector boundaries)");
+    std::smatch match;
+    if (!std::regex_search(target, match, pattern)) {
+        LOGE("align sector not match, target=%{public}s", target.c_str());
+        return false;
+    }
+    std::string result = match[1].str();
+    int32_t alignSector = 0;
+    if (!ConvertStringToInt32(result, alignSector)) {
+        LOGE("convert align sector failed, result=%{public}s", result.c_str());
+        return false;
+    }
+    info.SetAlignSector(alignSector);
+    LOGI("parse alignSector success, %{public}lld", static_cast<long long>(alignSector));
+    return true;
+}
+
+void DiskManager::SetTableType(std::vector<std::string> &content, PartitionTableInfo &info)
+{
+    auto count = static_cast<int32_t>(content.size());
+    std::string prefix = "Found invalid GPT and valid MBR";
+    bool isMBR = false;
+    for (int32_t i = 0; i < count; i++) {
+        std::string buf = content[i];
+        if (buf.find(prefix) == 0) {
+            LOGI("this disk table type is mbr");
+            isMBR = true;
+            break;
+        }
+    }
+    info.SetTableType(isMBR ? "MBR" : "GPT");
+}
+
+int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionParams &params)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return E_NON_EXIST;
+    }
+    if (disk.GetDiskType() != DiskType::SD_FLAG && disk.GetDiskType() != DiskType::USB_FLAG) {
+        LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        return E_CREATE_PARTITION_NOT_SUPPORT;
+    }
+    auto codeIt = typeCodeMap_.find(params.typeCode);
+    if (codeIt == typeCodeMap_.end()) {
+        LOGE("type code not support, typeCode=%{public}s.", params.typeCode);
+        return E_CREATE_PARTITION_NOT_SUPPORT;
+    }
+    PartitionTableInfo info;
+    if (GetPartInfo(diskId, info) != E_OK) {
+        return E_NON_EXIST;
+    }
+    if (!IsParamsValid(params, info)) {
+        return E_PARAMS_INVALID;
+    }
+    if (IsDiskHasMountedVolume(diskId)) {
+        return E_VOL_STATE;
+    }
+    int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId, params.partitionNum,
+        params.startSector, params.endSector, codeIt->second);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
+        return E_CREATE_PARTITION_FAILED;
+    }
+    LOGE("CreatePartition success");
+    return DiskManagerErrNo::E_OK;
+}
+
+bool DiskManager::IsDiskHasMountedVolume(const std::string &diskId)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return false;
+    }
+    std::vector<std::string> volIds = disk.GetVolumeIds();
+    if (volIds.empty()) {
+        return false;
+    }
+    for (const auto &item: volIds) {
+        VolumeExternal external;
+        if (GetVolumeById(item, external) != E_OK) {
+            continue;
+        }
+        if (external.GetState() != UNMOUNTED) {
+            LOGE("volume status is not unmounted, id=%{public}s", item.c_str());
+            return true;
+        }
+    }
+    return false;
+}
+
+int32_t DiskManager::GetPartInfo(const std::string &diskId, PartitionTableInfo &info)
+{
+    std::shared_lock<std::shared_mutex> partLock(partitionTableMapMutex_);
+    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
+        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
+        return E_NON_EXIST;
+    }
+    info = partitionTableMap_[diskId];
+    return DiskManagerErrNo::E_OK;
+}
+
+bool DiskManager::IsParamsValid(const PartitionParams &params, const PartitionTableInfo &info)
+{
+    int64_t startSector = params.startSector;
+    if (startSector > info.GetLastUsableSector() || startSector < info.GetAlignSector()) {
+        LOGE("start sector out range");
+        return false;
+    }
+    if (((startSector * info.GetSectorSize()) % info.GetAlignSector()) != 0) {
+        LOGE("start sector not align");
+        return false;
+    }
+    int64_t endSector = params.endSector;
+    if (endSector > info.GetLastUsableSector() || endSector < info.GetAlignSector()) {
+        LOGE("end sector out range");
+        return false;
+    }
+    std::string typeCode = params.typeCode;
+    int64_t sectorInterval = (endSector - startSector + 1) * info.GetSectorSize();
+    if (typeCode == "vfat" && sectorInterval < VFAT_TYPECODE_MIN_SIZE) {
+        LOGE("vfat sector interval invalid");
+        return false;
+    }
+    if (typeCode == "exfat" && sectorInterval < EXFAT_TYPECODE_MIN_SIZE) {
+        LOGE("exfat sector interval invalid");
+        return false;
+    }
+    if (typeCode == "ntfs" && sectorInterval < NTFS_TYPECODE_MIN_SIZE) {
+        LOGE("ntfs sector interval invalid");
+        return false;
+    }
+    if (typeCode == "ext4" && sectorInterval < EXT4_TYPECODE_MIN_SIZE) {
+        LOGE("ext4 sector interval invalid");
+        return false;
+    }
+    if ((typeCode == "f2fs" || typeCode == "hmfs") && sectorInterval < F2FS_TYPECODE_MIN_SIZE) {
+        LOGE("f2fs or hmfs sector interval invalid");
+        return false;
+    }
+    return true;
+}
+
+int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitionNum)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return E_NON_EXIST;
+    }
+    if (disk.GetDiskType() != DiskType::SD_FLAG && disk.GetDiskType() != DiskType::USB_FLAG) {
+        LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        return E_DELETE_PARTITION_NOT_SUPPORT;
+    }
+    if (IsDiskHasMountedVolume(diskId)) {
+        return E_VOL_STATE;
+    }
+    PartitionTableInfo info;
+    if (GetPartInfo(diskId, info) != E_OK) {
+        return E_NON_EXIST;
+    }
+    bool partNumValid = false;
+    std::vector<PartitionInfo> infos = info.GetPartitions();
+    for (const auto &item: infos) {
+        if (item.GetPartitionNum() == partitionNum) {
+            partNumValid = true;
+            break;
+        }
+    }
+    if (!partNumValid) {
+        LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
+        return E_NON_EXIST;
+    }
+    int32_t ret = StorageDaemonAdapter::GetInstance().DeletePartition("/dev/block/" + diskId, partitionNum);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("DeletePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
+        return E_DELETE_PARTITION_FAILED;
+    }
+    LOGI("DeletePartition success");
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return E_NON_EXIST;
+    }
+    if (disk.GetDiskType() != DiskType::SD_FLAG && disk.GetDiskType() != DiskType::USB_FLAG) {
+        LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        return E_DELETE_PARTITION_NOT_SUPPORT;
+    }
+    if (IsVolumeMounted(diskId, partitionNum)) {
+        return E_VOL_STATE;
+    }
+    std::string devPath = "/dev/block/" + diskId + std::to_string(partitionNum);
+    int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.fsType, params.volumeName,
+        params.quickFormat);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("FormatPartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
+        return E_FORMAT_PARTITION_FAILED;
+    }
+    LOGI("FormatPartition success");
+    return DiskManagerErrNo::E_OK;
+}
+
+bool DiskManager::IsVolumeMounted(const std::string &diskId, int32_t partitionNum)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return true;
+    }
+    std::vector<std::string> volIds = disk.GetVolumeIds();
+    if (volIds.empty()) {
+        return true;
+    }
+    for (const auto &item: volIds) {
+        VolumeExternal external;
+        if (GetVolumeById(item, external) != E_OK) {
+            continue;
+        }
+        if (external.GetPartitionNum() == partitionNum && external.GetState() != UNMOUNTED) {
+            LOGE("volume status is not unmounted, id=%{public}s", item.c_str());
+            return true;
+        }
+    }
+    return false;
+}
 } // namespace DiskManager
 } // namespace OHOS
