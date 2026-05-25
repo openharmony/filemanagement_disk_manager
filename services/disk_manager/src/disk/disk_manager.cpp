@@ -52,6 +52,8 @@ namespace {
 constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
+/** SSD/HDD 标准盘 f2fs/hmfs 挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
+constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 
 constexpr int32_t TRUE_LEN = 5;
 constexpr int32_t RD_ENABLE_LENGTH = 255;
@@ -168,6 +170,14 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
     LOGI("Mount path voldata new: path=%{public}s vol=%{public}s uuid=%{public}s created=%{public}d",
          dataMountPath.c_str(), volExternal.GetId().c_str(), fsUuid.c_str(), created ? 1 : 0);
     return dataMountPath;
+}
+
+std::string BuildMountDataOptions(const DiskManager::VolumeMountPolicy &policy)
+{
+    if (policy.useVoldataPath) {
+        return VOLDATA_MOUNT_SELINUX_CONTEXT;
+    }
+    return "";
 }
 } // namespace
 
@@ -518,8 +528,9 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
         mountFlag = HMFS_FLAG;
     }
 
+    const std::string mountData = BuildMountDataOptions(policy);
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
-                                                            mountFlag);
+                                                            mountFlag, mountData);
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         if (policy.useVoldataPath && voldataMappingCreated) {
