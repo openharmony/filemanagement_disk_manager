@@ -52,6 +52,12 @@ public:
 
     int32_t RemoveByFsUuid(const std::string &fsUuid);
 
+    /**
+     * 格式化后 fsUuid 变化时，保留原 dataX 槽位并更新映射键。
+     * 若 oldFsUuid 无映射则 no-op；若 newFsUuid 已存在则失败。
+     */
+    int32_t ReplaceFsUuid(const std::string &oldFsUuid, const std::string &newFsUuid);
+
     bool TryGetMountPath(const std::string &fsUuid, std::string &outMountPath) const;
 
 private:

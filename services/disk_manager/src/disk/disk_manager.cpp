@@ -172,9 +172,9 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
     return dataMountPath;
 }
 
-std::string BuildMountDataOptions(const DiskManager::VolumeMountPolicy &policy)
+std::string BuildMountDataOptions(bool useVoldataPath)
 {
-    if (policy.useVoldataPath) {
+    if (useVoldataPath) {
         return VOLDATA_MOUNT_SELINUX_CONTEXT;
     }
     return "";
@@ -206,6 +206,33 @@ bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &di
         }
     }
     return volumeCountOnDisk == 1U;
+}
+
+void DiskManager::UpdateVoldataMappingAfterFormat(const std::string &diskId,
+                                                  const std::string &oldFsUuid,
+                                                  const std::string &newFsUuid,
+                                                  const std::string &fsType)
+{
+    const std::string fsNormLower = NormalizeFsTypeAsciiLower(fsType);
+    std::shared_lock<std::shared_mutex> diskLock(diskMapMutex_);
+    std::shared_lock<std::shared_mutex> volLock(volumeMapMutex_);
+    const bool useVoldataPath = ShouldUseVoldataMountPathForDiskUnlocked(diskId, fsNormLower);
+
+    auto &store = VoldataUuidStore::GetInstance();
+    if (!useVoldataPath) {
+        if (!oldFsUuid.empty() && IsSafeFsUuid(oldFsUuid)) {
+            (void)store.RemoveByFsUuid(oldFsUuid);
+        }
+        return;
+    }
+    if (oldFsUuid.empty() || newFsUuid.empty() || !IsSafeFsUuid(oldFsUuid) || !IsSafeFsUuid(newFsUuid)) {
+        return;
+    }
+    std::string unused;
+    if (!store.TryGetMountPath(oldFsUuid, unused)) {
+        return;
+    }
+    (void)store.ReplaceFsUuid(oldFsUuid, newFsUuid);
 }
 
 DiskManager::VolumeMountPolicy DiskManager::ComputeVolumeMountPolicy(const std::string &diskId,
@@ -528,7 +555,7 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
         mountFlag = HMFS_FLAG;
     }
 
-    const std::string mountData = BuildMountDataOptions(policy);
+    const std::string mountData = BuildMountDataOptions(policy.useVoldataPath);
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
                                                             mountFlag, mountData);
     if (err != ERR_OK) {
@@ -626,6 +653,8 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
 int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsType)
 {
     std::string blockVolId;
+    std::string diskId;
+    std::string oldFsUuid;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -647,6 +676,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             return E_VOL_STATE;
         }
         blockVolId = it->second.GetId();
+        diskId = it->second.GetDiskId();
+        oldFsUuid = it->second.GetUuid();
     }
 
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume("/dev/block/" + blockVolId, fsType);
@@ -658,6 +689,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     std::string type;
     std::string label;
     StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + blockVolId, uuid, type, label);
+
+    UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
 
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(volumeId);
