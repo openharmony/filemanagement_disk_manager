@@ -120,6 +120,8 @@ private:
     std::string BuildMountDataPath(const MountDataPathParams &params);
 
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
+    /** PC 数据盘卸载前 QueryUsbIsInUse 检查，并设置 forceUnmount。 */
+    int32_t ResolveUnmountForceFlag(const std::string &volumeId, const std::string &diskId, bool &forceUnmount);
     int32_t GetFlagFromMajorInfo(const std::string &volumeId);
 
     /** 不持 map 锁；挂载完成后由 Mount 写回 volumeMap_。 */

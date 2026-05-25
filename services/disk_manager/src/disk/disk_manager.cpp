@@ -379,6 +379,30 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
     return StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, force);
 }
 
+int32_t DiskManager::ResolveUnmountForceFlag(const std::string &volumeId, const std::string &diskId, bool &forceUnmount)
+{
+    forceUnmount = true;
+    std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+    const auto dit = diskMap_.find(diskId);
+    if (dit == diskMap_.end() || !dit->second.IsInternalDataDisk()) {
+        return DiskManagerErrNo::E_OK;
+    }
+    forceUnmount = false;
+    const std::string &diskPath = dit->second.GetSysPath();
+    bool isInUse = false;
+    const int32_t queryErr = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
+    if (queryErr != ERR_OK) {
+        LOGE("Unmount: QueryUsbIsInUse failed diskPath=%{public}s err=%{public}d", diskPath.c_str(), queryErr);
+        return queryErr;
+    }
+    if (isInUse) {
+        LOGE("Unmount: internal data disk in use diskPath=%{public}s volumeId=%{public}s", diskPath.c_str(),
+             volumeId.c_str());
+        return E_UMOUNT_BUSY;
+    }
+    return DiskManagerErrNo::E_OK;
+}
+
 DiskManager::DiskManager() = default;
 
 DiskManager::~DiskManager() = default;
@@ -562,7 +586,13 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         volExternal = it->second;
     }
 
-    const int32_t err = UnmountVolumeMountPoints(volExternal, true);
+    bool forceUnmount = true;
+    const int32_t prepErr = ResolveUnmountForceFlag(volumeId, volExternal.GetDiskId(), forceUnmount);
+    if (prepErr != DiskManagerErrNo::E_OK) {
+        return prepErr;
+    }
+
+    const int32_t err = UnmountVolumeMountPoints(volExternal, forceUnmount);
     if (err != ERR_OK) {
         LOGE("Unmount vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         return err;
