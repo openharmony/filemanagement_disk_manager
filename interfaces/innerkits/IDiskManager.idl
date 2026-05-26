@@ -16,6 +16,8 @@
 sequenceable Disk..OHOS.DiskManager.Disk;
 sequenceable PartitionTypes..OHOS.DiskManager.PartitionInfo;
 sequenceable PartitionTypes..OHOS.DiskManager.PartitionTableInfo;
+sequenceable PartitionTypes..OHOS.DiskManager.PartitionParams;
+sequenceable PartitionTypes..OHOS.DiskManager.FormatParams;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeCore;
 sequenceable VolumeExternal..OHOS.DiskManager.VolumeExternal;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
@@ -55,7 +57,7 @@ interface OHOS.DiskManager.IDiskManager {
 
     /* ---------- 分区管理操作（与 @ohos.file.volumeManager 26.0.0 分区扩展对齐） ---------- */
     [ipccode 46] void GetPartitionTable([in] String diskId, [out] PartitionTableInfo tableInfo);
-    [ipccode 47] void CreatePartition([in] String diskId, [in] int partitionNum, [in] long startSector, [in] long endSector, [in] String typeCode);
+    [ipccode 47] void CreatePartition([in] String diskId, [in] PartitionParams params);
     [ipccode 48] void DeletePartition([in] String diskId, [in] int partitionNum);
-    [ipccode 49] void FormatPartition([in] String diskId, [in] int partitionNum, [in] String fsType, [in] boolean quickFormat, [in] String volumeName);
+    [ipccode 49] void FormatPartition([in] String diskId, [in] int partitionNum, [in] FormatParams params);
 }

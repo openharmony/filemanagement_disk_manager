@@ -308,7 +308,8 @@ int32_t GetMaxMinor(int32_t major)
 
 int32_t CreateAndSetupVolume(const std::string &diskId,
                              dev_t pDev,
-                             const bool &isUserData)
+                             const bool &isUserData,
+                             int32_t partitionNUm)
 {
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
@@ -323,6 +324,7 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     }
     VolumeExternal volExternal(VolumeCore(volId, EXTERNAL, diskId));
     volExternal.SetUserData(isUserData);
+    volExternal.SetPartitionNum(partitionNUm);
     (void)DiskManager::GetInstance().OnVolumeCreated(volExternal);
     return ERR_OK;
 }
@@ -356,7 +358,7 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     }
 
     const std::string volId = VolIdFromDev(pDev);
-    if (CreateAndSetupVolume(diskId, pDev, isUserData) != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, pDev, isUserData, static_cast<int32_t>(p.partitionNumber)) != ERR_OK) {
         return;
     }
 
@@ -386,7 +388,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
 
-    if (CreateAndSetupVolume(diskId, pDev, false) != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, pDev, false, 0) != ERR_OK) {
         return;
     }
 

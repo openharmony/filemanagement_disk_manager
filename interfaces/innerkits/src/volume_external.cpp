@@ -120,6 +120,16 @@ std::string VolumeExternal::GetExtraInfo() const
     return extraInfo_;
 }
 
+int32_t VolumeExternal::GetPartitionNum() const
+{
+    return partitionNum_;
+}
+
+void VolumeExternal::SetPartitionNum(int32_t partitionNum)
+{
+    partitionNum_ = partitionNum;
+}
+
 bool VolumeExternal::Marshalling(Parcel &parcel) const
 {
     if (!VolumeCore::Marshalling(parcel)) {
@@ -150,6 +160,10 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
         return false;
     }
 
+    if (!parcel.WriteInt32(partitionNum_)) {
+        return false;
+    }
+
     return true;
 }
 
@@ -166,6 +180,7 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->path_ = parcel.ReadString();
     obj->description_ = parcel.ReadString();
     obj->extraInfo_ = parcel.ReadString();
+    obj->partitionNum_ = parcel.ReadInt32();
     return obj;
 }
 } // namespace DiskManager

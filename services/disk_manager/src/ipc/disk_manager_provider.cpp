@@ -15,6 +15,8 @@
 
 #include "disk_manager_provider.h"
 
+#include <cinttypes>
+
 #include "block_info_table.h"
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
@@ -222,44 +224,71 @@ int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t
 
 int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
 {
-    (void)out;
-    LOGI("GetPartitionTable diskId=%{public}s - stub, not yet implemented", diskId.c_str());
-    return DiskManagerErrNo::E_OK;
+    LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
+    if (diskId.empty()) {
+        LOGI("diskId is empty.");
+        return E_PARAMS_INVALID;
+    }
+    return DiskManager::GetInstance().GetPartitionTable(diskId, out);
 }
 
-int32_t DiskManagerProvider::CreatePartition(const std::string &diskId,
-                                             int32_t partitionNum,
-                                             int64_t startSector,
-                                             int64_t endSector,
-                                             const std::string &typeCode)
+int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const PartitionParams &params)
 {
-    (void)startSector;
-    (void)endSector;
-    (void)typeCode;
-    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
-         diskId.c_str(), partitionNum);
-    return DiskManagerErrNo::E_OK;
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
+    if (diskId.empty()) {
+        LOGE("CreatePartition: diskId is empty");
+        return E_PARAMS_INVALID;
+    }
+    if (params.GetPartitionNum() <= 0) {
+        LOGE("CreatePartition: invalid partitionNum=%{public}d", params.GetPartitionNum());
+        return E_PARAMS_INVALID;
+    }
+    if (params.GetStartSector() <= 0 || params.GetEndSector() <= 0 ||
+        params.GetStartSector() >= params.GetEndSector()) {
+        LOGE("CreatePartition: invalid sector range");
+        return E_PARAMS_INVALID;
+    }
+    if (params.GetTypeCode().empty()) {
+        LOGE("CreatePartition: typeCode is empty");
+        return E_PARAMS_INVALID;
+    }
+    return DiskManager::GetInstance().CreatePartition(diskId, params);
 }
 
 int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
 {
-    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
-         diskId.c_str(), partitionNum);
-    return DiskManagerErrNo::E_OK;
+    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
+    if (diskId.empty()) {
+        LOGE("DeletePartition: diskId is empty");
+        return E_PARAMS_INVALID;
+    }
+    if (partitionNum <= 0) {
+        LOGE("DeletePartition: invalid partitionNum=%{public}d", partitionNum);
+        return E_PARAMS_INVALID;
+    }
+    return DiskManager::GetInstance().DeletePartition(diskId, partitionNum);
 }
 
-int32_t DiskManagerProvider::FormatPartition(const std::string &diskId,
-                                             int32_t partitionNum,
-                                             const std::string &fsType,
-                                             bool quickFormat,
-                                             const std::string &volumeName)
+int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t partitionNum,
+                                             const FormatParams &params)
 {
-    (void)fsType;
-    (void)quickFormat;
-    (void)volumeName;
-    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d - stub, not yet implemented",
-         diskId.c_str(), partitionNum);
-    return DiskManagerErrNo::E_OK;
+    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s", diskId.c_str(),
+         partitionNum, params.GetFsType().c_str());
+    if (diskId.empty()) {
+        LOGE("FormatPartition: diskId is empty");
+        return E_PARAMS_INVALID;
+    }
+    if (partitionNum <= 0) {
+        LOGE("FormatPartition: invalid partitionNum=%{public}d", partitionNum);
+        return E_PARAMS_INVALID;
+    }
+    if (params.GetFsType().empty()) {
+        LOGE("FormatPartition: fsType is empty");
+        return E_PARAMS_INVALID;
+    }
+    int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
+    LOGI("FormatPartition done ret=%{public}d", ret);
+    return ret;
 }
 
 } // namespace DiskManager

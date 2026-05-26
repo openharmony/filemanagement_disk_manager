@@ -55,6 +55,12 @@ public:
     ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) override;
     ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) override;
     ErrCode GetBlockInfoByType(const std::string &type, std::string &blockInfos) override;
+    ErrCode GetPartitionTableInfo(const std::string &devPath, std::string &execRet) override;
+    ErrCode CreatePartition(const std::string &devPath, int32_t partitionNum, int64_t startSector, int64_t endSector,
+                            const std::string &typeCode) override;
+    ErrCode DeletePartitionInfo(const std::string &devPath, int32_t partitionNum) override;
+    ErrCode FormatPartition(const std::string &devPath, const std::string &fsType, const std::string &volumeName,
+                            bool quickFormat) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

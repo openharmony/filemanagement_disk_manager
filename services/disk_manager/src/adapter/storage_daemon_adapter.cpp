@@ -340,5 +340,60 @@ int32_t StorageDaemonAdapter::GetBlockInfoByType(const std::string &type, std::s
          static_cast<int32_t>(ret), blockInfos.size());
     return static_cast<int32_t>(ret);
 }
+
+int32_t StorageDaemonAdapter::GetPartitionTableInfo(const std::string &devPath, std::string &execRet)
+{
+    LOGI("GetPartitionTableInfo enter, devPath=%{public}s", devPath.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetPartitionTableInfo exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->GetPartitionTableInfo(devPath, execRet);
+    LOGI("GetPartitionTableInfo exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::CreatePartition(const std::string &devPath, int32_t partitionNum, int64_t startSector,
+                                              int64_t endSector, const std::string &typeCode)
+{
+    LOGI("CreatePartition enter, devPath=%{public}s, partitionNum=%{public}d", devPath.c_str(), partitionNum);
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("CreatePartition exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->CreatePartition(devPath, partitionNum, startSector, endSector, typeCode);
+    LOGI("CreatePartition exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::DeletePartition(const std::string &devPath, int32_t partitionNum)
+{
+    LOGI("DeletePartition enter, devPath=%{public}s, partitionNum=%{public}d", devPath.c_str(), partitionNum);
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("DeletePartition exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->DeletePartitionInfo(devPath, partitionNum);
+    LOGI("DeletePartition exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::FormatPartition(const std::string &devPath, const std::string &fsType,
+                                              const std::string &volumeName, bool quickFormat)
+{
+    LOGI("FormatPartition enter, devPath=%{public}s, fsType=%{public}s, volumeName=%{public}s",
+         devPath.c_str(), fsType.c_str(), volumeName.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("FormatPartition exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->FormatPartition(devPath, fsType, volumeName, quickFormat);
+    LOGI("FormatPartition exit ret=%{public}d", ret);
+    return ret;
+}
 } // namespace DiskManager
 } // namespace OHOS

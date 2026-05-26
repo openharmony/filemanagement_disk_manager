@@ -79,6 +79,10 @@ public:
                           const std::string &uuid,
                           const std::string &fsType);
     void NotifyMtpUnmounted(const std::string &id, bool isBadRemove);
+    int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out);
+    int32_t CreatePartition(const std::string &diskId, const PartitionParams &params);
+    int32_t DeletePartition(const std::string &diskId, int32_t partitionNum);
+    int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params);
 
 private:
     DiskManager();
@@ -124,6 +128,16 @@ private:
 
     /** 不持 map 锁；挂载完成后由 Mount 写回 volumeMap_。 */
     int32_t MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId);
+    bool SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info);
+    bool SetAlignSector(std::vector<std::string> &content, PartitionTableInfo &info);
+    bool SetUsableSector(std::vector<std::string> &content, PartitionTableInfo &info);
+    void SetPartitions(std::vector<std::string> &content, PartitionTableInfo &info);
+    void SetTableType(std::vector<std::string> &content, PartitionTableInfo &info);
+    bool ParsePartitionInfo(const std::string &context, PartitionInfo &info);
+    std::string GetFsTypeByDiskIdAndPartNum(const std::string &diskId, int32_t partitionNum);
+    bool IsParamsValid(const PartitionParams &params, const PartitionTableInfo &info);
+    bool IsDiskNotReady(const std::string &diskId);
+    bool IsVolumeMounted(const std::string &diskId, int32_t partitionNum);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
@@ -131,8 +145,10 @@ private:
      */
     mutable std::shared_mutex diskMapMutex_;
     mutable std::shared_mutex volumeMapMutex_;
+    std::mutex partitionLock_;
     std::map<std::string, Disk> diskMap_;
     std::map<std::string, VolumeExternal> volumeMap_;
+    std::map<std::string, PartitionTableInfo> partitionTableMap_;
 };
 
 } // namespace DiskManager

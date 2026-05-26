@@ -67,17 +67,9 @@ public:
 
     // Partition management APIs (new_api @since 26.0.0)
     int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out) override;
-    int32_t CreatePartition(const std::string &diskId,
-                            int32_t partitionNum,
-                            int64_t startSector,
-                            int64_t endSector,
-                            const std::string &typeCode) override;
+    int32_t CreatePartition(const std::string &diskId, const PartitionParams &params) override;
     int32_t DeletePartition(const std::string &diskId, int32_t partitionNum) override;
-    int32_t FormatPartition(const std::string &diskId,
-                            int32_t partitionNum,
-                            const std::string &fsType,
-                            bool quickFormat,
-                            const std::string &volumeName) override;
+    int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params) override;
 };
 } // namespace DiskManager
 } // namespace OHOS

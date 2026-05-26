@@ -421,5 +421,110 @@ ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t parti
     }
     return reply.ReadInt32();
 }
+
+ErrCode StorageDaemonProxy::GetPartitionTableInfo(const std::string &devPath, std::string &execRet)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(execRet))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_PARTITION_TABLE_INFO),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::CreatePartition(const std::string &devPath, int32_t partitionNum, int64_t startSector,
+                                            int64_t endSector, const std::string &typeCode)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteInt32(partitionNum)) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteInt64(startSector)) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteInt64(endSector)) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(typeCode))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_CREATE_PARTITION),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::DeletePartitionInfo(const std::string &devPath, int32_t partitionNum)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteInt32(partitionNum)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_DELETE_PARTITION),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::FormatPartition(const std::string &devPath, const std::string &fsType,
+                                            const std::string &volumeName, bool quickFormat)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(fsType))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(volumeName))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteBool(quickFormat)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_FORMAT_PARTITION),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
 } // namespace StorageDaemon
 } // namespace OHOS

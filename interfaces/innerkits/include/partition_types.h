@@ -87,6 +87,8 @@ public:
     const std::vector<PartitionInfo> &GetPartitions() const;
     void SetPartitions(const std::vector<PartitionInfo> &partitions);
     void SetPartitions(std::vector<PartitionInfo> &&partitions);
+    int64_t GetLastUsableSector() const;
+    void SetLastUsableSector(int64_t lastUsableSector);
 
     bool Marshalling(Parcel &parcel) const override;
     static PartitionTableInfo *Unmarshalling(Parcel &parcel);
@@ -100,6 +102,7 @@ private:
     int64_t totalSector_ {0};                 // totalSector
     int32_t sectorSize_ {512};                // sectorSize
     int32_t alignSector_ {2048};              // alignSector
+    int32_t lastUsableSector_ {0};             // lastUsableSector
     std::vector<PartitionInfo> partitions_;   // partitions array
 };
 
@@ -107,21 +110,53 @@ private:
  * Partition creation parameters.
  * Corresponds to volumeManager.PartitionParams in new_api.
  */
-struct PartitionParams {
-    int32_t partitionNum {0};       // partitionNum
-    int64_t startSector {0};      // startSector
-    int64_t endSector {0};        // endSector
-    std::string typeCode;         // typeCode (filesystem type)
+class PartitionParams : public Parcelable {
+public:
+    PartitionParams() = default;
+    PartitionParams(int32_t partitionNum, int64_t startSector, int64_t endSector, const std::string &typeCode);
+
+    int32_t GetPartitionNum() const;
+    void SetPartitionNum(int32_t partitionNum);
+    int64_t GetStartSector() const;
+    void SetStartSector(int64_t startSector);
+    int64_t GetEndSector() const;
+    void SetEndSector(int64_t endSector);
+    std::string GetTypeCode() const;
+    void SetTypeCode(const std::string &typeCode);
+
+    bool Marshalling(Parcel &parcel) const override;
+    static PartitionParams *Unmarshalling(Parcel &parcel);
+
+private:
+    int32_t partitionNum_ {0};
+    int64_t startSector_ {0};
+    int64_t endSector_ {0};
+    std::string typeCode_;
 };
 
 /**
  * Format parameters for partition formatting.
  * Corresponds to volumeManager.FormatParams in new_api.
  */
-struct FormatParams {
-    std::string fsType;           // fsType (ext4/vfat/exfat)
-    bool quickFormat {true};      // quickFormat, default true
-    std::string volumeName;       // volumeName after formatting
+class FormatParams : public Parcelable {
+public:
+    FormatParams() = default;
+    FormatParams(const std::string &fsType, bool quickFormat, const std::string &volumeName);
+
+    std::string GetFsType() const;
+    void SetFsType(const std::string &fsType);
+    bool GetQuickFormat() const;
+    void SetQuickFormat(bool quickFormat);
+    std::string GetVolumeName() const;
+    void SetVolumeName(const std::string &volumeName);
+
+    bool Marshalling(Parcel &parcel) const override;
+    static FormatParams *Unmarshalling(Parcel &parcel);
+
+private:
+    std::string fsType_;
+    bool quickFormat_ {true};
+    std::string volumeName_;
 };
 
 } // namespace DiskManager

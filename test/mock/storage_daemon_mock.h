@@ -53,6 +53,10 @@ public:
     MOCK_METHOD2(MountFuseDevice, ErrCode(const std::string &mountPath, int32_t &fuseFd));
     MOCK_METHOD3(Partition, ErrCode(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags));
     MOCK_METHOD2(GetBlockInfoByType, ErrCode(const std::string &type, std::string &blockInfos));
+    MOCK_METHOD2(GetPartitionTableInfo, ErrCode(const std::string &, std::string &));
+    MOCK_METHOD5(CreatePartition, ErrCode(const std::string &, int32_t, int64_t, int64_t, const std::string &));
+    MOCK_METHOD2(DeletePartitionInfo, ErrCode(const std::string &, int32_t));
+    MOCK_METHOD4(FormatPartition, ErrCode(const std::string &, const std::string &, const std::string &, bool));
 };
 
 } // namespace DiskManager
