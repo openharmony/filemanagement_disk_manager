@@ -1179,10 +1179,7 @@ int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTable
         LOGE("get partition table info failed.");
         return E_GET_PARTITION_ERROR;
     }
-    std::vector<std::string> tempInfo;
-    for (auto &buf : execRet) {
-        tempInfo = SplitRawDumpToLines(execRet);
-    }
+    std::vector<std::string> tempInfo = SplitRawDumpToLines(execRet);
     if (!SetSectorSize(tempInfo, info)) {
         return E_GET_PARTITION_ERROR;
     }
