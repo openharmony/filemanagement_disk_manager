@@ -511,6 +511,11 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
         DiscoverSinglePartitionVolume4CD(env, diskId);
         return DiskManagerErrNo::E_OK;
     }
+    if (parts.empty() && !publishNewDiskEvent) {
+        LOGI("publishNewDiskEvent is %{public}d, and no partion for disk ID: %{public}s", publishNewDiskEvent,
+             diskId.c_str());
+        DestroyALLVolume(diskId);
+    }
     for (const auto &p : parts) {
         LOGI("Discovering volume for partition number: %{public}d", p.partitionNumber);
         DiscoverSinglePartitionVolume(env, diskId, p, isUserData);
