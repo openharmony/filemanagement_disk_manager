@@ -286,5 +286,150 @@ PartitionTableInfo *PartitionTableInfo::Unmarshalling(Parcel &parcel)
     return obj;
 }
 
+// ---------- PartitionParams ----------
+
+PartitionParams::PartitionParams(int32_t partitionNum, int64_t startSector, int64_t endSector, const std::string &typeCode)
+    : partitionNum_(partitionNum),
+      startSector_(startSector),
+      endSector_(endSector),
+      typeCode_(typeCode)
+{
+}
+
+int32_t PartitionParams::GetPartitionNum() const
+{
+    return partitionNum_;
+}
+
+void PartitionParams::SetPartitionNum(int32_t partitionNum)
+{
+    partitionNum_ = partitionNum;
+}
+
+int64_t PartitionParams::GetStartSector() const
+{
+    return startSector_;
+}
+
+void PartitionParams::SetStartSector(int64_t startSector)
+{
+    startSector_ = startSector;
+}
+
+int64_t PartitionParams::GetEndSector() const
+{
+    return endSector_;
+}
+
+void PartitionParams::SetEndSector(int64_t endSector)
+{
+    endSector_ = endSector;
+}
+
+std::string PartitionParams::GetTypeCode() const
+{
+    return typeCode_;
+}
+
+void PartitionParams::SetTypeCode(const std::string &typeCode)
+{
+    typeCode_ = typeCode;
+}
+
+bool PartitionParams::Marshalling(Parcel &parcel) const
+{
+    if (!parcel.WriteInt32(partitionNum_)) {
+        return false;
+    }
+    if (!parcel.WriteInt64(startSector_)) {
+        return false;
+    }
+    if (!parcel.WriteInt64(endSector_)) {
+        return false;
+    }
+    if (!parcel.WriteString(typeCode_)) {
+        return false;
+    }
+    return true;
+}
+
+PartitionParams *PartitionParams::Unmarshalling(Parcel &parcel)
+{
+    PartitionParams *obj = new (std::nothrow) PartitionParams();
+    if (obj == nullptr) {
+        return nullptr;
+    }
+    obj->partitionNum_ = parcel.ReadInt32();
+    obj->startSector_ = parcel.ReadInt64();
+    obj->endSector_ = parcel.ReadInt64();
+    obj->typeCode_ = parcel.ReadString();
+    return obj;
+}
+
+// ---------- FormatParams ----------
+
+FormatParams::FormatParams(const std::string &fsType, bool quickFormat, const std::string &volumeName)
+    : fsType_(fsType),
+      quickFormat_(quickFormat),
+      volumeName_(volumeName)
+{
+}
+
+std::string FormatParams::GetFsType() const
+{
+    return fsType_;
+}
+
+void FormatParams::SetFsType(const std::string &fsType)
+{
+    fsType_ = fsType;
+}
+
+bool FormatParams::GetQuickFormat() const
+{
+    return quickFormat_;
+}
+
+void FormatParams::SetQuickFormat(bool quickFormat)
+{
+    quickFormat_ = quickFormat;
+}
+
+std::string FormatParams::GetVolumeName() const
+{
+    return volumeName_;
+}
+
+void FormatParams::SetVolumeName(const std::string &volumeName)
+{
+    volumeName_ = volumeName;
+}
+
+bool FormatParams::Marshalling(Parcel &parcel) const
+{
+    if (!parcel.WriteString(fsType_)) {
+        return false;
+    }
+    if (!parcel.WriteBool(quickFormat_)) {
+        return false;
+    }
+    if (!parcel.WriteString(volumeName_)) {
+        return false;
+    }
+    return true;
+}
+
+FormatParams *FormatParams::Unmarshalling(Parcel &parcel)
+{
+    FormatParams *obj = new (std::nothrow) FormatParams();
+    if (obj == nullptr) {
+        return nullptr;
+    }
+    obj->fsType_ = parcel.ReadString();
+    obj->quickFormat_ = parcel.ReadBool();
+    obj->volumeName_ = parcel.ReadString();
+    return obj;
+}
+
 } // namespace DiskManager
 } // namespace OHOS

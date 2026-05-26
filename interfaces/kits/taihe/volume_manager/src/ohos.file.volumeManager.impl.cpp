@@ -346,10 +346,10 @@ void CreatePartitionSync(::taihe::string_view diskId, const ohos::file::volumeMa
     }
 
     OHOS::DiskManager::PartitionParams nativeParams;
-    nativeParams.partitionNum = params.partitionNum;
-    nativeParams.startSector = params.startSector;
-    nativeParams.endSector = params.endSector;
-    nativeParams.typeCode = std::string(params.typeCode);
+    nativeParams.SetPartitionNum(params.partitionNum);
+    nativeParams.SetStartSector(params.startSector);
+    nativeParams.SetEndSector(params.endSector);
+    nativeParams.SetTypeCode(std::string(params.typeCode));
 
     auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
     if (instance == nullptr) {
@@ -400,9 +400,9 @@ void FormatPartitionSync(::taihe::string_view diskId,
     }
 
     OHOS::DiskManager::FormatParams nativeParams;
-    nativeParams.fsType = std::string(params.fsType);
-    nativeParams.quickFormat = params.quickFormat;
-    nativeParams.volumeName = std::string(params.volumeName);
+    nativeParams.SetFsType(std::string(params.fsType));
+    nativeParams.SetQuickFormat(params.quickFormat);
+    nativeParams.SetVolumeName(std::string(params.volumeName));
 
     auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
     if (instance == nullptr) {

@@ -234,20 +234,20 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
 
 int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const PartitionParams &params)
 {
-    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.partitionNum);
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
     if (diskId.empty()) {
         LOGE("CreatePartition: diskId is empty");
         return E_PARAMS_INVALID;
     }
-    if (params.partitionNum <= 0) {
-        LOGE("CreatePartition: invalid partitionNum=%{public}d", params.partitionNum);
+    if (params.GetPartitionNum() <= 0) {
+        LOGE("CreatePartition: invalid partitionNum=%{public}d", params.GetPartitionNum());
         return E_PARAMS_INVALID;
     }
-    if (params.startSector <= 0 || params.endSector <= 0 || params.startSector >= params.endSector) {
+    if (params.GetStartSector() <= 0 || params.GetEndSector() <= 0 || params.GetStartSector() >= params.GetEndSector()) {
         LOGE("CreatePartition: invalid sector range");
         return E_PARAMS_INVALID;
     }
-    if (params.typeCode.empty()) {
+    if (params.GetTypeCode().empty()) {
         LOGE("CreatePartition: typeCode is empty");
         return E_PARAMS_INVALID;
     }
@@ -272,7 +272,7 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
                                              const FormatParams &params)
 {
     LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s", diskId.c_str(),
-         partitionNum, params.fsType.c_str());
+         partitionNum, params.GetFsType().c_str());
     if (diskId.empty()) {
         LOGE("FormatPartition: diskId is empty");
         return E_PARAMS_INVALID;
@@ -281,7 +281,7 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
         LOGE("FormatPartition: invalid partitionNum=%{public}d", partitionNum);
         return E_PARAMS_INVALID;
     }
-    if (params.fsType.empty()) {
+    if (params.GetFsType().empty()) {
         LOGE("FormatPartition: fsType is empty");
         return E_PARAMS_INVALID;
     }

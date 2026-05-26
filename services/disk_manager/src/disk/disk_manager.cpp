@@ -76,6 +76,76 @@ const std::map<std::string, std::string> typeCodeMap_ = {
     {"hmfs", "0x8300"},
 };
 
+bool ConvertStringToInt(const std::string &str, int64_t &value, int32_t base)
+{
+    if (str.empty()) {
+        return false;
+    }
+
+    errno = 0;
+    char* endptr = nullptr;
+
+    int64_t result = std::strtoll(str.c_str(), &endptr, base);
+
+    if (endptr == str.c_str()) {
+        return false;
+    }
+    if (errno == ERANGE && (result == LLONG_MAX || result == LLONG_MIN)) {
+        return false;
+    }
+    if (*endptr != '\0') {
+        return false;
+    }
+    value = result;
+    return true;
+}
+
+bool ConvertStringToInt32(const std::string &context, int32_t &value)
+{
+    if (context.empty()) {
+        return false;
+    }
+    std::regex pattern(R"(^([1-9]\d{0,9})$)");
+    if (!std::regex_match(context, pattern)) {
+        return false;
+    }
+    char *endptr;
+    errno = 0;
+    int64_t tollRes = strtoll(context.c_str(), &endptr, BASE_DECIMAL);
+    if (errno != 0 || endptr != context.c_str() + context.size()) {
+        return false;
+    }
+    if (tollRes <= 0 || tollRes >= INT32_MAX) {
+        return false;
+    }
+    value = static_cast<int32_t>(tollRes);
+    return true;
+}
+
+std::vector<std::string> SplitRawDumpToLines(const std::string &rawDump)
+{
+    std::vector<std::string> lines;
+    if (rawDump.empty()) {
+        return lines;
+    }
+
+    std::string::size_type start = 0;
+    std::string::size_type end = rawDump.find('\n');
+
+    while (end != std::string::npos) {
+        if (start < end) {
+            lines.push_back(rawDump.substr(start, end - start));
+        }
+        start = end + 1;
+        end = rawDump.find('\n', start);
+    }
+
+    if (start < rawDump.size()) {
+        lines.push_back(rawDump.substr(start));
+    }
+    return lines;
+}
+
 std::string NormalizeFsTypeAsciiLower(const std::string &fs)
 {
     std::string out;
@@ -1389,9 +1459,9 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
         LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return E_CREATE_PARTITION_NOT_SUPPORT;
     }
-    auto codeIt = typeCodeMap_.find(params.typeCode);
+    auto codeIt = typeCodeMap_.find(params.GetTypeCode());
     if (codeIt == typeCodeMap_.end()) {
-        LOGE("type code not support, typeCode=%{public}s.", params.typeCode);
+        LOGE("type code not support, typeCode=%{public}s.", params.GetTypeCode().c_str());
         return E_CREATE_PARTITION_NOT_SUPPORT;
     }
     PartitionTableInfo info;
@@ -1404,8 +1474,8 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
     if (IsDiskHasMountedVolume(diskId)) {
         return E_VOL_STATE;
     }
-    int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId, params.partitionNum,
-        params.startSector, params.endSector, codeIt->second);
+    int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId, params.GetPartitionNum(),
+        params.GetStartSector(), params.GetEndSector(), codeIt->second);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return E_CREATE_PARTITION_FAILED;
@@ -1450,7 +1520,7 @@ int32_t DiskManager::GetPartInfo(const std::string &diskId, PartitionTableInfo &
 
 bool DiskManager::IsParamsValid(const PartitionParams &params, const PartitionTableInfo &info)
 {
-    int64_t startSector = params.startSector;
+    int64_t startSector = params.GetStartSector();
     if (startSector > info.GetLastUsableSector() || startSector < info.GetAlignSector()) {
         LOGE("start sector out range");
         return false;
@@ -1459,12 +1529,12 @@ bool DiskManager::IsParamsValid(const PartitionParams &params, const PartitionTa
         LOGE("start sector not align");
         return false;
     }
-    int64_t endSector = params.endSector;
+    int64_t endSector = params.GetEndSector();
     if (endSector > info.GetLastUsableSector() || endSector < info.GetAlignSector()) {
         LOGE("end sector out range");
         return false;
     }
-    std::string typeCode = params.typeCode;
+    std::string typeCode = params.GetTypeCode();
     int64_t sectorInterval = (endSector - startSector + 1) * info.GetSectorSize();
     if (typeCode == "vfat" && sectorInterval < VFAT_TYPECODE_MIN_SIZE) {
         LOGE("vfat sector interval invalid");
@@ -1541,8 +1611,8 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         return E_VOL_STATE;
     }
     std::string devPath = "/dev/block/" + diskId + std::to_string(partitionNum);
-    int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.fsType, params.volumeName,
-        params.quickFormat);
+    int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(), params.GetVolumeName(),
+        params.GetQuickFormat());
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("FormatPartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return E_FORMAT_PARTITION_FAILED;

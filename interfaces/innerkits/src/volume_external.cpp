@@ -120,7 +120,7 @@ std::string VolumeExternal::GetExtraInfo() const
     return extraInfo_;
 }
 
-std::string VolumeExternal::GetPartitionNum() const
+int32_t VolumeExternal::GetPartitionNum() const
 {
     return partitionNum_;
 }

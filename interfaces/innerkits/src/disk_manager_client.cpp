@@ -462,14 +462,14 @@ int32_t DiskManagerClient::GetPartitionTable(const std::string &diskId, Partitio
 
 int32_t DiskManagerClient::CreatePartition(const std::string &diskId, const PartitionParams &params)
 {
-    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), params.partitionNum);
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), params.GetPartitionNum());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.CreatePartition(diskId, params.partitionNum, params.startSector, params.endSector, params.typeCode);
+    return dm.CreatePartition(diskId, params.GetPartitionNum(), params.GetStartSector(), params.GetEndSector(), params.GetTypeCode());
 }
 
 int32_t DiskManagerClient::DeletePartition(const std::string &diskId, int32_t partitionNum)
@@ -487,14 +487,14 @@ int32_t DiskManagerClient::DeletePartition(const std::string &diskId, int32_t pa
 int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
 {
     LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s",
-         diskId.c_str(), partitionNum, params.fsType.c_str());
+         diskId.c_str(), partitionNum, params.GetFsType().c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.FormatPartition(diskId, partitionNum, params.fsType, params.quickFormat, params.volumeName);
+    return dm.FormatPartition(diskId, partitionNum, params.GetFsType(), params.GetQuickFormat(), params.GetVolumeName());
 }
 
 } // namespace DiskManager

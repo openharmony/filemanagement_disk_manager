@@ -975,25 +975,33 @@ napi_value GetPartitionTable(napi_env env, napi_callback_info info)
 static bool ParsePartitionParams(napi_env env, napi_value paramsObj, PartitionParams &params)
 {
     bool succ = false;
-    std::tie(succ, params.partitionNum) = NVal(env, paramsObj).GetProp("partitionNum").ToInt32();
+    int32_t partitionNum = 0;
+    std::tie(succ, partitionNum) = NVal(env, paramsObj).GetProp("partitionNum").ToInt32();
     if (!succ) {
         return false;
     }
-    std::tie(succ, params.startSector) = NVal(env, paramsObj).GetProp("startSector").ToInt64();
+    params.SetPartitionNum(partitionNum);
+
+    int64_t startSector = 0;
+    std::tie(succ, startSector) = NVal(env, paramsObj).GetProp("startSector").ToInt64();
     if (!succ) {
         return false;
     }
-    std::tie(succ, params.endSector) = NVal(env, paramsObj).GetProp("endSector").ToInt64();
+    params.SetStartSector(startSector);
+
+    int64_t endSector = 0;
+    std::tie(succ, endSector) = NVal(env, paramsObj).GetProp("endSector").ToInt64();
     if (!succ) {
         return false;
     }
+    params.SetEndSector(endSector);
 
     std::unique_ptr<char[]> typeCode;
     std::tie(succ, typeCode, std::ignore) = NVal(env, paramsObj).GetProp("typeCode").ToUTF8String();
     if (!succ) {
         return false;
     }
-    params.typeCode = std::string(typeCode.get());
+    params.SetTypeCode(std::string(typeCode.get()));
 
     return true;
 }
@@ -1075,7 +1083,7 @@ napi_value DeletePartition(napi_env env, napi_callback_info info)
 // 辅助函数：解析 FormatParams 参数
 static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &params)
 {
-    params.quickFormat = true; // default value
+    params.SetQuickFormat(true);
 
     bool succ = false;
     std::unique_ptr<char[]> fsType;
@@ -1083,14 +1091,14 @@ static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &
     if (!succ) {
         return false;
     }
-    params.fsType = std::string(fsType.get());
+    params.SetFsType(std::string(fsType.get()));
 
     NVal quickFormatVal = NVal(env, paramsObj).GetProp("quickFormat");
     if (quickFormatVal.val_ != nullptr) {
         bool quickFormat = true;
         std::tie(succ, quickFormat) = quickFormatVal.ToBool();
         if (succ) {
-            params.quickFormat = quickFormat;
+            params.SetQuickFormat(quickFormat);
         }
     }
 
@@ -1099,7 +1107,7 @@ static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &
         std::unique_ptr<char[]> volumeName;
         std::tie(succ, volumeName, std::ignore) = volumeNameVal.ToUTF8String();
         if (succ && volumeName != nullptr) {
-            params.volumeName = std::string(volumeName.get());
+            params.SetVolumeName(std::string(volumeName.get()));
         }
     }
 
