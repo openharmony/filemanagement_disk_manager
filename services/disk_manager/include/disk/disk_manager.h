@@ -128,7 +128,6 @@ private:
 
     /** 不持 map 锁；挂载完成后由 Mount 写回 volumeMap_。 */
     int32_t MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId);
-    bool SetTotalSector(std::vector<std::string> &content, PartitionTableInfo &info, const std::string &devPath);
     bool SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info);
     bool SetAlignSector(std::vector<std::string> &content, PartitionTableInfo &info);
     bool SetUsableSector(std::vector<std::string> &content, PartitionTableInfo &info);

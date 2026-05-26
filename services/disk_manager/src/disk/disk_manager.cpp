@@ -1323,40 +1323,6 @@ bool DiskManager::SetUsableSector(std::vector<std::string> &content, PartitionTa
     return true;
 }
 
-bool DiskManager::SetTotalSector(std::vector<std::string> &content, PartitionTableInfo &info,
-                                 const std::string &devPath)
-{
-    auto count = static_cast<int32_t>(content.size());
-    std::string prefix = "Disk " + devPath;
-    std::string target;
-    for (int32_t i = 0; i < count; i++) {
-        std::string buf = content[i];
-        if (buf.find(prefix) == 0) {
-            target = buf;
-            break;
-        }
-    }
-    if (target.empty()) {
-        LOGE("not found total sector");
-        return false;
-    }
-    std::regex pattern(R"((\d+)\s+sectors)");
-    std::smatch match;
-    if (!std::regex_search(target, match, pattern)) {
-        LOGE("total sector not match, target=%{public}s", target.c_str());
-        return false;
-    }
-    std::string result = match[1].str();
-    int64_t totalSector = 0;
-    if (!ConvertStringToInt(result, totalSector)) {
-        LOGE("convert total sector failed, result=%{public}s", result.c_str());
-        return false;
-    }
-    info.SetTotalSector(totalSector);
-    LOGI("parse totalSector success, %{public}lld", static_cast<long long>(totalSector));
-    return true;
-}
-
 bool DiskManager::SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info)
 {
     auto count = static_cast<int32_t>(content.size());
