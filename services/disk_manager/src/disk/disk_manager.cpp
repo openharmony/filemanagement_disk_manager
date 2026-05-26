@@ -1171,6 +1171,7 @@ int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTable
         LOGE("diskId not exist.");
         return E_NON_EXIST;
     }
+    std::lock_guard<std::mutex> lock(partitionLock_);
     std::string execRet;
     std::string devPath = "/dev/block/" + diskId;
     int32_t ret = StorageDaemonAdapter::GetInstance().GetPartitionTableInfo(devPath, execRet);
@@ -1198,15 +1199,9 @@ int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTable
     SetTableType(tempInfo, info);
     SetPartitions(tempInfo, info);
     info.SetPartitionCount(static_cast<int32_t>(info.GetPartitions().size()));
-    UpsertPartitionTable(info);
+    partitionTableMap_[info.GetDiskId()] = info;
     LOGI("GetPartitionTable success");
     return DiskManagerErrNo::E_OK;
-}
-
-void DiskManager::UpsertPartitionTable(PartitionTableInfo &info)
-{
-    std::shared_lock<std::shared_mutex> partLock(partitionTableMapMutex_);
-    partitionTableMap_[info.GetDiskId()] = info;
 }
 
 void DiskManager::SetPartitions(std::vector<std::string> &content, PartitionTableInfo &tableInfo)
@@ -1464,18 +1459,20 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
         LOGE("type code not support, typeCode=%{public}s.", params.GetTypeCode().c_str());
         return E_CREATE_PARTITION_NOT_SUPPORT;
     }
-    PartitionTableInfo info;
-    if (GetPartInfo(diskId, info) != E_OK) {
+    if (IsDiskNotReady(diskId)) {
+        return E_VOL_STATE;
+    }
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
+        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
         return E_NON_EXIST;
     }
+    PartitionTableInfo info = partitionTableMap_[diskId];
     if (!IsParamsValid(params, info)) {
         return E_PARAMS_INVALID;
     }
-    if (IsDiskHasMountedVolume(diskId)) {
-        return E_VOL_STATE;
-    }
-    int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId, params.GetPartitionNum(),
-        params.GetStartSector(), params.GetEndSector(), codeIt->second);
+    int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId,
+        params.GetPartitionNum(),params.GetStartSector(), params.GetEndSector(), codeIt->second);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return E_CREATE_PARTITION_FAILED;
@@ -1484,11 +1481,11 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
     return DiskManagerErrNo::E_OK;
 }
 
-bool DiskManager::IsDiskHasMountedVolume(const std::string &diskId)
+bool DiskManager::IsDiskNotReady(const std::string &diskId)
 {
     Disk disk;
     if (GetDiskById(diskId, disk) != E_OK) {
-        return false;
+        return true;
     }
     std::vector<std::string> volIds = disk.GetVolumeIds();
     if (volIds.empty()) {
@@ -1509,7 +1506,6 @@ bool DiskManager::IsDiskHasMountedVolume(const std::string &diskId)
 
 int32_t DiskManager::GetPartInfo(const std::string &diskId, PartitionTableInfo &info)
 {
-    std::shared_lock<std::shared_mutex> partLock(partitionTableMapMutex_);
     if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
         LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
         return E_NON_EXIST;
@@ -1569,13 +1565,15 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
         LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return E_DELETE_PARTITION_NOT_SUPPORT;
     }
-    if (IsDiskHasMountedVolume(diskId)) {
+    if (IsDiskNotReady(diskId)) {
         return E_VOL_STATE;
     }
-    PartitionTableInfo info;
-    if (GetPartInfo(diskId, info) != E_OK) {
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
+        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
         return E_NON_EXIST;
     }
+    PartitionTableInfo info = partitionTableMap_[diskId];
     bool partNumValid = false;
     std::vector<PartitionInfo> infos = info.GetPartitions();
     for (const auto &item: infos) {
@@ -1610,9 +1608,30 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
     if (IsVolumeMounted(diskId, partitionNum)) {
         return E_VOL_STATE;
     }
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
+        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
+        return E_NON_EXIST;
+    }
+    PartitionTableInfo info = partitionTableMap_[diskId];
+    bool partNumValid = false;
+    std::vector<PartitionInfo> infos = info.GetPartitions();
+    PartitionInfo partitionInfo;
+    for (const auto &item: infos) {
+        if (item.GetPartitionNum() == partitionNum) {
+            partNumValid = true;
+            partitionInfo = item;
+            break;
+        }
+    }
+    if (!partNumValid) {
+        LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
+        return E_NON_EXIST;
+    }
+
     std::string devPath = "/dev/block/" + diskId + std::to_string(partitionNum);
-    int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(), params.GetVolumeName(),
-        params.GetQuickFormat());
+    int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
+                                                                      params.GetVolumeName(), params.GetQuickFormat());
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("FormatPartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return E_FORMAT_PARTITION_FAILED;

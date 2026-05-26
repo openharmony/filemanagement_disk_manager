@@ -139,7 +139,7 @@ private:
     void UpsertPartitionTable(PartitionTableInfo &info);
     int32_t GetPartInfo(const std::string &diskId, PartitionTableInfo &info);
     bool IsParamsValid(const PartitionParams &params, const PartitionTableInfo &info);
-    bool IsDiskHasMountedVolume(const std::string &diskId);
+    bool IsDiskNotReady(const std::string &diskId);
     bool IsVolumeMounted(const std::string &diskId, int32_t partitionNum);
 
     /**
@@ -149,6 +149,7 @@ private:
     mutable std::shared_mutex diskMapMutex_;
     mutable std::shared_mutex volumeMapMutex_;
     mutable std::shared_mutex partitionTableMapMutex_;
+    std::mutex partitionLock_;
     std::map<std::string, Disk> diskMap_;
     std::map<std::string, VolumeExternal> volumeMap_;
     std::map<std::string, PartitionTableInfo> partitionTableMap_;
