@@ -1504,16 +1504,6 @@ bool DiskManager::IsDiskNotReady(const std::string &diskId)
     return false;
 }
 
-int32_t DiskManager::GetPartInfo(const std::string &diskId, PartitionTableInfo &info)
-{
-    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
-        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
-        return E_NON_EXIST;
-    }
-    info = partitionTableMap_[diskId];
-    return DiskManagerErrNo::E_OK;
-}
-
 bool DiskManager::IsParamsValid(const PartitionParams &params, const PartitionTableInfo &info)
 {
     int64_t startSector = params.GetStartSector();
@@ -1628,7 +1618,6 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
         return E_NON_EXIST;
     }
-
     std::string devPath = "/dev/block/" + diskId + std::to_string(partitionNum);
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
                                                                       params.GetVolumeName(), params.GetQuickFormat());
