@@ -469,7 +469,7 @@ int32_t DiskManagerClient::CreatePartition(const std::string &diskId, const Part
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.CreatePartition(diskId, params.GetPartitionNum(), params.GetStartSector(), params.GetEndSector(), params.GetTypeCode());
+    return dm.CreatePartition(diskId, params);
 }
 
 int32_t DiskManagerClient::DeletePartition(const std::string &diskId, int32_t partitionNum)
@@ -494,7 +494,7 @@ int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t pa
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.FormatPartition(diskId, partitionNum, params.GetFsType(), params.GetQuickFormat(), params.GetVolumeName());
+    return dm.FormatPartition(diskId, partitionNum, params);
 }
 
 } // namespace DiskManager

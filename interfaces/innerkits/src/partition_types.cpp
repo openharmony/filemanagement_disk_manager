@@ -288,13 +288,9 @@ PartitionTableInfo *PartitionTableInfo::Unmarshalling(Parcel &parcel)
 
 // ---------- PartitionParams ----------
 
-PartitionParams::PartitionParams(int32_t partitionNum, int64_t startSector, int64_t endSector, const std::string &typeCode)
-    : partitionNum_(partitionNum),
-      startSector_(startSector),
-      endSector_(endSector),
-      typeCode_(typeCode)
-{
-}
+PartitionParams::PartitionParams(int32_t partitionNum, int64_t startSector, int64_t endSector,
+    const std::string &typeCode) : partitionNum_(partitionNum), startSector_(startSector), endSector_(endSector),
+    typeCode_(typeCode) {}
 
 int32_t PartitionParams::GetPartitionNum() const
 {
@@ -369,11 +365,7 @@ PartitionParams *PartitionParams::Unmarshalling(Parcel &parcel)
 // ---------- FormatParams ----------
 
 FormatParams::FormatParams(const std::string &fsType, bool quickFormat, const std::string &volumeName)
-    : fsType_(fsType),
-      quickFormat_(quickFormat),
-      volumeName_(volumeName)
-{
-}
+    : fsType_(fsType), quickFormat_(quickFormat), volumeName_(volumeName) {}
 
 std::string FormatParams::GetFsType() const
 {

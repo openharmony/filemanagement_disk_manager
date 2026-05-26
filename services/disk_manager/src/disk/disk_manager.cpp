@@ -76,7 +76,7 @@ const std::map<std::string, std::string> typeCodeMap_ = {
     {"hmfs", "0x8300"},
 };
 
-bool ConvertStringToInt(const std::string &str, int64_t &value, int32_t base)
+bool ConvertStringToInt(const std::string &str, int64_t &value)
 {
     if (str.empty()) {
         return false;
@@ -85,7 +85,7 @@ bool ConvertStringToInt(const std::string &str, int64_t &value, int32_t base)
     errno = 0;
     char* endptr = nullptr;
 
-    int64_t result = std::strtoll(str.c_str(), &endptr, base);
+    int64_t result = std::strtoll(str.c_str(), &endptr, BASE_DECIMAL);
 
     if (endptr == str.c_str()) {
         return false;
@@ -1183,9 +1183,6 @@ int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTable
     for (auto &buf : execRet) {
         tempInfo = SplitRawDumpToLines(execRet);
     }
-    if (!SetTotalSector(tempInfo, info, devPath)) {
-        return E_GET_PARTITION_ERROR;
-    }
     if (!SetSectorSize(tempInfo, info)) {
         return E_GET_PARTITION_ERROR;
     }
@@ -1324,6 +1321,7 @@ bool DiskManager::SetUsableSector(std::vector<std::string> &content, PartitionTa
         return false;
     }
     info.SetLastUsableSector(lastUsableSector);
+    info.SetTotalSector(lastUsableSector);
     LOGI("parse lastUsableSector success, %{public}lld", static_cast<long long>(lastUsableSector));
     return true;
 }

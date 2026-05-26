@@ -243,7 +243,8 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
         LOGE("CreatePartition: invalid partitionNum=%{public}d", params.GetPartitionNum());
         return E_PARAMS_INVALID;
     }
-    if (params.GetStartSector() <= 0 || params.GetEndSector() <= 0 || params.GetStartSector() >= params.GetEndSector()) {
+    if (params.GetStartSector() <= 0 || params.GetEndSector() <= 0 ||
+        params.GetStartSector() >= params.GetEndSector()) {
         LOGE("CreatePartition: invalid sector range");
         return E_PARAMS_INVALID;
     }
