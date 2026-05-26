@@ -476,7 +476,7 @@ ErrCode StorageDaemonProxy::CreatePartition(const std::string &devPath, int32_t 
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::DeletePartition(const std::string &devPath, int32_t partitionNum)
+ErrCode StorageDaemonProxy::DeletePartitionInfo(const std::string &devPath, int32_t partitionNum)
 {
     MessageParcel data;
     MessageParcel reply;

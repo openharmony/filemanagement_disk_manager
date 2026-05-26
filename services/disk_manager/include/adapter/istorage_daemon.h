@@ -96,9 +96,9 @@ public:
     virtual ErrCode CreatePartition(const std::string &devPath, int32_t partitionNum,
                                     int64_t startSector, int64_t endSector,
                                     const std::string &typeCode) = 0;
-    virtual ErrCode DeletePartition(const std::string &devPath, int32_t partitionNum) = 0;
+    virtual ErrCode DeletePartitionInfo(const std::string &devPath, int32_t partitionNum) = 0;
     virtual ErrCode FormatPartition(const std::string &devPath, const std::string &fsType,
-                                    const std::string &volumeName) = 0;
+                                    const std::string &volumeName, bool quickFormat) = 0;
 
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
