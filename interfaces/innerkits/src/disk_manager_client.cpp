@@ -391,6 +391,42 @@ int32_t DiskManagerClient::GetVolumeOpProcess(const std::string &volumeId, int32
     return dm.GetVolumeOpProcess(volumeId, progressPct);
 }
 
+int32_t DiskManagerClient::TryToFix(const std::string &volumeId)
+{
+    LOGI("TryToFix volumeId=%{public}s", volumeId.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.TryToFix(volumeId);
+}
+
+int32_t DiskManagerClient::QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)
+{
+    LOGI("QueryUsbIsInUse diskPath=%{public}s", diskPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.QueryUsbIsInUse(diskPath, isInUse);
+}
+
+int32_t DiskManagerClient::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
+{
+    LOGI("IsUsbFuseByType type=%{public}d", type);
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.IsUsbFuseByType(type, isUsbFuse);
+}
+
 int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());

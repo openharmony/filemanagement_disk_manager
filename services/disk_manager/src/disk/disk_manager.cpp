@@ -53,6 +53,8 @@ namespace {
 constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
+/** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
+constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 
 constexpr int32_t TRUE_LEN = 5;
 constexpr int32_t RD_ENABLE_LENGTH = 255;
@@ -254,6 +256,39 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
          dataMountPath.c_str(), volExternal.GetId().c_str(), fsUuid.c_str(), created ? 1 : 0);
     return dataMountPath;
 }
+
+std::string BuildMountDataOptions(bool useVoldataPath)
+{
+    if (useVoldataPath) {
+        return VOLDATA_MOUNT_SELINUX_CONTEXT;
+    }
+    return "";
+}
+
+bool IsSafeFsUuidForPath(const std::string &fsUuid)
+{
+    return !fsUuid.empty() && fsUuid.find("..") == std::string::npos && fsUuid.find('/') == std::string::npos;
+}
+
+/** QueryUsbIsInUse 入参：已挂载用实际 path，否则按策略推导 voldata/external 路径。 */
+std::string ResolveQueryUsbIsInUseMountPath(const VolumeExternal &volExternal, bool isInternalDataDisk)
+{
+    if (!volExternal.GetPath().empty()) {
+        return volExternal.GetPath();
+    }
+    const std::string fsNormLower = NormalizeFsTypeAsciiLower(volExternal.GetFsTypeString());
+    const std::string fsUuid = volExternal.GetUuid();
+    if (isInternalDataDisk && fsNormLower == "f2fs" && IsSafeFsUuidForPath(fsUuid)) {
+        std::string voldataPath;
+        if (VoldataUuidStore::GetInstance().TryGetMountPath(fsUuid, voldataPath)) {
+            return voldataPath;
+        }
+    }
+    if (IsSafeFsUuidForPath(fsUuid)) {
+        return std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
+    }
+    return "";
+}
 } // namespace
 
 bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId,
@@ -266,21 +301,34 @@ bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &di
     if (!dit->second.IsInternalDataDisk()) {
         return false;
     }
-    if (fsNormLower != "f2fs" && fsNormLower != "hmfs") {
-        return false;
-    }
+    return fsNormLower == "f2fs";
+}
 
-    uint32_t volumeCountOnDisk = 0;
-    for (const auto &kv : volumeMap_) {
-        if (kv.second.GetDiskId() != diskId) {
-            continue;
+void DiskManager::UpdateVoldataMappingAfterFormat(const std::string &diskId,
+                                                  const std::string &oldFsUuid,
+                                                  const std::string &newFsUuid,
+                                                  const std::string &fsType)
+{
+    const std::string fsNormLower = NormalizeFsTypeAsciiLower(fsType);
+    std::shared_lock<std::shared_mutex> diskLock(diskMapMutex_);
+    std::shared_lock<std::shared_mutex> volLock(volumeMapMutex_);
+    const bool useVoldataPath = ShouldUseVoldataMountPathForDiskUnlocked(diskId, fsNormLower);
+
+    auto &store = VoldataUuidStore::GetInstance();
+    if (!useVoldataPath) {
+        if (!oldFsUuid.empty() && IsSafeFsUuid(oldFsUuid)) {
+            (void)store.RemoveByFsUuid(oldFsUuid);
         }
-        ++volumeCountOnDisk;
-        if (volumeCountOnDisk > 1U) {
-            return false;
-        }
+        return;
     }
-    return volumeCountOnDisk == 1U;
+    if (oldFsUuid.empty() || newFsUuid.empty() || !IsSafeFsUuid(oldFsUuid) || !IsSafeFsUuid(newFsUuid)) {
+        return;
+    }
+    std::string unused;
+    if (!store.TryGetMountPath(oldFsUuid, unused)) {
+        return;
+    }
+    (void)store.ReplaceFsUuid(oldFsUuid, newFsUuid);
 }
 
 DiskManager::VolumeMountPolicy DiskManager::ComputeVolumeMountPolicy(const std::string &diskId,
@@ -297,7 +345,7 @@ DiskManager::VolumeMountPolicy DiskManager::ComputeVolumeMountPolicy(const std::
     if (dit != diskMap_.end()) {
         isInternalDisk = dit->second.IsInternalDataDisk();
     }
-    const bool isDataFs = (fsNormLower == "f2fs" || fsNormLower == "hmfs");
+    const bool isDataFs = (fsNormLower == "f2fs");
     const bool bypassTobForPcNonDataFs = isInternalDisk && !isDataFs;
     policy.useFuseData = !policy.useVoldataPath && !bypassTobForPcNonDataFs &&
                          UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType);
@@ -464,6 +512,34 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
     return StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, force);
 }
 
+int32_t DiskManager::ResolveUnmountForceFlag(const VolumeExternal &volExternal, bool &forceUnmount)
+{
+    forceUnmount = true;
+    std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+    const auto dit = diskMap_.find(volExternal.GetDiskId());
+    if (dit == diskMap_.end() || !dit->second.IsInternalDataDisk()) {
+        return DiskManagerErrNo::E_OK;
+    }
+    forceUnmount = false;
+    const std::string queryPath = ResolveQueryUsbIsInUseMountPath(volExternal, true);
+    if (queryPath.empty()) {
+        LOGE("Unmount: QueryUsbIsInUse path unresolved volumeId=%{public}s", volExternal.GetId().c_str());
+        return E_PARAMS_INVALID;
+    }
+    bool isInUse = false;
+    const int32_t queryErr = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(queryPath, isInUse);
+    if (queryErr != ERR_OK) {
+        LOGE("Unmount: QueryUsbIsInUse failed mountPath=%{public}s err=%{public}d", queryPath.c_str(), queryErr);
+        return queryErr;
+    }
+    if (isInUse) {
+        LOGE("Unmount: internal data disk in use mountPath=%{public}s volumeId=%{public}s", queryPath.c_str(),
+             volExternal.GetId().c_str());
+        return E_UMOUNT_BUSY;
+    }
+    return DiskManagerErrNo::E_OK;
+}
+
 DiskManager::DiskManager() = default;
 
 DiskManager::~DiskManager() = default;
@@ -579,8 +655,9 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
         mountFlag = HMFS_FLAG;
     }
 
+    const std::string mountData = BuildMountDataOptions(policy.useVoldataPath);
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
-                                                            mountFlag);
+                                                            mountFlag, mountData);
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         if (policy.useVoldataPath && voldataMappingCreated) {
@@ -647,7 +724,13 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         volExternal = it->second;
     }
 
-    const int32_t err = UnmountVolumeMountPoints(volExternal, true);
+    bool forceUnmount = true;
+    const int32_t prepErr = ResolveUnmountForceFlag(volExternal, forceUnmount);
+    if (prepErr != DiskManagerErrNo::E_OK) {
+        return prepErr;
+    }
+
+    const int32_t err = UnmountVolumeMountPoints(volExternal, forceUnmount);
     if (err != ERR_OK) {
         LOGE("Unmount vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         return err;
@@ -670,6 +753,8 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
 int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsType)
 {
     std::string blockVolId;
+    std::string diskId;
+    std::string oldFsUuid;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -691,6 +776,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             return E_VOL_STATE;
         }
         blockVolId = it->second.GetId();
+        diskId = it->second.GetDiskId();
+        oldFsUuid = it->second.GetUuid();
     }
 
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume("/dev/block/" + blockVolId, fsType);
@@ -702,6 +789,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     std::string type;
     std::string label;
     StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + blockVolId, uuid, type, label);
+
+    UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
 
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(volumeId);

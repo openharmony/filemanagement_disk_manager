@@ -124,7 +124,15 @@ private:
     std::string BuildMountDataPath(const MountDataPathParams &params);
 
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
+    /** SSD/HDD 数据盘卸载前 QueryUsbIsInUse 检查（传入挂载路径），并设置 forceUnmount。 */
+    int32_t ResolveUnmountForceFlag(const VolumeExternal &volExternal, bool &forceUnmount);
     int32_t GetFlagFromMajorInfo(const std::string &volumeId);
+
+    /** PC 标准数据盘格式化后，同步 voldata_uuid_store 中 fsUuid 映射。 */
+    void UpdateVoldataMappingAfterFormat(const std::string &diskId,
+                                         const std::string &oldFsUuid,
+                                         const std::string &newFsUuid,
+                                         const std::string &fsType);
 
     /** 不持 map 锁；挂载完成后由 Mount 写回 volumeMap_。 */
     int32_t MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId);

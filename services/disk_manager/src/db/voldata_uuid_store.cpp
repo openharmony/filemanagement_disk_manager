@@ -34,7 +34,7 @@ constexpr const char *DISK_MANAGER_DATA_PATH = "/data/service/el1/public/disk_ma
 constexpr const char *VOLDATA_UUID_MAPPING_JSON = "voldata_uuid_mapping.json";
 constexpr const char *TMP_FILE_SUFFIX = ".tmp";
 constexpr const char *VOLDATA_MOUNT_PREFIX = "/mnt/data/voldata/data";
-constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 20;
+constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 1000;
 
 bool IsSafeFsUuidLocal(const std::string &fsUuid)
 {
@@ -218,6 +218,50 @@ int32_t VoldataUuidStore::RemoveByFsUuid(const std::string &fsUuid)
     }
 
     LOGI("RemoveByFsUuid ok uuid=%{public}s", fsUuid.c_str());
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t VoldataUuidStore::ReplaceFsUuid(const std::string &oldFsUuid, const std::string &newFsUuid)
+{
+    if (!IsSafeFsUuid(oldFsUuid) || !IsSafeFsUuid(newFsUuid)) {
+        LOGE("ReplaceFsUuid invalid fsUuid");
+        return DiskManagerErrNo::DISK_MGR_ERR;
+    }
+    if (oldFsUuid == newFsUuid) {
+        return DiskManagerErrNo::E_OK;
+    }
+
+    const int32_t initRet = Init();
+    if (initRet != DiskManagerErrNo::E_OK) {
+        return initRet;
+    }
+
+    std::unique_lock<std::shared_mutex> dataLock(dataMutex_);
+    const auto oldIt = uuidMap_.find(oldFsUuid);
+    if (oldIt == uuidMap_.end()) {
+        LOGI("ReplaceFsUuid no mapping for old uuid=%{public}s", oldFsUuid.c_str());
+        return DiskManagerErrNo::E_OK;
+    }
+    if (uuidMap_.find(newFsUuid) != uuidMap_.end()) {
+        LOGE("ReplaceFsUuid new uuid already mapped uuid=%{public}s", newFsUuid.c_str());
+        return DiskManagerErrNo::DISK_MGR_ERR;
+    }
+
+    std::unordered_map<std::string, VoldataUuidEntry> backup = uuidMap_;
+    VoldataUuidEntry entry = oldIt->second;
+    entry.fsUuid = newFsUuid;
+    uuidMap_.erase(oldIt);
+    uuidMap_[newFsUuid] = entry;
+
+    const int32_t saveRet = SaveToFile();
+    if (saveRet != DiskManagerErrNo::E_OK) {
+        uuidMap_ = std::move(backup);
+        LOGE("ReplaceFsUuid save failed ret=%{public}d", saveRet);
+        return saveRet;
+    }
+
+    LOGI("ReplaceFsUuid ok old=%{public}s new=%{public}s path=%{public}s slot=%{public}u", oldFsUuid.c_str(),
+         newFsUuid.c_str(), entry.mountPath.c_str(), entry.slotIndex);
     return DiskManagerErrNo::E_OK;
 }
 

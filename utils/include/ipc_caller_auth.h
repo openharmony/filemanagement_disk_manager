@@ -30,6 +30,10 @@
 namespace OHOS {
 namespace DiskManager {
 
+inline const std::string PERMISSION_STORAGE_MANAGER = "ohos.permission.STORAGE_MANAGER";
+inline const std::string PERMISSION_MOUNT_MANAGER = "ohos.permission.MOUNT_UNMOUNT_MANAGER";
+inline const std::string PERMISSION_FORMAT_MANAGER = "ohos.permission.MOUNT_FORMAT_MANAGER";
+
 /**
  * @class IpcCallerAuth
  * @brief 基于当前 IPC 线程上下文（IPCSkeleton + AccessTokenKit）的通用鉴权与调用方信息读取。

@@ -27,7 +27,7 @@
 namespace OHOS {
 namespace DiskManager {
 
-/** PC 数据盘场景：卷 fsUuid 与 /mnt/data/voldata/dataX 挂载路径的持久化映射（最多 20 条）。 */
+/** PC 数据盘场景：卷 fsUuid 与 /mnt/data/voldata/dataX 挂载路径的持久化映射（最多 1000 条）。 */
 struct VoldataUuidEntry {
     std::string fsUuid;
     std::string mountPath;
@@ -45,12 +45,18 @@ public:
     int32_t UnInit();
 
     /**
-     * 查询已有 dataX 路径；不存在则按当前最大 slot+1 分配（满 20 时淘汰 data1 后复用 data1），
+     * 查询已有 dataX 路径；不存在则按当前最大 slot+1 分配（满 1000 时淘汰 data1 后复用 data1），
      * 仅新建时落盘。outCreated 表示本次是否新写入持久化文件。
      */
     int32_t ResolveMountPath(const std::string &fsUuid, std::string &outMountPath, bool &outCreated);
 
     int32_t RemoveByFsUuid(const std::string &fsUuid);
+
+    /**
+     * 格式化后 fsUuid 变化时，保留原 dataX 槽位并更新映射键。
+     * 若 oldFsUuid 无映射则 no-op；若 newFsUuid 已存在则失败。
+     */
+    int32_t ReplaceFsUuid(const std::string &oldFsUuid, const std::string &newFsUuid);
 
     bool TryGetMountPath(const std::string &fsUuid, std::string &outMountPath) const;
 
