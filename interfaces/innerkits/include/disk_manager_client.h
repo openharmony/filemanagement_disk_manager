@@ -77,7 +77,8 @@ public:
      */
     int32_t ResetProxy();
     int32_t TryToFix(const std::string &volumeId);
-    int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse);
+    /** @param mountPath 挂载路径，如 /mnt/data/external/{uuid} 或 /mnt/data/voldata/dataX */
+    int32_t QueryUsbIsInUse(const std::string &mountPath, bool &isInUse);
     int32_t IsUsbFuseByType(int32_t type, bool &isUsbFuse);
 
     /* ---------- storage_daemon 回调（IDiskManager / 进程内，由 storage_daemon 调用） ---------- */

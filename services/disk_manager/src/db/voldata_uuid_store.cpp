@@ -34,7 +34,7 @@ constexpr const char *DISK_MANAGER_DATA_PATH = "/data/service/el1/public/disk_ma
 constexpr const char *VOLDATA_UUID_MAPPING_JSON = "voldata_uuid_mapping.json";
 constexpr const char *TMP_FILE_SUFFIX = ".tmp";
 constexpr const char *VOLDATA_MOUNT_PREFIX = "/mnt/data/voldata/data";
-constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 20;
+constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 1000;
 
 bool IsSafeFsUuidLocal(const std::string &fsUuid)
 {
