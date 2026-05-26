@@ -1183,7 +1183,7 @@ int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTable
     if (!SetSectorSize(tempInfo, info)) {
         return E_GET_PARTITION_ERROR;
     }
-    if (!SetAlignSector(tempInfo,info)) {
+    if (!SetAlignSector(tempInfo, info)) {
         return E_GET_PARTITION_ERROR;
     }
     if (!SetUsableSector(tempInfo, info)) {
@@ -1433,7 +1433,7 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
         return E_PARAMS_INVALID;
     }
     int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId,
-        params.GetPartitionNum(),params.GetStartSector(), params.GetEndSector(), codeIt->second);
+        params.GetPartitionNum(), params.GetStartSector(), params.GetEndSector(), codeIt->second);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return E_CREATE_PARTITION_FAILED;

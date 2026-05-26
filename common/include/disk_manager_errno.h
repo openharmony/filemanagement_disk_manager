@@ -63,7 +63,6 @@ enum DiskManagerErrNo : int32_t {
     E_FORMAT_PARTITION_NOT_SUPPORT = 13600000 + 1748,
     E_FORMAT_PARTITION_TIMEOUT = 13600000 + 1749,
     E_FORMAT_PARTITION_ERROR = 13600000 + 1750,
-
 };
 
 } // namespace DiskManager
