@@ -126,7 +126,8 @@ private:
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
     /** SSD/HDD 数据盘卸载前 QueryUsbIsInUse 检查（传入挂载路径），并设置 forceUnmount。 */
     int32_t ResolveUnmountForceFlag(const VolumeExternal &volExternal, bool &forceUnmount);
-    int32_t GetFlagFromMajorInfo(const std::string &volumeId);
+    /** 调用方已持 diskMapMutex_（读锁）。优先父盘 diskType，否则兜底 USB。 */
+    int32_t ResolveVolumeFlagsUnlocked(const std::string &diskId) const;
 
     /** PC 标准数据盘格式化后，同步 voldata_uuid_store 中 fsUuid 映射。 */
     void UpdateVoldataMappingAfterFormat(const std::string &diskId,

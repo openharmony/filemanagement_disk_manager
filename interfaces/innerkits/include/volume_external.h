@@ -17,6 +17,7 @@
 #define OHOS_DISK_MANAGER_VOLUME_EXTERNAL_H
 
 #include "volume_core.h"
+#include "disk.h"
 #include <map>
 
 namespace OHOS {
@@ -78,7 +79,7 @@ public:
 
 private:
     int32_t fsType_{UNDEFINED};
-    int32_t flags_{};
+    int32_t flags_{DISK_TYPE_UNKNOWN};
     std::string fsUuid_;
     std::string path_;
     std::string description_;
