@@ -668,39 +668,48 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
-    const int32_t flag = GetFlagFromMajorInfo(volExternal.GetId());
+    int32_t flag = 0;
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        flag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId(), volExternal.GetId());
+    }
     volExternal.SetFlags(flag);
     ApplyDefaultVolumeDescriptionIfUnset(volExternal, flag);
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::GetFlagFromMajorInfo(const std::string &volumeId)
+int32_t DiskManager::ResolveVolumeFlagsUnlocked(const std::string &diskId, const std::string &volumeId) const
 {
+    const auto dit = diskMap_.find(diskId);
+    if (dit != diskMap_.end()) {
+        const int32_t diskType = dit->second.GetDiskType();
+        if (diskType != static_cast<int32_t>(DISK_TYPE_UNKNOWN)) {
+            return diskType;
+        }
+    }
+
     size_t firstDash = volumeId.find('-');
     if (firstDash == std::string::npos) {
-        LOGE("GetFlagFromMajorInfo can not find first split symbol");
-        return 0;
+        LOGE("ResolveVolumeFlagsUnlocked can not find first split symbol");
+        return static_cast<int32_t>(DISK_TYPE_UNKNOWN);
     }
-
     size_t secondDash = volumeId.find('-', firstDash + 1);
     if (secondDash == std::string::npos) {
-        LOGE("GetFlagFromMajorInfo canot find second split symbol");
-        return 0;
+        LOGE("ResolveVolumeFlagsUnlocked can not find second split symbol");
+        return static_cast<int32_t>(DISK_TYPE_UNKNOWN);
     }
 
-    std::string majorStr = volumeId.substr(firstDash + 1, secondDash - firstDash - 1);
-    int32_t flag = 0;
-    int32_t major = stoi(majorStr);
-    LOGI("GetFlagFromMajorInfo major=%{public}d", major);
+    const std::string majorStr = volumeId.substr(firstDash + 1, secondDash - firstDash - 1);
+    const int32_t major = std::stoi(majorStr);
+    LOGI("ResolveVolumeFlagsUnlocked major fallback major=%{public}d", major);
     if (major == DISK_MMC_MAJOR) {
-        flag |= SD_FLAG;
-    } else if (major == DISK_CD_MAJOR) {
-        flag |= CD_FLAG;
-    } else {
-        flag |= USB_FLAG;
+        return SD_FLAG;
     }
-    return flag;
+    if (major == DISK_CD_MAJOR) {
+        return CD_FLAG;
+    }
+    return USB_FLAG;
 }
 
 int32_t DiskManager::Unmount(const std::string &volumeId)
@@ -953,8 +962,13 @@ int32_t DiskManager::OnDiskDestroyed(const std::string &diskId)
 
 int32_t DiskManager::OnVolumeCreated(const VolumeExternal &volExternal)
 {
+    VolumeExternal vol = volExternal;
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        vol.SetFlags(ResolveVolumeFlagsUnlocked(volExternal.GetDiskId(), volExternal.GetId()));
+    }
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-    volumeMap_.insert(make_pair(volExternal.GetId(), volExternal));
+    volumeMap_.insert(make_pair(vol.GetId(), vol));
     return DiskManagerErrNo::E_OK;
 }
 
