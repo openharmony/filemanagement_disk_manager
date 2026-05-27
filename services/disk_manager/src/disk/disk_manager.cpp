@@ -37,6 +37,7 @@
 #include <fstream>
 #include <mutex>
 #include <regex>
+#include <set>
 #include <shared_mutex>
 #include <sstream>
 #include <string>
@@ -58,8 +59,6 @@ constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_ex
 
 constexpr int32_t TRUE_LEN = 5;
 constexpr int32_t RD_ENABLE_LENGTH = 255;
-constexpr int DISK_MMC_MAJOR = 179;
-constexpr int DISK_CD_MAJOR = 11;
 const int32_t MTP_DEVICE_NAME_LEN = 512;
 constexpr uint64_t HMFS_FLAG = 0x8000;
 constexpr uint32_t BASE_DECIMAL = 10;
@@ -76,6 +75,12 @@ const std::map<std::string, std::string> typeCodeMap_ = {
     {"ext4", "0x8300"},
     {"f2fs", "0x8300"},
     {"hmfs", "0x8300"},
+};
+
+const std::set<std::string> LABEL_SUPPORTED_FS_TYPES = {
+    "ntfs",
+    "exfat",
+    "hmfs",
 };
 
 bool ConvertStringToInt(const std::string &str, int64_t &value)
@@ -671,7 +676,7 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     int32_t flag = 0;
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
-        flag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId(), volExternal.GetId());
+        flag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
     }
     volExternal.SetFlags(flag);
     ApplyDefaultVolumeDescriptionIfUnset(volExternal, flag);
@@ -679,7 +684,7 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::ResolveVolumeFlagsUnlocked(const std::string &diskId, const std::string &volumeId) const
+int32_t DiskManager::ResolveVolumeFlagsUnlocked(const std::string &diskId) const
 {
     const auto dit = diskMap_.find(diskId);
     if (dit != diskMap_.end()) {
@@ -687,27 +692,6 @@ int32_t DiskManager::ResolveVolumeFlagsUnlocked(const std::string &diskId, const
         if (diskType != static_cast<int32_t>(DISK_TYPE_UNKNOWN)) {
             return diskType;
         }
-    }
-
-    size_t firstDash = volumeId.find('-');
-    if (firstDash == std::string::npos) {
-        LOGE("ResolveVolumeFlagsUnlocked can not find first split symbol");
-        return static_cast<int32_t>(DISK_TYPE_UNKNOWN);
-    }
-    size_t secondDash = volumeId.find('-', firstDash + 1);
-    if (secondDash == std::string::npos) {
-        LOGE("ResolveVolumeFlagsUnlocked can not find second split symbol");
-        return static_cast<int32_t>(DISK_TYPE_UNKNOWN);
-    }
-
-    const std::string majorStr = volumeId.substr(firstDash + 1, secondDash - firstDash - 1);
-    const int32_t major = std::stoi(majorStr);
-    LOGI("ResolveVolumeFlagsUnlocked major fallback major=%{public}d", major);
-    if (major == DISK_MMC_MAJOR) {
-        return SD_FLAG;
-    }
-    if (major == DISK_CD_MAJOR) {
-        return CD_FLAG;
     }
     return USB_FLAG;
 }
@@ -869,24 +853,36 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
 
 int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
 {
-    std::string volumeId;
     std::string blockVolId;
     std::string fsTypeStr;
+    std::string diskId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
-        const auto it = std::find_if(volumeMap_.begin(), volumeMap_.end(),
-                                     [&fsUuid](const auto &pair) { return pair.second.GetUuid() == fsUuid; });
-        if (it == volumeMap_.end()) {
+        VolumeExternal volExternal;
+        if (LookupVolumeByUuidUnlocked(fsUuid, volExternal) != E_OK) {
             LOGE("Volume with id %{public}s not found", fsUuid.c_str());
             return E_NON_EXIST;
         }
-        if (IsDiskSupported(it->second.GetDiskId()) != E_OK) {
-            LOGE("SetVolumeDescription failed, not support, fsUuid=%{public}s", fsUuid.c_str());
-            return E_NOT_SUPPORT;
+        if (volExternal.GetState() != VolumeState::UNMOUNTED) {
+            LOGE("SetVolumeDescription: fsUuid=%{public}s state=%{public}d not unmounted",
+                 fsUuid.c_str(), volExternal.GetState());
+            return E_VOL_STATE;
         }
-        volumeId = it->first;
-        blockVolId = it->second.GetId();
-        fsTypeStr = it->second.GetFsTypeString();
+        blockVolId = volExternal.GetId();
+        fsTypeStr = volExternal.GetFsTypeString();
+        diskId = volExternal.GetDiskId();
+    }
+
+    if (IsDiskSupported(diskId) != E_OK) {
+        LOGE("SetVolumeDescription: disk not support, fsUuid=%{public}s diskId=%{public}s",
+             fsUuid.c_str(), diskId.c_str());
+        return E_NOT_SUPPORT;
+    }
+    
+    if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
+        LOGE("SetVolumeDescription: fsType not support, fsUuid=%{public}s fsType=%{public}s",
+             fsUuid.c_str(), fsTypeStr.c_str());
+        return E_NOT_SUPPORT;
     }
 
     const int32_t err =
@@ -897,11 +893,10 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
     }
 
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-    const auto it = volumeMap_.find(volumeId);
+    const auto it = volumeMap_.find(blockVolId);
     if (it == volumeMap_.end()) {
         return E_NON_EXIST;
     }
-    it->second.SetState(UNMOUNTED);
     it->second.SetDescription(description);
     return DiskManagerErrNo::E_OK;
 }
@@ -965,7 +960,7 @@ int32_t DiskManager::OnVolumeCreated(const VolumeExternal &volExternal)
     VolumeExternal vol = volExternal;
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
-        vol.SetFlags(ResolveVolumeFlagsUnlocked(volExternal.GetDiskId(), volExternal.GetId()));
+        vol.SetFlags(ResolveVolumeFlagsUnlocked(volExternal.GetDiskId()));
     }
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     volumeMap_.insert(make_pair(vol.GetId(), vol));
