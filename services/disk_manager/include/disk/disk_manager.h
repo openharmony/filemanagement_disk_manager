@@ -93,6 +93,7 @@ private:
     struct VolumeMountPolicy {
         bool useVoldataPath = false;
         bool useFuseData = false;
+        bool useDvrPath = false;
     };
 
     struct MountDataPathParams {

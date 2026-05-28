@@ -158,6 +158,11 @@ void Disk::UpdateRemovableFromDiskType()
 
 void Disk::RefreshClassificationFromSysfs(const std::string &sysfsPath)
 {
+    if (diskType_ == DVR_USB) {
+        UpdateRemovableFromDiskType();
+        return;
+    }
+
     const std::string &p = sysfsPath;
     int32_t classifiedType = DISK_TYPE_UNKNOWN;
 

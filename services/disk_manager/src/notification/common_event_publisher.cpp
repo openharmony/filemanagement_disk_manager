@@ -18,11 +18,15 @@
 #include "common_event_data.h"
 #include "common_event_manager.h"
 #include "common_event_support.h"
+#include "disk.h"
 #include "disk_manager_hilog.h"
 #include "int_wrapper.h"
 #include "string_wrapper.h"
 #include "want.h"
 #include "want_params.h"
+#ifdef CDC_STORAGE
+#include "common_event_publish_info.h"
+#endif
 
 namespace OHOS {
 namespace DiskManager {
@@ -84,6 +88,16 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
 
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
+#ifdef CDC_STORAGE
+    // for car：DVR USB volume's common event only sent to user 0, other users should not be aware of DVR volume change
+    constexpr int32_t DVR_ALLOWED_USER_ID = 0;
+    if (volume.GetFlags() == static_cast<int32_t>(DVR_USB)) {
+        LOGI("CommonEventPublisher DVR volume, only publish to user 0, id=%{public}s, volumeState=%{public}d",
+             volume.GetId().c_str(), static_cast<int32_t>(notifyCode));
+        EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, DVR_ALLOWED_USER_ID);
+        return;
+    }
+#endif
     EventFwk::CommonEventManager::PublishCommonEvent(commonData);
 }
 

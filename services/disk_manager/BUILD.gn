@@ -64,6 +64,10 @@ ohos_shared_library("disk_manager") {
     "LOG_DOMAIN = 0xD00430F",
   ]
 
+  if (car_device_enable) {
+    defines += [ "CDC_STORAGE" ]
+  }
+
   configs = [
     ":disk_manager_config",
     "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",
