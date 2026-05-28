@@ -53,7 +53,7 @@ public:
                          std::string &label) override;
     ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) override;
     ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) override;
-    ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) override;
+    ErrCode Partition(const std::string &diskPath, const std::string &partitionType) override;
     ErrCode GetBlockInfoByType(const std::string &type, std::string &blockInfos) override;
     ErrCode GetPartitionTableInfo(const std::string &devPath, std::string &execRet) override;
     ErrCode CreatePartition(const std::string &devPath, int32_t partitionNum, int64_t startSector, int64_t endSector,

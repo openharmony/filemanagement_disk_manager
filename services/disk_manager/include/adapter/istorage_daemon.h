@@ -84,7 +84,7 @@ public:
                                  std::string &label) = 0;
     virtual ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) = 0;
     virtual ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) = 0;
-    virtual ErrCode Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags) = 0;
+    virtual ErrCode Partition(const std::string &diskPath, const std::string &partitionType) = 0;
 
     /**
      * 按类型枚举块设备详情（由 storage_daemon 实现；IPC：ADDON_GET_BLOCK_INFO_BY_TYPE）。

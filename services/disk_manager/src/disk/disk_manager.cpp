@@ -56,6 +56,16 @@ constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 /** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
 constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
+constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
+
+std::string NormalizeDiskBlockPath(const std::string &diskPath)
+{
+    if (diskPath.size() > std::char_traits<char>::length(DEV_BLOCK_PREFIX) &&
+        diskPath.compare(0, std::char_traits<char>::length(DEV_BLOCK_PREFIX), DEV_BLOCK_PREFIX) == 0) {
+        return diskPath;
+    }
+    return std::string(DEV_BLOCK_PREFIX) + diskPath;
+}
 
 constexpr int32_t TRUE_LEN = 5;
 constexpr int32_t RD_ENABLE_LENGTH = 255;
@@ -81,6 +91,7 @@ const std::set<std::string> LABEL_SUPPORTED_FS_TYPES = {
     "ntfs",
     "exfat",
     "hmfs",
+    "f2fs"
 };
 
 bool ConvertStringToInt(const std::string &str, int64_t &value)
@@ -203,6 +214,9 @@ int32_t IsDiskSupported(const std::string &diskId)
 void ApplyDefaultVolumeDescriptionIfUnset(VolumeExternal &volExternal, int32_t flag)
 {
     if (!volExternal.GetDescription().empty()) {
+        return;
+    }
+    if (flag == DATA_DISK_SSD || flag == DATA_DISK_HDD) {
         return;
     }
     std::string label;
@@ -903,18 +917,18 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
 
 int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
 {
-    static constexpr const char *undefinedFsType = "undefined";
-    if (UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(undefinedFsType)) {
-        LOGE("Partition: diskId=%{public}s is fuse, not support", diskId.c_str());
-        return E_NOT_SUPPORT;
-    }
-
     int32_t ret = IsDiskSupported(diskId);
     if (ret != E_OK) {
         LOGE("Partition failed, not support diskId=%{public}s, ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
-    return StorageDaemonAdapter::GetInstance().Partition(diskId, type, 0);
+    if (IsDiskNotReady(diskId)) {
+        LOGE("Partition failed, disk has mounted volume, diskId=%{public}s", diskId.c_str());
+        return E_VOL_STATE;
+    }
+    const std::string diskPath = NormalizeDiskBlockPath(diskId);
+    static constexpr const char *partitionType = "hmfs";
+    return StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
 }
 
 int32_t DiskManager::OnDiskCreated(const Disk &disk)

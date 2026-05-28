@@ -189,8 +189,9 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
                                     uint64_t mountFlag,
                                     const std::string &mountData)
 {
-    LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}" PRIu64,
-         devPath.c_str(), mountPath.c_str(), fsType.c_str(), mountFlag);
+    LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}" PRIu64
+         ", mountData=%{public}s",
+         devPath.c_str(), mountPath.c_str(), fsType.c_str(), mountFlag, mountData.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Mount exit err=%{public}d (proxy not ready)", err);
@@ -312,17 +313,17 @@ int32_t StorageDaemonAdapter::MountFuseDevice(const std::string &mountPath, int3
     return ret;
 }
 
-int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags)
+int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, const std::string &partitionType)
 {
-    LOGI("Partition enter, diskPath=%{public}s, partitionType=%{public}d, partitionFlags=%{public}u", diskPath.c_str(),
-         partitionType, partitionFlags);
+    LOGI("Partition enter, diskPath=%{public}s, partitionType=%{public}s", diskPath.c_str(), partitionType.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
-        LOGE("Partition exit err=%{public}d (proxy not ready)", err);
+        LOGE("Partition exit err=%{public}d (proxy not ready), diskPath=%{public}s", err, diskPath.c_str());
         return err;
     }
-    const int32_t ret = storageDaemon_->Partition(diskPath, partitionType, partitionFlags);
-    LOGI("Partition exit ret=%{public}d", ret);
+    const int32_t ret = storageDaemon_->Partition(diskPath, partitionType);
+    LOGI("Partition exit ret=%{public}d, diskPath=%{public}s, partitionType=%{public}s", ret, diskPath.c_str(),
+         partitionType.c_str());
     return ret;
 }
 

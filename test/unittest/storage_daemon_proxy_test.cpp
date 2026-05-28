@@ -1760,7 +1760,7 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "Partition_TestCase_001 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Partition("/dev/block/sda", 1, 0);
+    int32_t ret = proxy_->Partition("/dev/block/sda", "gpt");
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
 
     GTEST_LOG_(INFO) << "Partition_TestCase_001 End";
@@ -1777,7 +1777,7 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_002, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Partition("/dev/block/sda", 1, 0);
+    int32_t ret = proxy_->Partition("/dev/block/sda", "gpt");
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "Partition_TestCase_002 End";
@@ -1785,7 +1785,7 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_002, TestSize.Level0)
 
 /**
  * @tc.name: Partition_TestCase_003
- * @tc.desc: Partition: WriteInt32 (partitionType) returns false.
+ * @tc.desc: Partition: WriteString16 (partitionType) returns false.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_003, TestSize.Level0)
@@ -1793,9 +1793,8 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "Partition_TestCase_003 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Partition("/dev/block/sda", 1, 0);
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    int32_t ret = proxy_->Partition("/dev/block/sda", "gpt");
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "Partition_TestCase_003 End";
@@ -1803,7 +1802,7 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_003, TestSize.Level0)
 
 /**
  * @tc.name: Partition_TestCase_004
- * @tc.desc: Partition: WriteUint32 (partitionFlags) returns false.
+ * @tc.desc: Partition: SendRequest returns non-ERR_OK.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_004, TestSize.Level0)
@@ -1811,18 +1810,19 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "Partition_TestCase_004 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Partition("/dev/block/sda", 1, 0);
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_PARTITION), _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->Partition("/dev/block/sda", "gpt");
+    EXPECT_EQ(ret, IPC_FAILED);
 
     GTEST_LOG_(INFO) << "Partition_TestCase_004 End";
 }
 
 /**
  * @tc.name: Partition_TestCase_005
- * @tc.desc: Partition: SendRequest returns non-ERR_OK.
+ * @tc.desc: Partition: success returns reply ReadInt32.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_005, TestSize.Level0)
@@ -1830,39 +1830,15 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "Partition_TestCase_005 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
-    EXPECT_CALL(*remote_,
-                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_PARTITION), _, _, _))
-        .WillOnce(Return(IPC_FAILED));
-    int32_t ret = proxy_->Partition("/dev/block/sda", 1, 0);
-    EXPECT_EQ(ret, IPC_FAILED);
-
-    GTEST_LOG_(INFO) << "Partition_TestCase_005 End";
-}
-
-/**
- * @tc.name: Partition_TestCase_006
- * @tc.desc: Partition: success returns reply ReadInt32.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_006, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "Partition_TestCase_006 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteUint32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_PARTITION), _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    int32_t ret = proxy_->Partition("/dev/block/sda", 1, 0);
+    int32_t ret = proxy_->Partition("/dev/block/sda", "gpt");
     EXPECT_EQ(ret, ERR_OK);
 
-    GTEST_LOG_(INFO) << "Partition_TestCase_006 End";
+    GTEST_LOG_(INFO) << "Partition_TestCase_005 End";
 }
 
 } // namespace DiskManager

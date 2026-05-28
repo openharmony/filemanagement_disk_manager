@@ -402,7 +402,7 @@ ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &type, std::str
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags)
+ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, const std::string &partitionType)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -410,8 +410,7 @@ ErrCode StorageDaemonProxy::Partition(const std::string &diskPath, int32_t parti
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(diskPath)) || !data.WriteInt32(partitionType) ||
-        !data.WriteUint32(partitionFlags)) {
+    if (!data.WriteString16(Str8ToStr16(diskPath)) || !data.WriteString16(Str8ToStr16(partitionType))) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =

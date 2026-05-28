@@ -57,7 +57,7 @@ public:
     int32_t ReadMetadata(const std::string &devPath, std::string &uuid, std::string &type, std::string &label);
     int32_t GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize);
     int32_t MountFuseDevice(const std::string &mountPath, int32_t &fuseFd);
-    int32_t Partition(const std::string &diskPath, int32_t partitionType, uint32_t partitionFlags);
+    int32_t Partition(const std::string &diskPath, const std::string &partitionType);
     /** 调用 storage_daemon GetBlockInfoByType（出参载荷格式见 storage_daemon / IStorageDaemon 约定）。 */
     int32_t GetBlockInfoByType(const std::string &type, std::string &blockInfos);
     int32_t GetPartitionTableInfo(const std::string &devPath, std::string &execRet);
