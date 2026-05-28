@@ -1711,7 +1711,7 @@ bool DiskManager::IsVolumeMounted(const std::string &diskId, int32_t partitionNu
     return false;
 }
 
-void DiskManager::SaveVolumeFreeSize(const VolumeExternal &volExternal)
+void DiskManager::SaveVolumeFreeSize(VolumeExternal &volExternal)
 {
     int64_t freeSize = 0;
     int32_t ret = GetFreeSizeOfVolume(volExternal.GetUuid(), freeSize);

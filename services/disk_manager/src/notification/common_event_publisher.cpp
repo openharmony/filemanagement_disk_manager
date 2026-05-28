@@ -19,6 +19,7 @@
 #include "common_event_manager.h"
 #include "common_event_support.h"
 #include "disk_manager_hilog.h"
+#include "disk_manager_errno.h"
 #include "disk/disk_manager.h" 
 #include "int_wrapper.h"
 #include "string_wrapper.h"
@@ -65,7 +66,7 @@ void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &
                 LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
                     volume.GetId().c_str(), (long long)freeSize);
             } else {
-                wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+                wantParams.SetParam("freeSize", AAFwk::Integer::Box(freeSize));
                 LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
                     volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
             }
@@ -90,7 +91,7 @@ void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal
             LOGW("Volume unmounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
                 volume.GetId().c_str(), (long long)freeSize);
         } else {
-            wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+            wantParams.SetParam("freeSize", AAFwk::Integer::Box(freeSize));
             LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
                 volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
         }
@@ -174,7 +175,7 @@ void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &
                 LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
                     volume.GetId().c_str(), (long long)freeSize);
             } else {
-                wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+                wantParams.SetParam("freeSize", AAFwk::Integer::Box(freeSize));
                 LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
                     volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
             }
@@ -199,7 +200,7 @@ void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal
             LOGW("Volume unmounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
                 volume.GetId().c_str(), (long long)freeSize);
         } else {
-            wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+            wantParams.SetParam("freeSize", AAFwk::Integer::Box(freeSize));
             LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
                 volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
         }
