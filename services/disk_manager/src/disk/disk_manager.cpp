@@ -216,6 +216,9 @@ void ApplyDefaultVolumeDescriptionIfUnset(VolumeExternal &volExternal, int32_t f
     if (!volExternal.GetDescription().empty()) {
         return;
     }
+    if (flag == DATA_DISK_SSD || flag == DATA_DISK_HDD) {
+        return;
+    }
     std::string label;
     if (flag == SD_FLAG) {
         label = "MySDCard";
