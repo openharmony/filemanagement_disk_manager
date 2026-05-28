@@ -922,6 +922,10 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition failed, not support diskId=%{public}s, ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
+    if (IsDiskNotReady(diskId)) {
+        LOGE("Partition failed, disk has mounted volume, diskId=%{public}s", diskId.c_str());
+        return E_VOL_STATE;
+    }
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     static constexpr const char *partitionType = "hmfs";
     return StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
