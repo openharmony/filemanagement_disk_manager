@@ -716,7 +716,7 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-
+    SaveVolumeFreeSize(volExternal);
     bool forceUnmount = true;
     const int32_t prepErr = ResolveUnmountForceFlag(volExternal, forceUnmount);
     if (prepErr != DiskManagerErrNo::E_OK) {
@@ -1709,6 +1709,25 @@ bool DiskManager::IsVolumeMounted(const std::string &diskId, int32_t partitionNu
         }
     }
     return false;
+}
+
+void DiskManager::SaveVolumeFreeSize(const VolumeExternal &volExternal)
+{
+    int64_t freeSize = 0;
+    int32_t ret = GetFreeSizeOfVolume(volExternal.GetUuid(), freeSize);
+    if (ret == E_OK) {
+        if (freeSize < 0) {
+            LOGW("Unmount: invalid freeSize=%{public}lld for volumeId=%{public}s, skip saving",
+                (long long)freeSize, volExternal.GetId().c_str());
+        } else {
+            volExternal.SetFreeSize(freeSize);
+            LOGI("Unmount: saving freeSize=%{public}lld for volumeId=%{public}s",
+                (long long)freeSize, volExternal.GetId().c_str());
+        }
+    } else {
+        LOGW("Unmount: failed to get freeSize for volumeId=%{public}s, ret=%{public}d",
+            volExternal.GetId().c_str(), ret);
+    }
 }
 } // namespace DiskManager
 } // namespace OHOS

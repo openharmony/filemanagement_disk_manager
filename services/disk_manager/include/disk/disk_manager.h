@@ -148,6 +148,7 @@ private:
     bool IsDiskNotReady(const std::string &diskId);
     bool IsVolumeMounted(const std::string &diskId, int32_t partitionNum);
 
+    void SaveVolumeFreeSize(const VolumeExternal &volume);
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
      * 若同一流程需两把锁，必须按此顺序一次性加锁：先 disk，后 volume。

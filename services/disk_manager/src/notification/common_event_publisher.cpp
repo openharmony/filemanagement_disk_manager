@@ -19,6 +19,7 @@
 #include "common_event_manager.h"
 #include "common_event_support.h"
 #include "disk_manager_hilog.h"
+#include "disk/disk_manager.h" 
 #include "int_wrapper.h"
 #include "string_wrapper.h"
 #include "want.h"
@@ -49,6 +50,52 @@ const VolumeStateInfo STATE_INFOS[] = {
     {DECRYPTING, "DeskDecrypting", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
 };
 
+void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
+{
+    wantParams.SetParam("path", AAFwk::String::Box(volume.GetPath()));
+    wantParams.SetParam("fsType", AAFwk::Integer::Box(volume.GetFsType()));
+    if (volume.GetFsType() == FsType::MTP || volume.GetFsType() == FsType::PTP) {
+        LOGI("Volume mounted: id=%{public}s, fsType=%{public}d (MTP/PTP device, freeSize not set)",
+            volume.GetId().c_str(), volume.GetFsType());
+    } else {
+        int64_t freeSize = 0;
+        int32_t ret = DiskManager::GetInstance().GetFreeSizeOfVolume(volume.GetUuid(), freeSize);
+        if (ret == E_OK) {
+            if (freeSize < 0) {
+                LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
+                    volume.GetId().c_str(), (long long)freeSize);
+            } else {
+                wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+                LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
+                    volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
+            }
+        } else {
+            LOGW("Volume mounted: id=%{public}s, failed to get freeSize, ret=%{public}d",
+                volume.GetId().c_str(), ret);
+        }
+    }
+}
+
+void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
+{
+    wantParams.SetParam("fsType", AAFwk::Integer::Box(volume.GetFsType()));
+
+    // MTP/PTP devices do not support statvfs, so freeSize is not applicable
+    if (volume.GetFsType() == FsType::MTP || volume.GetFsType() == FsType::PTP) {
+        LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d (MTP/PTP device, freeSize not set)",
+            volume.GetId().c_str(), volume.GetFsType());
+    } else {
+        int64_t freeSize = volume.GetFreeSize();
+        if (freeSize < 0) {
+            LOGW("Volume unmounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
+                volume.GetId().c_str(), (long long)freeSize);
+        } else {
+            wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+            LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
+                volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
+        }
+    }
+}
 } // namespace
 
 void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume)
@@ -78,10 +125,11 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
     }
 
     if (notifyCode == MOUNTED) {
-        wantParams.SetParam("path", AAFwk::String::Box(volume.GetPath()));
-        wantParams.SetParam("fsType", AAFwk::Integer::Box(volume.GetFsType()));
+        SetMountedEventParams(wantParams, volume);
     }
-
+    if (notifyCode == VolumeState::UNMOUNTED) {
+ 	    SetUnmountedEventParams(wantParams, volume);
+ 	}
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
     EventFwk::CommonEventManager::PublishCommonEvent(commonData);
@@ -111,5 +159,51 @@ void CommonEventPublisher::PublishDiskChange(DiskEventKind kind, const Disk &dis
     EventFwk::CommonEventManager::PublishCommonEvent(commonData);
 }
 
+void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
+{
+    wantParams.SetParam("path", AAFwk::String::Box(volume.GetPath()));
+    wantParams.SetParam("fsType", AAFwk::Integer::Box(volume.GetFsType()));
+    if (volume.GetFsType() == FsType::MTP || volume.GetFsType() == FsType::PTP) {
+        LOGI("Volume mounted: id=%{public}s, fsType=%{public}d (MTP/PTP device, freeSize not set)",
+            volume.GetId().c_str(), volume.GetFsType());
+    } else {
+        int64_t freeSize = 0;
+        int32_t ret = DiskManager::GetInstance().GetFreeSizeOfVolume(volume.GetUuid(), freeSize);
+        if (ret == E_OK) {
+            if (freeSize < 0) {
+                LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
+                    volume.GetId().c_str(), (long long)freeSize);
+            } else {
+                wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+                LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
+                    volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
+            }
+        } else {
+            LOGW("Volume mounted: id=%{public}s, failed to get freeSize, ret=%{public}d",
+                volume.GetId().c_str(), ret);
+        }
+    }
+}
+
+void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
+{
+    wantParams.SetParam("fsType", AAFwk::Integer::Box(volume.GetFsType()));
+
+    // MTP/PTP devices do not support statvfs, so freeSize is not applicable
+    if (volume.GetFsType() == FsType::MTP || volume.GetFsType() == FsType::PTP) {
+        LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d (MTP/PTP device, freeSize not set)",
+            volume.GetId().c_str(), volume.GetFsType());
+    } else {
+        int64_t freeSize = volume.GetFreeSize();
+        if (freeSize < 0) {
+            LOGW("Volume unmounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
+                volume.GetId().c_str(), (long long)freeSize);
+        } else {
+            wantParams.SetParam("freeSize", AAFwk::Long::Box(freeSize));
+            LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
+                volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
+        }
+    }
+}
 } // namespace DiskManager
 } // namespace OHOS
