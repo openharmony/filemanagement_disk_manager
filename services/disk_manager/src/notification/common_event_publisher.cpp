@@ -20,7 +20,7 @@
 #include "common_event_support.h"
 #include "disk_manager_hilog.h"
 #include "disk_manager_errno.h"
-#include "disk/disk_manager.h" 
+#include "disk/disk_manager.h"
 #include "int_wrapper.h"
 #include "long_wrapper.h"
 #include "string_wrapper.h"
@@ -65,11 +65,11 @@ void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &
         if (ret == E_OK) {
             if (freeSize < 0) {
                 LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
-                    volume.GetId().c_str(), (long long)freeSize);
+                    volume.GetId().c_str(), static_cast<long long>(freeSize));
             } else {
                 wantParams.SetParam("freeSize", AAFwk::Long::Box64(freeSize));
                 LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
-                    volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
+                    volume.GetId().c_str(), volume.GetFsType(), static_cast<long long>(freeSize));
             }
         } else {
             LOGW("Volume mounted: id=%{public}s, failed to get freeSize, ret=%{public}d",
@@ -90,11 +90,11 @@ void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal
         int64_t freeSize = volume.GetFreeSize();
         if (freeSize < 0) {
             LOGW("Volume unmounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
-                volume.GetId().c_str(), (long long)freeSize);
+                volume.GetId().c_str(), static_cast<long long>(freeSize));
         } else {
             wantParams.SetParam("freeSize", AAFwk::Long::Box64(freeSize));
             LOGI("Volume unmounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
-                volume.GetId().c_str(), volume.GetFsType(), (long long)freeSize);
+                volume.GetId().c_str(), volume.GetFsType(), static_cast<long long>(freeSize));
         }
     }
 }
@@ -130,8 +130,8 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
         SetMountedEventParams(wantParams, volume);
     }
     if (notifyCode == UNMOUNTED) {
- 	    SetUnmountedEventParams(wantParams, volume);
- 	}
+        SetUnmountedEventParams(wantParams, volume);
+    }
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
     EventFwk::CommonEventManager::PublishCommonEvent(commonData);

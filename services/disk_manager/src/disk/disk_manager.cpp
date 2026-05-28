@@ -1727,11 +1727,11 @@ void DiskManager::SaveVolumeFreeSize(VolumeExternal &volExternal)
     if (ret == E_OK) {
         if (freeSize < 0) {
             LOGW("Unmount: invalid freeSize=%{public}lld for volumeId=%{public}s, skip saving",
-                (long long)freeSize, volExternal.GetId().c_str());
+                static_cast<long long>(freeSize), volExternal.GetId().c_str());
         } else {
             volExternal.SetFreeSize(freeSize);
             LOGI("Unmount: saving freeSize=%{public}lld for volumeId=%{public}s",
-                (long long)freeSize, volExternal.GetId().c_str());
+                static_cast<long long>(freeSize), volExternal.GetId().c_str());
         }
     } else {
         LOGW("Unmount: failed to get freeSize for volumeId=%{public}s, ret=%{public}d",
