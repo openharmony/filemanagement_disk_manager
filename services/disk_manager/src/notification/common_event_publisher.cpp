@@ -127,7 +127,7 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
     if (notifyCode == MOUNTED) {
         SetMountedEventParams(wantParams, volume);
     }
-    if (notifyCode == VolumeState::UNMOUNTED) {
+    if (notifyCode == UNMOUNTED) {
  	    SetUnmountedEventParams(wantParams, volume);
  	}
     want.SetParams(wantParams);
