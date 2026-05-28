@@ -673,6 +673,15 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volExternal.GetId());
+        if (it == volumeMap_.end()) {
+            return E_NON_EXIST;
+        }
+        it->second.SetPath(dataMountPath);
+    }
+
     int32_t flag = 0;
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
