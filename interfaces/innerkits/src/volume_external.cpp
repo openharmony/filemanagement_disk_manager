@@ -59,6 +59,16 @@ bool VolumeExternal::GetUserData() const
     return isUserData_;
 }
 
+int64_t VolumeExternal::GetFreeSize() const
+{
+    return freeSize_;
+}
+
+void VolumeExternal::SetFreeSize(int64_t freeSize)
+{
+    freeSize_ = freeSize;
+}
+
 int32_t VolumeExternal::GetFlags() const
 {
     return flags_;

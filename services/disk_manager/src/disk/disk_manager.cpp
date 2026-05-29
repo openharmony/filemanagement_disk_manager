@@ -687,6 +687,15 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volExternal.GetId());
+        if (it == volumeMap_.end()) {
+            return E_NON_EXIST;
+        }
+        it->second.SetPath(dataMountPath);
+    }
+
     int32_t flag = 0;
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
@@ -730,7 +739,7 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-
+    SaveVolumeFreeSize(volExternal);
     bool forceUnmount = true;
     const int32_t prepErr = ResolveUnmountForceFlag(volExternal, forceUnmount);
     if (prepErr != DiskManagerErrNo::E_OK) {
@@ -1723,6 +1732,25 @@ bool DiskManager::IsVolumeMounted(const std::string &diskId, int32_t partitionNu
         }
     }
     return false;
+}
+
+void DiskManager::SaveVolumeFreeSize(VolumeExternal &volExternal)
+{
+    int64_t freeSize = 0;
+    int32_t ret = GetFreeSizeOfVolume(volExternal.GetUuid(), freeSize);
+    if (ret == E_OK) {
+        if (freeSize < 0) {
+            LOGW("Unmount: invalid freeSize=%{public}lld for volumeId=%{public}s, skip saving",
+                static_cast<long long>(freeSize), volExternal.GetId().c_str());
+        } else {
+            volExternal.SetFreeSize(freeSize);
+            LOGI("Unmount: saving freeSize=%{public}lld for volumeId=%{public}s",
+                static_cast<long long>(freeSize), volExternal.GetId().c_str());
+        }
+    } else {
+        LOGW("Unmount: failed to get freeSize for volumeId=%{public}s, ret=%{public}d",
+            volExternal.GetId().c_str(), ret);
+    }
 }
 } // namespace DiskManager
 } // namespace OHOS

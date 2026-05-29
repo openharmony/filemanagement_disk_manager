@@ -61,6 +61,8 @@ public:
     void SetDescription(const std::string &description);
     void SetUserData(const bool &isUserData);
     bool GetUserData() const;
+    void SetFreeSize(int64_t freeSize);
+    int64_t GetFreeSize() const;
     int32_t GetFlags() const;
     int32_t GetFsType() const;
     std::string GetFsTypeString() const;
@@ -86,6 +88,7 @@ private:
     std::string extraInfo_;
     bool isUserData_ = false;
     int32_t partitionNum_ = 0;
+    int64_t freeSize_ { 0 };
 };
 } // namespace DiskManager
 } // namespace OHOS
