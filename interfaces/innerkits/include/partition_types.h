@@ -102,7 +102,7 @@ private:
     int64_t totalSector_ {0};                 // totalSector
     int32_t sectorSize_ {512};                // sectorSize
     int32_t alignSector_ {2048};              // alignSector
-    int32_t lastUsableSector_ {0};             // lastUsableSector
+    int64_t lastUsableSector_ {0};            // lastUsableSector
     std::vector<PartitionInfo> partitions_;   // partitions array
 };
 
