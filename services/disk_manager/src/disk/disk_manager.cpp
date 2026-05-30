@@ -624,7 +624,7 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
 
     if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
         int32_t checkErr = StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType,
-                                                                      true);
+            true);
         if (checkErr != ERR_OK) {
             LOGE("Mount: Check failed volId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
             volExternal.SetState(VolumeState::UNMOUNTED);
