@@ -129,7 +129,7 @@ int32_t LegacyDiskFlagFromDevPath(const UeventEnv &env)
 
 void DestroyALLVolume(const std::string &diskId)
 {
-    LOGI("DestroyALLVolume::DestroyALLVolume enter");
+    LOGI("DestroyALLVolume enter diskId=%{public}s", diskId.c_str());
     std::vector<VolumeExternal> vols;
     (void)DiskManager::GetInstance().GetAllVolumes(vols);
     for (const VolumeExternal &vol : vols) {

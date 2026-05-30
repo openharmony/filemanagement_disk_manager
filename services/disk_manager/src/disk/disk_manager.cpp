@@ -926,8 +926,32 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
     return DiskManagerErrNo::E_OK;
 }
 
+int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != DiskManagerErrNo::E_OK) {
+        return E_DISK_NOT_FOUND;
+    }
+
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    for (const std::string &volId : disk.GetVolumeIds()) {
+        const auto it = volumeMap_.find(volId);
+        if (it == volumeMap_.end()) {
+            continue;
+        }
+        const std::string fsUuid = it->second.GetUuid();
+        volumeMap_.erase(it);
+        if (IsSafeFsUuid(fsUuid)) {
+            (void)VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
+        }
+    }
+
+    return DiskManagerErrNo::E_OK;
+}
+
 int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
 {
+    (void)type;
     int32_t ret = IsDiskSupported(diskId);
     if (ret != E_OK) {
         LOGE("Partition failed, not support diskId=%{public}s, ret=%{public}d", diskId.c_str(), ret);
@@ -937,9 +961,20 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition failed, disk has mounted volume, diskId=%{public}s", diskId.c_str());
         return E_VOL_STATE;
     }
+    ret = PurgeVolumesForDisk(diskId);
+    if (ret != E_OK) {
+        LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return ret;
+    }
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     static constexpr const char *partitionType = "hmfs";
-    return StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
+    ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
+    if (ret != E_OK) {
+        LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return ret;
+    }
+    LOGI("Partition success diskId=%{public}s, expect uevent change to discover new volumes", diskId.c_str());
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManager::OnDiskCreated(const Disk &disk)

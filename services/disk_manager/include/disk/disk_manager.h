@@ -42,6 +42,9 @@ public:
     int32_t SetVolumeDescription(const std::string &fsUuid, const std::string &description);
     int32_t Partition(const std::string &diskId, int32_t type);
 
+    /** Partition/uevent 前置：按 disk.volumeIds 清理 volumeMap_ 与 voldata 映射。 */
+    int32_t PurgeVolumesForDisk(const std::string &diskId);
+
     int32_t OnDiskCreated(const Disk &disk);
     bool HasDisk(const std::string &diskId);
 
