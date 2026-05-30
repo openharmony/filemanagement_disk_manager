@@ -623,8 +623,9 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
     }
 
     if (volExternal.GetFsType() != FsType::MTP) {
-        int32_t checkErr =
-            StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType, false);
+        const bool autoFix = ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath;
+        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType,
+                                                                      autoFix);
         if (checkErr != ERR_OK) {
             LOGE("Mount: Check failed volId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
             volExternal.SetState(VolumeState::UNMOUNTED);
@@ -858,7 +859,8 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
         return fixErr;
     }
 
-    int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, false);
+    const bool autoFix = ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath;
+    int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, autoFix);
     if (checkErr != ERR_OK) {
         LOGE("TryToFix: Check failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
         return checkErr;
