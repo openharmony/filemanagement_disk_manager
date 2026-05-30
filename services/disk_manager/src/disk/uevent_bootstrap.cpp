@@ -139,6 +139,7 @@ void DestroyALLVolume(const std::string &diskId)
         int32_t unmountRet = DiskManager::GetInstance().Unmount(vol.GetId());
         if (unmountRet != E_OK) {
             LOGE("Unmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
+            continue;
         }
         int32_t ret = StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(BlockPathForId(vol.GetId()));
         if (ret != E_OK) {
