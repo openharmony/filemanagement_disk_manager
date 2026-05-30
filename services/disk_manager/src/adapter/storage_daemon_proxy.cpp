@@ -440,7 +440,12 @@ ErrCode StorageDaemonProxy::GetPartitionTableInfo(const std::string &devPath, st
     if (ret != ERR_OK) {
         return ret;
     }
-    return reply.ReadInt32();
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    execRet = Str16ToStr8(reply.ReadString16());
+    return res;
 }
 
 ErrCode StorageDaemonProxy::CreatePartition(const std::string &devPath, int32_t partitionNum, int64_t startSector,

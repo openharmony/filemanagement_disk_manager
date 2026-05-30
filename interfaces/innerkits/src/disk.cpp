@@ -73,10 +73,11 @@ Disk::Disk()
 
 Disk::Disk(const std::string &diskId,
            int64_t sizeBytes,
-           const std::string &blockDevPath,
+           const std::string &devName,
            int32_t diskType)
-    : diskId_(diskId), sizeBytes_(sizeBytes), diskType_(diskType), sysPath_(blockDevPath)
+    : diskId_(diskId), sizeBytes_(sizeBytes), diskType_(diskType)
 {
+    sysPath_ = "/dev/block/" + devName;
     UpdateRemovableFromDiskType();
 }
 
