@@ -39,7 +39,7 @@ class Disk : public Parcelable {
 public:
     Disk();
     /** blockDevPath 为 /dev/block/{diskId}，不导出 JS。 */
-    Disk(const std::string &diskId, int64_t sizeBytes, const std::string &blockDevPath, int32_t diskType);
+    Disk(const std::string &diskId, int64_t sizeBytes, const std::string &devName, int32_t diskType);
 
     // --- volumeManager.Disk（new_api）---
     std::string GetDiskId() const;

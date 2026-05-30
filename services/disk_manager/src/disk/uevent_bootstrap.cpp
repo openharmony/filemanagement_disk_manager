@@ -271,7 +271,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
     if (!publishNewDiskEvent) {
         return;
     }
-    Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, BlockPathForId(diskId),
+    Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, env.devName,
                       ResolveInitialDiskFlag(env));
     if (hasBlockInfo) {
         diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(

@@ -1705,7 +1705,7 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
         return E_NON_EXIST;
     }
-    std::string devPath = "/dev/block/" + diskId + std::to_string(partitionNum);
+    std::string devPath = disk.GetSysPath() + std::to_string(partitionNum);
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
                                                                       params.GetVolumeName(), params.GetQuickFormat());
     if (ret != DiskManagerErrNo::E_OK) {
