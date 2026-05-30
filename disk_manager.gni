@@ -15,3 +15,9 @@ declare_args() {
   disk_manager_dfs_filemanager = defined(global_parts_info) &&
                                  defined(global_parts_info.filemanagement_dfs_service)
 }
+
+if ("${target_platform}" == "car") {
+  car_device_enable = true
+} else {
+  car_device_enable = false
+}

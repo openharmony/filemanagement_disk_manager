@@ -13,6 +13,7 @@
 
 import("//build/ohos.gni")
 import("//build/test.gni")
+import("//foundation/filemanagement/disk_manager/disk_manager.gni")
 
 # 本目录下 ohos_unittest 共用：聚合 innerkits IDL 公开头、子系统 config、utils/mock 等；新增用例 configs 仅填本项即可。
 config("disk_manager_unittest_common") {
@@ -46,6 +47,10 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
+
+  if (car_device_enable) {
+    defines = [ "CDC_STORAGE" ]
+  }
 
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",

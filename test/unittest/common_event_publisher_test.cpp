@@ -51,6 +51,19 @@ VolumeExternal MakeSampleVolume()
     return v;
 }
 
+#ifdef CDC_STORAGE
+VolumeExternal MakeDvrVolume()
+{
+    VolumeCore core("vol-dvr-ut", EXTERNAL, "disk-dvr-ut");
+    VolumeExternal v(core);
+    v.SetFlags(static_cast<int32_t>(DVR));
+    v.SetFsUuid("fs-uuid-dvr");
+    v.SetPath("/mnt/data/dvr/fs-uuid-dvr");
+    v.SetFsType(static_cast<int32_t>(VFAT));
+    return v;
+}
+#endif
+
 Disk MakeSampleDisk()
 {
     return Disk("disk-ut-1", kUtDiskSizeBytes, "/dev/block/disk-ut-1", USB_FLAG);
@@ -176,6 +189,87 @@ HWTEST_F(CommonEventPublisherTest, PublishDiskChange_TestCase_001, TestSize.Leve
 
     GTEST_LOG_(INFO) << "PublishDiskChange_TestCase_001 End";
 }
+
+#ifdef CDC_STORAGE
+/**
+ * @tc.name: PublishVolumeChange_DvrOnlyU0_TestCase_001
+ * @tc.desc: CDC_STORAGE 下，volume.GetFlags()==DVR 时 PublishVolumeChange 必须走
+ *           PublishCommonEventAsUser(DVR_ALLOWED_USER_ID=0) 提前返回分支；用例覆盖
+ *           MOUNTED / UNMOUNTED / BAD_REMOVAL / EJECTING 等多种状态，均不应抛异常。
+ *           本用例仅在 car 平台（car_device_enable=true）构建。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_DvrOnlyU0_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_DvrOnlyU0_TestCase_001 Start";
+
+    const VolumeState dvrStates[] = {MOUNTED, UNMOUNTED, BAD_REMOVAL, EJECTING, REMOVED};
+    for (VolumeState s : dvrStates) {
+        VolumeExternal vol = MakeDvrVolume();
+        ASSERT_EQ(vol.GetFlags(), static_cast<int32_t>(DVR));
+        EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(s, vol));
+    }
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_DvrOnlyU0_TestCase_001 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_DvrOnlyU0_TestCase_002
+ * @tc.desc: 同一发布器对 DVR 卷与普通卷应能无副作用地连续调用——验证 DVR 分支 return 后
+ *           普通卷的全用户广播路径仍可正常进入，不会因 DVR 卷状态而被卡住。
+ *           本用例仅在 car 平台（car_device_enable=true）构建。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_DvrOnlyU0_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_DvrOnlyU0_TestCase_002 Start";
+
+    VolumeExternal vDvr = MakeDvrVolume();
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vDvr));
+
+    VolumeExternal vNormal = MakeSampleVolume();
+    ASSERT_NE(vNormal.GetFlags(), static_cast<int32_t>(DVR));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vNormal));
+
+    VolumeExternal vDvr2 = MakeDvrVolume();
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vDvr2));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_DvrOnlyU0_TestCase_002 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_DvrOnlyU0_TestCase_003
+ * @tc.desc: 严格相等判定：仅 volume.GetFlags() == DVR(=6) 才走 PublishCommonEventAsUser(0)
+ *           U0 分支；其它常见 flag（SD_FLAG=1、USB_FLAG=2、CD_FLAG=3、0）均走全用户广播；
+ *           各情形均不应抛异常。本用例仅在 car 平台（car_device_enable=true）构建。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_DvrOnlyU0_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_DvrOnlyU0_TestCase_003 Start";
+
+    const int32_t nonDvrFlags[] = {
+        static_cast<int32_t>(SD_FLAG),
+        static_cast<int32_t>(USB_FLAG),
+        static_cast<int32_t>(CD_FLAG),
+        0,
+    };
+    for (int32_t f : nonDvrFlags) {
+        VolumeExternal v = MakeDvrVolume();
+        v.SetFlags(f);
+        EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, v));
+    }
+
+    VolumeExternal exact = MakeDvrVolume();
+    exact.SetFlags(static_cast<int32_t>(DVR));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, exact));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_DvrOnlyU0_TestCase_003 End";
+}
+#endif // CDC_STORAGE
 
 } // namespace DiskManager
 } // namespace OHOS

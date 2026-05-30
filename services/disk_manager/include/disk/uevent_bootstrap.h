@@ -34,6 +34,7 @@ class UeventBootstrap {
 public:
     static int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
     static void Init();
+    static uint32_t MatchConfig(const UeventEnv &env);
 
 private:
     static int32_t HandleDiskRemove(const UeventEnv &env);
@@ -44,7 +45,6 @@ private:
     static int32_t DiscoverPartitionsAndVolumes(const UeventEnv &env, bool publishNewDiskEvent);
     static std::vector<std::string> SplitLine(std::string &line, std::string &token);
     static bool ParasConfig();
-    static uint32_t MatchConfig(const UeventEnv &env);
 
 private:
     static std::list<DiskConfig> diskConfigList_;

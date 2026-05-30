@@ -55,7 +55,12 @@ constexpr int32_t MAX_PARTITION = 16;
 constexpr int32_t MAX_INTERVAL_PARTITION = 15;
 constexpr int32_t VOL_LENGTH = 3;
 const int32_t CONFIG_PARAM_NUM = 6;
+#ifdef CDC_STORAGE
+// it will be decoupled to the car odm
 const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
+#else
+const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
+#endif
 constexpr const char *BLOCK_PATH = "/dev/block";
 
 enum class CdromState {
@@ -125,6 +130,15 @@ int32_t LegacyDiskFlagFromDevPath(const UeventEnv &env)
         return USB_FLAG;
     }
     return SD_FLAG;
+}
+
+int32_t ResolveInitialDiskFlag(const UeventEnv &env)
+{
+    uint32_t matchedFlag = UeventBootstrap::MatchConfig(env);
+    if (matchedFlag != 0) {
+        return static_cast<int32_t>(matchedFlag);
+    }
+    return LegacyDiskFlagFromDevPath(env);
 }
 
 void DestroyALLVolume(const std::string &diskId)
@@ -258,7 +272,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
         return;
     }
     Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, BlockPathForId(diskId),
-                      LegacyDiskFlagFromDevPath(env));
+                      ResolveInitialDiskFlag(env));
     if (hasBlockInfo) {
         diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(
             blockInfo, {{"diskId", diskId}, {"diskName", env.devName}}));
@@ -632,6 +646,7 @@ uint32_t UeventBootstrap::MatchConfig(const UeventEnv &env)
     std::string devPath = env.devPath;
     unsigned int major = (unsigned int)env.major;
     uint32_t flag = 0;
+    std::lock_guard<std::mutex> lock(diskConfigListMutex_);
     for (auto config : diskConfigList_) {
         if (config.IsMatch(devPath)) {
             LOGI("DiskManager::MatchConfig: devPath=%{public}s, matched", devPath.c_str());
@@ -641,7 +656,7 @@ uint32_t UeventBootstrap::MatchConfig(const UeventEnv &env)
             } else if (major == DISK_CD_MAJOR) {
                 flag |= CD_FLAG;
             } else {
-                flag |= USB_FLAG;
+                flag = ((flag != static_cast<uint32_t>(DVR_USB)) ? (flag | USB_FLAG) : flag);
             }
             return flag;
         }

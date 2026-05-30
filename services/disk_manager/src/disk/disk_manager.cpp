@@ -53,6 +53,7 @@ namespace DiskManager {
 namespace {
 constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
+constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 /** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
 constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
@@ -363,10 +364,11 @@ DiskManager::VolumeMountPolicy DiskManager::ComputeVolumeMountPolicy(const std::
     const auto dit = diskMap_.find(diskId);
     if (dit != diskMap_.end()) {
         isInternalDisk = dit->second.IsInternalDataDisk();
+        policy.useDvrPath = (dit->second.GetDiskType() == static_cast<int32_t>(DVR_USB));
     }
     const bool isDataFs = (fsNormLower == "f2fs");
     const bool bypassTobForPcNonDataFs = isInternalDisk && !isDataFs;
-    policy.useFuseData = !policy.useVoldataPath && !bypassTobForPcNonDataFs &&
+    policy.useFuseData = !policy.useVoldataPath && !policy.useDvrPath && !bypassTobForPcNonDataFs &&
                          UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType);
     return policy;
 }
@@ -643,6 +645,9 @@ std::string DiskManager::BuildMountDataPath(const MountDataPathParams &params)
 {
     if (params.policy.useVoldataPath) {
         return ResolveVoldataMountPath(params.volExternal, params.fsUuid, params.voldataMappingCreated);
+    }
+    if (params.policy.useDvrPath) {
+        return std::string(EXTERNAL_DVR_ROOT) + params.fsUuid;
     }
     if (params.policy.useFuseData) {
         return std::string(EXTERNAL_FUSE_DATA_ROOT) + params.fsUuid;
