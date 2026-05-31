@@ -16,6 +16,7 @@
 #include "block_info_table.h"
 #include "disk_manager.h"
 #include "partition_table_parser.h"
+#include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
 
 #include "storage_daemon_adapter.h"
@@ -991,9 +992,16 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     static constexpr const char *partitionFsType = "hmfs";
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionFsType);
+    if (ret != E_OK) {
+        RemovePartitioningDisk(diskId);
+        LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return ret;
+    }
+
+    ret = UeventBootstrap::RediscoverDiskVolumes(diskId);
     RemovePartitioningDisk(diskId);
     if (ret != E_OK) {
-        LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        LOGE("Partition RediscoverDiskVolumes failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
     LOGI("Partition success diskId=%{public}s", diskId.c_str());
