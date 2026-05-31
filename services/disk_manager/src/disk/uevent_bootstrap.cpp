@@ -268,16 +268,20 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
     if (!publishNewDiskEvent) {
         return;
     }
-    BlockInfoTable::GetInstance().ReloadFromDaemon(false, env.devName, diskId);
     BlockInfo blockInfo {};
     const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo);
     Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, env.devName,
                       ResolveInitialDiskFlag(env));
     if (hasBlockInfo) {
-        diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(
-            blockInfo, {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}}));
+        diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo));
     } else {
-        LOGW("UpsertDiskAndPublishEvent block info cache miss diskId=%{public}s", diskId.c_str());
+        blockInfo.diskId = diskId;
+        int32_t ret = BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(env.devName, blockInfo);
+        if (ret == ERR_OK) {
+            diskForEvent.SetSizeBytes(static_cast<int64_t>(blockInfo.sizeBytes));
+            diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo,
+                {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}}));
+        }
     }
     diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);

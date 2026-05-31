@@ -33,8 +33,7 @@ namespace {
 using json = nlohmann::json;
 
 constexpr size_t BLOCK_INFO_MAX_COUNT = 20U;
-constexpr const char *BLOCK_INFO_SCAN_PAYLOAD_DATA_TYPE = "data";
-constexpr const char *BLOCK_INFO_SCAN_PAYLOAD_EXTERNAL_TYPE = "external";
+constexpr const char *BLOCK_INFO_SCAN_PAYLOAD_TYPE = "data";
 
 bool IsAsciiSpace(char asciiChar)
 {
@@ -188,18 +187,12 @@ BlockInfoTable &BlockInfoTable::GetInstance()
     return tableInstance;
 }
 
-int32_t BlockInfoTable::ReloadFromDaemon(bool isDataDisk, const std::string &devName, const std::string &diskId)
+int32_t BlockInfoTable::ReloadFromDaemon()
 {
     LOGI("BlockInfoTable::ReloadFromDaemon enter");
     std::string blockInfosJsonString;
-    int32_t errCode;
-    if (!isDataDisk) {
-        errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName, diskId,
-            std::string(BLOCK_INFO_SCAN_PAYLOAD_EXTERNAL_TYPE), blockInfosJsonString);
-    } else {
-        errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName, diskId,
-            std::string(BLOCK_INFO_SCAN_PAYLOAD_DATA_TYPE), blockInfosJsonString);
-    }
+    const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(
+        std::string(BLOCK_INFO_SCAN_PAYLOAD_TYPE), blockInfosJsonString);
 
     if (errCode != ERR_OK) {
         LOGW("BlockInfoTable ReloadFromDaemon RPC err=%{public}d", errCode);
@@ -248,5 +241,30 @@ std::string BlockInfoTable::ToJsonStringWithExtras(
     return jsonObject.dump();
 }
 
+int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, BlockInfo &info)
+{
+    LOGI("BlockInfoTable::ReadExtDiskInfoFromDaemon enter");
+    std::string jsonString;
+    const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName, jsonString, info.diskId);
+
+    if (errCode != ERR_OK) {
+        LOGW("BlockInfoTable ReadExtDiskInfoFromDaemon RPC err=%{public}d", errCode);
+        return errCode;
+    }
+    std::unordered_map<std::string, BlockInfo> nextBlockInfoMap {};
+    if (!jsonString.empty()) {
+        json rootJson = json::parse(jsonString, nullptr, false);
+        if (rootJson.is_discarded()) {
+            LOGW("BlockInfoTable ReadExtDiskInfoFromDaemon JSON parse failed len=%{public}zu", jsonString.size());
+            return ERR_INVALID_DATA;
+        }
+        UpsertObjectsIntoMap(nextBlockInfoMap, rootJson);
+    }
+    if (!nextBlockInfoMap.empty()) {
+        info = nextBlockInfoMap[0];
+    }
+    LOGI("BlockInfoTable ReadExtDiskInfoFromDaemon success.");
+    return ERR_OK;
+}
 } // namespace DiskManager
 } // namespace OHOS
