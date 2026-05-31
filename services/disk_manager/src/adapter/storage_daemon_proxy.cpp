@@ -376,8 +376,8 @@ ErrCode StorageDaemonProxy::MountFuseDevice(const std::string &mountPath, int32_
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &devName, const std::string &type,
-                                               std::string &blockInfos)
+ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &devName, const std::string &diskId,
+                                               const std::string &type, std::string &blockInfos)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -387,6 +387,9 @@ ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &devName, const
         return ERR_TRANSACTION_FAILED;
     }
     if (!data.WriteString16(Str8ToStr16(devName))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(diskId))) {
         return ERR_INVALID_DATA;
     }
     if (!data.WriteString16(Str8ToStr16(type))) {

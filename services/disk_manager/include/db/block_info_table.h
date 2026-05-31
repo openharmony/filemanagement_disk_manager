@@ -32,7 +32,7 @@ class BlockInfoTable {
 public:
     static BlockInfoTable &GetInstance();
 
-    int32_t ReloadFromDaemon(bool isDataDisk = true, const std::string &devName = "");
+    int32_t ReloadFromDaemon(bool isDataDisk = true, const std::string &devName = "", const std::string &diskId = "");
 
     bool TryCopyByDiskId(const std::string &diskId, BlockInfo &outBlockInfo) const;
 

@@ -327,8 +327,8 @@ int32_t StorageDaemonAdapter::Partition(const std::string &diskPath, const std::
     return ret;
 }
 
-int32_t StorageDaemonAdapter::GetBlockInfoByType(const std::string &devName, const std::string &type,
-                                                 std::string &blockInfos)
+int32_t StorageDaemonAdapter::GetBlockInfoByType(const std::string &devName, const std::string &diskId,
+                                                 const std::string &type, std::string &blockInfos)
 {
     LOGI("GetBlockInfoByType enter, type=%{public}s", type.c_str());
     int32_t err = EnsureProxyReady();
@@ -337,7 +337,7 @@ int32_t StorageDaemonAdapter::GetBlockInfoByType(const std::string &devName, con
         blockInfos.clear();
         return err;
     }
-    const ErrCode ret = storageDaemon_->GetBlockInfoByType(devName, type, blockInfos);
+    const ErrCode ret = storageDaemon_->GetBlockInfoByType(devName, diskId, type, blockInfos);
     LOGI("GetBlockInfoByType exit ret=%{public}d bytes=%{public}zu",
          static_cast<int32_t>(ret), blockInfos.size());
     return static_cast<int32_t>(ret);
