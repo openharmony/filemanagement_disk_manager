@@ -268,7 +268,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
     if (!publishNewDiskEvent) {
         return;
     }
-    BlockInfoTable::GetInstance().ReloadFromDaemon(false, env.devName);
+    BlockInfoTable::GetInstance().ReloadFromDaemon(false, env.devName, diskId);
     BlockInfo blockInfo {};
     const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo);
     Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, env.devName,
