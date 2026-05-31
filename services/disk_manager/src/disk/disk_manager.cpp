@@ -949,6 +949,24 @@ int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
     return DiskManagerErrNo::E_OK;
 }
 
+void DiskManager::AddPartitioningDisk(const std::string &diskId)
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    partitioningDiskIds_.insert(diskId);
+}
+
+void DiskManager::RemovePartitioningDisk(const std::string &diskId)
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    partitioningDiskIds_.erase(diskId);
+}
+
+bool DiskManager::IsPartitioning(const std::string &diskId) const
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    return partitioningDiskIds_.find(diskId) != partitioningDiskIds_.end();
+}
+
 int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
 {
     (void)type;
@@ -961,19 +979,24 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition failed, disk has mounted volume, diskId=%{public}s", diskId.c_str());
         return E_VOL_STATE;
     }
+
+    AddPartitioningDisk(diskId);
     ret = PurgeVolumesForDisk(diskId);
     if (ret != E_OK) {
+        RemovePartitioningDisk(diskId);
         LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
+
+    static constexpr const char *partitionFsType = "hmfs";
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
-    static constexpr const char *partitionType = "hmfs";
-    ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
+    ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionFsType);
+    RemovePartitioningDisk(diskId);
     if (ret != E_OK) {
         LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
-    LOGI("Partition success diskId=%{public}s, expect uevent change to discover new volumes", diskId.c_str());
+    LOGI("Partition success diskId=%{public}s", diskId.c_str());
     return DiskManagerErrNo::E_OK;
 }
 

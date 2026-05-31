@@ -44,6 +44,8 @@ namespace {
 
 constexpr const char *DEV_BLOCK = "/dev/block/";
 constexpr bool AUTO_MOUNT_EXTERNAL_VOLUMES = true;
+/** 与 DiskManager::Partition 下发 storage_daemon 的 partitionType 一致。 */
+constexpr const char *PARTITION_TARGET_FS_TYPE = "hmfs";
 constexpr uint32_t NODE_PERM = 0660u;
 constexpr uint32_t K_DISK_BLOCK_DEVICE_NODE_MODE = NODE_PERM | static_cast<uint32_t>(S_IFBLK);
 constexpr uint32_t K_VOLUME_BLOCK_DEVICE_NODE_MODE = static_cast<uint32_t>(S_IFBLK);
@@ -368,6 +370,16 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     std::string label;
     const std::string volDevPath = BlockPathForId(volId);
     ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
+
+    if (DiskManager::GetInstance().IsPartitioning(diskId)) {
+        const int32_t formatRet = DiskManager::GetInstance().Format(volId, PARTITION_TARGET_FS_TYPE);
+        if (formatRet != ERR_OK) {
+            LOGE("DiscoverSinglePartitionVolume Format failed volId=%{public}s ret=%{public}d", volId.c_str(),
+                 formatRet);
+        }
+        return;
+    }
+
     LOGI("AUTO_MOUNT_EXTERNAL_VOLUMES: %{public}d, type.empty(): %{public}d, uuid.empty(): %{public}d",
          AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
     if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
@@ -538,7 +550,6 @@ int32_t UeventBootstrap::HandleDiskChange(const UeventEnv &env)
 {
     LOGI("UeventBootstrap::HandleDiskChange enter external=IDiskManager::OnBlockDiskUevent branch=change");
 
-    const std::string diskDevPath = BlockPathForId(DiskIdFrom(env.major, env.minor));
     const std::string diskId = DiskIdFrom(env.major, env.minor);
     const bool publishNew = !DiskManager::GetInstance().HasDisk(diskId);
     return DiscoverPartitionsAndVolumes(env, publishNew);
