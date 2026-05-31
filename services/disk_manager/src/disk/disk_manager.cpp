@@ -624,9 +624,9 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
         return E_PARAMS_INVALID;
     }
 
-    if (volExternal.GetFsType() != FsType::MTP) {
-        int32_t checkErr =
-            StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType, false);
+    if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
+        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType,
+            true);
         if (checkErr != ERR_OK) {
             LOGE("Mount: Check failed volId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
             volExternal.SetState(VolumeState::UNMOUNTED);
@@ -863,10 +863,12 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
         return fixErr;
     }
 
-    int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, false);
-    if (checkErr != ERR_OK) {
-        LOGE("TryToFix: Check failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
-        return checkErr;
+    if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
+        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, true);
+        if (checkErr != ERR_OK) {
+            LOGE("TryToFix: Check failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
+            return checkErr;
+        }
     }
 
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
@@ -929,8 +931,32 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
     return DiskManagerErrNo::E_OK;
 }
 
+int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
+{
+    Disk disk;
+    if (GetDiskById(diskId, disk) != DiskManagerErrNo::E_OK) {
+        return E_DISK_NOT_FOUND;
+    }
+
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    for (const std::string &volId : disk.GetVolumeIds()) {
+        const auto it = volumeMap_.find(volId);
+        if (it == volumeMap_.end()) {
+            continue;
+        }
+        const std::string fsUuid = it->second.GetUuid();
+        volumeMap_.erase(it);
+        if (IsSafeFsUuid(fsUuid)) {
+            (void)VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
+        }
+    }
+
+    return DiskManagerErrNo::E_OK;
+}
+
 int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
 {
+    (void)type;
     int32_t ret = IsDiskSupported(diskId);
     if (ret != E_OK) {
         LOGE("Partition failed, not support diskId=%{public}s, ret=%{public}d", diskId.c_str(), ret);
@@ -940,9 +966,20 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition failed, disk has mounted volume, diskId=%{public}s", diskId.c_str());
         return E_VOL_STATE;
     }
+    ret = PurgeVolumesForDisk(diskId);
+    if (ret != E_OK) {
+        LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return ret;
+    }
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     static constexpr const char *partitionType = "hmfs";
-    return StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
+    ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
+    if (ret != E_OK) {
+        LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return ret;
+    }
+    LOGI("Partition success diskId=%{public}s, expect uevent change to discover new volumes", diskId.c_str());
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManager::OnDiskCreated(const Disk &disk)

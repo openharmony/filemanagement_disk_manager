@@ -143,7 +143,7 @@ int32_t ResolveInitialDiskFlag(const UeventEnv &env)
 
 void DestroyALLVolume(const std::string &diskId)
 {
-    LOGI("DestroyALLVolume::DestroyALLVolume enter");
+    LOGI("DestroyALLVolume enter diskId=%{public}s", diskId.c_str());
     std::vector<VolumeExternal> vols;
     (void)DiskManager::GetInstance().GetAllVolumes(vols);
     for (const VolumeExternal &vol : vols) {
@@ -153,6 +153,7 @@ void DestroyALLVolume(const std::string &diskId)
         int32_t unmountRet = DiskManager::GetInstance().Unmount(vol.GetId());
         if (unmountRet != E_OK) {
             LOGE("Unmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
+            continue;
         }
         int32_t ret = StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(BlockPathForId(vol.GetId()));
         if (ret != E_OK) {
