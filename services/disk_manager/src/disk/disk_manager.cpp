@@ -1444,7 +1444,7 @@ bool DiskManager::SetUsableSector(std::vector<std::string> &content, PartitionTa
 bool DiskManager::SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info)
 {
     auto count = static_cast<int32_t>(content.size());
-    std::string prefix = "Sector size (logical/physical)";
+    std::string prefix = "Sector size ";
     std::string target;
     for (int32_t i = 0; i < count; i++) {
         std::string buf = content[i];
@@ -1457,7 +1457,7 @@ bool DiskManager::SetSectorSize(std::vector<std::string> &content, PartitionTabl
         LOGE("not found sector size");
         return false;
     }
-    std::regex pattern(R"(Sector size \(logical/physical\):\s*(\d+)/\d+)");
+    std::regex pattern(R"(Sector size\s*\(logical(?:/physical)?\):\s*(\d+))");
     std::smatch match;
     if (!std::regex_search(target, match, pattern)) {
         LOGE("sector size not match, target=%{public}s", target.c_str());

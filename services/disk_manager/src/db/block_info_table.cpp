@@ -261,7 +261,7 @@ int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, Bl
         UpsertObjectsIntoMap(nextBlockInfoMap, rootJson);
     }
     if (!nextBlockInfoMap.empty()) {
-        info = nextBlockInfoMap[0];
+        info = nextBlockInfoMap[info.diskId];
     }
     LOGI("BlockInfoTable ReadExtDiskInfoFromDaemon success.");
     return ERR_OK;
