@@ -46,7 +46,7 @@ namespace {
 constexpr const char *DEV_BLOCK = "/dev/block/";
 constexpr bool AUTO_MOUNT_EXTERNAL_VOLUMES = true;
 /** 与 DiskManager::Partition 下发 storage_daemon 的 partitionType 一致。 */
-constexpr const char *PARTITION_TARGET_FS_TYPE = "hmfs";
+constexpr const char *PARTITION_TARGET_FS_TYPE = "f2fs";
 constexpr uint32_t NODE_PERM = 0660u;
 constexpr uint32_t K_DISK_BLOCK_DEVICE_NODE_MODE = NODE_PERM | static_cast<uint32_t>(S_IFBLK);
 constexpr uint32_t K_VOLUME_BLOCK_DEVICE_NODE_MODE = static_cast<uint32_t>(S_IFBLK);

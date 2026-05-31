@@ -929,25 +929,48 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
 
 int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
 {
-    Disk disk;
-    if (GetDiskById(diskId, disk) != DiskManagerErrNo::E_OK) {
+    if (!HasDisk(diskId)) {
         return E_DISK_NOT_FOUND;
     }
 
-    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-    for (const std::string &volId : disk.GetVolumeIds()) {
-        const auto it = volumeMap_.find(volId);
-        if (it == volumeMap_.end()) {
-            continue;
-        }
-        const std::string fsUuid = it->second.GetUuid();
-        volumeMap_.erase(it);
-        if (IsSafeFsUuid(fsUuid)) {
-            (void)VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
+    std::vector<std::string> volIds;
+    std::vector<std::string> fsUuids;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        for (const auto &kv : volumeMap_) {
+            if (kv.second.GetDiskId() != diskId) {
+                continue;
+            }
+            volIds.push_back(kv.first);
+            const std::string &fsUuid = kv.second.GetUuid();
+            if (IsSafeFsUuid(fsUuid)) {
+                fsUuids.push_back(fsUuid);
+            } else if (!fsUuid.empty()) {
+                LOGW("PurgeVolumesForDisk skip invalid fsUuid volId=%{public}s diskId=%{public}s",
+                     kv.first.c_str(), diskId.c_str());
+            }
         }
     }
 
-    return DiskManagerErrNo::E_OK;
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        for (const std::string &volId : volIds) {
+            volumeMap_.erase(volId);
+        }
+    }
+
+    int32_t ret = DiskManagerErrNo::E_OK;
+    for (const std::string &fsUuid : fsUuids) {
+        const int32_t removeRet = VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
+        if (removeRet != DiskManagerErrNo::E_OK) {
+            LOGE("PurgeVolumesForDisk RemoveByFsUuid failed diskId=%{public}s uuid=%{public}s ret=%{public}d",
+                 diskId.c_str(), fsUuid.c_str(), removeRet);
+            ret = removeRet;
+        }
+    }
+    LOGI("PurgeVolumesForDisk diskId=%{public}s volumes=%{public}zu voldataRemoved=%{public}zu", diskId.c_str(),
+         volIds.size(), fsUuids.size());
+    return ret;
 }
 
 void DiskManager::AddPartitioningDisk(const std::string &diskId)
