@@ -60,6 +60,7 @@ constexpr int32_t VOL_LENGTH = 3;
 const int32_t CONFIG_PARAM_NUM = 6;
 const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
 constexpr const char *BLOCK_PATH = "/dev/block";
+constexpr int DEC_BASE = 10;
 
 enum class CdromState {
     NO_DISC,
@@ -111,8 +112,8 @@ void ParseDiskIdToMajMin(const std::string &diskId, unsigned int &outMaj, unsign
     const size_t lastDash = diskId.rfind('-');
     const std::string majStr = diskId.substr(prefixLen, lastDash - prefixLen);
     const std::string minStr = diskId.substr(lastDash + 1);
-    outMaj = static_cast<unsigned int>(std::strtoul(majStr.c_str(), nullptr, 10));
-    outMin = static_cast<unsigned int>(std::strtoul(minStr.c_str(), nullptr, 10));
+    outMaj = static_cast<unsigned int>(std::strtoul(majStr.c_str(), nullptr, DEC_BASE));
+    outMin = static_cast<unsigned int>(std::strtoul(minStr.c_str(), nullptr, DEC_BASE));
 }
 
 std::string VolIdFromDev(dev_t d)
