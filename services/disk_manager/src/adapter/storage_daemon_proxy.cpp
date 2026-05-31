@@ -376,7 +376,8 @@ ErrCode StorageDaemonProxy::MountFuseDevice(const std::string &mountPath, int32_
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &type, std::string &blockInfos)
+ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &devName, const std::string &type,
+                                               std::string &blockInfos)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -384,6 +385,9 @@ ErrCode StorageDaemonProxy::GetBlockInfoByType(const std::string &type, std::str
     blockInfos.clear();
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devName))) {
+        return ERR_INVALID_DATA;
     }
     if (!data.WriteString16(Str8ToStr16(type))) {
         return ERR_INVALID_DATA;
@@ -430,9 +434,6 @@ ErrCode StorageDaemonProxy::GetPartitionTableInfo(const std::string &devPath, st
         return ERR_TRANSACTION_FAILED;
     }
     if (!data.WriteString16(Str8ToStr16(devPath))) {
-        return ERR_INVALID_DATA;
-    }
-    if (!data.WriteString16(Str8ToStr16(execRet))) {
         return ERR_INVALID_DATA;
     }
     int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_PARTITION_TABLE_INFO),

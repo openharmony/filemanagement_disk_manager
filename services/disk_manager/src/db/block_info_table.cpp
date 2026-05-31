@@ -33,7 +33,8 @@ namespace {
 using json = nlohmann::json;
 
 constexpr size_t BLOCK_INFO_MAX_COUNT = 20U;
-constexpr const char *BLOCK_INFO_SCAN_PAYLOAD_TYPE = "data";
+constexpr const char *BLOCK_INFO_SCAN_PAYLOAD_DATA_TYPE = "data";
+constexpr const char *BLOCK_INFO_SCAN_PAYLOAD_EXTERNAL_TYPE = "data";
 
 bool IsAsciiSpace(char asciiChar)
 {
@@ -187,12 +188,19 @@ BlockInfoTable &BlockInfoTable::GetInstance()
     return tableInstance;
 }
 
-int32_t BlockInfoTable::ReloadFromDaemon()
+int32_t BlockInfoTable::ReloadFromDaemon(bool isDataDisk, const std::string &devName)
 {
     LOGI("BlockInfoTable::ReloadFromDaemon enter");
     std::string blockInfosJsonString;
-    const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(
-        std::string(BLOCK_INFO_SCAN_PAYLOAD_TYPE), blockInfosJsonString);
+    int32_t errCode;
+    if (!isDataDisk && !devName.empty()) {
+        errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName,
+            std::string(BLOCK_INFO_SCAN_PAYLOAD_EXTERNAL_TYPE), blockInfosJsonString);
+    } else {
+        errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName,
+            std::string(BLOCK_INFO_SCAN_PAYLOAD_DATA_TYPE), blockInfosJsonString);
+    }
+
     if (errCode != ERR_OK) {
         LOGW("BlockInfoTable ReloadFromDaemon RPC err=%{public}d", errCode);
         return errCode;
