@@ -245,7 +245,6 @@ int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, Bl
     LOGI("BlockInfoTable::ReadExtDiskInfoFromDaemon enter");
     std::string jsonString;
     const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName, jsonString, info.diskId);
-
     if (errCode != ERR_OK) {
         LOGW("BlockInfoTable ReadExtDiskInfoFromDaemon RPC err=%{public}d", errCode);
         return errCode;
