@@ -59,7 +59,7 @@ public:
     int32_t MountFuseDevice(const std::string &mountPath, int32_t &fuseFd);
     int32_t Partition(const std::string &diskPath, const std::string &partitionType);
     /** 调用 storage_daemon GetBlockInfoByType（出参载荷格式见 storage_daemon / IStorageDaemon 约定）。 */
-    int32_t GetBlockInfoByType(const std::string &type, std::string &blockInfos);
+    int32_t GetBlockInfoByType(const std::string &type, std::string &blockInfos, const std::string &diskId = "");
     int32_t GetPartitionTableInfo(const std::string &devPath, std::string &execRet);
     int32_t CreatePartition(const std::string &devPath, int32_t partitionNum,
                             int64_t startSector, int64_t endSector,

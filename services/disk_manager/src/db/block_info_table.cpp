@@ -240,5 +240,29 @@ std::string BlockInfoTable::ToJsonStringWithExtras(
     return jsonObject.dump();
 }
 
+int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, BlockInfo &info)
+{
+    LOGI("BlockInfoTable::ReadExtDiskInfoFromDaemon enter");
+    std::string jsonString;
+    const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName, jsonString, info.diskId);
+    if (errCode != ERR_OK) {
+        LOGW("BlockInfoTable ReadExtDiskInfoFromDaemon RPC err=%{public}d", errCode);
+        return errCode;
+    }
+    std::unordered_map<std::string, BlockInfo> nextBlockInfoMap {};
+    if (!jsonString.empty()) {
+        json rootJson = json::parse(jsonString, nullptr, false);
+        if (rootJson.is_discarded()) {
+            LOGW("BlockInfoTable ReadExtDiskInfoFromDaemon JSON parse failed len=%{public}zu", jsonString.size());
+            return ERR_INVALID_DATA;
+        }
+        UpsertObjectsIntoMap(nextBlockInfoMap, rootJson);
+    }
+    if (!nextBlockInfoMap.empty()) {
+        info = nextBlockInfoMap[info.diskId];
+    }
+    LOGI("BlockInfoTable ReadExtDiskInfoFromDaemon success.");
+    return ERR_OK;
+}
 } // namespace DiskManager
 } // namespace OHOS

@@ -90,7 +90,7 @@ public:
      * 按类型枚举块设备详情（由 storage_daemon 实现；IPC：ADDON_GET_BLOCK_INFO_BY_TYPE）。
      * Reply（成功）：int32 errno，utf-8 内容由 String16 传递；载荷格式（JSON/自定行文本等）由 storage_daemon 与调用方约定。
      */
-    virtual ErrCode GetBlockInfoByType(const std::string &type, std::string &blockInfos) = 0;
+    virtual ErrCode GetBlockInfoByType(const std::string &type, const std::string &diskId, std::string &blockInfos) = 0;
 
     virtual ErrCode GetPartitionTableInfo(const std::string &devPath, std::string &execRet) = 0;
     virtual ErrCode CreatePartition(const std::string &devPath, int32_t partitionNum,

@@ -52,7 +52,8 @@ public:
     MOCK_METHOD3(GetCapacity, ErrCode(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize));
     MOCK_METHOD2(MountFuseDevice, ErrCode(const std::string &mountPath, int32_t &fuseFd));
     MOCK_METHOD2(Partition, ErrCode(const std::string &diskPath, const std::string &partitionType));
-    MOCK_METHOD2(GetBlockInfoByType, ErrCode(const std::string &type, std::string &blockInfos));
+    MOCK_METHOD3(GetBlockInfoByType, ErrCode(const std::string &type, const std::string &diskId,
+                                             std::string &blockInfos));
     MOCK_METHOD2(GetPartitionTableInfo, ErrCode(const std::string &, std::string &));
     MOCK_METHOD5(CreatePartition, ErrCode(const std::string &, int32_t, int64_t, int64_t, const std::string &));
     MOCK_METHOD2(DeletePartitionInfo, ErrCode(const std::string &, int32_t));

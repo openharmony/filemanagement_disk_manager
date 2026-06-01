@@ -35,6 +35,7 @@ public:
     int32_t ReloadFromDaemon();
 
     bool TryCopyByDiskId(const std::string &diskId, BlockInfo &outBlockInfo) const;
+    int32_t ReadExtDiskInfoFromDaemon(const std::string &devName, BlockInfo &info);
 
     static std::string ToJsonStringWithExtras(
         const BlockInfo &blockInfo,

@@ -266,26 +266,25 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
 
 void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, bool publishNewDiskEvent)
 {
-    BlockInfo blockInfo {};
-    const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo);
-
     if (!publishNewDiskEvent) {
         return;
     }
+    BlockInfo blockInfo {};
+    const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo);
     Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, env.devName,
                       ResolveInitialDiskFlag(env));
     if (hasBlockInfo) {
-        diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(
-            blockInfo, {{"diskId", diskId}, {"diskName", env.devName}}));
+        diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo));
     } else {
-        LOGW("UpsertDiskAndPublishEvent block info cache miss diskId=%{public}s", diskId.c_str());
+        blockInfo.diskId = diskId;
+        int32_t ret = BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(env.devName, blockInfo);
+        if (ret == ERR_OK) {
+            diskForEvent.SetSizeBytes(static_cast<int64_t>(blockInfo.sizeBytes));
+            diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo,
+                {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}}));
+        }
     }
     diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
-    if (!diskForEvent.GetExtraInfo().empty()) {
-        LOGI("UpsertDiskAndPublishEvent extraInfo len=%{public}zu diskId=%{public}s",
-             diskForEvent.GetExtraInfo().size(),
-             diskId.c_str());
-    }
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);
 }

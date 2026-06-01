@@ -985,14 +985,6 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
 int32_t DiskManager::OnDiskCreated(const Disk &disk)
 {
     Disk diskToStore = disk;
-    BlockInfo blockInfo {};
-    const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskToStore.GetDiskId(), blockInfo);
-    if (diskToStore.GetExtraInfo().empty() && hasBlockInfo) {
-        diskToStore.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo));
-    } else if (diskToStore.GetExtraInfo().empty()) {
-        LOGW("OnDiskCreated block info cache miss diskId=%{public}s", diskToStore.GetDiskId().c_str());
-    }
-
     std::unique_lock<std::shared_mutex> diskWriteLock(diskMapMutex_);
     if (diskMap_.find(diskToStore.GetDiskId()) != diskMap_.end()) {
         LOGE("DiskManagerService::OnDiskCreated the disk %{public}s already exists", diskToStore.GetDiskId().c_str());
@@ -1489,7 +1481,7 @@ bool DiskManager::SetUsableSector(std::vector<std::string> &content, PartitionTa
 bool DiskManager::SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info)
 {
     auto count = static_cast<int32_t>(content.size());
-    std::string prefix = "Sector size (logical/physical)";
+    std::string prefix = "Sector size ";
     std::string target;
     for (int32_t i = 0; i < count; i++) {
         std::string buf = content[i];
@@ -1502,7 +1494,7 @@ bool DiskManager::SetSectorSize(std::vector<std::string> &content, PartitionTabl
         LOGE("not found sector size");
         return false;
     }
-    std::regex pattern(R"(Sector size \(logical/physical\):\s*(\d+)/\d+)");
+    std::regex pattern(R"(Sector size\s*\(logical(?:/physical)?\):\s*(\d+))");
     std::smatch match;
     if (!std::regex_search(target, match, pattern)) {
         LOGE("sector size not match, target=%{public}s", target.c_str());
