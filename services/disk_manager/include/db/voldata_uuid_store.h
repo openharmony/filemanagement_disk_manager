@@ -45,7 +45,7 @@ public:
     int32_t UnInit();
 
     /**
-     * 查询已有 dataX 路径；不存在则按当前最大 slot+1 分配（满 1000 时淘汰 data1 后复用 data1），
+     * 查询已有 dataX 路径；不存在则分配最小空闲 slot（满 1000 时先淘汰 data1），
      * 仅新建时落盘。outCreated 表示本次是否新写入持久化文件。
      */
     int32_t ResolveMountPath(const std::string &fsUuid, std::string &outMountPath, bool &outCreated);
@@ -74,7 +74,7 @@ private:
     int32_t SaveJsonToFile(const std::string &filePath, const nlohmann::json &jsonData);
 
     void EvictSlotOneIfFullLocked();
-    uint32_t FindMaxUsedSlotLocked() const;
+    uint32_t FindMinimumFreeSlotLocked() const;
     uint32_t AllocateNextSlotLocked();
 
     mutable std::mutex initMutex_;

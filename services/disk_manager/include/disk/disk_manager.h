@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <map>
+#include <set>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -44,6 +45,12 @@ public:
 
     /** Partition/uevent 前置：按 disk.volumeIds 清理 volumeMap_ 与 voldata 映射。 */
     int32_t PurgeVolumesForDisk(const std::string &diskId);
+
+    /**
+     * Partition 进行中的 diskId 在 partitioningDiskIds_ 内：
+     * change uevent 不处理；手动 Rediscover 时 Format 且不自动 Mount。
+     */
+    bool IsPartitioning(const std::string &diskId) const;
 
     int32_t OnDiskCreated(const Disk &disk);
     bool HasDisk(const std::string &diskId);
@@ -152,17 +159,23 @@ private:
     bool IsDiskNotReady(const std::string &diskId);
     bool IsVolumeMounted(const std::string &diskId, int32_t partitionNum);
 
+    void AddPartitioningDisk(const std::string &diskId);
+    void RemovePartitioningDisk(const std::string &diskId);
+
     void SaveVolumeFreeSize(VolumeExternal &volume);
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
      * 若同一流程需两把锁，必须按此顺序一次性加锁：先 disk，后 volume。
      */
     mutable std::shared_mutex diskMapMutex_;
-    mutable std::shared_mutex volumeMapMutex_;
-    std::mutex partitionLock_;
     std::map<std::string, Disk> diskMap_;
+
+    mutable std::shared_mutex volumeMapMutex_;
     std::map<std::string, VolumeExternal> volumeMap_;
+
+    mutable std::mutex partitionLock_;
     std::map<std::string, PartitionTableInfo> partitionTableMap_;
+    std::set<std::string> partitioningDiskIds_;
 };
 
 } // namespace DiskManager

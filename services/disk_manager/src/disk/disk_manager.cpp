@@ -16,6 +16,7 @@
 #include "block_info_table.h"
 #include "disk_manager.h"
 #include "partition_table_parser.h"
+#include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
 
 #include "storage_daemon_adapter.h"
@@ -933,25 +934,66 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
 
 int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
 {
-    Disk disk;
-    if (GetDiskById(diskId, disk) != DiskManagerErrNo::E_OK) {
+    if (!HasDisk(diskId)) {
         return E_DISK_NOT_FOUND;
     }
 
-    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-    for (const std::string &volId : disk.GetVolumeIds()) {
-        const auto it = volumeMap_.find(volId);
-        if (it == volumeMap_.end()) {
-            continue;
-        }
-        const std::string fsUuid = it->second.GetUuid();
-        volumeMap_.erase(it);
-        if (IsSafeFsUuid(fsUuid)) {
-            (void)VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
+    std::vector<std::string> volIds;
+    std::vector<std::string> fsUuids;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        for (const auto &kv : volumeMap_) {
+            if (kv.second.GetDiskId() != diskId) {
+                continue;
+            }
+            volIds.push_back(kv.first);
+            const std::string &fsUuid = kv.second.GetUuid();
+            if (IsSafeFsUuid(fsUuid)) {
+                fsUuids.push_back(fsUuid);
+            } else if (!fsUuid.empty()) {
+                LOGW("PurgeVolumesForDisk skip invalid fsUuid volId=%{public}s diskId=%{public}s",
+                     kv.first.c_str(), diskId.c_str());
+            }
         }
     }
 
-    return DiskManagerErrNo::E_OK;
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        for (const std::string &volId : volIds) {
+            volumeMap_.erase(volId);
+        }
+    }
+
+    int32_t ret = DiskManagerErrNo::E_OK;
+    for (const std::string &fsUuid : fsUuids) {
+        const int32_t removeRet = VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
+        if (removeRet != DiskManagerErrNo::E_OK) {
+            LOGE("PurgeVolumesForDisk RemoveByFsUuid failed diskId=%{public}s uuid=%{public}s ret=%{public}d",
+                 diskId.c_str(), fsUuid.c_str(), removeRet);
+            ret = removeRet;
+        }
+    }
+    LOGI("PurgeVolumesForDisk diskId=%{public}s volumes=%{public}zu voldataRemoved=%{public}zu", diskId.c_str(),
+         volIds.size(), fsUuids.size());
+    return ret;
+}
+
+void DiskManager::AddPartitioningDisk(const std::string &diskId)
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    partitioningDiskIds_.insert(diskId);
+}
+
+void DiskManager::RemovePartitioningDisk(const std::string &diskId)
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    partitioningDiskIds_.erase(diskId);
+}
+
+bool DiskManager::IsPartitioning(const std::string &diskId) const
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    return partitioningDiskIds_.find(diskId) != partitioningDiskIds_.end();
 }
 
 int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
@@ -966,19 +1008,31 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition failed, disk has mounted volume, diskId=%{public}s", diskId.c_str());
         return E_VOL_STATE;
     }
+
+    AddPartitioningDisk(diskId);
     ret = PurgeVolumesForDisk(diskId);
     if (ret != E_OK) {
+        RemovePartitioningDisk(diskId);
         LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
+
+    static constexpr const char *partitionFsType = "hmfs";
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
-    static constexpr const char *partitionType = "hmfs";
-    ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionType);
+    ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionFsType);
     if (ret != E_OK) {
+        RemovePartitioningDisk(diskId);
         LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
-    LOGI("Partition success diskId=%{public}s, expect uevent change to discover new volumes", diskId.c_str());
+
+    ret = UeventBootstrap::RediscoverDiskVolumes(diskId);
+    RemovePartitioningDisk(diskId);
+    if (ret != E_OK) {
+        LOGE("Partition RediscoverDiskVolumes failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
+        return ret;
+    }
+    LOGI("Partition success diskId=%{public}s", diskId.c_str());
     return DiskManagerErrNo::E_OK;
 }
 

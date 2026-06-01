@@ -36,6 +36,9 @@ public:
     static void Init();
     static uint32_t MatchConfig(const UeventEnv &env);
 
+    /** 复用 DiscoverPartitionsAndVolumes；Partition 完成后调用，不发布新盘事件。 */
+    static int32_t RediscoverDiskVolumes(const std::string &diskId);
+
 private:
     static int32_t HandleDiskRemove(const UeventEnv &env);
     /** 首次出现 / 重新枚举：发布磁盘事件（若本事件首次见到该 diskId）。 */

@@ -299,25 +299,29 @@ void VoldataUuidStore::EvictSlotOneIfFullLocked()
     }
 }
 
-uint32_t VoldataUuidStore::FindMaxUsedSlotLocked() const
+uint32_t VoldataUuidStore::FindMinimumFreeSlotLocked() const
 {
-    uint32_t maxSlot = 0;
-    for (const auto &pair : uuidMap_) {
-        if (pair.second.slotIndex > maxSlot) {
-            maxSlot = pair.second.slotIndex;
+    for (uint32_t slot = 1U; slot <= MAX_VOLDATA_SLOT_COUNT; ++slot) {
+        bool used = false;
+        for (const auto &pair : uuidMap_) {
+            if (pair.second.slotIndex == slot) {
+                used = true;
+                break;
+            }
+        }
+        if (!used) {
+            return slot;
         }
     }
-    return maxSlot;
+    return 1U;
 }
 
 uint32_t VoldataUuidStore::AllocateNextSlotLocked()
 {
-    uint32_t nextSlot = FindMaxUsedSlotLocked() + 1U;
-    if (nextSlot > MAX_VOLDATA_SLOT_COUNT) {
+    if (uuidMap_.size() >= MAX_VOLDATA_SLOT_COUNT) {
         EvictSlotOneIfFullLocked();
-        nextSlot = 1U;
     }
-    return nextSlot;
+    return FindMinimumFreeSlotLocked();
 }
 
 int32_t VoldataUuidStore::LoadFromFile()
