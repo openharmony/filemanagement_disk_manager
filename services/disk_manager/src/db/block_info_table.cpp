@@ -193,7 +193,6 @@ int32_t BlockInfoTable::ReloadFromDaemon()
     std::string blockInfosJsonString;
     const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(
         std::string(BLOCK_INFO_SCAN_PAYLOAD_TYPE), blockInfosJsonString);
-
     if (errCode != ERR_OK) {
         LOGW("BlockInfoTable ReloadFromDaemon RPC err=%{public}d", errCode);
         return errCode;
