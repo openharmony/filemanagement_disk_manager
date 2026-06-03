@@ -25,15 +25,17 @@
 #include "partition_types.h"
 #include "storage_spec_models.h"
 #include "disk_manager_errno.h"
+#include "disk_manager_napi_errno.h"
 #include "errors.h"
-#include "mock/mock_storage_daemon_adapter.h"
-#include "mock/mock_usb_fuse_adapter.h"
+#include "mock_storage_daemon_adapter.h"
+#include "mock_usb_fuse_adapter.h"
 #include "notification/common_event_publisher.h"
 #include "disk_manager_hilog.h"
 
 namespace OHOS {
 namespace DiskManager {
 
+using namespace testing;
 using namespace testing::ext;
 
 namespace {
@@ -107,23 +109,6 @@ VolumeExternal MakeUdfVolume(const std::string &volId = "vol-udf-1",
     return v;
 }
 
-PartitionTableInfo MakePartitionTableInfo(const std::string &diskId = "disk-ut-1")
-{
-    PartitionTableInfo info;
-    info.SetDiskId(diskId);
-    info.SetTableType("GPT");
-    info.SetSectorSize(512);
-    info.SetAlignSector(2048);
-    info.SetLastUsableSector(1000000);
-    info.SetTotalSector(1000000);
-    info.SetPartitionCount(2);
-    PartitionInfo p1(1, diskId, 2048, 500000, (500000 - 2048 + 1) * 512, "vfat");
-    PartitionInfo p2(2, diskId, 500001, 1000000, (1000000 - 500001 + 1) * 512, "ext4");
-    std::vector<PartitionInfo> partitions = {p1, p2};
-    info.SetPartitions(partitions);
-    return info;
-}
-
 void ClearDiskManagerState()
 {
     auto &dm = DiskManager::GetInstance();
@@ -156,8 +141,6 @@ public:
     void SetUp() override
     {
         ClearDiskManagerState();
-        MockStorageDaemonAdapter::mockInstance_ = MockStorageDaemonAdapter();
-        MockUsbFuseAdapter::mockInstance_ = MockUsbFuseAdapter();
         GTEST_LOG_(INFO) << "DiskManagerTest SetUp";
     }
 

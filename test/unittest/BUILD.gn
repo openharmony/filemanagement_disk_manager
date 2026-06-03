@@ -174,7 +174,10 @@ ohos_unittest("disk_manager_test") {
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
-  configs = [ ":disk_manager_unittest_common" ]
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
+    ":disk_manager_unittest_common",
+  ]
 
   defines = [
     "StorageDaemonAdapter=MockStorageDaemonAdapter",
