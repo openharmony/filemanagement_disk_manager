@@ -39,32 +39,33 @@ using namespace testing;
 using namespace testing::ext;
 
 namespace {
+const int64_t SIZE = 4096;
 
 Disk MakeUsbDisk(const std::string &diskId = "disk-ut-1")
 {
-    return Disk(diskId, 4096, "/dev/block/" + diskId, USB_FLAG);
+    return Disk(diskId, SIZE, "/dev/block/" + diskId, USB_FLAG);
 }
 
 Disk MakeSdDisk(const std::string &diskId = "disk-sd-1")
 {
-    return Disk(diskId, 4096, "/dev/block/" + diskId, SD_FLAG);
+    return Disk(diskId, SIZE, "/dev/block/" + diskId, SD_FLAG);
 }
 
 Disk MakeCdDisk(const std::string &diskId = "disk-cd-1")
 {
-    return Disk(diskId, 4096, "/dev/block/" + diskId, CD_FLAG);
+    return Disk(diskId, SIZE, "/dev/block/" + diskId, CD_FLAG);
 }
 
 Disk MakeSsdDisk(const std::string &diskId = "disk-ssd-1")
 {
-    Disk d(diskId, 4096, "/dev/block/" + diskId, DATA_DISK_SSD);
+    Disk d(diskId, SIZE, "/dev/block/" + diskId, DATA_DISK_SSD);
     d.SetDiskType(DATA_DISK_SSD);
     return d;
 }
 
 Disk MakeHddDisk(const std::string &diskId = "disk-hdd-1")
 {
-    Disk d(diskId, 4096, "/dev/block/" + diskId, DATA_DISK_HDD);
+    Disk d(diskId, SIZE, "/dev/block/" + diskId, DATA_DISK_HDD);
     d.SetDiskType(DATA_DISK_HDD);
     return d;
 }
@@ -130,6 +131,9 @@ class DiskManagerTest : public testing::Test {
 public:
     static void SetUpTestCase(void)
     {
+        testing::Mock::AllowLeak(&MockStorageDaemonAdapter::GetInstance());
+        testing::Mock::AllowLeak(&MockUsbFuseAdapter::GetInstance());
+        testing::Mock::AllowLeak(&MockUeventBootstrap::GetInstance());
         GTEST_LOG_(INFO) << "DiskManagerTest SetUpTestCase";
     }
 
