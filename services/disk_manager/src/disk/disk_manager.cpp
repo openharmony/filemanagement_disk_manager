@@ -626,13 +626,21 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
     }
 
     if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
+        volExternal.SetState(CHECKING);
+        SetVolumeStateLocked(volumeId, CHECKING);
+        CommonEventPublisher::PublishVolumeResult(CHECKING, volExternal);
         int32_t checkErr = StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType,
             true);
         if (checkErr != ERR_OK) {
             LOGE("Mount: Check failed volId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
-            volExternal.SetState(VolumeState::UNMOUNTED);
+            volExternal.SetState(REPAIR_FINISH_FAIL);
+            SetVolumeStateLocked(volumeId, REPAIR_FINISH_FAIL);
+            CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_FAIL, volExternal);
             return checkErr;
         }
+        CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_SUCCESS, volExternal);
+        volExternal.SetState(UNMOUNTED);
+        SetVolumeStateLocked(volumeId, UNMOUNTED);
     }
 
     int32_t mountErr = MountVolumeFilesystem(volExternal, fsType, fsUuid);
@@ -793,38 +801,21 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             return E_NOT_SUPPORT;
         }
         if (it->second.GetState() != VolumeState::UNMOUNTED) {
-            LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted", volumeId.c_str(),
-                 it->second.GetState());
+            LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted",
+                 volumeId.c_str(), it->second.GetState());
             return E_VOL_STATE;
         }
         blockVolId = it->second.GetId();
         diskId = it->second.GetDiskId();
         oldFsUuid = it->second.GetUuid();
     }
-
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume("/dev/block/" + blockVolId, fsType);
     if (err != ERR_OK) {
         LOGE("Format vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        PublishFormatFailEvent(volumeId);
         return err;
     }
-    std::string uuid;
-    std::string type;
-    std::string label;
-    StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + blockVolId, uuid, type, label);
-
-    UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
-
-    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-    const auto it = volumeMap_.find(volumeId);
-    if (it == volumeMap_.end()) {
-        return E_NON_EXIST;
-    }
-    VolumeExternal &volExternal = it->second;
-    volExternal.SetFsUuid(uuid);
-    volExternal.SetDescription(label);
-    volExternal.SetState(UNMOUNTED);
-    volExternal.SetFsType(volExternal.GetFsTypeByStr(fsType));
-    return DiskManagerErrNo::E_OK;
+    return UpdateVolumeAfterFormat(volumeId, fsType, diskId, oldFsUuid, blockVolId);
 }
 
 int32_t DiskManager::TryToFix(const std::string &volumeId)
@@ -856,20 +847,9 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
         }
     }
 
-    const std::string devPath = "/dev/block/" + volExternal.GetId();
-    const std::string fsType = volExternal.GetFsTypeString();
-    int32_t fixErr = StorageDaemonAdapter::GetInstance().Repair(devPath, fsType);
-    if (fixErr != ERR_OK) {
-        LOGE("TryToFix: Repair failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), fixErr);
-        return fixErr;
-    }
-
-    if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
-        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, true);
-        if (checkErr != ERR_OK) {
-            LOGE("TryToFix: Check failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
-            return checkErr;
-        }
+    int32_t rcErr = RepairAndCheckVolume(volExternal, volumeId);
+    if (rcErr != E_OK) {
+        return rcErr;
     }
 
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
@@ -1768,31 +1748,33 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
     if (IsVolumeMounted(diskId, partitionNum)) {
         return E_VOL_STATE;
     }
-    std::lock_guard<std::mutex> lock(partitionLock_);
-    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
-        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
-        return E_NON_EXIST;
-    }
-    PartitionTableInfo info = partitionTableMap_[diskId];
-    bool partNumValid = false;
-    std::vector<PartitionInfo> infos = info.GetPartitions();
-    PartitionInfo partitionInfo;
-    for (const auto &item: infos) {
-        if (item.GetPartitionNum() == partitionNum) {
-            partNumValid = true;
-            partitionInfo = item;
-            break;
+    VolumeExternal fmtVol = FindVolumeForPartition(disk, partitionNum);
+    std::string devPath;
+    {
+        std::lock_guard<std::mutex> lock(partitionLock_);
+        auto tblIt = partitionTableMap_.find(diskId);
+        if (tblIt == partitionTableMap_.end()) {
+            LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
+            return E_NON_EXIST;
+        }
+        for (const auto &item : tblIt->second.GetPartitions()) {
+            if (item.GetPartitionNum() == partitionNum) {
+                devPath = disk.GetSysPath() + std::to_string(partitionNum);
+                break;
+            }
+        }
+        if (devPath.empty()) {
+            LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
+            return E_NON_EXIST;
         }
     }
-    if (!partNumValid) {
-        LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
-        return E_NON_EXIST;
-    }
-    std::string devPath = disk.GetSysPath() + std::to_string(partitionNum);
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
                                                                       params.GetVolumeName(), params.GetQuickFormat());
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("FormatPartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
+        if (!fmtVol.GetId().empty()) {
+            CommonEventPublisher::PublishVolumeResult(FORMAT_FINISH_FAIL, fmtVol);
+        }
         return E_FORMAT_PARTITION_FAILED;
     }
     LOGI("FormatPartition success");
@@ -1820,6 +1802,89 @@ bool DiskManager::IsVolumeMounted(const std::string &diskId, int32_t partitionNu
         }
     }
     return false;
+}
+
+void DiskManager::SetVolumeStateLocked(const std::string &volumeId, VolumeState state)
+{
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    const auto it = volumeMap_.find(volumeId);
+    if (it != volumeMap_.end()) {
+        it->second.SetState(state);
+    }
+}
+
+void DiskManager::PublishFormatFailEvent(const std::string &volumeId)
+{
+    SetVolumeStateLocked(volumeId, FORMAT_FINISH_FAIL);
+    std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+    auto it = volumeMap_.find(volumeId);
+    if (it != volumeMap_.end()) {
+        CommonEventPublisher::PublishVolumeResult(FORMAT_FINISH_FAIL, it->second);
+    }
+}
+
+int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
+    const std::string &diskId, const std::string &oldFsUuid, const std::string &blockVolId)
+{
+    std::string uuid;
+    std::string type;
+    std::string label;
+    StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + blockVolId, uuid, type, label);
+    UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    auto it = volumeMap_.find(volumeId);
+    if (it == volumeMap_.end()) {
+        return E_NON_EXIST;
+    }
+    it->second.SetFsUuid(uuid);
+    it->second.SetDescription(label);
+    it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
+    it->second.SetState(UNMOUNTED);
+    return E_OK;
+}
+
+VolumeExternal DiskManager::FindVolumeForPartition(const Disk &disk, int32_t partitionNum)
+{
+    for (const auto &vid : disk.GetVolumeIds()) {
+        VolumeExternal ext;
+        if (GetVolumeById(vid, ext) == E_OK && ext.GetPartitionNum() == partitionNum) {
+            return ext;
+        }
+    }
+    return VolumeExternal();
+}
+
+int32_t DiskManager::RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId)
+{
+    const std::string devPath = "/dev/block/" + volExternal.GetId();
+    const std::string fsType = volExternal.GetFsTypeString();
+    volExternal.SetState(CHECKING);
+    SetVolumeStateLocked(volumeId, CHECKING);
+    CommonEventPublisher::PublishVolumeResult(CHECKING, volExternal);
+
+    int32_t fixErr = StorageDaemonAdapter::GetInstance().Repair(devPath, fsType);
+    if (fixErr != ERR_OK) {
+        LOGE("RepairAndCheck: Repair failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), fixErr);
+        volExternal.SetState(REPAIR_FINISH_FAIL);
+        SetVolumeStateLocked(volumeId, REPAIR_FINISH_FAIL);
+        CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_FAIL, volExternal);
+        return fixErr;
+    }
+
+    if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
+        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, true);
+        if (checkErr != ERR_OK) {
+            LOGE("RepairAndCheck: Check failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
+            volExternal.SetState(REPAIR_FINISH_FAIL);
+            SetVolumeStateLocked(volumeId, REPAIR_FINISH_FAIL);
+            CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_FAIL, volExternal);
+            return checkErr;
+        }
+    }
+    CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_SUCCESS, volExternal);
+    volExternal.SetState(UNMOUNTED);
+    SetVolumeStateLocked(volumeId, UNMOUNTED);
+    return E_OK;
 }
 
 void DiskManager::SaveVolumeFreeSize(VolumeExternal &volExternal)

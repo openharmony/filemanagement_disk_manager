@@ -36,6 +36,7 @@ class CommonEventPublisher {
 public:
     static void PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume);
     static void PublishDiskChange(DiskEventKind kind, const Disk &disk);
+    static void PublishVolumeResult(VolumeState notifyCode, const VolumeExternal &volume);
 
     CommonEventPublisher() = delete;
     ~CommonEventPublisher() = delete;
