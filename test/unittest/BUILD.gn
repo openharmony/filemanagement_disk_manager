@@ -164,6 +164,8 @@ ohos_unittest("disk_manager_test") {
   sources = [
     "disk_manager_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_bootstrap.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_env_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/block_info_table.cpp",
