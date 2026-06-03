@@ -131,9 +131,6 @@ class DiskManagerTest : public testing::Test {
 public:
     static void SetUpTestCase(void)
     {
-        testing::Mock::AllowLeak(&MockStorageDaemonAdapter::GetInstance());
-        testing::Mock::AllowLeak(&MockUsbFuseAdapter::GetInstance());
-        testing::Mock::AllowLeak(&MockUeventBootstrap::GetInstance());
         GTEST_LOG_(INFO) << "DiskManagerTest SetUpTestCase";
     }
 
