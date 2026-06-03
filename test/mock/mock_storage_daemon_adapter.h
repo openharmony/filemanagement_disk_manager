@@ -21,6 +21,10 @@
 
 #include <gmock/gmock.h>
 
+#ifndef ERR_INVALID_DATA
+constexpr int32_t ERR_INVALID_DATA = 22;
+#endif
+
 namespace OHOS {
 namespace DiskManager {
 
@@ -46,6 +50,7 @@ public:
     MOCK_METHOD(int32_t, MountFuseDevice, (const std::string &mountPath, int32_t &fuseFd));
     MOCK_METHOD(int32_t, Partition, (const std::string &diskPath, const std::string &partitionType));
     MOCK_METHOD(int32_t, GetBlockInfoByType, (const std::string &type, std::string &blockInfos));
+    MOCK_METHOD(int32_t, GetBlockInfoByType, (const std::string &type, std::string &blockInfos, const std::string &diskId));
     MOCK_METHOD(int32_t, GetPartitionTableInfo, (const std::string &devPath, std::string &execRet));
     MOCK_METHOD(int32_t, CreatePartition, (const std::string &devPath, int32_t partitionNum, int64_t startSector, int64_t endSector, const std::string &typeCode));
     MOCK_METHOD(int32_t, DeletePartition, (const std::string &devPath, int32_t partitionNum));
