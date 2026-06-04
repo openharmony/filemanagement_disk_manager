@@ -212,6 +212,95 @@ ohos_unittest("disk_manager_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("disk_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("volume_core_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "volume_core_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("volume_external_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "volume_external_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("partition_types_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "partition_types_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/partition_types.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 group("disk_manager_ut") {
   testonly = true
   deps = [
@@ -220,5 +309,9 @@ group("disk_manager_ut") {
     ":disk_manager_client_test",
     ":uevent_env_parser_test",
     ":disk_manager_test",
+    ":disk_test",
+    ":volume_core_test",
+    ":volume_external_test",
+    ":partition_types_test",
   ]
 }
