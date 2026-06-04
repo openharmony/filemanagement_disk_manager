@@ -16,7 +16,6 @@
 #include <gtest/gtest.h>
 
 #include "disk.h"
-#include "message_parcel_mock.h"
 
 namespace OHOS {
 namespace DiskManager {
