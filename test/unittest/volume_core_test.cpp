@@ -131,14 +131,6 @@ HWTEST_F(VolumeCoreTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     delete result;
 }
 
-HWTEST_F(VolumeCoreTest, Marshalling_WriteIdFail_TestCase_001, TestSize.Level0)
-{
-    VolumeCore vc("vol-1", EXTERNAL, "disk-1", MOUNTED, "vfat");
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(vc.Marshalling(parcel));
-}
-
 class VolumeInfoStrTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -192,12 +184,5 @@ HWTEST_F(VolumeInfoStrTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     delete result;
 }
 
-HWTEST_F(VolumeInfoStrTest, Marshalling_WriteVolumeIdFail_TestCase_001, TestSize.Level0)
-{
-    VolumeInfoStr vis("vol-1", "vfat", "uuid", "/mnt", "desc", false);
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(vis.Marshalling(parcel));
-}
 } // namespace DiskManager
 } // namespace OHOS

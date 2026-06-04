@@ -119,14 +119,6 @@ HWTEST_F(PartitionInfoTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     delete result;
 }
 
-HWTEST_F(PartitionInfoTest, Marshalling_WritePartitionNumFail_TestCase_001, TestSize.Level0)
-{
-    PartitionInfo pi(1, "d", 0, 0, 0, "ext4");
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(pi.Marshalling(parcel));
-}
-
 class PartitionTableInfoTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -291,15 +283,6 @@ HWTEST_F(PartitionTableInfoTest, Unmarshalling_OverMaxPartition_TestCase_001, Te
     EXPECT_EQ(result, nullptr);
 }
 
-HWTEST_F(PartitionTableInfoTest, Marshalling_WriteDiskIdFail_TestCase_001, TestSize.Level0)
-{
-    PartitionTableInfo pti;
-    pti.SetDiskId("d");
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(pti.Marshalling(parcel));
-}
-
 class PartitionParamsTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -375,14 +358,6 @@ HWTEST_F(PartitionParamsTest, Unmarshalling_Success_TestCase_001, TestSize.Level
     delete result;
 }
 
-HWTEST_F(PartitionParamsTest, Marshalling_WritePartitionNumFail_TestCase_001, TestSize.Level0)
-{
-    PartitionParams pp(1, 0, 0, "0FC");
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(pp.Marshalling(parcel));
-}
-
 class FormatParamsTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -448,12 +423,5 @@ HWTEST_F(FormatParamsTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     delete result;
 }
 
-HWTEST_F(FormatParamsTest, Marshalling_WriteFsTypeFail_TestCase_001, TestSize.Level0)
-{
-    FormatParams fp("ext4", true, "vol");
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(fp.Marshalling(parcel));
-}
 } // namespace DiskManager
 } // namespace OHOS

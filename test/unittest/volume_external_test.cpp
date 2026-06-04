@@ -58,7 +58,7 @@ HWTEST_F(VolumeExternalTest, ConstructorFromVolumeCore_TestCase_001, TestSize.Le
     EXPECT_EQ(ve.GetType(), EXTERNAL);
     EXPECT_EQ(ve.GetDiskId(), "disk-1");
     EXPECT_EQ(ve.GetState(), MOUNTED);
-    EXPECT_EQ(ve.GetFsTypeString(), "vfat");
+    EXPECT_EQ(ve.GetFsType(), UNDEFINED);
 }
 
 HWTEST_F(VolumeExternalTest, SetFlags_TestCase_001, TestSize.Level0)

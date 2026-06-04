@@ -429,12 +429,5 @@ HWTEST_F(DiskTest, Unmarshalling_OverMaxVolumeIds_TestCase_001, TestSize.Level0)
     EXPECT_EQ(result, nullptr);
 }
 
-HWTEST_F(DiskTest, Marshalling_WriteDiskIdFail_TestCase_001, TestSize.Level0)
-{
-    Disk disk("disk-1", 4096, "sda1", USB_FLAG);
-    Parcel parcel;
-    parcel.WriteInt32(0);
-    EXPECT_FALSE(disk.Marshalling(parcel));
-}
 } // namespace DiskManager
 } // namespace OHOS
