@@ -1083,7 +1083,7 @@ int32_t DiskManager::OnVolumeDestroyed(const std::string &volumeId)
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     if (volumeMap_.find(volumeId) == volumeMap_.end()) {
         LOGE("DiskManager::OnVolumeDestroyed the vol %{public}s doesn't exist", volumeId.c_str());
-        return E_VOLUME_NOT_FOUND;
+        return E_NON_EXIST;
     }
     volumeMap_.erase(volumeId);
     return DiskManagerErrNo::E_OK;
@@ -1187,7 +1187,7 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
     auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
         LOGE("Volume with id %{public}s not found", volumeId.c_str());
-        return DiskManagerErrNo::E_VOLUME_NOT_FOUND;
+        return E_NON_EXIST;
     }
     VolumeExternal &volExternal = it->second;
     volExternal.SetFsUuid(fsUuid);

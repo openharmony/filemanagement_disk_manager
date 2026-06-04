@@ -157,6 +157,61 @@ ohos_unittest("uevent_env_parser_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("disk_manager_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_manager_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
+    ":disk_manager_unittest_common",
+  ]
+
+  defines = [
+    "StorageDaemonAdapter=MockStorageDaemonAdapter",
+    "UsbFuseAdapter=MockUsbFuseAdapter",
+    "UeventBootstrap=MockUeventBootstrap",
+  ]
+
+  if (car_device_enable) {
+    defines += [ "CDC_STORAGE" ]
+  }
+
+  deps = [
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 group("disk_manager_ut") {
   testonly = true
   deps = [
@@ -164,5 +219,6 @@ group("disk_manager_ut") {
     ":storage_daemon_proxy_test",
     ":disk_manager_client_test",
     ":uevent_env_parser_test",
+    ":disk_manager_test",
   ]
 }
