@@ -592,8 +592,8 @@ HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType2Param_TestCase_001, TestSi
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string blockInfos;
-    EXPECT_CALL(adapter, GetBlockInfoByType(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos), E_SA_IS_NULLPTR);
+    EXPECT_CALL(adapter, GetBlockInfoByType(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
+    EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos, ""), E_SA_IS_NULLPTR);
 }
 
 /**
@@ -605,9 +605,9 @@ HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType2Param_TestCase_002, TestSi
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string blockInfos;
-    EXPECT_CALL(adapter, GetBlockInfoByType(_, _))
+    EXPECT_CALL(adapter, GetBlockInfoByType(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>("block-info-data"), Return(E_OK)));
-    EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos), E_OK);
+    EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos, ""), E_OK);
     EXPECT_EQ(blockInfos, "block-info-data");
 }
 
