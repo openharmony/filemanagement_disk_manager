@@ -56,7 +56,6 @@ public:
         (const std::string &mountPath, int64_t &totalSize, int64_t &freeSize));
     MOCK_METHOD(int32_t, MountFuseDevice, (const std::string &mountPath, int32_t &fuseFd));
     MOCK_METHOD(int32_t, Partition, (const std::string &diskPath, const std::string &partitionType));
-    MOCK_METHOD(int32_t, GetBlockInfoByType, (const std::string &type, std::string &blockInfos));
     MOCK_METHOD(int32_t, GetBlockInfoByType,
         (const std::string &type, std::string &blockInfos, const std::string &diskId));
     MOCK_METHOD(int32_t, GetPartitionTableInfo,
@@ -68,6 +67,8 @@ public:
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &devPath, const std::string &fsType,
          const std::string &volumeName, bool quickFormat));
+    MOCK_METHOD(int32_t, EnsureProxyReady, ());
+    MOCK_METHOD(int32_t, ResetSdProxy, ());
 
     static MockStorageDaemonAdapter mockInstance_;
 };
