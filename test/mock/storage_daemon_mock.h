@@ -56,7 +56,7 @@ public:
                                              std::string &blockInfos));
     MOCK_METHOD2(GetPartitionTableInfo, ErrCode(const std::string &, std::string &));
     MOCK_METHOD5(CreatePartition, ErrCode(const std::string &, int32_t, int64_t, int64_t, const std::string &));
-    MOCK_METHOD2(DeletePartitionInfo, ErrCode(const std::string &, int32_t));
+    MOCK_METHOD3(DeletePartitionInfo, ErrCode(const std::string &, const std::string &, int32_t));
     MOCK_METHOD4(FormatPartition, ErrCode(const std::string &, const std::string &, const std::string &, bool));
 };
 

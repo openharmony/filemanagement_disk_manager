@@ -166,10 +166,11 @@ private:
     void SetVolumeStateLocked(const std::string &volumeId, VolumeState state);
     void PublishFormatFailEvent(const std::string &volumeId);
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
-                                 const std::string &diskId, const std::string &oldFsUuid,
-                                 const std::string &blockVolId);
+                                    const std::string &diskId, const std::string &oldFsUuid,
+                                    const std::string &blockVolId);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
+    bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
      * 若同一流程需两把锁，必须按此顺序一次性加锁：先 disk，后 volume。
