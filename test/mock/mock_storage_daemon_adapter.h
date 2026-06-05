@@ -68,6 +68,8 @@ public:
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &devPath, const std::string &fsType,
          const std::string &volumeName, bool quickFormat));
+    MOCK_METHOD(int32_t, EnsureProxyReady, ());
+    MOCK_METHOD(int32_t, ResetSdProxy, ());
 
     static MockStorageDaemonAdapter mockInstance_;
 };

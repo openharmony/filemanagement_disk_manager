@@ -301,6 +301,92 @@ ohos_unittest("partition_types_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("storage_daemon_adapter_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "storage_daemon_adapter_test.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
+    ":disk_manager_unittest_common",
+  ]
+
+  defines = [
+    "StorageDaemonAdapter=MockStorageDaemonAdapter",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("usb_fuse_adapter_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "usb_fuse_adapter_test.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
+    ":disk_manager_unittest_common",
+  ]
+
+  defines = [
+    "UsbFuseAdapter=MockUsbFuseAdapter",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("voldata_uuid_store_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "voldata_uuid_store_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  deps = [
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 group("disk_manager_ut") {
   testonly = true
   deps = [
@@ -313,5 +399,8 @@ group("disk_manager_ut") {
     ":volume_core_test",
     ":volume_external_test",
     ":partition_types_test",
+    ":storage_daemon_adapter_test",
+    ":usb_fuse_adapter_test",
+    ":voldata_uuid_store_test",
   ]
 }
