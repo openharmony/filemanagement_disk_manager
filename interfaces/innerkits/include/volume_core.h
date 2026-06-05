@@ -38,6 +38,9 @@ enum VolumeState {
     ENCRYPTED_AND_LOCKED,
     ENCRYPTED_AND_UNLOCKED,
     DECRYPTING,
+    REPAIR_FINISH_FAIL,
+    REPAIR_FINISH_SUCCESS,
+    FORMAT_FINISH_FAIL,
 };
 
 class VolumeInfoStr : public Parcelable {

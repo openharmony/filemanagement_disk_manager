@@ -54,6 +54,10 @@ const VolumeStateInfo STATE_INFOS[] = {
     {ENCRYPTED_AND_LOCKED, "DeskEncryptedAndLocked", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
     {ENCRYPTED_AND_UNLOCKED, "DeskEncryptedAndUnLocked", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
     {DECRYPTING, "DeskDecrypting", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
+    {CHECKING, "CHECKING", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
+    {REPAIR_FINISH_FAIL, "REPAIR_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
+    {REPAIR_FINISH_SUCCESS, "REPAIR_FINISH_SUCCESS", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
+    {FORMAT_FINISH_FAIL, "FORMAT_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
 };
 
 void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
@@ -148,6 +152,38 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
         return;
     }
 #endif
+    EventFwk::CommonEventManager::PublishCommonEvent(commonData);
+}
+
+void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const VolumeExternal &volume)
+{
+    AAFwk::Want want;
+    AAFwk::WantParams wantParams;
+    wantParams.SetParam("id", AAFwk::String::Box(volume.GetId()));
+    wantParams.SetParam("diskId", AAFwk::String::Box(volume.GetDiskId()));
+    wantParams.SetParam("fsUuid", AAFwk::String::Box(volume.GetUuid()));
+    wantParams.SetParam("flags", AAFwk::Integer::Box(volume.GetFlags()));
+    wantParams.SetParam("volumeState", AAFwk::Integer::Box(static_cast<int32_t>(notifyCode)));
+
+    bool actionSet = false;
+    for (const auto &info : STATE_INFOS) {
+        if (info.state == notifyCode) {
+            LOGI("CommonEventPublisher volume result evt %{public}s id=%{public}s",
+                info.logMessage, volume.GetId().c_str());
+            want.SetAction(info.eventAction);
+            actionSet = true;
+            break;
+        }
+    }
+
+    if (!actionSet) {
+        LOGW("CommonEventPublisher skip publish: no action for volumeState=%{public}d id=%{public}s",
+             static_cast<int32_t>(notifyCode), volume.GetId().c_str());
+        return;
+    }
+
+    want.SetParams(wantParams);
+    EventFwk::CommonEventData commonData{want};
     EventFwk::CommonEventManager::PublishCommonEvent(commonData);
 }
 
