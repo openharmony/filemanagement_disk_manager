@@ -69,8 +69,8 @@ struct PartitionParams {
 
 struct FormatParams {
     fsType: String;
-    quickFormat: bool;
-    volumeName: String;
+    quickFormat: Optional<bool>;
+    volumeName: Optional<String>;
 }
 
 // Burn options for optical drive operations (@since 26.0.0)

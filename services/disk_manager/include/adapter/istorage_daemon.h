@@ -96,7 +96,8 @@ public:
     virtual ErrCode CreatePartition(const std::string &devPath, int32_t partitionNum,
                                     int64_t startSector, int64_t endSector,
                                     const std::string &typeCode) = 0;
-    virtual ErrCode DeletePartitionInfo(const std::string &devPath, int32_t partitionNum) = 0;
+    virtual ErrCode DeletePartitionInfo(const std::string &devPath, const std::string &diskId,
+                                        int32_t partitionNum) = 0;
     virtual ErrCode FormatPartition(const std::string &devPath, const std::string &fsType,
                                     const std::string &volumeName, bool quickFormat) = 0;
 

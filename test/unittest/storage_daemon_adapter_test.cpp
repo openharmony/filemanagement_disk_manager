@@ -700,8 +700,8 @@ HWTEST_F(StorageDaemonAdapterTest, CreatePartition_TestCase_002, TestSize.Level0
 HWTEST_F(StorageDaemonAdapterTest, DeletePartition_TestCase_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, DeletePartition(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.DeletePartition("/dev/block/sda", 1), E_SA_IS_NULLPTR);
+    EXPECT_CALL(adapter, DeletePartition(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
+    EXPECT_EQ(adapter.DeletePartition("/dev/block/sda", "sda", 1), E_SA_IS_NULLPTR);
 }
 
 /**
@@ -712,8 +712,8 @@ HWTEST_F(StorageDaemonAdapterTest, DeletePartition_TestCase_001, TestSize.Level0
 HWTEST_F(StorageDaemonAdapterTest, DeletePartition_TestCase_002, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, DeletePartition(_, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.DeletePartition("/dev/block/sda", 1), E_OK);
+    EXPECT_CALL(adapter, DeletePartition(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.DeletePartition("/dev/block/sda", "sda", 1), E_OK);
 }
 
 /**

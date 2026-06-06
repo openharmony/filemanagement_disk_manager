@@ -56,7 +56,7 @@ public:
     const std::string &GetExtraInfo() const;
 
     // --- 进程内 ---
-    /** 块设备节点路径，如 /dev/block/disk-8-0。 */
+    /** 块设备节点路径，如 /dev/block/sda。 */
     std::string GetSysPath() const;
     bool IsInternalDataDisk() const;
     /** 据 uevent 的 /sys{DEVPATH} 刷新 diskType，不持久化 sysfs 路径。 */

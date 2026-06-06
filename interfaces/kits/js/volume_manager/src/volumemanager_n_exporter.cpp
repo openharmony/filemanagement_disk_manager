@@ -644,7 +644,8 @@ napi_value Partition(napi_env env, napi_callback_info info)
 napi_value GetAllDisks(napi_env env, napi_callback_info info)
 {
     NFuncArg funcArg(env, info);
-    if (!CheckVolumes(env, info, funcArg)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::ZERO)) {
+        NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
     auto disks = std::make_shared<std::vector<Disk>>();
@@ -662,24 +663,24 @@ napi_value GetAllDisks(napi_env env, napi_callback_info info)
         return MakeDiskJsArrayFromVector(env, *disks);
     };
     NVal thisVar(env, funcArg.GetThisVar());
-    if (funcArg.GetArgc() == (uint)NARG_CNT::ZERO) {
-        return NAsyncWorkPromise(env, thisVar).Schedule("GetAllDisks", cbExec, cbComplete).val_;
-    }
-    NVal cb(env, funcArg[(int)NARG_POS::FIRST]);
-    return NAsyncWorkCallback(env, thisVar, cb, FEATURE_STR + __FUNCTION__)
-        .Schedule("GetAllDisks", cbExec, cbComplete)
-        .val_;
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetAllDisks", cbExec, cbComplete).val_;
 }
 
 napi_value GetDiskById(napi_env env, napi_callback_info info)
 {
     NFuncArg funcArg(env, info);
-    if (!CheckMount(env, info, funcArg)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    NVal paramsFirstNVal(env, funcArg[(int)NARG_POS::FIRST]);
+    if (paramsFirstNVal.val_ == nullptr) {
+        NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
     bool succ = false;
     std::unique_ptr<char[]> diskId;
-    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::tie(succ, diskId, std::ignore) = paramsFirstNVal.ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
@@ -701,15 +702,8 @@ napi_value GetDiskById(napi_env env, napi_callback_info info)
         napi_value dj = BuildDiskJSObject(env, *disk);
         return {NVal(env, dj)};
     };
-    std::string procedureName = "GetDiskById";
     NVal thisVar(env, funcArg.GetThisVar());
-    if (funcArg.GetArgc() == (uint)NARG_CNT::ONE) {
-        return NAsyncWorkPromise(env, thisVar).Schedule(procedureName, cbExec, cbComplete).val_;
-    }
-    NVal cb(env, funcArg[(int)NARG_POS::SECOND]);
-    return NAsyncWorkCallback(env, thisVar, cb, FEATURE_STR + __FUNCTION__)
-        .Schedule(procedureName, cbExec, cbComplete)
-        .val_;
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetDiskById", cbExec, cbComplete).val_;
 }
 
 napi_value Erase(napi_env env, napi_callback_info info)
@@ -931,27 +925,25 @@ static NVal BuildPartitionTableInfoJSObject(napi_env env, const PartitionTableIn
 
 napi_value GetPartitionTable(napi_env env, napi_callback_info info)
 {
-    if (!IsSystemApp()) {
-        NError(E_PERMISSION_SYS).ThrowErr(env);
-        return nullptr;
-    }
     NFuncArg funcArg(env, info);
-    if (!funcArg.InitArgs((int)NARG_CNT::ONE, (int)NARG_CNT::ONE)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
+    NVal paramsFirstNVal(env, funcArg[(int)NARG_POS::FIRST]);
+    if (paramsFirstNVal.val_ == nullptr) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
     bool succ = false;
     std::unique_ptr<char[]> diskId;
-    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::tie(succ, diskId, std::ignore) = paramsFirstNVal.ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     std::string diskIdStr(diskId.get());
     auto tableInfo = std::make_shared<PartitionTableInfo>();
-
     auto cbExec = [diskIdStr, tableInfo]() -> NError {
         int32_t errNum = DelayedSingleton<DiskManagerClient>::GetInstance()->GetPartitionTable(diskIdStr, *tableInfo);
         if (errNum != E_OK) {
@@ -959,14 +951,12 @@ napi_value GetPartitionTable(napi_env env, napi_callback_info info)
         }
         return NError(ERRNO_NOERR);
     };
-
     auto cbComplete = [tableInfo](napi_env env, NError err) -> NVal {
         if (err) {
             return {env, err.GetNapiErr(env)};
         }
         return BuildPartitionTableInfoJSObject(env, *tableInfo);
     };
-
     NVal thisVar(env, funcArg.GetThisVar());
     return NAsyncWorkPromise(env, thisVar).Schedule("GetPartitionTable", cbExec, cbComplete).val_;
 }
@@ -975,70 +965,88 @@ napi_value GetPartitionTable(napi_env env, napi_callback_info info)
 static bool ParsePartitionParams(napi_env env, napi_value paramsObj, PartitionParams &params)
 {
     bool succ = false;
+    NVal paramsNVal(env, paramsObj);
+    if (paramsNVal.val_ == nullptr) {
+        return false;
+    }
+    NVal partNumVal = paramsNVal.GetProp("partitionNum");
+    if (partNumVal.val_ == nullptr) {
+        return false;
+    }
     int32_t partitionNum = 0;
-    std::tie(succ, partitionNum) = NVal(env, paramsObj).GetProp("partitionNum").ToInt32();
+    std::tie(succ, partitionNum) = partNumVal.ToInt32();
     if (!succ) {
         return false;
     }
     params.SetPartitionNum(partitionNum);
-
+    NVal startSectorVal = paramsNVal.GetProp("startSector");
+    if (startSectorVal.val_ == nullptr) {
+        return false;
+    }
     int64_t startSector = 0;
-    std::tie(succ, startSector) = NVal(env, paramsObj).GetProp("startSector").ToInt64();
+    std::tie(succ, startSector) = startSectorVal.ToInt64();
     if (!succ) {
         return false;
     }
     params.SetStartSector(startSector);
-
+    NVal endSectorVal = paramsNVal.GetProp("endSector");
+    if (endSectorVal.val_ == nullptr) {
+        return false;
+    }
     int64_t endSector = 0;
-    std::tie(succ, endSector) = NVal(env, paramsObj).GetProp("endSector").ToInt64();
+    std::tie(succ, endSector) = endSectorVal.ToInt64();
     if (!succ) {
         return false;
     }
     params.SetEndSector(endSector);
-
+    NVal typeCodeVal = paramsNVal.GetProp("typeCode");
+    if (typeCodeVal.val_ == nullptr) {
+        return false;
+    }
     std::unique_ptr<char[]> typeCode;
-    std::tie(succ, typeCode, std::ignore) = NVal(env, paramsObj).GetProp("typeCode").ToUTF8String();
+    std::tie(succ, typeCode, std::ignore) = typeCodeVal.ToUTF8String();
     if (!succ) {
         return false;
     }
     params.SetTypeCode(std::string(typeCode.get()));
-
     return true;
 }
 
 napi_value CreatePartition(napi_env env, napi_callback_info info)
 {
-    if (!IsSystemApp()) {
-        NError(E_PERMISSION_SYS).ThrowErr(env);
-        return nullptr;
-    }
     NFuncArg funcArg(env, info);
-    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::TWO)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::TWO)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
+    NVal paramsFirstNVal(env, funcArg[(int)NARG_POS::FIRST]);
+    if (paramsFirstNVal.val_ == nullptr) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    NVal paramsSecondNVal(env, funcArg[(int)NARG_POS::SECOND]);
+    if (paramsSecondNVal.val_ == nullptr) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
     bool succ = false;
     std::unique_ptr<char[]> diskId;
-    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::tie(succ, diskId, std::ignore) = paramsFirstNVal.ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     napi_valuetype paramsType = napi_undefined;
     napi_typeof(env, funcArg[(int)NARG_POS::SECOND], &paramsType);
     if (paramsType != napi_object) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     PartitionParams params;
     if (!ParsePartitionParams(env, funcArg[(int)NARG_POS::SECOND], params)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     std::string diskIdStr(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "CreatePartition", [diskIdStr, params]() {
@@ -1048,31 +1056,34 @@ napi_value CreatePartition(napi_env env, napi_callback_info info)
 
 napi_value DeletePartition(napi_env env, napi_callback_info info)
 {
-    if (!IsSystemApp()) {
-        NError(E_PERMISSION_SYS).ThrowErr(env);
-        return nullptr;
-    }
     NFuncArg funcArg(env, info);
-    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::TWO)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::TWO)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
+    NVal paramsFirstNVal(env, funcArg[(int)NARG_POS::FIRST]);
+    if (paramsFirstNVal.val_ == nullptr) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    NVal paramsSecondNVal(env, funcArg[(int)NARG_POS::SECOND]);
+    if (paramsSecondNVal.val_ == nullptr) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
     bool succ = false;
     std::unique_ptr<char[]> diskId;
-    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::tie(succ, diskId, std::ignore) = paramsFirstNVal.ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     int32_t partitionNum = 0;
-    std::tie(succ, partitionNum) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
+    std::tie(succ, partitionNum) = paramsSecondNVal.ToInt32();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     std::string diskIdStr(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "DeletePartition", [diskIdStr, partitionNum]() {
@@ -1083,17 +1094,22 @@ napi_value DeletePartition(napi_env env, napi_callback_info info)
 // 辅助函数：解析 FormatParams 参数
 static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &params)
 {
-    params.SetQuickFormat(true);
-
+    NVal paramsNVal(env, paramsObj);
+    if (paramsNVal.val_ == nullptr) {
+        return false;
+    }
     bool succ = false;
+    NVal fsTypeVal = paramsNVal.GetProp("fsType");
+    if (fsTypeVal.val_ == nullptr) {
+        return false;
+    }
     std::unique_ptr<char[]> fsType;
-    std::tie(succ, fsType, std::ignore) = NVal(env, paramsObj).GetProp("fsType").ToUTF8String();
+    std::tie(succ, fsType, std::ignore) = fsTypeVal.ToUTF8String();
     if (!succ) {
         return false;
     }
     params.SetFsType(std::string(fsType.get()));
-
-    NVal quickFormatVal = NVal(env, paramsObj).GetProp("quickFormat");
+    NVal quickFormatVal = paramsNVal.GetProp("quickFormat");
     if (quickFormatVal.val_ != nullptr) {
         bool quickFormat = true;
         std::tie(succ, quickFormat) = quickFormatVal.ToBool();
@@ -1101,8 +1117,7 @@ static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &
             params.SetQuickFormat(quickFormat);
         }
     }
-
-    NVal volumeNameVal = NVal(env, paramsObj).GetProp("volumeName");
+    NVal volumeNameVal = paramsNVal.GetProp("volumeName");
     if (volumeNameVal.val_ != nullptr) {
         std::unique_ptr<char[]> volumeName;
         std::tie(succ, volumeName, std::ignore) = volumeNameVal.ToUTF8String();
@@ -1110,61 +1125,53 @@ static bool ParseFormatParams(napi_env env, napi_value paramsObj, FormatParams &
             params.SetVolumeName(std::string(volumeName.get()));
         }
     }
-
     return true;
 }
 
 // 辅助函数：解析 FormatPartition 的基本参数
-static bool ParseFormatPartitionBasicArgs(
-    napi_env env, NFuncArg &funcArg, std::string &diskId, int32_t &partitionNum)
+static bool ParseFormatPartitionBasicArgs(napi_env env, NFuncArg &funcArg, std::string &diskId, int32_t &partitionNum)
 {
-    bool succ = false;
-    std::unique_ptr<char[]> diskIdBuf;
-    std::tie(succ, diskIdBuf, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
-    if (!succ) {
-        NError(E_PARAMS).ThrowErr(env);
+    NVal paramsFirstNVal(env, funcArg[(int)NARG_POS::FIRST]);
+    if (paramsFirstNVal.val_ == nullptr) {
         return false;
     }
-    std::tie(succ, partitionNum) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
+    NVal paramsSecondNVal(env, funcArg[(int)NARG_POS::SECOND]);
+    if (paramsSecondNVal.val_ == nullptr) {
+        return false;
+    }
+    bool succ = false;
+    std::unique_ptr<char[]> diskIdBuf;
+    std::tie(succ, diskIdBuf, std::ignore) = paramsFirstNVal.ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return false;
     }
     diskId = std::string(diskIdBuf.get());
+    std::tie(succ, partitionNum) = paramsSecondNVal.ToInt32();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return false;
+    }
     return true;
 }
 
 napi_value FormatPartition(napi_env env, napi_callback_info info)
 {
-    if (!IsSystemApp()) {
-        NError(E_PERMISSION_SYS).ThrowErr(env);
-        return nullptr;
-    }
     NFuncArg funcArg(env, info);
-    if (!funcArg.InitArgs((int)NARG_CNT::THREE, (int)NARG_CNT::THREE)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::THREE)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     std::string diskId;
     int32_t partitionNum = 0;
     if (!ParseFormatPartitionBasicArgs(env, funcArg, diskId, partitionNum)) {
         return nullptr;
     }
-
-    napi_valuetype paramsType = napi_undefined;
-    napi_typeof(env, funcArg[(int)NARG_POS::THIRD], &paramsType);
-    if (paramsType != napi_object) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-
     FormatParams params;
     if (!ParseFormatParams(env, funcArg[(int)NARG_POS::THIRD], params)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "FormatPartition", [diskId, partitionNum, params]() {
         return DelayedSingleton<DiskManagerClient>::GetInstance()->FormatPartition(diskId, partitionNum, params);

@@ -64,7 +64,7 @@ public:
     int32_t CreatePartition(const std::string &devPath, int32_t partitionNum,
                             int64_t startSector, int64_t endSector,
                             const std::string &typeCode);
-    int32_t DeletePartition(const std::string &devPath, int32_t partitionNum);
+    int32_t DeletePartition(const std::string &devPath, const std::string &diskId, int32_t partitionNum);
     int32_t FormatPartition(const std::string &devPath, const std::string &fsType, const std::string &volumeName,
                             bool quickFormat);
 

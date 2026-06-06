@@ -1099,7 +1099,7 @@ int32_t DiskManager::GetDiskById(const std::string &diskId, Disk &out)
     std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
     if (diskMap_.find(diskId) == diskMap_.end()) {
         LOGE("DiskManager::GetDiskById id %{public}s not exists", diskId.c_str());
-        return E_DISK_NOT_FOUND;
+        return E_NON_EXIST;
     }
     out = diskMap_[diskId];
     AttachVolumeIdsToDisk(volumeMap_, out);
@@ -1726,11 +1726,12 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
         LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
         return E_NON_EXIST;
     }
-    int32_t ret = StorageDaemonAdapter::GetInstance().DeletePartition("/dev/block/" + diskId, partitionNum);
+    int32_t ret = StorageDaemonAdapter::GetInstance().DeletePartition(disk.GetSysPath(), diskId, partitionNum);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("DeletePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return E_DELETE_PARTITION_FAILED;
     }
+    DestroyVolumeByDiskIdAndPartNum(diskId, partitionNum);
     LOGI("DeletePartition success");
     return DiskManagerErrNo::E_OK;
 }
@@ -1904,6 +1905,40 @@ void DiskManager::SaveVolumeFreeSize(VolumeExternal &volExternal)
         LOGW("Unmount: failed to get freeSize for volumeId=%{public}s, ret=%{public}d",
             volExternal.GetId().c_str(), ret);
     }
+}
+
+bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum)
+{
+    LOGI("DestroyVolume enter diskId=%{public}s, partNum=%{public}d.", diskId.c_str(), partNum);
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        return false;
+    }
+    std::vector<std::string> volumeIds = disk.GetVolumeIds();
+    VolumeExternal vol;
+    bool found;
+    for (const auto &item: volumeIds) {
+        if (GetVolumeById(item, vol) != E_OK) {
+            continue;
+        }
+        if (vol.GetPartitionNum() == partNum) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    std::string devPath = "/dev/block/" + vol.GetId();
+    int32_t ret = StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(devPath);
+    if (ret != E_OK) {
+        LOGI("Destroy volume failed devPath:%{public}s, ret:%{public}d", devPath.c_str(), ret);
+        return false;
+    }
+    CommonEventPublisher::PublishVolumeChange((vol.GetState() == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
+    (void)DiskManager::GetInstance().OnVolumeDestroyed(vol.GetId());
+    LOGI("DestroyVolume end.");
+    return true;
 }
 } // namespace DiskManager
 } // namespace OHOS

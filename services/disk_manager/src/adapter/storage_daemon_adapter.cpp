@@ -374,15 +374,17 @@ int32_t StorageDaemonAdapter::CreatePartition(const std::string &devPath, int32_
     return ret;
 }
 
-int32_t StorageDaemonAdapter::DeletePartition(const std::string &devPath, int32_t partitionNum)
+int32_t StorageDaemonAdapter::DeletePartition(const std::string &devPath, const std::string &diskId,
+                                              int32_t partitionNum)
 {
-    LOGI("DeletePartition enter, devPath=%{public}s, partitionNum=%{public}d", devPath.c_str(), partitionNum);
+    LOGI("DeletePartition enter, devPath=%{public}s, diskId=%{public}s, partitionNum=%{public}d",
+         devPath.c_str(), diskId.c_str(), partitionNum);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("DeletePartition exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->DeletePartitionInfo(devPath, partitionNum);
+    const int32_t ret = storageDaemon_->DeletePartitionInfo(devPath, diskId, partitionNum);
     LOGI("DeletePartition exit ret=%{public}d", ret);
     return ret;
 }

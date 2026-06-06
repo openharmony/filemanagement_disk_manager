@@ -481,7 +481,8 @@ ErrCode StorageDaemonProxy::CreatePartition(const std::string &devPath, int32_t 
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::DeletePartitionInfo(const std::string &devPath, int32_t partitionNum)
+ErrCode StorageDaemonProxy::DeletePartitionInfo(const std::string &devPath, const std::string &diskId,
+                                                int32_t partitionNum)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -490,6 +491,9 @@ ErrCode StorageDaemonProxy::DeletePartitionInfo(const std::string &devPath, int3
         return ERR_TRANSACTION_FAILED;
     }
     if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(diskId))) {
         return ERR_INVALID_DATA;
     }
     if (!data.WriteInt32(partitionNum)) {
