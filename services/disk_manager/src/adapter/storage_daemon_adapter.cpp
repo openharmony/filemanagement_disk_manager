@@ -23,6 +23,8 @@
 #include "disk_manager_hilog.h"
 #include "errors.h"
 
+#include <sys/mount.h>
+
 namespace OHOS {
 namespace DiskManager {
 
@@ -189,6 +191,9 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
                                     uint64_t mountFlag,
                                     const std::string &mountData)
 {
+#ifdef CDC_STORAGE
+    mountFlag |= (MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_NOATIME);
+#endif
     LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}" PRIu64
          ", mountData=%{public}s",
          devPath.c_str(), mountPath.c_str(), fsType.c_str(), mountFlag, mountData.c_str());
