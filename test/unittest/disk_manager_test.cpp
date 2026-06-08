@@ -298,7 +298,7 @@ HWTEST_F(DiskManagerTest, GetDiskById_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
     Disk out;
-    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_DISK_NOT_FOUND);
+    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 End";
 }
 
