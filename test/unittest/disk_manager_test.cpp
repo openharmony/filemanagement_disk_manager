@@ -1473,7 +1473,7 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeCdDisk("disk-fp-2"));
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(dm.FormatPartition("disk-fp-2", 1, params), E_DELETE_PARTITION_NOT_SUPPORT);
+    EXPECT_EQ(dm.FormatPartition("disk-fp-2", 1, params), E_FORMAT_PARTITION_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 End";
 }
 
