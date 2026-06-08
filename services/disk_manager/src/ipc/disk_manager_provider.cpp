@@ -291,6 +291,10 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
         LOGE("FormatPartition: fsType is empty");
         return E_PARAMS_INVALID;
     }
+    if (!params.GetQuickFormat()) {
+        LOGE("FormatPartition: quickFormat is invalid");
+        return E_PARAMS_INVALID;
+    }
     int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
