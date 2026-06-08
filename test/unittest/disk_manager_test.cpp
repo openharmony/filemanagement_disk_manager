@@ -289,7 +289,7 @@ HWTEST_F(DiskManagerTest, GetDiskById_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: GetDiskById_TestCase_002
- * @tc.desc: Get non-existent disk returns E_DISK_NOT_FOUND.
+ * @tc.desc: Get non-existent disk returns E_NON_EXIST.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -298,7 +298,7 @@ HWTEST_F(DiskManagerTest, GetDiskById_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
     Disk out;
-    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_DISK_NOT_FOUND);
+    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 End";
 }
 
