@@ -1625,7 +1625,7 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
         params.GetPartitionNum(), params.GetStartSector(), params.GetEndSector(), codeIt->second);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
-        return E_CREATE_PARTITION_FAILED;
+        return E_CREATE_PARTITION_ERROR;
     }
     LOGE("CreatePartition success");
     return DiskManagerErrNo::E_OK;
@@ -1729,7 +1729,7 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
     int32_t ret = StorageDaemonAdapter::GetInstance().DeletePartition(disk.GetSysPath(), diskId, partitionNum);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("DeletePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
-        return E_DELETE_PARTITION_FAILED;
+        return E_DELETE_PARTITION_ERROR;
     }
     DestroyVolumeByDiskIdAndPartNum(diskId, partitionNum);
     LOGI("DeletePartition success");
@@ -1776,7 +1776,7 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         if (!fmtVol.GetId().empty()) {
             CommonEventPublisher::PublishVolumeResult(FORMAT_FINISH_FAIL, fmtVol);
         }
-        return E_FORMAT_PARTITION_FAILED;
+        return E_FORMAT_PARTITION_ERROR;
     }
     LOGI("FormatPartition success");
     return DiskManagerErrNo::E_OK;
