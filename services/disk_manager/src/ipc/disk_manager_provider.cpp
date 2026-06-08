@@ -141,6 +141,11 @@ int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 
 int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
 {
+    LOGI("GetDiskById diskId=%{public}s.", diskId.c_str());
+    if (diskId.empty()) {
+        LOGI("diskId is empty.");
+        return E_PARAMS_INVALID;
+    }
     const int32_t err = DiskManager::GetInstance().GetDiskById(diskId, disk);
     LOGI("GetDiskById diskId=%{public}s err=%{public}d", diskId.c_str(), err);
     return err;

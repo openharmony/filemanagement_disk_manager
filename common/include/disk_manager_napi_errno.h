@@ -59,6 +59,13 @@ enum class DiskManagerNativeErr : int32_t {
     E_VOL_UMOUNT_ERR = STORAGE_SERVICE_SYS_CAP_TAG + 1703,
     E_UMOUNT_BUSY = STORAGE_SERVICE_SYS_CAP_TAG + 1704,
     E_NO_CHILD = STORAGE_SERVICE_SYS_CAP_TAG + 1705,
+    E_GET_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1739,
+    E_CREATE_PARTITION_NOT_SUPPORT = STORAGE_SERVICE_SYS_CAP_TAG + 1740,
+    E_CREATE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1742,
+    E_DELETE_PARTITION_NOT_SUPPORT = STORAGE_SERVICE_SYS_CAP_TAG + 1743,
+    E_DELETE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1745,
+    E_FORMAT_PARTITION_NOT_SUPPORT = STORAGE_SERVICE_SYS_CAP_TAG + 1748,
+    E_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1750,
 };
 
 /** JS / Taihe 业务错误码（与 storage_service 原 JsErrCode 数值一致） */
@@ -85,6 +92,10 @@ enum class DiskManagerJsErr : int32_t {
     E_JS_GET_INODE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 16,
     E_JS_GET_BUNDLE_INODES_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 17,
     E_JS_GET_SYSTEM_DATA_SIZE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 18,
+    E_JS_GET_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 21,
+    E_JS_CREATE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 22,
+    E_JS_DELETE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 23,
+    E_JS_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 32,
 };
 
 constexpr int32_t E_OK = static_cast<int32_t>(DiskManagerNativeErr::E_OK);
@@ -123,6 +134,16 @@ constexpr int32_t E_VOL_MOUNT_ERR = static_cast<int32_t>(DiskManagerNativeErr::E
 constexpr int32_t E_VOL_UMOUNT_ERR = static_cast<int32_t>(DiskManagerNativeErr::E_VOL_UMOUNT_ERR);
 constexpr int32_t E_UMOUNT_BUSY = static_cast<int32_t>(DiskManagerNativeErr::E_UMOUNT_BUSY);
 constexpr int32_t E_NO_CHILD = static_cast<int32_t>(DiskManagerNativeErr::E_NO_CHILD);
+constexpr int32_t E_GET_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_GET_PARTITION_ERROR);
+constexpr int32_t E_CREATE_PARTITION_NOT_SUPPORT =
+    static_cast<int32_t>(DiskManagerNativeErr::E_CREATE_PARTITION_NOT_SUPPORT);
+constexpr int32_t E_CREATE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_CREATE_PARTITION_ERROR);
+constexpr int32_t E_DELETE_PARTITION_NOT_SUPPORT =
+    static_cast<int32_t>(DiskManagerNativeErr::E_DELETE_PARTITION_NOT_SUPPORT);
+constexpr int32_t E_DELETE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_DELETE_PARTITION_ERROR);
+constexpr int32_t E_FORMAT_PARTITION_NOT_SUPPORT =
+    static_cast<int32_t>(DiskManagerNativeErr::E_FORMAT_PARTITION_NOT_SUPPORT);
+constexpr int32_t E_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_FORMAT_PARTITION_ERROR);
 
 constexpr int32_t E_PERMISSION = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION);
 constexpr int32_t E_PERMISSION_SYS = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION_SYS);
@@ -150,6 +171,10 @@ constexpr int32_t E_JS_GET_INODE_ERROR = static_cast<int32_t>(DiskManagerJsErr::
 constexpr int32_t E_JS_GET_BUNDLE_INODES_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_BUNDLE_INODES_ERROR);
 constexpr int32_t E_JS_GET_SYSTEM_DATA_SIZE_ERROR =
     static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_SYSTEM_DATA_SIZE_ERROR);
+constexpr int32_t E_JS_GET_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_GET_PARTITION_ERROR);
+constexpr int32_t E_JS_CREATE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_CREATE_PARTITION_ERROR);
+constexpr int32_t E_JS_DELETE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_DELETE_PARTITION_ERROR);
+constexpr int32_t E_JS_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_FORMAT_PARTITION_ERROR);
 
 /** volumeManager 光盘/刻录扩展，与 ark 文档中 13600023–13600031 段对齐 */
 constexpr int32_t E_STORAGE_JS_EXT_DISC_NOT_ERASABLE = STORAGE_SERVICE_SYS_CAP_TAG + 23;
@@ -161,13 +186,6 @@ constexpr int32_t E_STORAGE_JS_EXT_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 2
 constexpr int32_t E_STORAGE_JS_EXT_NO_ONGOING_OP = STORAGE_SERVICE_SYS_CAP_TAG + 29;
 constexpr int32_t E_STORAGE_JS_EXT_VERIFY_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 30;
 constexpr int32_t E_STORAGE_JS_EXT_VERIFY_MISMATCH = STORAGE_SERVICE_SYS_CAP_TAG + 31;
-
-/** Partition management extension, aligned with ark documentation 13600021-13600025 */
-constexpr int32_t E_PARTITION_TABLE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 21;  // 13600021
-constexpr int32_t E_CREATE_PARTITION_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 22; // 13600022
-constexpr int32_t E_DELETE_PARTITION_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 23; // 13600023
-constexpr int32_t E_FORMAT_PARTITION_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 25; // 13600025
-
 } // namespace OHOS
 
 #endif // DISK_MANAGER_NAPI_ERRNO_H

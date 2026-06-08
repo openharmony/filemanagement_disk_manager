@@ -1744,7 +1744,7 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
     }
     if (disk.GetDiskType() != DiskType::SD_FLAG && disk.GetDiskType() != DiskType::USB_FLAG) {
         LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
-        return E_DELETE_PARTITION_NOT_SUPPORT;
+        return E_FORMAT_PARTITION_NOT_SUPPORT;
     }
     if (IsVolumeMounted(diskId, partitionNum)) {
         return E_VOL_STATE;
