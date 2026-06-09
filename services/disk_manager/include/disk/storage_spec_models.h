@@ -83,31 +83,6 @@ struct PartitionRecord {
 };
 
 /**
- * 块设备详细信息（进程内/解析用）。GetBlockInfoByType 载荷约定为 UTF-8 JSON，
- * camelCase：diskId, sizeBytes, vendor, model, removable, mediaType, devicePath…；
- * BlockInfoTable（blockInfoTable）将 JSON 解析为 BlockInfo 写入 map，可按 diskId TryCopyByDiskId；
- * 并可通过 ToJsonStringWithExtras 追加任意 key-value 后转成 JSON 字符串。
- */
-struct BlockInfo {
-    uint64_t sizeBytes {};
-    std::string vendor;
-    std::string model;
-    std::string interfaceType;
-    uint32_t rpm {};
-    std::string state;
-    std::string mediaType;
-    bool removable {};
-    std::string serialNumber;
-    std::string pciePath;
-    std::string location;
-    std::string diskId;
-    uint64_t usedBytes {};
-    uint64_t availableBytes {};
-    std::string devicePath;
-    std::string port;
-};
-
-/**
  * 与 define.md Volume 对齐的进程内权威快照。
  */
 struct VolumeStoreRecord {

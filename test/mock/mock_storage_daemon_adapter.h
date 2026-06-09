@@ -39,7 +39,6 @@ public:
     MOCK_METHOD(int32_t, DestroyBlockDeviceNode, (const std::string &devPath));
     MOCK_METHOD(int32_t, ReadPartitionTable,
         (const std::string &devPath, std::string &output, int32_t &maxVolume));
-    MOCK_METHOD(int32_t, Eject, (const std::string &volId));
     MOCK_METHOD(int32_t, QueryCDStatus, (const std::string &devPath, int32_t &status));
     MOCK_METHOD(int32_t, Mount,
         (const std::string &devPath, const std::string &mountPath,
@@ -70,6 +69,16 @@ public:
          const std::string &volumeName, bool quickFormat));
     MOCK_METHOD(int32_t, EnsureProxyReady, ());
     MOCK_METHOD(int32_t, ResetSdProxy, ());
+    MOCK_METHOD(int32_t, Erase, (const std::string &devPath));
+    MOCK_METHOD(int32_t, Eject, (const std::string &devName));
+    MOCK_METHOD(int32_t, CreateIsoImage, (const std::string &devPath,
+                                          const std::string &filePath,
+                                          const std::string &fsType,
+                                          const std::string &mountPath));
+    MOCK_METHOD(int32_t, Burn, (const std::string &devPath, const std::string &burnOptions,
+                const std::string &fsType));
+    MOCK_METHOD(int32_t, GetVolumeOpProcess, (const std::string &volumeId, int32_t &progressPct));
+    MOCK_METHOD(int32_t, VerifyBurnData, (const std::string &devPath, int32_t verifyType));
 
     static MockStorageDaemonAdapter mockInstance_;
 };

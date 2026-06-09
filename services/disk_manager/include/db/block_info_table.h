@@ -17,6 +17,7 @@
 #define OHOS_DISK_MANAGER_DB_BLOCK_INFO_TABLE_H
 
 #include "storage_spec_models.h"
+#include "block_info.h"
 
 #include <mutex>
 #include <string>

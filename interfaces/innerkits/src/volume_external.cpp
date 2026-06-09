@@ -14,13 +14,15 @@
  */
 
 #include "volume_external.h"
+#include "disk_manager_hilog.h"
 
 namespace OHOS {
 namespace DiskManager {
 VolumeExternal::VolumeExternal() {}
 
 VolumeExternal::VolumeExternal(VolumeCore vc)
-    : VolumeExternal::VolumeCore(vc.GetId(), vc.GetType(), vc.GetDiskId(), vc.GetState(), vc.GetFsType())
+    : VolumeExternal::VolumeCore(vc.GetId(), vc.GetType(), vc.GetDiskId(),
+    vc.GetState(), vc.GetFsType(), vc.GetExtraInfo())
 {
 }
 
@@ -120,16 +122,6 @@ void VolumeExternal::Reset()
     path_ = "";
 }
 
-void VolumeExternal::SetExtraInfo(const std::string &extraInfo)
-{
-    extraInfo_ = extraInfo;
-}
-
-std::string VolumeExternal::GetExtraInfo() const
-{
-    return extraInfo_;
-}
-
 int32_t VolumeExternal::GetPartitionNum() const
 {
     return partitionNum_;
@@ -166,10 +158,6 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
         return false;
     }
 
-    if (!parcel.WriteString(extraInfo_)) {
-        return false;
-    }
-
     if (!parcel.WriteInt32(partitionNum_)) {
         return false;
     }
@@ -189,7 +177,6 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->fsUuid_ = parcel.ReadString();
     obj->path_ = parcel.ReadString();
     obj->description_ = parcel.ReadString();
-    obj->extraInfo_ = parcel.ReadString();
     obj->partitionNum_ = parcel.ReadInt32();
     return obj;
 }

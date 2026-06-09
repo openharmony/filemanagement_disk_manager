@@ -77,6 +77,7 @@ Disk::Disk(const std::string &diskId,
            int32_t diskType)
     : diskId_(diskId), sizeBytes_(sizeBytes), diskType_(diskType)
 {
+    devName_ = devName;
     sysPath_ = "/dev/block/" + devName;
     UpdateRemovableFromDiskType();
 }
@@ -147,6 +148,10 @@ std::string Disk::GetSysPath() const
     return sysPath_;
 }
 
+std::string Disk::GetDevName() const
+{
+    return devName_;
+}
 bool Disk::IsInternalDataDisk() const
 {
     return IsInternalDataDiskType(diskType_);

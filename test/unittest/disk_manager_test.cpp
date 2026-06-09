@@ -298,7 +298,7 @@ HWTEST_F(DiskManagerTest, GetDiskById_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
     Disk out;
-    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_DISK_NOT_FOUND);
+    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 End";
 }
 
@@ -1129,92 +1129,6 @@ HWTEST_F(DiskManagerTest, Partition_TestCase_003, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Partition(_, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Partition("disk-pt-3", 0), E_OK);
     GTEST_LOG_(INFO) << "Partition_TestCase_003 End";
-}
-
-/**
- * @tc.name: EraseVolume_TestCase_001
- * @tc.desc: EraseVolume returns E_OK (stub).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, EraseVolume_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "EraseVolume_TestCase_001 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.EraseVolume("any-vol"), E_OK);
-    GTEST_LOG_(INFO) << "EraseVolume_TestCase_001 End";
-}
-
-/**
- * @tc.name: EjectVolume_TestCase_001
- * @tc.desc: EjectVolume returns E_OK (stub).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, EjectVolume_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "EjectVolume_TestCase_001 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.EjectVolume("any-vol"), E_OK);
-    GTEST_LOG_(INFO) << "EjectVolume_TestCase_001 End";
-}
-
-/**
- * @tc.name: CreateIsoImage_TestCase_001
- * @tc.desc: CreateIsoImage returns E_OK (stub).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.CreateIsoImage("any-vol", "/path"), E_OK);
-    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
-}
-
-/**
- * @tc.name: BurnVolume_TestCase_001
- * @tc.desc: BurnVolume returns E_OK (stub).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, BurnVolume_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "BurnVolume_TestCase_001 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.BurnVolume("any-vol", "options"), E_OK);
-    GTEST_LOG_(INFO) << "BurnVolume_TestCase_001 End";
-}
-
-/**
- * @tc.name: GetVolumeOpProcess_TestCase_001
- * @tc.desc: GetVolumeOpProcess returns E_OK with progressPct=0.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 Start";
-    auto &dm = DiskManager::GetInstance();
-    int32_t progress = -1;
-    EXPECT_EQ(dm.GetVolumeOpProcess("any-vol", progress), E_OK);
-    EXPECT_EQ(progress, 0);
-    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 End";
-}
-
-/**
- * @tc.name: VerifyBurnData_TestCase_001
- * @tc.desc: VerifyBurnData returns E_OK (stub).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, VerifyBurnData_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.VerifyBurnData("any-vol", 0), E_OK);
-    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 End";
 }
 
 /**

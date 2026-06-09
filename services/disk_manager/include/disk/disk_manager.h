@@ -76,10 +76,10 @@ public:
     int32_t GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize);
     int32_t GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize);
 
-    int32_t EraseVolume(const std::string &volumeId);
-    int32_t EjectVolume(const std::string &volumeId);
+    int32_t Erase(const std::string &volumeId);
+    int32_t Eject(const std::string &diskId);
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath);
-    int32_t BurnVolume(const std::string &volumeId, const std::string &burnOptions);
+    int32_t Burn(const std::string &volumeId, const std::string &burnOptions);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 
@@ -118,7 +118,7 @@ private:
     int32_t LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const;
     std::string GetVolumePath(const std::string &volumeUuid);
     bool IsOddFsType(const std::string &fsType);
-    int32_t GetOddCapacityAtMountPath(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize);
+    int32_t GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
     bool IsPathMounted(std::string path);
     int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid);
     int32_t MountUsbFuseIfNeeded(const std::string &volumeId,

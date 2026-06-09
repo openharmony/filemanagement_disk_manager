@@ -80,7 +80,8 @@ public:
                int32_t type,
                const std::string &diskId,
                int32_t state,
-               const std::string &fsType);
+               const std::string &fsType,
+               const std::string &extraInfo = "");
 
     std::string GetId() const;
     int32_t GetType() const;
@@ -88,6 +89,8 @@ public:
     int32_t GetState() const;
     std::string GetFsType() const;
     void SetState(int32_t state);
+    void SetExtraInfo(const std::string &extraInfo);
+    std::string GetExtraInfo() const;
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeCore *Unmarshalling(Parcel &parcel);
@@ -99,6 +102,7 @@ private:
     int32_t state_ = UNMOUNTED;
     bool errorFlag_ = false;
     std::string fsType_;
+    std::string extraInfo_;
 };
 } // namespace DiskManager
 } // namespace OHOS

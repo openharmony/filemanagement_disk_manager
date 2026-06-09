@@ -16,6 +16,7 @@
 #include <functional>
 #include <mutex>
 #include <tuple>
+#include <set>
 
 #include "volumemanager_n_exporter.h"
 
@@ -164,36 +165,24 @@ NVal MakeDiskJsArrayFromVector(napi_env env, const std::vector<Disk> &disks)
     return {NVal(env, arr)};
 }
 
-napi_value ScheduleVolumeGetOpProcess(napi_env env, const std::string &sid, NVal &thisVar, NFuncArg &funcArg)
+napi_value ScheduleVolumeGetOpProcess(napi_env env, const std::string &volumeIdStr, NVal &thisVar, NFuncArg &funcArg)
 {
-    struct ProgressGuard {
-        std::mutex mtx;
-        int32_t value{0};
-    };
-    auto progress = std::make_shared<ProgressGuard>();
-    auto cbExec = [sid, progress]() -> NError {
-        int32_t v = 0;
-        int32_t errNum =
-            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeOpProcess(sid, v);
+    auto progress = std::make_shared<int32_t>(0);
+    auto cbExec = [volumeIdStr, progress]() -> NError {
+        int32_t errNum = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeOpProcess(
+            volumeIdStr, *progress);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
-        std::lock_guard<std::mutex> lock(progress->mtx);
-        progress->value = v;
         return NError(ERRNO_NOERR);
     };
     auto cbComplete = [progress](napi_env env, NError err) -> NVal {
         if (err) {
             return {env, err.GetNapiErr(env)};
         }
-        int32_t v = 0;
-        {
-            std::lock_guard<std::mutex> lock(progress->mtx);
-            v = progress->value;
-        }
-        return {NVal::CreateInt32(env, v)};
+        return {NVal::CreateInt32(env, *progress)};
     };
-    constexpr const char *kProcName = "GetOpProcess";
+    constexpr const char *kProcName = "getOpProcess";
     if (funcArg.GetArgc() == (uint)NARG_CNT::ONE) {
         return NAsyncWorkPromise(env, thisVar).Schedule(kProcName, cbExec, cbComplete).val_;
     }
@@ -689,7 +678,7 @@ napi_value GetDiskById(napi_env env, napi_callback_info info)
     auto disk = std::make_shared<Disk>();
     auto cbExec = [diskIdStr, disk]() -> NError {
         int32_t errNum =
-            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetDiskById(diskIdStr, *disk);
+            DelayedSingleton<DiskManagerClient>::GetInstance()->GetDiskById(diskIdStr, *disk);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -718,16 +707,16 @@ napi_value Erase(napi_env env, napi_callback_info info)
         return nullptr;
     }
     bool succ = false;
-    std::unique_ptr<char[]> vid;
-    std::tie(succ, vid, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> volumeId;
+    std::tie(succ, volumeId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::string sid(vid.get());
+    std::string volumeIdStr(volumeId.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "Erase", [sid]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->EraseVolume(sid);
+    return PromiseVoidOp(env, thisVar, "Erase", [volumeIdStr]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Erase(volumeIdStr);
     });
 }
 
@@ -743,16 +732,16 @@ napi_value Eject(napi_env env, napi_callback_info info)
         return nullptr;
     }
     bool succ = false;
-    std::unique_ptr<char[]> vid;
-    std::tie(succ, vid, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> diskId;
+    std::tie(succ, diskId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::string sid(vid.get());
+    std::string diskIdString(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "Eject", [sid]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->EjectVolume(sid);
+    return PromiseVoidOp(env, thisVar, "Eject", [diskIdString]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Eject(diskIdString);
     });
 }
 
@@ -768,23 +757,24 @@ napi_value CreateIsoImage(napi_env env, napi_callback_info info)
         return nullptr;
     }
     bool succ = false;
-    std::unique_ptr<char[]> vid;
-    std::unique_ptr<char[]> fp;
-    std::tie(succ, vid, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> volumeId;
+    std::unique_ptr<char[]> filePath;
+    std::tie(succ, volumeId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::tie(succ, fp, std::ignore) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToUTF8String();
+    std::tie(succ, filePath, std::ignore) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::string sv(vid.get());
-    std::string path(fp.get());
+    std::string volIdStr(volumeId.get());
+    std::string filePathStr(filePath.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "CreateIsoImage", [sv, path]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->CreateIsoImage(sv, path);
+    return PromiseVoidOp(env, thisVar, "CreateIsoImage", [volIdStr, filePathStr]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::
+            GetInstance()->CreateIsoImage(volIdStr, filePathStr);
     });
 }
 
@@ -795,29 +785,45 @@ napi_value Burn(napi_env env, napi_callback_info info)
         return nullptr;
     }
     NFuncArg funcArg(env, info);
-    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::TWO)) {
+    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::THREE)) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
+    
+    // 解析 volumeId
     bool succ = false;
-    std::unique_ptr<char[]> vid;
-    std::tie(succ, vid, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> volumeId;
+    std::tie(succ, volumeId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
+    
+    // 获取 want 对象
     napi_valuetype wantType = napi_undefined;
     NVal wantArg(env, funcArg[(int)NARG_POS::SECOND]);
     if (napi_typeof(env, wantArg.val_, &wantType) != napi_ok || wantType != napi_object) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    napi_value wantVal = wantArg.val_;
-    std::string opts = BuildBurnOptionsLines(env, wantVal);
-    std::string sv(vid.get());
+    
+    // 提取 parameters 对象
+    napi_value parameters = nullptr;
+    bool hasParameters = false;
+    napi_has_named_property(env, wantArg.val_, "parameters", &hasParameters);
+    if (!hasParameters) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    napi_get_named_property(env, wantArg.val_, "parameters", &parameters);
+    
+    // 使用 parameters 对象构建 burnOpts
+    std::string burnOpts = BuildBurnOptionsLines(env, parameters);
+    
+    std::string volumeIdStr(volumeId.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "Burn", [sv, opts]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->BurnVolume(sv, opts);
+    return PromiseVoidOp(env, thisVar, "Burn", [volumeIdStr, burnOpts]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Burn(volumeIdStr, burnOpts);
     });
 }
 
@@ -833,14 +839,14 @@ napi_value GetOpProcess(napi_env env, napi_callback_info info)
         return nullptr;
     }
     bool succ = false;
-    std::unique_ptr<char[]> vid;
-    std::tie(succ, vid, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> volumeId;
+    std::tie(succ, volumeId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
     NVal thisVar(env, funcArg.GetThisVar());
-    return ScheduleVolumeGetOpProcess(env, std::string(vid.get()), thisVar, funcArg);
+    return ScheduleVolumeGetOpProcess(env, std::string(volumeId.get()), thisVar, funcArg);
 }
 
 napi_value VerifyBurnData(napi_env env, napi_callback_info info)
@@ -855,8 +861,8 @@ napi_value VerifyBurnData(napi_env env, napi_callback_info info)
         return nullptr;
     }
     bool succ = false;
-    std::unique_ptr<char[]> vid;
-    std::tie(succ, vid, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> volumeId;
+    std::tie(succ, volumeId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
@@ -867,10 +873,10 @@ napi_value VerifyBurnData(napi_env env, napi_callback_info info)
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::string sv(vid.get());
+    std::string volIdStr(volumeId.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "VerifyBurnData", [sv, vType]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->VerifyBurnData(sv, vType);
+    return PromiseVoidOp(env, thisVar, "VerifyBurnData", [volIdStr, vType]() {
+        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->VerifyBurnData(volIdStr, vType);
     });
 }
 

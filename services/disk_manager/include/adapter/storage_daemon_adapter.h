@@ -42,7 +42,6 @@ public:
     int32_t CreateBlockDeviceNode(const std::string &devPath, uint32_t mode, int32_t major, int32_t minor);
     int32_t DestroyBlockDeviceNode(const std::string &devPath);
     int32_t ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume);
-    int32_t Eject(const std::string &volId);
     int32_t QueryCDStatus(const std::string &devPath, int32_t &status);
     int32_t Mount(const std::string &devPath,
                   const std::string &mountPath,
@@ -55,7 +54,7 @@ public:
     int32_t Repair(const std::string &devPath, const std::string &fsType);
     int32_t SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label);
     int32_t ReadMetadata(const std::string &devPath, std::string &uuid, std::string &type, std::string &label);
-    int32_t GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize);
+    int32_t GetCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
     int32_t MountFuseDevice(const std::string &mountPath, int32_t &fuseFd);
     int32_t Partition(const std::string &diskPath, const std::string &partitionType);
     /** 调用 storage_daemon GetBlockInfoByType（出参载荷格式见 storage_daemon / IStorageDaemon 约定）。 */
@@ -67,6 +66,16 @@ public:
     int32_t DeletePartition(const std::string &devPath, const std::string &diskId, int32_t partitionNum);
     int32_t FormatPartition(const std::string &devPath, const std::string &fsType, const std::string &volumeName,
                             bool quickFormat);
+    
+    int32_t Erase(const std::string &devPath);
+    int32_t Eject(const std::string &devName);
+    int32_t CreateIsoImage(const std::string &devPath,
+                           const std::string &filePath,
+                           const std::string &fsType,
+                           const std::string &mountPath);
+    int32_t Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType);
+    int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
+    int32_t VerifyBurnData(const std::string &devPath, int32_t verifyType);
 
 private:
     StorageDaemonAdapter();

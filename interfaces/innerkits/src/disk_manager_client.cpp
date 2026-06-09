@@ -331,28 +331,28 @@ int32_t DiskManagerClient::GetDiskById(const std::string &diskId, Disk &disk)
     return dm.GetDiskById(diskId, disk);
 }
 
-int32_t DiskManagerClient::EraseVolume(const std::string &volumeId)
+int32_t DiskManagerClient::Erase(const std::string &volumeId)
 {
-    LOGI("EraseVolume volumeId=%{public}s", volumeId.c_str());
+    LOGI("Erase volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.EraseVolume(volumeId);
+    return dm.Erase(volumeId);
 }
 
-int32_t DiskManagerClient::EjectVolume(const std::string &volumeId)
+int32_t DiskManagerClient::Eject(const std::string &diskId)
 {
-    LOGI("EjectVolume volumeId=%{public}s", volumeId.c_str());
+    LOGI("Eject diskId=%{public}s", diskId.c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.EjectVolume(volumeId);
+    return dm.Eject(diskId);
 }
 
 int32_t DiskManagerClient::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
@@ -367,16 +367,16 @@ int32_t DiskManagerClient::CreateIsoImage(const std::string &volumeId, const std
     return dm.CreateIsoImage(volumeId, filePath);
 }
 
-int32_t DiskManagerClient::BurnVolume(const std::string &volumeId, const std::string &burnOptions)
+int32_t DiskManagerClient::Burn(const std::string &volumeId, const std::string &burnOptions)
 {
-    LOGI("BurnVolume volumeId=%{public}s", volumeId.c_str());
+    LOGI("Burn volumeId=%{public}s, burnOptions=%{public}s", volumeId.c_str(), burnOptions.c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.BurnVolume(volumeId, burnOptions);
+    return dm.Burn(volumeId, burnOptions);
 }
 
 int32_t DiskManagerClient::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)

@@ -102,16 +102,20 @@ bool FillBlockInfo(const json &jsonObject, BlockInfo &blockInfo)
     blockInfo.sizeBytes = ReadUInt64OrZero(jsonObject, "sizeBytes");
     blockInfo.vendor = ReadStringOrEmpty(jsonObject, "vendor");
     blockInfo.model = ReadStringOrEmpty(jsonObject, "model");
+    blockInfo.devnum = ReadStringOrEmpty(jsonObject, "devnum");
+    blockInfo.busnum = ReadStringOrEmpty(jsonObject, "busnum");
+    blockInfo.devNode = ReadStringOrEmpty(jsonObject, "devNode");
+    blockInfo.scsiBusNum = ReadStringOrEmpty(jsonObject, "scsiBusNum");
+    blockInfo.fwVersion = ReadStringOrEmpty(jsonObject, "fwVersion");
+
+    if (jsonObject.contains("ODD_INFO") && !jsonObject["ODD_INFO"].is_null()) {
+        blockInfo.ODD_INFO = jsonObject["ODD_INFO"];
+    }
+
     blockInfo.interfaceType = ReadStringOrEmpty(jsonObject, "interfaceType");
     blockInfo.rpm = ReadUInt32OrZero(jsonObject, "rpm");
-    blockInfo.state = ReadStringOrEmpty(jsonObject, "state");
-    blockInfo.mediaType = ReadStringOrEmpty(jsonObject, "mediaType");
     blockInfo.removable = ReadBoolLikeOrFalse(jsonObject, "removable");
     blockInfo.serialNumber = ReadStringOrEmpty(jsonObject, "serialNumber");
-    blockInfo.pciePath = ReadStringOrEmpty(jsonObject, "pciePath");
-    blockInfo.location = ReadStringOrEmpty(jsonObject, "location");
-    blockInfo.usedBytes = ReadUInt64OrZero(jsonObject, "usedBytes");
-    blockInfo.availableBytes = ReadUInt64OrZero(jsonObject, "availableBytes");
     blockInfo.devicePath = ReadStringOrEmpty(jsonObject, "devicePath");
     blockInfo.port = ReadStringOrEmpty(jsonObject, "port");
     return !blockInfo.diskId.empty();
@@ -123,17 +127,17 @@ json BlockInfoToJsonObject(const BlockInfo &blockInfo)
         {"sizeBytes", blockInfo.sizeBytes},
         {"vendor", blockInfo.vendor},
         {"model", blockInfo.model},
+        {"devnum", blockInfo.devnum},
+        {"busnum", blockInfo.busnum},
+        {"devNode", blockInfo.devNode},
+        {"scsiBusNum", blockInfo.scsiBusNum},
+        {"fwVersion", blockInfo.fwVersion},
+        {"ODD_INFO", blockInfo.ODD_INFO},
         {"interfaceType", blockInfo.interfaceType},
         {"rpm", blockInfo.rpm},
-        {"state", blockInfo.state},
-        {"mediaType", blockInfo.mediaType},
         {"removable", blockInfo.removable},
         {"serialNumber", blockInfo.serialNumber},
-        {"pciePath", blockInfo.pciePath},
-        {"location", blockInfo.location},
         {"diskId", blockInfo.diskId},
-        {"usedBytes", blockInfo.usedBytes},
-        {"availableBytes", blockInfo.availableBytes},
         {"devicePath", blockInfo.devicePath},
         {"port", blockInfo.port},
     };
@@ -245,6 +249,7 @@ int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, Bl
     LOGI("BlockInfoTable::ReadExtDiskInfoFromDaemon enter");
     std::string jsonString;
     const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(devName, jsonString, info.diskId);
+    LOGE("BlockInfoTable ReadExtDiskInfoFromDaemon jsonString = %{public}s", jsonString.c_str());
     if (errCode != ERR_OK) {
         LOGW("BlockInfoTable ReadExtDiskInfoFromDaemon RPC err=%{public}d", errCode);
         return errCode;

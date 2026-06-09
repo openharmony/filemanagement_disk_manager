@@ -281,7 +281,7 @@ HWTEST_F(StorageDaemonAdapterTest, Eject_TestCase_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     EXPECT_CALL(adapter, Eject(_)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Eject("vol-1"), E_SA_IS_NULLPTR);
+    EXPECT_EQ(adapter.Eject("disk-1"), E_SA_IS_NULLPTR);
 }
 
 /**
@@ -293,7 +293,7 @@ HWTEST_F(StorageDaemonAdapterTest, Eject_TestCase_002, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     EXPECT_CALL(adapter, Eject(_)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.Eject("vol-1"), E_OK);
+    EXPECT_EQ(adapter.Eject("disk-1"), E_OK);
 }
 
 /**

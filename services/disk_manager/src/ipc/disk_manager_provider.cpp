@@ -186,16 +186,16 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManagerProvider::EraseVolume(const std::string &volumeId)
+int32_t DiskManagerProvider::Erase(const std::string &volumeId)
 {
-    LOGI("EraseVolume volumeId=%{public}s", volumeId.c_str());
-    return DiskManager::GetInstance().EraseVolume(volumeId);
+    LOGI("Erase volumeId=%{public}s", volumeId.c_str());
+    return DiskManager::GetInstance().Erase(volumeId);
 }
 
-int32_t DiskManagerProvider::EjectVolume(const std::string &volumeId)
+int32_t DiskManagerProvider::Eject(const std::string &diskId)
 {
-    LOGI("EjectVolume volumeId=%{public}s", volumeId.c_str());
-    return DiskManager::GetInstance().EjectVolume(volumeId);
+    LOGI("Eject diskId=%{public}s", diskId.c_str());
+    return DiskManager::GetInstance().Eject(diskId);
 }
 
 int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
@@ -204,10 +204,10 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
     return DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
 }
 
-int32_t DiskManagerProvider::BurnVolume(const std::string &volumeId, const std::string &burnOptions)
+int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string &burnOptions)
 {
-    LOGI("BurnVolume volumeId=%{public}s optsLen=%{public}zu", volumeId.c_str(), burnOptions.size());
-    return DiskManager::GetInstance().BurnVolume(volumeId, burnOptions);
+    LOGI("Burn volumeId=%{public}s optsLen=%{public}zu", volumeId.c_str(), burnOptions.size());
+    return DiskManager::GetInstance().Burn(volumeId, burnOptions);
 }
 
 int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
