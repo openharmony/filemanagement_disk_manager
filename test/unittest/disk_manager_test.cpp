@@ -298,7 +298,7 @@ HWTEST_F(DiskManagerTest, GetDiskById_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
     Disk out;
-    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_DISK_NOT_FOUND);
+    EXPECT_EQ(dm.GetDiskById("nonexistent-disk", out), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 End";
 }
 
@@ -1473,7 +1473,7 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeCdDisk("disk-fp-2"));
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(dm.FormatPartition("disk-fp-2", 1, params), E_DELETE_PARTITION_NOT_SUPPORT);
+    EXPECT_EQ(dm.FormatPartition("disk-fp-2", 1, params), E_FORMAT_PARTITION_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 End";
 }
 
