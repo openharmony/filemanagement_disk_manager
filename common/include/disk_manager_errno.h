@@ -40,6 +40,7 @@ enum DiskManagerErrNo : int32_t {
     E_DAEMON_IPC_FAILED = 23,
     E_DISK_HAS_EXIST = 24,
     E_DESTROY_DEVICE_NODE = 25,
+    E_PERMISSION_DENIED = 26,
 
     /** 与 storage_service_errno.h / VolumeStorageStatusService 数值一致（13600000 基址）。 */
     E_PARAMS_INVALID = 13600000 + 2,

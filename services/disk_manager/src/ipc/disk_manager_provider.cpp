@@ -22,6 +22,7 @@
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
 #include "errors.h"
+#include "ipc_skeleton.h"
 #include "partition_types.h"
 #include "storage_daemon_adapter.h"
 #include "uevent_bootstrap.h"
@@ -32,6 +33,7 @@ namespace OHOS {
 namespace DiskManager {
 
 using namespace OHOS::DiskManager;
+constexpr pid_t STORAGEDAEMON_UID = 0;
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
@@ -55,6 +57,16 @@ void DiskManagerProvider::OnStart()
 void DiskManagerProvider::OnStop()
 {
     LOGI("OnStop");
+}
+
+bool DiskManagerProvider::CheckClientPermission()
+{
+    auto uid = IPCSkeleton::GetCallingUid();
+    if (uid == STORAGEDAEMON_UID) {
+        return true;
+    }
+    LOGE("DiskManagerProvider CheckClientPermission error");
+    return false;
 }
 
 int32_t DiskManagerProvider::Mount(const std::string &volumeId)
@@ -129,6 +141,10 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
 int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
+    if (!CheckClientPermission()) {
+        LOGE("DiskManagerProvider CheckClientPermission error");
+        return E_PERMISSION_DENIED;
+    }
     return UeventBootstrap::OnBlockDiskUevent(rawUeventMsg);
 }
 
@@ -180,6 +196,10 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
                                               const std::string &fsType)
 {
     LOGI("NotifyMtpMounted id=%{public}s fsType=%{public}s", id.c_str(), fsType.c_str());
+    if (!CheckClientPermission()) {
+        LOGE("DiskManagerProvider CheckClientPermission error");
+        return E_PERMISSION_DENIED;
+    }
     DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
     return DiskManagerErrNo::E_OK;
 }
@@ -187,6 +207,10 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
 {
     LOGI("NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(), static_cast<int>(isBadRemove));
+    if (!CheckClientPermission()) {
+        LOGE("DiskManagerProvider CheckClientPermission error");
+        return E_PERMISSION_DENIED;
+    }
     DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
     return DiskManagerErrNo::E_OK;
 }
