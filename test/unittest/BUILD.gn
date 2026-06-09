@@ -157,7 +157,7 @@ ohos_unittest("uevent_env_parser_test") {
   part_name = "disk_manager"
 }
 
-ohos_unittest("disk_manager_test") {
+ohos_unittest("disk_manager_server_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
 
@@ -496,7 +496,7 @@ group("disk_manager_ut") {
     ":storage_daemon_proxy_test",
     ":disk_manager_client_test",
     ":uevent_env_parser_test",
-    ":disk_manager_test",
+    ":disk_manager_server_test",
     ":disk_test",
     ":volume_core_test",
     ":volume_external_test",
