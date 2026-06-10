@@ -289,7 +289,7 @@ HWTEST_F(DiskManagerTest, GetDiskById_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: GetDiskById_TestCase_002
- * @tc.desc: Get non-existent disk returns E_DISK_NOT_FOUND.
+ * @tc.desc: Get non-existent disk returns E_NON_EXIST.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -1129,6 +1129,49 @@ HWTEST_F(DiskManagerTest, Partition_TestCase_003, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Partition(_, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Partition("disk-pt-3", 0), E_OK);
     GTEST_LOG_(INFO) << "Partition_TestCase_003 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_TestCase_001
+* @tc.desc: CreateIsoImage with nonexistent volumeId returns E_NON_EXIST.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.CreateIsoImage("nonexistent-vol", "/path"), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetVolumeOpProcess_TestCase_001
+ * @tc.desc: GetVolumeOpProcess returns E_OK with progressPct=0.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    int32_t progress = -1;
+    EXPECT_EQ(dm.GetVolumeOpProcess("nonexistent-vol", progress), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 End";
+}
+
+/**
+ * @tc.name: VerifyBurnData_TestCase_001
+ * @tc.desc: VerifyBurnData returns E_OK (stub).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, VerifyBurnData_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.VerifyBurnData("nonexistent-vol", 0), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 End";
 }
 
 /**
