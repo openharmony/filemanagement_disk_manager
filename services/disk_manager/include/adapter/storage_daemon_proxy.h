@@ -35,7 +35,6 @@ public:
                                   int32_t minor) override;
     ErrCode DestroyBlockDeviceNode(const std::string &devPath) override;
     ErrCode ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume) override;
-    ErrCode Eject(const std::string &devPath) override;
     ErrCode QueryCDStatus(const std::string &devPath, int32_t &status) override;
     ErrCode Mount(const std::string &devPath,
                   const std::string &mountPath,
@@ -51,7 +50,7 @@ public:
                          std::string &uuid,
                          std::string &type,
                          std::string &label) override;
-    ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) override;
+    ErrCode GetCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize) override;
     ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) override;
     ErrCode Partition(const std::string &diskPath, const std::string &partitionType) override;
     ErrCode GetBlockInfoByType(const std::string &type, const std::string &diskId, std::string &blockInfos) override;
@@ -61,6 +60,15 @@ public:
     ErrCode DeletePartitionInfo(const std::string &devPath, const std::string &diskId, int32_t partitionNum) override;
     ErrCode FormatPartition(const std::string &devPath, const std::string &fsType, const std::string &volumeName,
                             bool quickFormat) override;
+    ErrCode Erase(const std::string &devPath) override;
+    ErrCode Eject(const std::string &devName) override;
+    ErrCode CreateIsoImage(const std::string &devPath,
+                           const std::string &filePath,
+                           const std::string &fsType,
+                           const std::string &mountPath) override;
+    ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) override;
+    ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) override;
+    ErrCode VerifyBurnData(const std::string &devPath, int32_t verifyType) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

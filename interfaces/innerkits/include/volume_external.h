@@ -71,8 +71,6 @@ public:
     std::string GetDescription() const;
     int32_t GetFsTypeByStr(const std::string &fsTypeStr) const;
     void Reset();
-    void SetExtraInfo(const std::string &extraInfo);
-    std::string GetExtraInfo() const;
     int32_t GetPartitionNum() const;
     void SetPartitionNum(int32_t partitionNum);
 
@@ -85,7 +83,6 @@ private:
     std::string fsUuid_;
     std::string path_;
     std::string description_;
-    std::string extraInfo_;
     bool isUserData_ = false;
     int32_t partitionNum_ = 0;
     int64_t freeSize_ { 0 };

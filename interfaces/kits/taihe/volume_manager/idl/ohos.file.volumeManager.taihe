@@ -147,7 +147,7 @@ function EraseSync(volumeId: String): void;
 
 @gen_async("eject")
 @gen_promise("eject")
-function EjectSync(volumeId: String): void;
+function EjectSync(diskId: String): void;
 
 @gen_async("createIsoImage")
 @gen_promise("createIsoImage")

@@ -15,6 +15,8 @@
 
 #include "block_info_table.h"
 #include "uevent_bootstrap.h"
+#include "block_info.h"
+#include "partition_types.h"
 
 #include "adapter/storage_daemon_adapter.h"
 #include "disk.h"
@@ -295,8 +297,11 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
         int32_t ret = BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(env.devName, blockInfo);
         if (ret == ERR_OK) {
             diskForEvent.SetSizeBytes(static_cast<int64_t>(blockInfo.sizeBytes));
+
             diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo,
-                {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}}));
+                {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}, {"devnum", blockInfo.devnum},
+                {"busnum", blockInfo.busnum}, {"devNode", blockInfo.devNode}, {"scsiBusNum", blockInfo.scsiBusNum},
+                {"fwVersion", blockInfo.fwVersion}}));
         }
     }
     diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
@@ -342,7 +347,6 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
 {
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
-
     int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(volDevPath,
                                                                             K_VOLUME_BLOCK_DEVICE_NODE_MODE,
                                                                             static_cast<int32_t>(major(pDev)),
@@ -354,6 +358,25 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     VolumeExternal volExternal(VolumeCore(volId, EXTERNAL, diskId));
     volExternal.SetUserData(isUserData);
     volExternal.SetPartitionNum(partitionNUm);
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
+        LOGE("Disk with id %{public}s not found", diskId.c_str());
+        return E_NON_EXIST;
+    }
+    
+    BlockInfo blockInfo {};
+    blockInfo.diskId = diskId;
+    int32_t ret = BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(disk.GetDevName(), blockInfo);
+    if (ret == ERR_OK) {
+        LOGE("[L2:CreateAndSetupVolume] ReadExtDiskInfoFromDaemon: info.devnum=%{public}s, info.busnum=%{public}s,"
+            "info.devNode=%{public}s, info.scsiBusNum=%{public}s, info.fwVersion=%{public}s",
+            blockInfo.devnum.c_str(), blockInfo.busnum.c_str(), blockInfo.devNode.c_str(),
+            blockInfo.scsiBusNum.c_str(), blockInfo.fwVersion.c_str());
+        volExternal.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo,
+            {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}, {"devnum", blockInfo.devnum},
+            {"busnum", blockInfo.busnum}, {"devNode", blockInfo.devNode}, {"scsiBusNum", blockInfo.scsiBusNum},
+            {"fwVersion", blockInfo.fwVersion}}));
+    }
     (void)DiskManager::GetInstance().OnVolumeCreated(volExternal);
     return ERR_OK;
 }
@@ -461,7 +484,7 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
     LOGI("Diskid=%{public}s, ejectRequest=%{public}d", diskId.c_str(), env.ejectRequest);
     if (env.ejectRequest == true) {
         DestroyALLVolume(diskId);
-        const int32_t ret = StorageDaemonAdapter::GetInstance().Eject(BlockPathForId(diskId));
+        const int32_t ret = DiskManager::GetInstance().Eject(diskId);
         if (ret != ERR_OK) {
             LOGE("Eject err=%{public}d", ret);
             return;

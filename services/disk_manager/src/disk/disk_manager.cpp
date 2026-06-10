@@ -408,13 +408,13 @@ bool DiskManager::IsOddFsType(const std::string &fsType)
     return fsType == "udf" || fsType == "iso9660";
 }
 
-int32_t DiskManager::GetOddCapacityAtMountPath(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize)
+int32_t DiskManager::GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize)
 {
-    LOGI("get odd size : mountPath is %{public}s", mountPath.c_str());
-    if (mountPath.empty()) {
+    LOGI("get odd size : devPath is %{public}s", devPath.c_str());
+    if (devPath.empty()) {
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
-    return StorageDaemonAdapter::GetInstance().GetCapacity(mountPath, totalSize, freeSize);
+    return StorageDaemonAdapter::GetInstance().GetCapacity(devPath, totalSize, freeSize);
 }
 
 bool DiskManager::IsPathMounted(std::string path)
@@ -1116,7 +1116,9 @@ int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
         if (volExternal.GetFsType() == UDF || volExternal.GetFsType() == ISO9660) {
             dvdDiskIds.push_back(volExternal.GetDiskId());
         }
-        result.push_back(volExternal);
+        if (volExternal.GetFsType() != UNDEFINED) {
+            result.push_back(volExternal);
+        }
     }
 
     for (auto it = diskMap_.begin(); it != diskMap_.end(); ++it) {
@@ -1129,7 +1131,7 @@ int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
             LOGE("This disk has real volume, diskId: %{public}s", disk.GetDiskId().c_str());
             continue;
         }
-        VolumeCore core("0", CD_FLAG, disk.GetDiskId(), MOUNTED);
+        VolumeCore core("0", CD_FLAG, disk.GetDiskId(), MOUNTED, "udf", disk.GetExtraInfo());
         VolumeExternal volExternal(core);
         volExternal.SetFsType(volExternal.GetFsTypeByStr("udf"));
         volExternal.SetDescription("DVD RW");
@@ -1183,6 +1185,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     freeSize = 0;
     std::string path;
     std::string fsType;
+    std::string blockVolId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         VolumeExternal vol;
@@ -1191,6 +1194,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         }
         path = vol.GetPath();
         fsType = vol.GetFsTypeString();
+        blockVolId = vol.GetId();
         LOGI("GetFreeSizeOfVolume path is %{public}s", path.c_str());
     }
     if (path.empty()) {
@@ -1205,7 +1209,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         int64_t totalSize = 0;
         int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
         int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
-        const int32_t oddRet = GetOddCapacityAtMountPath(path, totalSize, freeSize);
+        const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
         LOGI("totalSize is %{public}" PRIu64 " freeSize is %{public}" PRIu64 ", ret val is %{public}d",
              static_cast<uint64_t>(totalSize), static_cast<uint64_t>(freeSize), oddRet);
         if (freeSize != 0) {
@@ -1225,6 +1229,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     totalSize = 0;
     std::string path;
     std::string fsType;
+    std::string blockVolId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         VolumeExternal vol;
@@ -1233,6 +1238,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
         }
         path = vol.GetPath();
         fsType = vol.GetFsTypeString();
+        blockVolId = vol.GetId();
     }
     if (path.empty()) {
         return DiskManagerErrNo::E_NON_EXIST;
@@ -1244,50 +1250,143 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     }
     if (IsOddFsType(fsType)) {
         int64_t freeSize = 0;
-        (void)GetOddCapacityAtMountPath(path, totalSize, freeSize);
+        (void)GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
         return DiskManagerErrNo::E_OK;
     }
     totalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::EraseVolume(const std::string &volumeId)
+int32_t DiskManager::Erase(const std::string &volumeId)
 {
-    (void)volumeId;
+    std::string blockVolId;
+    std::string diskId;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            LOGE("Volume with id %{public}s not found", volumeId.c_str());
+            return E_NON_EXIST;
+        }
+        blockVolId = it->second.GetId();
+        diskId = it->second.GetDiskId();
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().Erase("/dev/block/" + blockVolId);
+    if (err != ERR_OK) {
+        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        return err;
+    }
+    err = Eject(diskId);
+    if (err != ERR_OK) {
+        LOGE("Erase-Eject vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        return err;
+    }
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::EjectVolume(const std::string &volumeId)
+int32_t DiskManager::Eject(const std::string &diskId)
 {
-    (void)volumeId;
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        LOGE("Disk with id %{public}s not found", diskId.c_str());
+        return E_NON_EXIST;
+    }
+    std::string devName = disk.GetDevName();
+    int32_t err = StorageDaemonAdapter::GetInstance().Eject(devName);
+    if (err != ERR_OK) {
+        LOGE("Erase diskId %{public}s err=%{public}d", diskId.c_str(), err);
+        return err;
+    }
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
+int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
+                                    const std::string &filePath)
 {
-    (void)volumeId;
-    (void)filePath;
+    std::string blockVolId;
+    std::string fsType;
+    std::string mountedPath;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            LOGE("Volume with id %{public}s not found", volumeId.c_str());
+            return E_NON_EXIST;
+        }
+        blockVolId = it->second.GetId();
+        fsType = it->second.GetFsTypeString();
+        mountedPath = it->second.GetPath();
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().CreateIsoImage("/dev/block/" + blockVolId,
+                                                                     filePath, fsType, mountedPath);
+    if (err != ERR_OK) {
+        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        return err;
+    }
     return DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManager::BurnVolume(const std::string &volumeId, const std::string &burnOptions)
+int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions)
 {
-    (void)volumeId;
-    (void)burnOptions;
+    std::string blockVolId;
+    std::string fsType;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            LOGE("Volume with id %{public}s not found", volumeId.c_str());
+            return E_NON_EXIST;
+        }
+        blockVolId = it->second.GetId();
+        fsType = it->second.GetFsTypeString();
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
+    if (err != ERR_OK) {
+        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        return err;
+    }
     return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
 {
-    (void)volumeId;
-    progressPct = 0;
+    std::string blockVolId;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            LOGE("Volume with id %{public}s not found", volumeId.c_str());
+            return E_NON_EXIST;
+        }
+        blockVolId = it->second.GetId();
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().GetVolumeOpProcess(blockVolId, progressPct);
+    if (err != ERR_OK) {
+        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        return err;
+    }
+    LOGI("DiskManager GetVolumeOpProcess volumeId = %{public}s, progressPct = %{public}d",
+        volumeId.c_str(), progressPct);
     return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManager::VerifyBurnData(const std::string &volumeId, int32_t verifyType)
 {
-    (void)volumeId;
-    (void)verifyType;
+    std::string blockVolId;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            LOGE("Volume with id %{public}s not found", volumeId.c_str());
+            return E_NON_EXIST;
+        }
+        blockVolId = it->second.GetId();
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().VerifyBurnData("/dev/block/" + blockVolId, verifyType);
+    if (err != ERR_OK) {
+        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        return err;
+    }
     return DiskManagerErrNo::E_OK;
 }
 

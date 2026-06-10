@@ -34,7 +34,6 @@ public:
                  ErrCode(const std::string &devPath, uint32_t mode, int32_t major, int32_t minor));
     MOCK_METHOD1(DestroyBlockDeviceNode, ErrCode(const std::string &devPath));
     MOCK_METHOD3(ReadPartitionTable, ErrCode(const std::string &devPath, std::string &output, int32_t &maxVolume));
-    MOCK_METHOD1(Eject, ErrCode(const std::string &devPath));
     MOCK_METHOD2(QueryCDStatus, ErrCode(const std::string &devPath, int32_t &status));
     MOCK_METHOD5(Mount,
                  ErrCode(const std::string &devPath,
@@ -58,6 +57,13 @@ public:
     MOCK_METHOD5(CreatePartition, ErrCode(const std::string &, int32_t, int64_t, int64_t, const std::string &));
     MOCK_METHOD3(DeletePartitionInfo, ErrCode(const std::string &, const std::string &, int32_t));
     MOCK_METHOD4(FormatPartition, ErrCode(const std::string &, const std::string &, const std::string &, bool));
+    MOCK_METHOD1(Erase, ErrCode(const std::string &devPath));
+    MOCK_METHOD1(Eject, ErrCode(const std::string &devName));
+    MOCK_METHOD4(CreateIsoImage, ErrCode(const std::string &devPath, const std::string &filePath,
+        const std::string &fsType, const std::string &mountPath));
+    MOCK_METHOD3(Burn, ErrCode(const std::string &devPath, const std::string &burnOptions, const std::string &fsType));
+    MOCK_METHOD2(GetVolumeOpProcess, ErrCode(const std::string &volumeId, int32_t &progressPct));
+    MOCK_METHOD2(VerifyBurnData, ErrCode(const std::string &devPath, int32_t verifyType));
 };
 
 } // namespace DiskManager

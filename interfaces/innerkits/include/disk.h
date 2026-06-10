@@ -58,6 +58,7 @@ public:
     // --- 进程内 ---
     /** 块设备节点路径，如 /dev/block/sda。 */
     std::string GetSysPath() const;
+    std::string GetDevName() const;
     bool IsInternalDataDisk() const;
     /** 据 uevent 的 /sys{DEVPATH} 刷新 diskType，不持久化 sysfs 路径。 */
     void RefreshClassificationFromSysfs(const std::string &sysfsPath);
@@ -78,6 +79,7 @@ private:
 
     // 进程内扩展（CommonEvent），不导出 JS
     std::string sysPath_;    // /dev/block/{diskId}
+    std::string devName_;
 };
 } // namespace DiskManager
 } // namespace OHOS

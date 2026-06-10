@@ -64,10 +64,10 @@ public:
     int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params);
 
     /* ---------- Optical Disc / Burn（@ohos.file.volumeManager @since 26.0.0） ---------- */
-    int32_t EraseVolume(const std::string &volumeId);
-    int32_t EjectVolume(const std::string &volumeId);
+    int32_t Erase(const std::string &volumeId);
+    int32_t Eject(const std::string &diskId);
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath);
-    int32_t BurnVolume(const std::string &volumeId, const std::string &burnOptions);
+    int32_t Burn(const std::string &volumeId, const std::string &burnOptions);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 

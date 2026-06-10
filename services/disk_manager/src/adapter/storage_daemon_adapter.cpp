@@ -159,19 +159,6 @@ int32_t StorageDaemonAdapter::ReadPartitionTable(const std::string &devPath, std
     return ret;
 }
 
-int32_t StorageDaemonAdapter::Eject(const std::string &devPath)
-{
-    LOGI("Eject enter, devPath=%{public}s", devPath.c_str());
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("Eject exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->Eject(devPath);
-    LOGI("Eject exit ret=%{public}d", ret);
-    return ret;
-}
-
 int32_t StorageDaemonAdapter::QueryCDStatus(const std::string &devPath, int32_t &status)
 {
     LOGI("QueryCDStatus enter, devPath=%{public}s", devPath.c_str());
@@ -291,15 +278,15 @@ int32_t StorageDaemonAdapter::ReadMetadata(const std::string &devPath,
     return ret;
 }
 
-int32_t StorageDaemonAdapter::GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize)
+int32_t StorageDaemonAdapter::GetCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize)
 {
-    LOGI("GetCapacity enter, mountPath=%{public}s", mountPath.c_str());
+    LOGI("GetCapacity enter, devPath=%{public}s", devPath.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("GetCapacity exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->GetCapacity(mountPath, totalSize, freeSize);
+    const int32_t ret = storageDaemon_->GetCapacity(devPath, totalSize, freeSize);
     LOGI("GetCapacity exit ret=%{public}d totalSize=%{public}" PRId64 " freeSize=%{public}" PRId64, ret, totalSize,
          freeSize);
     return ret;
@@ -401,6 +388,90 @@ int32_t StorageDaemonAdapter::FormatPartition(const std::string &devPath, const 
     }
     const int32_t ret = storageDaemon_->FormatPartition(devPath, fsType, volumeName, quickFormat);
     LOGI("FormatPartition exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::Erase(const std::string &devPath)
+{
+    LOGI("Erase enter, devPath=%{public}s", devPath.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("Erase exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->Erase(devPath);
+    LOGI("Erase exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::Eject(const std::string &devName)
+{
+    LOGI("Eject enter, devName=%{public}s", devName.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("Eject exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->Eject(devName);
+    LOGI("Eject exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::CreateIsoImage(const std::string &devPath,
+                                             const std::string &filePath,
+                                             const std::string &fsType,
+                                             const std::string &mountPath)
+{
+    LOGI("CreateIsoImage enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("CreateIsoImage exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->CreateIsoImage(devPath, filePath, fsType, mountPath);
+    LOGI("CreateIsoImage exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::Burn(const std::string &devPath,
+                                   const std::string &burnOptions,
+                                   const std::string &fsType)
+{
+    LOGI("Burn enter, devPath=%{public}s, burnOptions=%{public}s, fsType=%{public}s",
+        devPath.c_str(), burnOptions.c_str(), fsType.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("Burn exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->Burn(devPath, burnOptions, fsType);
+    LOGI("Burn exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
+{
+    LOGI("GetVolumeOpProcess enter, volumeId=%{public}s", volumeId.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetVolumeOpProcess exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->GetVolumeOpProcess(volumeId, progressPct);
+    LOGI("GetVolumeOpProcess exit ret=%{public}d, progressPct=%{public}d", ret, progressPct);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::VerifyBurnData(const std::string &devPath, int32_t verifyType)
+{
+    LOGI("VerifyBurnData enter, devPath=%{public}s, verifyType=%{public}d", devPath.c_str(), verifyType);
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("VerifyBurnData exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->VerifyBurnData(devPath, verifyType);
+    LOGI("VerifyBurnData exit ret=%{public}d", ret);
     return ret;
 }
 } // namespace DiskManager

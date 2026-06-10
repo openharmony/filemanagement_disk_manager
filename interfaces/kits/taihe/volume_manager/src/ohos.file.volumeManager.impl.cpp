@@ -383,18 +383,18 @@ void EraseSync(::taihe::string_view volumeId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
         return;
     }
-    int32_t errNum = instance->EraseVolume(volumeIdString);
+    int32_t errNum = instance->Erase(volumeIdString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
     }
 }
 
-void EjectSync(::taihe::string_view volumeId)
+void EjectSync(::taihe::string_view diskId)
 {
-    std::string volumeIdString = std::string(volumeId);
-    if (volumeIdString.empty()) {
-        LOGE("Invalid parameter, volumeId is empty");
+    std::string diskIdString = std::string(diskId);
+    if (diskIdString.empty()) {
+        LOGE("Invalid parameter, diskId is empty");
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
@@ -404,7 +404,7 @@ void EjectSync(::taihe::string_view volumeId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
         return;
     }
-    int32_t errNum = instance->EjectVolume(volumeIdString);
+    int32_t errNum = instance->Eject(diskIdString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -457,7 +457,7 @@ void BurnSync(::taihe::string_view volumeId, const ohos::file::volumeManager::Bu
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
         return;
     }
-    int32_t errNum = instance->BurnVolume(volumeIdString, oss.str());
+    int32_t errNum = instance->Burn(volumeIdString, oss.str());
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;

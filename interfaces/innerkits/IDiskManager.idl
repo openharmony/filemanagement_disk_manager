@@ -48,10 +48,10 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 27] void NotifyMtpUnmounted([in] String id, [in] boolean isBadRemove);
 
     /* ---------- 光盘 / 扩展卷操作（与 @ohos.file.volumeManager Stage 扩展对齐） ---------- */
-    [ipccode 40] void EraseVolume([in] String volumeId);
-    [ipccode 41] void EjectVolume([in] String volumeId);
+    [ipccode 40] void Erase([in] String volumeId);
+    [ipccode 41] void Eject([in] String diskId);
     [ipccode 42] void CreateIsoImage([in] String volumeId, [in] String filePath);
-    [ipccode 43] void BurnVolume([in] String volumeId, [in] String burnOptions);
+    [ipccode 43] void Burn([in] String volumeId, [in] String burnOptions);
     [ipccode 44] void GetVolumeOpProcess([in] String volumeId, [out] int progressPct);
     [ipccode 45] void VerifyBurnData([in] String volumeId, [in] int verifyType);
 

@@ -46,8 +46,13 @@ enum class IStorageDaemonIpcCode {
 
     /** 上段 addon 未列方法，自 251 起（须与 storage_daemon 侧一致）。 */
     ADDON_GET_CAPACITY = 251,
-    ADDON_EJECT = 252,
     ADDON_GET_CD_STATUS = 253,
+    ADDON_ERASE = 254,
+    ADDON_EJECT = 255,
+    ADDON_CREATE_ISO_IMAGE = 256,
+    ADDON_BURN = 257,
+    ADDON_GET_VOLUME_OP_PROCESS = 258,
+    ADDON_VERIFY_BURN_DATA = 259,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -64,7 +69,6 @@ public:
     virtual ErrCode ReadPartitionTable(const std::string &devPath,
                                        std::string &output,
                                        int32_t &maxVolume) = 0;
-    virtual ErrCode Eject(const std::string &devPath) = 0;
     virtual ErrCode QueryCDStatus(const std::string &devPath, int32_t &status) = 0;
     virtual ErrCode Mount(const std::string &devPath,
                           const std::string &mountPath,
@@ -82,7 +86,7 @@ public:
                                  std::string &uuid,
                                  std::string &type,
                                  std::string &label) = 0;
-    virtual ErrCode GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize) = 0;
+    virtual ErrCode GetCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize) = 0;
     virtual ErrCode MountFuseDevice(const std::string &mountPath, int32_t &fuseFd) = 0;
     virtual ErrCode Partition(const std::string &diskPath, const std::string &partitionType) = 0;
 
@@ -100,7 +104,15 @@ public:
                                         int32_t partitionNum) = 0;
     virtual ErrCode FormatPartition(const std::string &devPath, const std::string &fsType,
                                     const std::string &volumeName, bool quickFormat) = 0;
-
+    virtual ErrCode Erase(const std::string &devPath) = 0;
+    virtual ErrCode Eject(const std::string &devName) = 0;
+    virtual ErrCode CreateIsoImage(const std::string &devPath,
+                                   const std::string &filePath,
+                                   const std::string &fsType,
+                                   const std::string &mountPath) = 0;
+    virtual ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) = 0;
+    virtual ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) = 0;
+    virtual ErrCode VerifyBurnData(const std::string &devPath, int32_t verifyType) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

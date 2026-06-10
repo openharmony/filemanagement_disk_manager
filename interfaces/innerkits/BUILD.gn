@@ -110,6 +110,7 @@ ohos_shared_library("disk_manager_innerkits") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "json:nlohmann_json_static",
   ]
 
   deps = [

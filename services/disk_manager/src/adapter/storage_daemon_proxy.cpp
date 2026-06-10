@@ -122,24 +122,6 @@ ErrCode StorageDaemonProxy::ReadPartitionTable(const std::string &devPath, std::
     return res;
 }
 
-ErrCode StorageDaemonProxy::Eject(const std::string &devPath)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteString16(Str8ToStr16(devPath))) {
-        return ERR_INVALID_DATA;
-    }
-    int32_t ret =
-        Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EJECT), data, reply, option);
-    if (ret != ERR_OK) {
-        return ret;
-    }
-    return reply.ReadInt32();
-}
 
 ErrCode StorageDaemonProxy::QueryCDStatus(const std::string &devPath, int32_t &status)
 {
@@ -323,7 +305,7 @@ ErrCode StorageDaemonProxy::ReadMetadata(const std::string &devPath,
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::GetCapacity(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize)
+ErrCode StorageDaemonProxy::GetCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -333,7 +315,7 @@ ErrCode StorageDaemonProxy::GetCapacity(const std::string &mountPath, int64_t &t
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(mountPath))) {
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
         return ERR_INVALID_DATA;
     }
     int32_t ret = Remote()->SendRequest(
@@ -529,6 +511,152 @@ ErrCode StorageDaemonProxy::FormatPartition(const std::string &devPath, const st
         return ERR_INVALID_DATA;
     }
     int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_FORMAT_PARTITION),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::Erase(const std::string &devPath)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_ERASE),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::Eject(const std::string &devName)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devName))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret =
+        Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EJECT), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::CreateIsoImage(const std::string &devPath,
+                                           const std::string &filePath,
+                                           const std::string &fsType,
+                                           const std::string &mountPath)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(filePath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(fsType))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(mountPath))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret =
+        Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_CREATE_ISO_IMAGE),
+                              data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::Burn(const std::string &devPath,
+                                 const std::string &burnOptions,
+                                 const std::string &fsType)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(burnOptions))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(fsType))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret =
+        Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_BURN), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode StorageDaemonProxy::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    progressPct = 0;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(volumeId))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_VOLUME_OP_PROCESS),
+                                        data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    if (!reply.ReadInt32(progressPct)) {
+        return ERR_INVALID_DATA;
+    }
+    return ERR_OK;
+}
+
+ErrCode StorageDaemonProxy::VerifyBurnData(const std::string &devPath, int32_t verifyType)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteInt32(verifyType)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_VERIFY_BURN_DATA),
                                         data, reply, option);
     if (ret != ERR_OK) {
         return ret;

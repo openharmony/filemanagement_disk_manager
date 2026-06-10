@@ -44,7 +44,7 @@ void FormatPartitionSync(taihe::string_view diskId,
 
 // Optical drive APIs (@since 26.0.0)
 void EraseSync(taihe::string_view volumeId);
-void EjectSync(taihe::string_view volumeId);
+void EjectSync(taihe::string_view diskId);
 void CreateIsoImageSync(taihe::string_view volumeId, taihe::string_view path);
 void BurnSync(taihe::string_view volumeId, const ohos::file::volumeManager::BurnOptions &options);
 int32_t GetOpProcessSync(taihe::string_view volumeId);
