@@ -171,6 +171,10 @@ private:
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
+    
+    /** 从 extraInfo JSON 中提取 ODD_INFO.DISC_TYPE */
+    std::string ExtractDiscTypeFromExtraInfo(const std::string &extraInfo) const;
+    
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
      * 若同一流程需两把锁，必须按此顺序一次性加锁：先 disk，后 volume。
