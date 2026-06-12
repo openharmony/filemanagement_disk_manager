@@ -34,6 +34,10 @@
 #include "system_ability_definition.h"
 #include "errors.h"
 
+extern int32_t g_accessTokenType;
+extern bool g_isSystemApp;
+extern int32_t g_permissionGranted;
+
 namespace OHOS {
 namespace DiskManager {
 
@@ -89,6 +93,9 @@ public:
         testing::Mock::AllowLeak(&MockUsbFuseAdapter::GetInstance());
         testing::Mock::AllowLeak(&MockUeventBootstrap::GetInstance());
         MockIPCSkeleton::mockCallingUid_ = 0;
+        g_accessTokenType = 1;
+        g_isSystemApp = true;
+        g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
     }
 
     static void TearDownTestCase(void)
@@ -100,6 +107,9 @@ public:
     {
         ClearDiskManagerState();
         MockIPCSkeleton::mockCallingUid_ = 0;
+        g_accessTokenType = 1;
+        g_isSystemApp = true;
+        g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
         GTEST_LOG_(INFO) << "DiskManagerProviderTest SetUp";
     }
 
@@ -107,6 +117,9 @@ public:
     {
         ClearDiskManagerState();
         MockIPCSkeleton::mockCallingUid_ = 0;
+        g_accessTokenType = 1;
+        g_isSystemApp = true;
+        g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
         GTEST_LOG_(INFO) << "DiskManagerProviderTest TearDown";
     }
 };
@@ -1038,6 +1051,220 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_006, TestSize.Level0)
     FormatParams params("vfat", true, "volume");
     EXPECT_EQ(provider.FormatPartition("nonexistent-disk", 1, params), E_NON_EXIST);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_006 End";
+}
+
+/**
+ * @tc.name: GetAllDisks_PermissionDenied_001
+ * @tc.desc: GetAllDisks returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetAllDisks_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetAllDisks_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    std::vector<Disk> disks;
+    EXPECT_EQ(provider.GetAllDisks(disks), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "GetAllDisks_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetAllDisks_PermissionDenied_002
+ * @tc.desc: GetAllDisks returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetAllDisks_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetAllDisks_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    std::vector<Disk> disks;
+    EXPECT_EQ(provider.GetAllDisks(disks), E_PERMISSION_DENIED);
+    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetAllDisks_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetDiskById_PermissionDenied_001
+ * @tc.desc: GetDiskById returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskById_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    Disk disk;
+    EXPECT_EQ(provider.GetDiskById("disk-1", disk), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetDiskById_PermissionDenied_002
+ * @tc.desc: GetDiskById returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskById_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    Disk disk;
+    EXPECT_EQ(provider.GetDiskById("disk-1", disk), E_PERMISSION_DENIED);
+    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetPartitionTable_PermissionDenied_001
+ * @tc.desc: GetPartitionTable returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetPartitionTable_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    PartitionTableInfo out;
+    EXPECT_EQ(provider.GetPartitionTable("disk-1", out), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetPartitionTable_PermissionDenied_002
+ * @tc.desc: GetPartitionTable returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetPartitionTable_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    PartitionTableInfo out;
+    EXPECT_EQ(provider.GetPartitionTable("disk-1", out), E_PERMISSION_DENIED);
+    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: CreatePartition_PermissionDenied_001
+ * @tc.desc: CreatePartition returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    PartitionParams params(1, 2048, 500000, "vfat");
+    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: CreatePartition_PermissionDenied_002
+ * @tc.desc: CreatePartition returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    PartitionParams params(1, 2048, 500000, "vfat");
+    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PERMISSION_DENIED);
+    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: DeletePartition_PermissionDenied_001
+ * @tc.desc: DeletePartition returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DeletePartition_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.DeletePartition("disk-1", 1), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: DeletePartition_PermissionDenied_002
+ * @tc.desc: DeletePartition returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DeletePartition_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    EXPECT_EQ(provider.DeletePartition("disk-1", 1), E_PERMISSION_DENIED);
+    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: FormatPartition_PermissionDenied_001
+ * @tc.desc: FormatPartition returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    FormatParams params("vfat", true, "volume");
+    EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: FormatPartition_PermissionDenied_002
+ * @tc.desc: FormatPartition returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    FormatParams params("vfat", true, "volume");
+    EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_PERMISSION_DENIED);
+    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_002 End";
 }
 
 } // namespace DiskManager

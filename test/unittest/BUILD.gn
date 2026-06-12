@@ -444,6 +444,7 @@ ohos_unittest("disk_manager_provider_test") {
   sources = [
     "disk_manager_provider_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/ipc/disk_manager_provider.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/ipc_caller_auth.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
@@ -453,6 +454,7 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_ipc_skeleton.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_accesstoken_kit.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
