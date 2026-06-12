@@ -1326,10 +1326,38 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
     return DiskManagerErrNo::E_OK;
 }
 
+std::string DiskManager::ExtractDiscTypeFromExtraInfo(const std::string &extraInfo) const
+{
+    if (extraInfo.empty()) {
+        return "";
+    }
+    
+    json extraInfoJson = json::parse(extraInfo, nullptr, false);
+    if (extraInfoJson.is_discarded() || !extraInfoJson.is_object()) {
+        LOGW("ExtractDiscTypeFromExtraInfo: Failed to parse extraInfo JSON");
+        return "";
+    }
+    
+    if (!extraInfoJson.contains("ODD_INFO") || !extraInfoJson["ODD_INFO"].is_object()) {
+        return "";
+    }
+    
+    const auto& oddInfo = extraInfoJson["ODD_INFO"];
+    if (!oddInfo.contains("DISC_TYPE") || !oddInfo["DISC_TYPE"].is_string()) {
+        return "";
+    }
+    
+    std::string discType = oddInfo["DISC_TYPE"].get<std::string>();
+    LOGI("ExtractDiscTypeFromExtraInfo: discType=%{public}s", discType.c_str());
+    return discType;
+}
+
 int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions)
 {
     std::string blockVolId;
     std::string fsType;
+    std::string extraInfo;
+    std::string diskId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -1339,11 +1367,25 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         }
         blockVolId = it->second.GetId();
         fsType = it->second.GetFsTypeString();
+        extraInfo = it->second.GetExtraInfo();
+        diskId = it->second.GetDiskId();
     }
+
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
     if (err != ERR_OK) {
         LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
+    }
+    std::string discType = ExtractDiscTypeFromExtraInfo(extraInfo);
+    if (!discType.empty() && (discType == "DVD+RW" || discType.find("BD") != std::string::npos)) {
+        LOGI("Burn: discType %{public}s requires eject before burn, calling Eject for diskId %{public}s",
+             discType.c_str(), diskId.c_str());
+        int32_t ejectErr = Eject(diskId);
+        if (ejectErr != DiskManagerErrNo::E_OK) {
+            LOGW("Burn: Eject failed with err=%{public}d, but continue burning", ejectErr);
+        } else {
+            LOGI("Burn: Eject succeeded for diskId %{public}s", diskId.c_str());
+        }
     }
     return DiskManagerErrNo::E_OK;
 }
