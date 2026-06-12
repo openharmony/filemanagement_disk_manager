@@ -21,7 +21,6 @@
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
-#include "disk_manager_napi_errno.h"
 #include "errors.h"
 #include "ipc_caller_auth.h"
 #include "ipc_skeleton.h"
