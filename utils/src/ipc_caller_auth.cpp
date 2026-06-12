@@ -58,7 +58,6 @@ bool IpcCallerAuth::IsCallingSystemApp()
     auto tokenType = AccessTokenKit::GetTokenTypeFlag(tokenCaller);
     if (tokenType == Security::AccessToken::TOKEN_HAP) {
         uint64_t fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-        LOGI("IpcCallerAuth: IsCallingSystemApp fullTokenId=%{public}llu", static_cast<long long>(fullTokenId));
         return AccessTokenKit::IsSystemAppByFullTokenID(fullTokenId);
     }
     return true;
