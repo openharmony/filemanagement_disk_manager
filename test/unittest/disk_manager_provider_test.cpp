@@ -38,6 +38,9 @@ extern int32_t g_accessTokenType;
 extern bool g_isSystemApp;
 extern int32_t g_permissionGranted;
 
+constexpr int32_t MOCK_PERMISSION_GRANTED = 0;
+constexpr int32_t MOCK_PERMISSION_DENIED = -1;
+
 namespace OHOS {
 namespace DiskManager {
 
@@ -95,7 +98,7 @@ public:
         MockIPCSkeleton::mockCallingUid_ = 0;
         g_accessTokenType = 1;
         g_isSystemApp = true;
-        g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+        g_permissionGranted = MOCK_PERMISSION_GRANTED;
     }
 
     static void TearDownTestCase(void)
@@ -109,7 +112,7 @@ public:
         MockIPCSkeleton::mockCallingUid_ = 0;
         g_accessTokenType = 1;
         g_isSystemApp = true;
-        g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+        g_permissionGranted = MOCK_PERMISSION_GRANTED;
         GTEST_LOG_(INFO) << "DiskManagerProviderTest SetUp";
     }
 
@@ -119,7 +122,7 @@ public:
         MockIPCSkeleton::mockCallingUid_ = 0;
         g_accessTokenType = 1;
         g_isSystemApp = true;
-        g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+        g_permissionGranted = MOCK_PERMISSION_GRANTED;
         GTEST_LOG_(INFO) << "DiskManagerProviderTest TearDown";
     }
 };
@@ -1082,10 +1085,10 @@ HWTEST_F(DiskManagerProviderTest, GetAllDisks_PermissionDenied_002, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "GetAllDisks_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
     std::vector<Disk> disks;
     EXPECT_EQ(provider.GetAllDisks(disks), E_PERMISSION_DENIED);
-    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "GetAllDisks_PermissionDenied_002 End";
 }
 
@@ -1118,10 +1121,10 @@ HWTEST_F(DiskManagerProviderTest, GetDiskById_PermissionDenied_002, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
     Disk disk;
     EXPECT_EQ(provider.GetDiskById("disk-1", disk), E_PERMISSION_DENIED);
-    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_002 End";
 }
 
@@ -1154,10 +1157,10 @@ HWTEST_F(DiskManagerProviderTest, GetPartitionTable_PermissionDenied_002, TestSi
 {
     GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
     PartitionTableInfo out;
     EXPECT_EQ(provider.GetPartitionTable("disk-1", out), E_PERMISSION_DENIED);
-    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_002 End";
 }
 
@@ -1190,10 +1193,10 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_PermissionDenied_002, TestSize
 {
     GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
     PartitionParams params(1, 2048, 500000, "vfat");
     EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PERMISSION_DENIED);
-    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_002 End";
 }
 
@@ -1225,9 +1228,9 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_PermissionDenied_002, TestSize
 {
     GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
     EXPECT_EQ(provider.DeletePartition("disk-1", 1), E_PERMISSION_DENIED);
-    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_002 End";
 }
 
@@ -1260,10 +1263,10 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_PermissionDenied_002, TestSize
 {
     GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = Security::AccessToken::PERMISSION_DENIED;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
     FormatParams params("vfat", true, "volume");
     EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_PERMISSION_DENIED);
-    g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_002 End";
 }
 
