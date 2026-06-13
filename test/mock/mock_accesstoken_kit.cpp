@@ -21,7 +21,7 @@ namespace AccessToken {
 
 int32_t g_accessTokenType = 1;
 bool g_isSystemApp = true;
-int32_t g_permissionGranted = Security::AccessToken::PERMISSION_GRANTED;
+int32_t g_permissionGranted = 0;
 
 ATokenTypeEnum AccessTokenKit::GetTokenTypeFlag(AccessTokenID tokenID)
 {
