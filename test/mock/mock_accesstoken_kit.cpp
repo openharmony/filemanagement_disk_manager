@@ -15,13 +15,13 @@
 
 #include "accesstoken_kit.h"
 
-namespace OHOS {
-namespace Security {
-namespace AccessToken {
-
 int32_t g_accessTokenType = 1;
 bool g_isSystemApp = true;
 int32_t g_permissionGranted = 0;
+
+namespace OHOS {
+namespace Security {
+namespace AccessToken {
 
 ATokenTypeEnum AccessTokenKit::GetTokenTypeFlag(AccessTokenID tokenID)
 {
