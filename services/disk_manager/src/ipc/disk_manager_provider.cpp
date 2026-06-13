@@ -22,6 +22,7 @@
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
 #include "errors.h"
+#include "ipc_caller_auth.h"
 #include "ipc_skeleton.h"
 #include "partition_types.h"
 #include "storage_daemon_adapter.h"
@@ -150,6 +151,13 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 
 int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 {
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
     const int32_t err = DiskManager::GetInstance().GetAllDisks(vecOfDisk);
     LOGI("GetAllDisks count=%{public}zu err=%{public}d", vecOfDisk.size(), err);
     return err;
@@ -157,6 +165,13 @@ int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 
 int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
 {
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
     LOGI("GetDiskById diskId=%{public}s.", diskId.c_str());
     if (diskId.empty()) {
         LOGI("diskId is empty.");
@@ -253,6 +268,13 @@ int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t
 
 int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
 {
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
     LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
     if (diskId.empty()) {
         LOGI("diskId is empty.");
@@ -263,6 +285,13 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
 
 int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const PartitionParams &params)
 {
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
     LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
     if (diskId.empty()) {
         LOGE("CreatePartition: diskId is empty");
@@ -286,6 +315,13 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
 
 int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
 {
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
     LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
     if (diskId.empty()) {
         LOGE("DeletePartition: diskId is empty");
@@ -301,6 +337,13 @@ int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t 
 int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t partitionNum,
                                              const FormatParams &params)
 {
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
     LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s", diskId.c_str(),
          partitionNum, params.GetFsType().c_str());
     if (diskId.empty()) {
