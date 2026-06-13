@@ -47,6 +47,18 @@ bool AccessTokenKit::IsSystemAppByFullTokenID(uint64_t fullTokenId)
     return g_isSystemApp;
 }
 
+int32_t AccessTokenKit::GetNativeTokenInfo(AccessTokenID tokenID, NativeTokenInfo &nativeTokenInfoRes)
+{
+    nativeTokenInfoRes.processName = "foundation";
+    return 0;
+}
+
+int32_t AccessTokenKit::GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapTokenInfoRes)
+{
+    hapTokenInfoRes.bundleName = "com.ohos.test";
+    return 0;
+}
+
 } // namespace AccessToken
 } // namespace Security
 } // namespace OHOS

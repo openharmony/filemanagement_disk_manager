@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace OHOS {
 namespace Security {
@@ -37,11 +38,27 @@ enum PermissionState : int32_t {
     PERMISSION_GRANTED = 0,
 };
 
+struct NativeTokenInfo {
+    std::string processName;
+    int32_t apl = 0;
+    uint8_t verifier = 0;
+    std::vector<std::string> nativeAcls;
+};
+
+struct HapTokenInfo {
+    std::string bundleName;
+    int32_t apl = 0;
+    std::string appID;
+    int32_t userID = 0;
+};
+
 class AccessTokenKit {
 public:
     static ATokenTypeEnum GetTokenTypeFlag(AccessTokenID tokenID);
     static int32_t VerifyAccessToken(AccessTokenID tokenID, const std::string &permissionName);
     static bool IsSystemAppByFullTokenID(uint64_t fullTokenId);
+    static int32_t GetNativeTokenInfo(AccessTokenID tokenID, NativeTokenInfo &nativeTokenInfoRes);
+    static int32_t GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapTokenInfoRes);
 };
 
 } // namespace AccessToken
