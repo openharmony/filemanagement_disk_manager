@@ -1841,5 +1841,868 @@ HWTEST_F(StorageDaemonProxyTest, Partition_TestCase_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "Partition_TestCase_005 End";
 }
 
+HWTEST_F(StorageDaemonProxyTest, GetBlockInfoByType_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    std::string blockInfos = "x";
+    int32_t ret = proxy_->GetBlockInfoByType("public", "disk-123", blockInfos);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+    EXPECT_TRUE(blockInfos.empty());
+
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBlockInfoByType_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    std::string blockInfos;
+    int32_t ret = proxy_->GetBlockInfoByType("public", "disk-123", blockInfos);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBlockInfoByType_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    std::string blockInfos;
+    int32_t ret = proxy_->GetBlockInfoByType("public", "disk-123", blockInfos);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBlockInfoByType_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_BLOCK_INFO_BY_TYPE),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    std::string blockInfos;
+    int32_t ret = proxy_->GetBlockInfoByType("public", "disk-123", blockInfos);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBlockInfoByType_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    std::string blockInfos;
+    int32_t ret = proxy_->GetBlockInfoByType("public", "disk-123", blockInfos);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBlockInfoByType_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_BLOCK_INFO_BY_TYPE),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadString16()).WillOnce(Return(u"block-info-json"));
+    std::string blockInfos;
+    int32_t ret = proxy_->GetBlockInfoByType("public", "disk-123", blockInfos);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(blockInfos, "block-info-json");
+
+    GTEST_LOG_(INFO) << "GetBlockInfoByType_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetPartitionTableInfo_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    std::string execRet = "x";
+    int32_t ret = proxy_->GetPartitionTableInfo("/dev/sda", execRet);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetPartitionTableInfo_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    std::string execRet;
+    int32_t ret = proxy_->GetPartitionTableInfo("/dev/sda", execRet);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetPartitionTableInfo_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_PARTITION_TABLE_INFO),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    std::string execRet;
+    int32_t ret = proxy_->GetPartitionTableInfo("/dev/sda", execRet);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetPartitionTableInfo_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    std::string execRet;
+    int32_t ret = proxy_->GetPartitionTableInfo("/dev/sda", execRet);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetPartitionTableInfo_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_PARTITION_TABLE_INFO),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadString16()).WillOnce(Return(u"pt-info"));
+    std::string execRet;
+    int32_t ret = proxy_->GetPartitionTableInfo("/dev/sda", execRet);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(execRet, "pt-info");
+
+    GTEST_LOG_(INFO) << "GetPartitionTableInfo_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt64(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt64(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt64(_)).Times(2).WillRepeatedly(Return(true));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_007 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt64(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_PARTITION),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_007 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreatePartition_TestCase_008, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_008 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt64(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_PARTITION),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->CreatePartition("/dev/sda", 1, 0, 1024, "0700");
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "CreatePartition_TestCase_008 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, DeletePartitionInfo_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->DeletePartitionInfo("/dev/sda", "disk-1", 2);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, DeletePartitionInfo_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->DeletePartitionInfo("/dev/sda", "disk-1", 2);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, DeletePartitionInfo_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    int32_t ret = proxy_->DeletePartitionInfo("/dev/sda", "disk-1", 2);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, DeletePartitionInfo_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->DeletePartitionInfo("/dev/sda", "disk-1", 2);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, DeletePartitionInfo_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_DELETE_PARTITION),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->DeletePartitionInfo("/dev/sda", "disk-1", 2);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, DeletePartitionInfo_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_DELETE_PARTITION),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->DeletePartitionInfo("/dev/sda", "disk-1", 2);
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "DeletePartitionInfo_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(false));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_FORMAT_PARTITION),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, FormatPartition_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_007 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_FORMAT_PARTITION),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->FormatPartition("/dev/sda1", "ext4", "DATA", true);
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "FormatPartition_TestCase_007 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Erase_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->Erase("/dev/sda");
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Erase_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->Erase("/dev/sda");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Erase_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_ERASE), _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->Erase("/dev/sda");
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Erase_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_ERASE), _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->Erase("/dev/sda");
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(false));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(false));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_ISO_IMAGE),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateIsoImage_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_007 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_ISO_IMAGE),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->CreateIsoImage("/dev/sr0", "/tmp/iso.img", "iso9660", "/mnt/cdrom");
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_007 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Burn_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->Burn("/dev/sr0", "dao", "iso9660");
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Burn_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->Burn("/dev/sr0", "dao", "iso9660");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Burn_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    int32_t ret = proxy_->Burn("/dev/sr0", "dao", "iso9660");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Burn_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(false));
+    int32_t ret = proxy_->Burn("/dev/sr0", "dao", "iso9660");
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Burn_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_BURN), _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->Burn("/dev/sr0", "dao", "iso9660");
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, Burn_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_BURN), _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->Burn("/dev/sr0", "dao", "iso9660");
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t progressPct = -1;
+    int32_t ret = proxy_->GetVolumeOpProcess("vol-123", progressPct);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+    EXPECT_EQ(progressPct, 0);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t progressPct = -1;
+    int32_t ret = proxy_->GetVolumeOpProcess("vol-123", progressPct);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_VOLUME_OP_PROCESS),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t progressPct = 0;
+    int32_t ret = proxy_->GetVolumeOpProcess("vol-123", progressPct);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    int32_t progressPct = 0;
+    int32_t ret = proxy_->GetVolumeOpProcess("vol-123", progressPct);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32(_)).WillOnce(Return(false));
+    int32_t progressPct = 0;
+    int32_t ret = proxy_->GetVolumeOpProcess("vol-123", progressPct);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_005 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_VOLUME_OP_PROCESS),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32(_)).WillOnce(DoAll(SetArgReferee<0>(75), Return(true)));
+    int32_t progressPct = 0;
+    int32_t ret = proxy_->GetVolumeOpProcess("vol-123", progressPct);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(progressPct, 75);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_006 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, VerifyBurnData_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->VerifyBurnData("/dev/sr0", 1);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, VerifyBurnData_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->VerifyBurnData("/dev/sr0", 1);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_002 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, VerifyBurnData_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->VerifyBurnData("/dev/sr0", 1);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_003 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, VerifyBurnData_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_VERIFY_BURN_DATA),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->VerifyBurnData("/dev/sr0", 1);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_004 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, VerifyBurnData_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_VERIFY_BURN_DATA),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    int32_t ret = proxy_->VerifyBurnData("/dev/sr0", 1);
+    EXPECT_EQ(ret, ERR_OK);
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_005 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

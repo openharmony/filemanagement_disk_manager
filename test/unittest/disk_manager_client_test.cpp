@@ -473,5 +473,158 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest003, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "OnBlockDiskUeventTest003 End";
 }
+
+HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int64_t freeSize = 0;
+    int32_t ret = client.GetFreeSizeOfVolume(TEST_VOLUME_ID, freeSize);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int64_t totalSize = 0;
+    int32_t ret = client.GetTotalSizeOfVolume(TEST_VOLUME_ID, totalSize);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, GetAllDisksTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    std::vector<Disk> disks;
+    int32_t ret = client.GetAllDisks(disks);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, GetDiskByIdTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    Disk disk;
+    int32_t ret = client.GetDiskById(TEST_DISK_ID, disk);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, EraseTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.Erase(TEST_VOLUME_ID);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, EjectTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.Eject(TEST_DISK_ID);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, CreateIsoImageTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.CreateIsoImage(TEST_VOLUME_ID, "/tmp/test.iso");
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, BurnTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.Burn(TEST_VOLUME_ID, "burnOptions");
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, GetVolumeOpProcessTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t progressPct = 0;
+    int32_t ret = client.GetVolumeOpProcess(TEST_VOLUME_ID, progressPct);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.TryToFix(TEST_VOLUME_ID);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    bool isUsbFuse = false;
+    int32_t ret = client.IsUsbFuseByType(0, isUsbFuse);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.NotifyMtpMounted("mtp-1", "/mnt/mtp", "desc", "uuid", "vfat");
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.NotifyMtpUnmounted("mtp-1", false);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, GetPartitionTableTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    PartitionTableInfo info;
+    int32_t ret = client.GetPartitionTable(TEST_DISK_ID, info);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, CreatePartitionTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    PartitionParams params;
+    int32_t ret = client.CreatePartition(TEST_DISK_ID, params);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, DeletePartitionTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.DeletePartition(TEST_DISK_ID, 1);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, FormatPartitionTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    FormatParams params;
+    int32_t ret = client.FormatPartition(TEST_DISK_ID, 1, params);
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(DiskManagerClientTest, VerifyBurnDataTest001, TestSize.Level1)
+{
+    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.VerifyBurnData(TEST_VOLUME_ID, 0);
+    EXPECT_NE(ret, E_OK);
+}
 } // namespace DiskManager
 } // namespace OHOS
