@@ -38,7 +38,8 @@
         "napi",
         "runtime_core",
         "safwk",
-        "samgr"
+        "samgr",
+        "taihe_ffi_gen"
       ],
       "third_party": []
     },
