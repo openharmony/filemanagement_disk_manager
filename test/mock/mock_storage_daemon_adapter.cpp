@@ -18,11 +18,26 @@
 namespace OHOS {
 namespace DiskManager {
 
-MockStorageDaemonAdapter MockStorageDaemonAdapter::mockInstance_;
+MockStorageDaemonAdapter *MockStorageDaemonAdapter::mockInstance_ = nullptr;
 
 MockStorageDaemonAdapter &MockStorageDaemonAdapter::GetInstance()
 {
-    return mockInstance_;
+    if (mockInstance_ == nullptr) {
+        mockInstance_ = new MockStorageDaemonAdapter();
+    }
+    return *mockInstance_;
+}
+
+int32_t MockStorageDaemonAdapter::GetBlockInfoByType(
+    const std::string &type, std::string &blockInfos, const std::string &diskId)
+{
+    return GetBlockInfoByTypeImpl(type, blockInfos, diskId);
+}
+
+int32_t MockStorageDaemonAdapter::GetBlockInfoByType(
+    const std::string &type, std::string &blockInfos)
+{
+    return GetBlockInfoByTypeImpl(type, blockInfos, "");
 }
 
 } // namespace DiskManager

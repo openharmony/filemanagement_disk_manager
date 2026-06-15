@@ -13,20 +13,19 @@
  * limitations under the License.
  */
 
-#include "mock_usb_fuse_adapter.h"
+#ifndef OHOS_DISK_MANAGER_MOCK_PARAMETERS_H
+#define OHOS_DISK_MANAGER_MOCK_PARAMETERS_H
+
+#include <string>
 
 namespace OHOS {
-namespace DiskManager {
+namespace system {
 
-MockUsbFuseAdapter *MockUsbFuseAdapter::mockInstance_ = nullptr;
+extern bool g_mockGetBoolParameterResult;
 
-MockUsbFuseAdapter &MockUsbFuseAdapter::GetInstance()
-{
-    if (mockInstance_ == nullptr) {
-        mockInstance_ = new MockUsbFuseAdapter();
-    }
-    return *mockInstance_;
-}
+bool MockGetBoolParameter(const std::string &key, bool defaultValue);
 
-} // namespace DiskManager
+} // namespace system
 } // namespace OHOS
+
+#endif // OHOS_DISK_MANAGER_MOCK_PARAMETERS_H

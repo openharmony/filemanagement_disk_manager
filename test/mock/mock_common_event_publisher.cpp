@@ -13,19 +13,34 @@
  * limitations under the License.
  */
 
-#include "mock_usb_fuse_adapter.h"
+#include "mock_common_event_publisher.h"
 
 namespace OHOS {
 namespace DiskManager {
 
-MockUsbFuseAdapter *MockUsbFuseAdapter::mockInstance_ = nullptr;
+CommonEventPublisher *CommonEventPublisher::mockInstance_ = nullptr;
 
-MockUsbFuseAdapter &MockUsbFuseAdapter::GetInstance()
+CommonEventPublisher &CommonEventPublisher::GetInstance()
 {
     if (mockInstance_ == nullptr) {
-        mockInstance_ = new MockUsbFuseAdapter();
+        mockInstance_ = new CommonEventPublisher();
     }
     return *mockInstance_;
+}
+
+void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume)
+{
+    GetInstance().PublishVolumeChangeImpl(notifyCode, volume);
+}
+
+void CommonEventPublisher::PublishDiskChange(DiskEventKind kind, const Disk &disk)
+{
+    GetInstance().PublishDiskChangeImpl(kind, disk);
+}
+
+void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const VolumeExternal &volume)
+{
+    GetInstance().PublishVolumeResultImpl(notifyCode, volume);
 }
 
 } // namespace DiskManager

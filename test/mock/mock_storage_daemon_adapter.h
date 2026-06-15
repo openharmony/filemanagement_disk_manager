@@ -21,9 +21,7 @@
 
 #include <gmock/gmock.h>
 
-#ifndef ERR_INVALID_DATA
-constexpr int32_t ERR_INVALID_DATA = 22;
-#endif
+#include "ipc_types.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -55,8 +53,10 @@ public:
         (const std::string &mountPath, int64_t &totalSize, int64_t &freeSize));
     MOCK_METHOD(int32_t, MountFuseDevice, (const std::string &mountPath, int32_t &fuseFd));
     MOCK_METHOD(int32_t, Partition, (const std::string &diskPath, const std::string &partitionType));
-    MOCK_METHOD(int32_t, GetBlockInfoByType,
+    MOCK_METHOD(int32_t, GetBlockInfoByTypeImpl,
         (const std::string &type, std::string &blockInfos, const std::string &diskId));
+    int32_t GetBlockInfoByType(const std::string &type, std::string &blockInfos, const std::string &diskId);
+    int32_t GetBlockInfoByType(const std::string &type, std::string &blockInfos);
     MOCK_METHOD(int32_t, GetPartitionTableInfo,
         (const std::string &devPath, std::string &execRet));
     MOCK_METHOD(int32_t, CreatePartition,
@@ -80,7 +80,7 @@ public:
     MOCK_METHOD(int32_t, GetVolumeOpProcess, (const std::string &volumeId, int32_t &progressPct));
     MOCK_METHOD(int32_t, VerifyBurnData, (const std::string &devPath, int32_t verifyType));
 
-    static MockStorageDaemonAdapter mockInstance_;
+    static MockStorageDaemonAdapter *mockInstance_;
 };
 
 } // namespace DiskManager

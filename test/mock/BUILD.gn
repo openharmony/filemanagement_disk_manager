@@ -19,6 +19,16 @@ config("disk_manager_mock_include") {
   ]
 }
 
+config("uevent_bootstrap_mock_include") {
+  include_dirs = [
+    "//foundation/filemanagement/disk_manager/test/mock",
+    "//foundation/filemanagement/disk_manager/test/mock/uevent_bootstrap_mock",
+    "//foundation/filemanagement/disk_manager/test/mock/uevent_bootstrap_mock/disk",
+    "//foundation/filemanagement/disk_manager/test/mock/uevent_bootstrap_mock/db",
+    "//foundation/filemanagement/disk_manager/test/mock/uevent_bootstrap_mock/notification",
+  ]
+}
+
 group("disk_manager_mock") {
   testonly = true
 }

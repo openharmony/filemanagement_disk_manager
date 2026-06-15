@@ -18,7 +18,7 @@
 #include "block_info.h"
 #include "partition_types.h"
 
-#include "adapter/storage_daemon_adapter.h"
+#include "storage_daemon_adapter.h"
 #include "disk.h"
 #include "disk_manager.h"
 #include "partition_table_parser.h"
