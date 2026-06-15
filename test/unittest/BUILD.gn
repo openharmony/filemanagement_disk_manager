@@ -337,16 +337,20 @@ ohos_unittest("usb_fuse_adapter_test") {
 
   sources = [
     "usb_fuse_adapter_test.cpp",
-    "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/usb_fuse_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_parameters.cpp",
   ]
 
-  configs = [
-    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
-    ":disk_manager_unittest_common",
-  ]
+  configs = [ ":disk_manager_unittest_common" ]
 
   defines = [
-    "UsbFuseAdapter=MockUsbFuseAdapter",
+    "private = public",
+    "dlopen=MockDlopen",
+    "dlsym=MockDlsym",
+    "dlclose=MockDlclose",
+    "dlerror=MockDlerror",
+    "GetBoolParameter=MockGetBoolParameter",
   ]
 
   external_deps = [
@@ -354,7 +358,7 @@ ohos_unittest("usb_fuse_adapter_test") {
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
-    "ipc:ipc_single",
+    "init:libbegetutil",
   ]
 
   subsystem_name = "filemanagement"
@@ -534,6 +538,59 @@ ohos_unittest("block_info_table_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("uevent_bootstrap_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "uevent_bootstrap_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_bootstrap.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_env_parser.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_block_info_table.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_common_event_publisher.cpp",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:uevent_bootstrap_mock_include",
+    ":disk_manager_unittest_common",
+  ]
+
+  defines = [
+    "StorageDaemonAdapter=MockStorageDaemonAdapter",
+    "private = public",
+  ]
+
+  if (car_device_enable) {
+    defines += [ "CDC_STORAGE" ]
+  }
+
+  deps = [
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "ability_base:base",
+    "ability_base:want",
+    "common_event_service:cesfwk_innerkits",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 group("disk_manager_ut") {
   testonly = true
   deps = [
@@ -553,5 +610,6 @@ group("disk_manager_ut") {
     ":partition_table_parser_test",
     ":disk_manager_provider_test",
     ":block_info_table_test",
+    ":uevent_bootstrap_test",
   ]
 }
