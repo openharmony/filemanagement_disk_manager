@@ -565,6 +565,33 @@ HWTEST_F(DiskManagerTest, GetAllVolumes_TestCase_004, TestSize.Level0)
 }
 
 /**
+ * @tc.name: GetAllVolumes_TestCase_005
+ * @tc.desc: GetAllVolumes also returns unformatted (fsType=UNDEFINED) volumes so App can trigger Format.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetAllVolumes_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetAllVolumes_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-av-uf"));
+    VolumeExternal unformatted = MakeUsbVolume("vol-av-uf", "disk-av-uf", "", UNMOUNTED, UNDEFINED);
+    unformatted.SetPath("");
+    dm.OnVolumeCreated(unformatted);
+    std::vector<VolumeExternal> out;
+    EXPECT_EQ(dm.GetAllVolumes(out), E_OK);
+    bool foundUnformatted = false;
+    for (auto &v : out) {
+        if (v.GetId() == "vol-av-uf") {
+            foundUnformatted = true;
+            EXPECT_EQ(v.GetFsType(), static_cast<int32_t>(UNDEFINED));
+        }
+    }
+    EXPECT_TRUE(foundUnformatted);
+    GTEST_LOG_(INFO) << "GetAllVolumes_TestCase_005 End";
+}
+
+/**
  * @tc.name: UpdateVolumeMetadata_TestCase_001
  * @tc.desc: Update existing volume metadata returns E_OK.
  * @tc.type: FUNC

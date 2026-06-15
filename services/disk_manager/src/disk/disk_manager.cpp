@@ -1116,9 +1116,7 @@ int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
         if (volExternal.GetFsType() == UDF || volExternal.GetFsType() == ISO9660) {
             dvdDiskIds.push_back(volExternal.GetDiskId());
         }
-        if (volExternal.GetFsType() != UNDEFINED) {
-            result.push_back(volExternal);
-        }
+        result.push_back(volExternal);
     }
 
     for (auto it = diskMap_.begin(); it != diskMap_.end(); ++it) {
