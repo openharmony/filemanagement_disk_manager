@@ -271,5 +271,134 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_DvrOnlyU0_TestCase_003, T
 }
 #endif // CDC_STORAGE
 
+/**
+ * @tc.name: PublishVolumeResult_TestCase_001
+ * @tc.desc: PublishVolumeResult 各映射状态调用，覆盖 actionSet=true 及 PublishCommonEvent 路径。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_001 Start";
+
+    const VolumeState mappedStates[] = {
+        REMOVED, UNMOUNTED, MOUNTED, BAD_REMOVAL, EJECTING,
+        DAMAGED, DAMAGED_MOUNTED, ENCRYPTING, ENCRYPTED_AND_LOCKED,
+        ENCRYPTED_AND_UNLOCKED, DECRYPTING, CHECKING,
+        REPAIR_FINISH_FAIL, REPAIR_FINISH_SUCCESS, FORMAT_FINISH_FAIL,
+    };
+    for (VolumeState s : mappedStates) {
+        VolumeExternal vol = MakeSampleVolume();
+        EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(s, vol));
+    }
+
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_001 End";
+}
+
+/**
+ * @tc.name: PublishVolumeResult_TestCase_002
+ * @tc.desc: PublishVolumeResult FUSE_REMOVED 无 STATE_INFOS 映射，覆盖 actionSet=false early return。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_002 Start";
+
+    VolumeExternal vol = MakeSampleVolume();
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(FUSE_REMOVED, vol));
+
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_002 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_TestCase_004
+ * @tc.desc: MOUNTED + fsType=MTP 覆盖 SetMountedEventParams MTP 分支（跳过 GetFreeSizeOfVolume）。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_004 Start";
+
+    VolumeExternal vMtp = MakeSampleVolume();
+    vMtp.SetFsType(static_cast<int32_t>(FsType::MTP));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vMtp));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_004 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_TestCase_005
+ * @tc.desc: MOUNTED + fsType=PTP 覆盖 SetMountedEventParams PTP 分支（跳过 GetFreeSizeOfVolume）。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_005, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_005 Start";
+
+    VolumeExternal vPtp = MakeSampleVolume();
+    vPtp.SetFsType(static_cast<int32_t>(FsType::PTP));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vPtp));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_005 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_TestCase_006
+ * @tc.desc: UNMOUNTED + MTP/PTP fsType 覆盖 SetUnmountedEventParams MTP/PTP 分支（跳过 freeSize）。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_006, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_006 Start";
+
+    VolumeExternal vMtp = MakeSampleVolume();
+    vMtp.SetFsType(static_cast<int32_t>(FsType::MTP));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vMtp));
+
+    VolumeExternal vPtp = MakeSampleVolume();
+    vPtp.SetFsType(static_cast<int32_t>(FsType::PTP));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vPtp));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_006 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_TestCase_007
+ * @tc.desc: UNMOUNTED + freeSize<0 覆盖 SetUnmountedEventParams freeSize<0 分支（跳过设置 freeSize 参数）。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_007, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_007 Start";
+
+    VolumeExternal vNeg = MakeSampleVolume();
+    vNeg.SetFreeSize(-1);
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vNeg));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_007 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_TestCase_008
+ * @tc.desc: UNMOUNTED + freeSize>=0 覆盖 SetUnmountedEventParams 正常设置 freeSize 参数分支。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_008, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_008 Start";
+
+    VolumeExternal vValid = MakeSampleVolume();
+    vValid.SetFreeSize(1024);
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(UNMOUNTED, vValid));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_008 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
