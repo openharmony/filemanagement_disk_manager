@@ -17,7 +17,8 @@
 #include <gtest/gtest.h>
 
 #include "disk_manager_errno.h"
-#include "mock_storage_daemon_adapter.h"
+#include "storage_daemon_adapter.h"
+#include "storage_daemon_mock.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -31,714 +32,503 @@ public:
     void TearDown() override {}
 };
 
-/**
- * @tc.name: Connect_TestCase_001
- * @tc.desc: Connect returns E_SA_IS_NULLPTR when sam is nullptr.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Connect_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, Connect_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Connect()).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Connect(), E_SA_IS_NULLPTR);
+    EXPECT_NE(adapter.Connect(), E_OK);
 }
 
-/**
- * @tc.name: Connect_TestCase_002
- * @tc.desc: Connect returns E_REMOTE_IS_NULLPTR when remote object is nullptr.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Connect_TestCase_002, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, Connect_ErrorPath_002, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Connect()).WillOnce(Return(E_REMOTE_IS_NULLPTR));
-    EXPECT_EQ(adapter.Connect(), E_REMOTE_IS_NULLPTR);
+    EXPECT_NE(adapter.Connect(), E_OK);
+    EXPECT_NE(adapter.Connect(), E_OK);
 }
 
-/**
- * @tc.name: Connect_TestCase_003
- * @tc.desc: Connect returns E_SERVICE_IS_NULLPTR when iface_cast fails.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Connect_TestCase_003, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, EnsureProxyReady_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Connect()).WillOnce(Return(E_SERVICE_IS_NULLPTR));
-    EXPECT_EQ(adapter.Connect(), E_SERVICE_IS_NULLPTR);
+    EXPECT_NE(adapter.EnsureProxyReady(), E_OK);
 }
 
-/**
- * @tc.name: Connect_TestCase_004
- * @tc.desc: Connect returns E_DEATH_RECIPIENT_IS_NULLPTR on OOM.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Connect_TestCase_004, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, EnsureProxyReady_ErrorPath_002, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Connect()).WillOnce(Return(E_DEATH_RECIPIENT_IS_NULLPTR));
-    EXPECT_EQ(adapter.Connect(), E_DEATH_RECIPIENT_IS_NULLPTR);
+    adapter.storageDaemon_ = nullptr;
+    EXPECT_NE(adapter.EnsureProxyReady(), E_OK);
 }
 
-/**
- * @tc.name: Connect_TestCase_005
- * @tc.desc: Connect returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Connect_TestCase_005, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, ResetSdProxy_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Connect()).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.Connect(), E_OK);
+    EXPECT_EQ(adapter.ResetSdProxy(), E_OK);
 }
 
-/**
- * @tc.name: Connect_TestCase_006
- * @tc.desc: Connect returns E_OK when called twice (already connected).
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Connect_TestCase_006, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, ResetSdProxy_Nullptr_002, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Connect()).Times(2).WillRepeatedly(Return(E_OK));
-    EXPECT_EQ(adapter.Connect(), E_OK);
-    EXPECT_EQ(adapter.Connect(), E_OK);
+    EXPECT_EQ(adapter.ResetSdProxy(), E_OK);
+    EXPECT_EQ(adapter.ResetSdProxy(), E_OK);
 }
 
-/**
- * @tc.name: EnsureProxyReady_TestCase_001
- * @tc.desc: EnsureProxyReady returns E_SA_IS_NULLPTR when Connect fails.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, EnsureProxyReady_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, QueryUsbIsInUse_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, EnsureProxyReady()).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.EnsureProxyReady(), E_SA_IS_NULLPTR);
+    bool isInUse = false;
+    EXPECT_NE(adapter.QueryUsbIsInUse("/dev/block/sda", isInUse), E_OK);
 }
 
-/**
- * @tc.name: EnsureProxyReady_TestCase_002
- * @tc.desc: EnsureProxyReady returns E_SERVICE_IS_NULLPTR when proxy is nullptr.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, EnsureProxyReady_TestCase_002, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, CreateBlockDeviceNode_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, EnsureProxyReady()).WillOnce(Return(E_SERVICE_IS_NULLPTR));
-    EXPECT_EQ(adapter.EnsureProxyReady(), E_SERVICE_IS_NULLPTR);
+    EXPECT_NE(adapter.CreateBlockDeviceNode("/dev/block/sda", 0600, 8, 1), E_OK);
 }
 
-/**
- * @tc.name: EnsureProxyReady_TestCase_003
- * @tc.desc: EnsureProxyReady returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, EnsureProxyReady_TestCase_003, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterTest, DestroyBlockDeviceNode_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, EnsureProxyReady()).WillOnce(Return(E_OK));
+    EXPECT_NE(adapter.DestroyBlockDeviceNode("/dev/block/sda"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, ReadPartitionTable_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string output;
+    int32_t maxVolume = 0;
+    EXPECT_NE(adapter.ReadPartitionTable("/dev/block/sda", output, maxVolume), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, QueryCDStatus_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int32_t status = 0;
+    EXPECT_NE(adapter.QueryCDStatus("/dev/sr0", status), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Mount_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Mount("/dev/block/sda1", "/mnt/data", "ext4", 0, ""), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Unmount_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Unmount("/mnt/data", "ext4", false), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, FormatVolume_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.FormatVolume("/dev/block/sda1", "ext4"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Check_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Check("/dev/block/sda1", "ext4", false), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Repair_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Repair("/dev/block/sda1", "ext4"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, SetLabel_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.SetLabel("/dev/block/sda1", "ext4", "mylabel"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, ReadMetadata_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string uuid, type, label;
+    EXPECT_NE(adapter.ReadMetadata("/dev/block/sda1", uuid, type, label), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, GetCapacity_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int64_t totalSize = 0;
+    int64_t freeSize = 0;
+    EXPECT_NE(adapter.GetCapacity("/mnt/data", totalSize, freeSize), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, MountFuseDevice_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int32_t fuseFd = -1;
+    EXPECT_NE(adapter.MountFuseDevice("/mnt/fuse", fuseFd), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Partition_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Partition("/dev/block/sda", "gpt"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType2Param_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string blockInfos;
+    EXPECT_NE(adapter.GetBlockInfoByType("usb", blockInfos, ""), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType3Param_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string blockInfos;
+    EXPECT_NE(adapter.GetBlockInfoByType("usb", blockInfos, "disk-1"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, GetPartitionTableInfo_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string execRet;
+    EXPECT_NE(adapter.GetPartitionTableInfo("/dev/block/sda", execRet), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, CreatePartition_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.CreatePartition("/dev/block/sda", 1, 2048, 500000, "0700"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, DeletePartition_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.DeletePartition("/dev/block/sda", "sda", 1), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, FormatPartition_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Erase_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Erase("/dev/block/sda"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Eject_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Eject("disk-1"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, CreateIsoImage_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.CreateIsoImage("/dev/sr0", "/tmp/image.iso", "udf", "/mnt/cdrom"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Burn_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.Burn("/dev/sr0", "-speed=4", "udf"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, GetVolumeOpProcess_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int32_t progressPct = 0;
+    EXPECT_NE(adapter.GetVolumeOpProcess("vol-1", progressPct), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, VerifyBurnData_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.VerifyBurnData("/dev/sr0", 1), E_OK);
+}
+
+class StorageDaemonAdapterProxyTest : public testing::Test {
+public:
+    void SetUp() override
+    {
+        auto &adapter = StorageDaemonAdapter::GetInstance();
+        adapter.ResetSdProxy();
+        adapter.deathRecipient_ = nullptr;
+        mockRemote_ = new StorageDaemonMock();
+        testing::Mock::AllowLeak(mockRemote_.GetRefPtr());
+        adapter.storageDaemon_ = mockRemote_;
+        adapter.deathRecipient_ = new SdDeathRecipient();
+        mockRemote_->AsObject()->AddDeathRecipient(adapter.deathRecipient_);
+    }
+
+    void TearDown() override
+    {
+        auto &adapter = StorageDaemonAdapter::GetInstance();
+        adapter.ResetSdProxy();
+        adapter.deathRecipient_ = nullptr;
+    }
+
+    sptr<StorageDaemonMock> mockRemote_;
+};
+
+HWTEST_F(StorageDaemonAdapterProxyTest, EnsureProxyReady_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
     EXPECT_EQ(adapter.EnsureProxyReady(), E_OK);
 }
 
-/**
- * @tc.name: ResetSdProxy_TestCase_001
- * @tc.desc: ResetSdProxy returns E_OK normally.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, ResetSdProxy_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Connect_AlreadyConnected_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, ResetSdProxy()).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.ResetSdProxy(), E_OK);
+    EXPECT_EQ(adapter.Connect(), E_OK);
 }
 
-/**
- * @tc.name: ResetSdProxy_TestCase_002
- * @tc.desc: ResetSdProxy returns E_OK when proxy already null.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, ResetSdProxy_TestCase_002, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, ResetSdProxy_WithMock_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, ResetSdProxy()).Times(2).WillRepeatedly(Return(E_OK));
     EXPECT_EQ(adapter.ResetSdProxy(), E_OK);
-    EXPECT_EQ(adapter.ResetSdProxy(), E_OK);
+    EXPECT_EQ(adapter.storageDaemon_, nullptr);
 }
 
-/**
- * @tc.name: QueryUsbIsInUse_TestCase_001
- * @tc.desc: QueryUsbIsInUse returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, QueryUsbIsInUse_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, EnsureProxyReady_NullAfterReset_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    adapter.ResetSdProxy();
+    adapter.storageDaemon_ = nullptr;
+    EXPECT_NE(adapter.EnsureProxyReady(), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, QueryUsbIsInUse_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     bool isInUse = false;
-    EXPECT_CALL(adapter, QueryUsbIsInUse(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.QueryUsbIsInUse("/dev/block/sda", isInUse), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: QueryUsbIsInUse_TestCase_002
- * @tc.desc: QueryUsbIsInUse returns E_OK with isInUse=true on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, QueryUsbIsInUse_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    bool isInUse = false;
-    EXPECT_CALL(adapter, QueryUsbIsInUse(_, _))
+    EXPECT_CALL(*mockRemote_, QueryUsbIsInUse(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(true), Return(E_OK)));
     EXPECT_EQ(adapter.QueryUsbIsInUse("/dev/block/sda", isInUse), E_OK);
     EXPECT_TRUE(isInUse);
 }
 
-/**
- * @tc.name: CreateBlockDeviceNode_TestCase_001
- * @tc.desc: CreateBlockDeviceNode returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, CreateBlockDeviceNode_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, CreateBlockDeviceNode_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, CreateBlockDeviceNode(_, _, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.CreateBlockDeviceNode("/dev/block/sda", 0600, 8, 1), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: CreateBlockDeviceNode_TestCase_002
- * @tc.desc: CreateBlockDeviceNode returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, CreateBlockDeviceNode_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, CreateBlockDeviceNode(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, CreateBlockDeviceNode(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.CreateBlockDeviceNode("/dev/block/sda", 0600, 8, 1), E_OK);
 }
 
-/**
- * @tc.name: DestroyBlockDeviceNode_TestCase_001
- * @tc.desc: DestroyBlockDeviceNode returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, DestroyBlockDeviceNode_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, DestroyBlockDeviceNode_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, DestroyBlockDeviceNode(_)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.DestroyBlockDeviceNode("/dev/block/sda"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: DestroyBlockDeviceNode_TestCase_002
- * @tc.desc: DestroyBlockDeviceNode returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, DestroyBlockDeviceNode_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, DestroyBlockDeviceNode(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, DestroyBlockDeviceNode(_)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.DestroyBlockDeviceNode("/dev/block/sda"), E_OK);
 }
 
-/**
- * @tc.name: ReadPartitionTable_TestCase_001
- * @tc.desc: ReadPartitionTable returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, ReadPartitionTable_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, ReadPartitionTable_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string output;
     int32_t maxVolume = 0;
-    EXPECT_CALL(adapter, ReadPartitionTable(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.ReadPartitionTable("/dev/block/sda", output, maxVolume), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: ReadPartitionTable_TestCase_002
- * @tc.desc: ReadPartitionTable returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, ReadPartitionTable_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    std::string output;
-    int32_t maxVolume = 0;
-    EXPECT_CALL(adapter, ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>("partition1\npartition2\n"),
-                        SetArgReferee<2>(2), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("partition-data"), SetArgReferee<2>(4), Return(E_OK)));
     EXPECT_EQ(adapter.ReadPartitionTable("/dev/block/sda", output, maxVolume), E_OK);
-    EXPECT_EQ(maxVolume, 2);
+    EXPECT_EQ(output, "partition-data");
+    EXPECT_EQ(maxVolume, 4);
 }
 
-/**
- * @tc.name: Eject_TestCase_001
- * @tc.desc: Eject returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Eject_TestCase_001, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Eject(_)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Eject("disk-1"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: Eject_TestCase_002
- * @tc.desc: Eject returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Eject_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Eject(_)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.Eject("disk-1"), E_OK);
-}
-
-/**
- * @tc.name: QueryCDStatus_TestCase_001
- * @tc.desc: QueryCDStatus returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, QueryCDStatus_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, QueryCDStatus_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     int32_t status = 0;
-    EXPECT_CALL(adapter, QueryCDStatus(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.QueryCDStatus("/dev/sr0", status), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: QueryCDStatus_TestCase_002
- * @tc.desc: QueryCDStatus returns E_OK with status on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, QueryCDStatus_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    int32_t status = 0;
-    EXPECT_CALL(adapter, QueryCDStatus(_, _))
+    EXPECT_CALL(*mockRemote_, QueryCDStatus(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
     EXPECT_EQ(adapter.QueryCDStatus("/dev/sr0", status), E_OK);
     EXPECT_EQ(status, 1);
 }
 
-/**
- * @tc.name: Mount_TestCase_001
- * @tc.desc: Mount returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Mount_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Mount_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Mount(_, _, _, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Mount("/dev/block/sda1", "/mnt/data", "ext4", 0, ""), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: Mount_TestCase_002
- * @tc.desc: Mount returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Mount_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Mount(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, Mount(_, _, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.Mount("/dev/block/sda1", "/mnt/data", "ext4", 0, ""), E_OK);
 }
 
-/**
- * @tc.name: Unmount_TestCase_001
- * @tc.desc: Unmount returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Unmount_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Unmount_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Unmount(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Unmount("/mnt/data", "ext4", false), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: Unmount_TestCase_002
- * @tc.desc: Unmount returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Unmount_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Unmount(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, Unmount(_, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.Unmount("/mnt/data", "ext4", false), E_OK);
 }
 
-/**
- * @tc.name: FormatVolume_TestCase_001
- * @tc.desc: FormatVolume returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, FormatVolume_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, FormatVolume_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, FormatVolume(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.FormatVolume("/dev/block/sda1", "ext4"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: FormatVolume_TestCase_002
- * @tc.desc: FormatVolume returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, FormatVolume_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, FormatVolume(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, FormatVolume(_, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.FormatVolume("/dev/block/sda1", "ext4"), E_OK);
 }
 
-/**
- * @tc.name: Check_TestCase_001
- * @tc.desc: Check returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Check_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Check_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Check(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Check("/dev/block/sda1", "ext4", false), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: Check_TestCase_002
- * @tc.desc: Check returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Check_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Check(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, Check(_, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.Check("/dev/block/sda1", "ext4", false), E_OK);
 }
 
-/**
- * @tc.name: Repair_TestCase_001
- * @tc.desc: Repair returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Repair_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Repair_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Repair(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Repair("/dev/block/sda1", "ext4"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: Repair_TestCase_002
- * @tc.desc: Repair returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Repair_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Repair(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, Repair(_, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.Repair("/dev/block/sda1", "ext4"), E_OK);
 }
 
-/**
- * @tc.name: SetLabel_TestCase_001
- * @tc.desc: SetLabel returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, SetLabel_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, SetLabel_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, SetLabel(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.SetLabel("/dev/block/sda1", "ext4", "mylabel"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: SetLabel_TestCase_002
- * @tc.desc: SetLabel returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, SetLabel_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, SetLabel(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, SetLabel(_, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.SetLabel("/dev/block/sda1", "ext4", "mylabel"), E_OK);
 }
 
-/**
- * @tc.name: ReadMetadata_TestCase_001
- * @tc.desc: ReadMetadata returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, ReadMetadata_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, ReadMetadata_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string uuid, type, label;
-    EXPECT_CALL(adapter, ReadMetadata(_, _, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.ReadMetadata("/dev/block/sda1", uuid, type, label), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: ReadMetadata_TestCase_002
- * @tc.desc: ReadMetadata returns E_OK with metadata on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, ReadMetadata_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    std::string uuid, type, label;
-    EXPECT_CALL(adapter, ReadMetadata(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>("uuid-1234"),
-                        SetArgReferee<2>("ext4"),
-                        SetArgReferee<3>("mylabel"), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-1234"), SetArgReferee<2>("ext4"), SetArgReferee<3>("mylabel"),
+                        Return(E_OK)));
     EXPECT_EQ(adapter.ReadMetadata("/dev/block/sda1", uuid, type, label), E_OK);
     EXPECT_EQ(uuid, "uuid-1234");
     EXPECT_EQ(type, "ext4");
     EXPECT_EQ(label, "mylabel");
 }
 
-/**
- * @tc.name: GetCapacity_TestCase_001
- * @tc.desc: GetCapacity returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetCapacity_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, GetCapacity_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     int64_t totalSize = 0;
     int64_t freeSize = 0;
-    EXPECT_CALL(adapter, GetCapacity(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.GetCapacity("/mnt/data", totalSize, freeSize), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: GetCapacity_TestCase_002
- * @tc.desc: GetCapacity returns E_OK with sizes on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetCapacity_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    int64_t totalSize = 0;
-    int64_t freeSize = 0;
-    EXPECT_CALL(adapter, GetCapacity(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(4096), SetArgReferee<2>(2048), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(1024 * 1024), SetArgReferee<2>(128 * 1024), Return(E_OK)));
     EXPECT_EQ(adapter.GetCapacity("/mnt/data", totalSize, freeSize), E_OK);
-    EXPECT_EQ(totalSize, 4096);
-    EXPECT_EQ(freeSize, 2048);
+    EXPECT_EQ(totalSize, 1024 * 1024);
+    EXPECT_EQ(freeSize, 128 * 1024);
 }
 
-/**
- * @tc.name: MountFuseDevice_TestCase_001
- * @tc.desc: MountFuseDevice returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, MountFuseDevice_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, MountFuseDevice_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     int32_t fuseFd = -1;
-    EXPECT_CALL(adapter, MountFuseDevice(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.MountFuseDevice("/mnt/fuse", fuseFd), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: MountFuseDevice_TestCase_002
- * @tc.desc: MountFuseDevice returns E_OK with fuseFd on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, MountFuseDevice_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    int32_t fuseFd = -1;
-    EXPECT_CALL(adapter, MountFuseDevice(_, _))
+    EXPECT_CALL(*mockRemote_, MountFuseDevice(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(42), Return(E_OK)));
     EXPECT_EQ(adapter.MountFuseDevice("/mnt/fuse", fuseFd), E_OK);
     EXPECT_EQ(fuseFd, 42);
 }
 
-/**
- * @tc.name: Partition_TestCase_001
- * @tc.desc: Partition returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Partition_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Partition_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Partition(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.Partition("/dev/block/sda", "gpt"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: Partition_TestCase_002
- * @tc.desc: Partition returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, Partition_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, Partition(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, Partition(_, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.Partition("/dev/block/sda", "gpt"), E_OK);
 }
 
-/**
- * @tc.name: GetBlockInfoByType2Param_TestCase_001
- * @tc.desc: GetBlockInfoByType (2-param) returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType2Param_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, GetBlockInfoByType2Param_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string blockInfos;
-    EXPECT_CALL(adapter, GetBlockInfoByType(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos, ""), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: GetBlockInfoByType2Param_TestCase_002
- * @tc.desc: GetBlockInfoByType (2-param) returns E_OK with blockInfos on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType2Param_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    std::string blockInfos;
-    EXPECT_CALL(adapter, GetBlockInfoByType(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>("block-info-data"), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, GetBlockInfoByType(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>("block-info-data"), Return(E_OK)));
     EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos, ""), E_OK);
     EXPECT_EQ(blockInfos, "block-info-data");
 }
 
-/**
- * @tc.name: GetBlockInfoByType3Param_TestCase_001
- * @tc.desc: GetBlockInfoByType (3-param) returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType3Param_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, GetBlockInfoByType3Param_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string blockInfos;
-    EXPECT_CALL(adapter, GetBlockInfoByType(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos, "disk-1"), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: GetBlockInfoByType3Param_TestCase_002
- * @tc.desc: GetBlockInfoByType (3-param) returns E_OK with blockInfos on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetBlockInfoByType3Param_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    std::string blockInfos;
-    EXPECT_CALL(adapter, GetBlockInfoByType(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>("block-info-data"), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, GetBlockInfoByType(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>("block-info-data2"), Return(E_OK)));
     EXPECT_EQ(adapter.GetBlockInfoByType("usb", blockInfos, "disk-1"), E_OK);
-    EXPECT_EQ(blockInfos, "block-info-data");
+    EXPECT_EQ(blockInfos, "block-info-data2");
 }
 
-/**
- * @tc.name: GetPartitionTableInfo_TestCase_001
- * @tc.desc: GetPartitionTableInfo returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetPartitionTableInfo_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, GetPartitionTableInfo_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string execRet;
-    EXPECT_CALL(adapter, GetPartitionTableInfo(_, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.GetPartitionTableInfo("/dev/block/sda", execRet), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: GetPartitionTableInfo_TestCase_002
- * @tc.desc: GetPartitionTableInfo returns E_OK with execRet on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, GetPartitionTableInfo_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    std::string execRet;
-    EXPECT_CALL(adapter, GetPartitionTableInfo(_, _))
-        .WillOnce(DoAll(SetArgReferee<1>("partition-table-json"), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, GetPartitionTableInfo(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("table-data"), Return(E_OK)));
     EXPECT_EQ(adapter.GetPartitionTableInfo("/dev/block/sda", execRet), E_OK);
-    EXPECT_EQ(execRet, "partition-table-json");
+    EXPECT_EQ(execRet, "table-data");
 }
 
-/**
- * @tc.name: CreatePartition_TestCase_001
- * @tc.desc: CreatePartition returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, CreatePartition_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, CreatePartition_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, CreatePartition(_, _, _, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.CreatePartition("/dev/block/sda", 1, 2048, 500000, "0700"),
-              E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: CreatePartition_TestCase_002
- * @tc.desc: CreatePartition returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, CreatePartition_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, CreatePartition(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, CreatePartition(_, _, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.CreatePartition("/dev/block/sda", 1, 2048, 500000, "0700"), E_OK);
 }
 
-/**
- * @tc.name: DeletePartition_TestCase_001
- * @tc.desc: DeletePartition returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, DeletePartition_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, DeletePartition_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, DeletePartition(_, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.DeletePartition("/dev/block/sda", "sda", 1), E_SA_IS_NULLPTR);
-}
-
-/**
- * @tc.name: DeletePartition_TestCase_002
- * @tc.desc: DeletePartition returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, DeletePartition_TestCase_002, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, DeletePartition(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(*mockRemote_, DeletePartitionInfo(_, _, _)).WillOnce(Return(E_OK));
     EXPECT_EQ(adapter.DeletePartition("/dev/block/sda", "sda", 1), E_OK);
 }
 
-/**
- * @tc.name: FormatPartition_TestCase_001
- * @tc.desc: FormatPartition returns error when proxy not ready.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, FormatPartition_TestCase_001, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, FormatPartition_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, FormatPartition(_, _, _, _)).WillOnce(Return(E_SA_IS_NULLPTR));
-    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false),
-              E_SA_IS_NULLPTR);
+    EXPECT_CALL(*mockRemote_, FormatPartition(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
 }
 
-/**
- * @tc.name: FormatPartition_TestCase_002
- * @tc.desc: FormatPartition returns E_OK on success.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonAdapterTest, FormatPartition_TestCase_002, TestSize.Level0)
+HWTEST_F(StorageDaemonAdapterProxyTest, Erase_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(adapter, FormatPartition(_, _, _, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
+    EXPECT_CALL(*mockRemote_, Erase(_)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.Erase("/dev/block/sda"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, Eject_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, Eject(_)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.Eject("disk-1"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, CreateIsoImage_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, CreateIsoImage(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.CreateIsoImage("/dev/sr0", "/tmp/image.iso", "udf", "/mnt/cdrom"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, Burn_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, Burn(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.Burn("/dev/sr0", "-speed=4", "udf"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, GetVolumeOpProcess_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int32_t progressPct = 0;
+    EXPECT_CALL(*mockRemote_, GetVolumeOpProcess(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(50), Return(E_OK)));
+    EXPECT_EQ(adapter.GetVolumeOpProcess("vol-1", progressPct), E_OK);
+    EXPECT_EQ(progressPct, 50);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, VerifyBurnData_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, VerifyBurnData(_, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.VerifyBurnData("/dev/sr0", 1), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, SdDeathRecipient_OnRemoteDied_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    SdDeathRecipient recipient;
+    wptr<IRemoteObject> weakObj(mockRemote_->AsObject());
+    recipient.OnRemoteDied(weakObj);
+    EXPECT_EQ(adapter.storageDaemon_, nullptr);
 }
 
 } // namespace DiskManager
