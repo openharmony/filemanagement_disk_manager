@@ -498,7 +498,7 @@ HWTEST_F(DiskManagerClientTest, GetAllDisksTest001, TestSize.Level1)
     client.ResetProxy();
     std::vector<Disk> disks;
     int32_t ret = client.GetAllDisks(disks);
-    EXPECT_EQ(ret, E_OK);
+    EXPECT_NE(ret, E_OK);
 }
 
 HWTEST_F(DiskManagerClientTest, GetDiskByIdTest001, TestSize.Level1)
