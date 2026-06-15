@@ -18,7 +18,35 @@
 namespace OHOS {
 namespace DiskManager {
 
-MockUeventBootstrap MockUeventBootstrap::mockInstance_;
+MockUeventBootstrap *MockUeventBootstrap::mockInstance_ = nullptr;
+
+MockUeventBootstrap &MockUeventBootstrap::GetInstance()
+{
+    if (mockInstance_ == nullptr) {
+        mockInstance_ = new MockUeventBootstrap();
+    }
+    return *mockInstance_;
+}
+
+int32_t MockUeventBootstrap::OnBlockDiskUevent(const std::string &rawUeventMsg)
+{
+    return GetInstance().OnBlockDiskUeventImpl(rawUeventMsg);
+}
+
+void MockUeventBootstrap::Init()
+{
+    GetInstance().InitImpl();
+}
+
+uint32_t MockUeventBootstrap::MatchConfig(const UeventEnv &env)
+{
+    return GetInstance().MatchConfigImpl(env);
+}
+
+int32_t MockUeventBootstrap::RediscoverDiskVolumes(const std::string &diskId)
+{
+    return GetInstance().RediscoverDiskVolumesImpl(diskId);
+}
 
 } // namespace DiskManager
 } // namespace OHOS

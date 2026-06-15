@@ -33,7 +33,7 @@ public:
     MOCK_METHOD(bool, IsUsbFuseByType, (const std::string &fsType));
     MOCK_METHOD(bool, IsUsbFuseEnabledForFsType, (const std::string &fsType));
 
-    static MockUsbFuseAdapter mockInstance_;
+    static MockUsbFuseAdapter *mockInstance_;
 };
 
 } // namespace DiskManager

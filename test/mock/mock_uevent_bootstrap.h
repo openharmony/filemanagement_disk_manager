@@ -28,22 +28,13 @@ namespace DiskManager {
 
 class MockUeventBootstrap {
 public:
-    static MockUeventBootstrap mockInstance_;
-    static MockUeventBootstrap &GetInstance() { return mockInstance_; }
+    static MockUeventBootstrap *mockInstance_;
+    static MockUeventBootstrap &GetInstance();
 
-    static int32_t OnBlockDiskUevent(const std::string &rawUeventMsg)
-    {
-        return mockInstance_.OnBlockDiskUeventImpl(rawUeventMsg);
-    }
-    static void Init() { mockInstance_.InitImpl(); }
-    static uint32_t MatchConfig(const UeventEnv &env)
-    {
-        return mockInstance_.MatchConfigImpl(env);
-    }
-    static int32_t RediscoverDiskVolumes(const std::string &diskId)
-    {
-        return mockInstance_.RediscoverDiskVolumesImpl(diskId);
-    }
+    static int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
+    static void Init();
+    static uint32_t MatchConfig(const UeventEnv &env);
+    static int32_t RediscoverDiskVolumes(const std::string &diskId);
 
     MOCK_METHOD(int32_t, OnBlockDiskUeventImpl, (const std::string &rawUeventMsg));
     MOCK_METHOD(void, InitImpl, ());

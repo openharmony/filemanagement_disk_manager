@@ -13,20 +13,9 @@
  * limitations under the License.
  */
 
-#include "mock_usb_fuse_adapter.h"
+#ifndef OHOS_DISK_MANAGER_DISK_DISK_MANAGER_REDIRECT_H
+#define OHOS_DISK_MANAGER_DISK_DISK_MANAGER_REDIRECT_H
 
-namespace OHOS {
-namespace DiskManager {
+#include "disk_manager_mock.h"
 
-MockUsbFuseAdapter *MockUsbFuseAdapter::mockInstance_ = nullptr;
-
-MockUsbFuseAdapter &MockUsbFuseAdapter::GetInstance()
-{
-    if (mockInstance_ == nullptr) {
-        mockInstance_ = new MockUsbFuseAdapter();
-    }
-    return *mockInstance_;
-}
-
-} // namespace DiskManager
-} // namespace OHOS
+#endif

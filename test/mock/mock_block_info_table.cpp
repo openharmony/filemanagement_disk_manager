@@ -13,19 +13,24 @@
  * limitations under the License.
  */
 
-#include "mock_usb_fuse_adapter.h"
+#include "mock_block_info_table.h"
 
 namespace OHOS {
 namespace DiskManager {
 
-MockUsbFuseAdapter *MockUsbFuseAdapter::mockInstance_ = nullptr;
+BlockInfoTable *BlockInfoTable::mockInstance_ = nullptr;
 
-MockUsbFuseAdapter &MockUsbFuseAdapter::GetInstance()
+BlockInfoTable &BlockInfoTable::GetInstance()
 {
     if (mockInstance_ == nullptr) {
-        mockInstance_ = new MockUsbFuseAdapter();
+        mockInstance_ = new BlockInfoTable();
     }
     return *mockInstance_;
+}
+
+std::string BlockInfoTable::ToJsonStringWithExtras(const BlockInfo &blockInfo, const ExtraKeyValues &extraKeyValues)
+{
+    return GetInstance().ToJsonStringWithExtrasImpl(blockInfo, extraKeyValues);
 }
 
 } // namespace DiskManager

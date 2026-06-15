@@ -15,7 +15,7 @@
 
 #include "block_info_table.h"
 
-#include "adapter/storage_daemon_adapter.h"
+#include "storage_daemon_adapter.h"
 #include "disk_manager_hilog.h"
 #include "errors.h"
 

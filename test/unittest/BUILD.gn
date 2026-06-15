@@ -497,7 +497,6 @@ ohos_unittest("disk_manager_provider_test") {
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
 }
-
 group("disk_manager_ut") {
   testonly = true
   deps = [

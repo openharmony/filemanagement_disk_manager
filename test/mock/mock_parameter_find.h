@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-#include "mock_usb_fuse_adapter.h"
+#ifndef OHOS_DISK_MANAGER_MOCK_PARAMETER_FIND_H
+#define OHOS_DISK_MANAGER_MOCK_PARAMETER_FIND_H
 
-namespace OHOS {
-namespace DiskManager {
+#include <cstdint>
 
-MockUsbFuseAdapter *MockUsbFuseAdapter::mockInstance_ = nullptr;
+constexpr uint32_t MOCK_PARAMETER_VALUE_MAX_LEN = 32;
 
-MockUsbFuseAdapter &MockUsbFuseAdapter::GetInstance()
-{
-    if (mockInstance_ == nullptr) {
-        mockInstance_ = new MockUsbFuseAdapter();
-    }
-    return *mockInstance_;
+extern int g_mockFindParameterResult;
+extern uint32_t g_mockGetParameterValueResult;
+extern char g_mockParameterValue[MOCK_PARAMETER_VALUE_MAX_LEN];
+
+extern "C" {
+int MockFindParameter(const char *key);
+uint32_t MockGetParameterValue(int handle, char *value, uint32_t len);
 }
 
-} // namespace DiskManager
-} // namespace OHOS
+#endif // OHOS_DISK_MANAGER_MOCK_PARAMETER_FIND_H
