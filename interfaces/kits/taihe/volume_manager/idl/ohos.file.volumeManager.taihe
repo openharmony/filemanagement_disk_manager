@@ -44,7 +44,7 @@ enum DiskType : i32 {
 struct Disk {
     diskId: String;
     sizeBytes: i64;
-    diskType: DiskType;
+    diskType: i32;
     removable: bool;
     volumeIds: Array<String>;
     extraInfo: String;
