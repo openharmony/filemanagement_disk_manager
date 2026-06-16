@@ -57,6 +57,7 @@ public:
          const std::string &fsTypeStr, const std::string &description));
     MOCK_METHOD(int32_t, Erase, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Eject, (const std::string &diskId));
+    MOCK_METHOD(void, NotifyPartitionDone, (const std::string &diskId));
 
     static DiskManager *mockInstance_;
 };
