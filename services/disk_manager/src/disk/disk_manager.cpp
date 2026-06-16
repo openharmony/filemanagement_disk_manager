@@ -462,6 +462,8 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
     }
     volExternal.SetFsUuid(uuid);
     outFsUuid = uuid;
+    volExternal.SetDescription(label);
+    volExternal.SetFsType(volExternal.GetFsTypeByStr(type));
     return DiskManagerErrNo::E_OK;
 }
 
@@ -612,10 +614,9 @@ int32_t DiskManager::Mount(const std::string &volumeId)
 
 int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId)
 {
-    const std::string fsType = volExternal.GetFsTypeString();
-
     std::string fsUuid;
     int32_t uuidErr = EnsureFsUuidReady(volExternal, fsUuid);
+    const std::string fsType = volExternal.GetFsTypeString();
     if (uuidErr != DiskManagerErrNo::E_OK) {
         volExternal.SetState(VolumeState::UNMOUNTED);
         return uuidErr;
