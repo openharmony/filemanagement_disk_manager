@@ -443,6 +443,46 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     LOGI("DiscoverSinglePartitionVolume EXIT SUCCESS");
 }
 
+void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
+{
+    LOGI("DiscoverWholeDiskVolume enter diskId=%{public}s (no valid partition, fallback to whole-disk volume)",
+         diskId.c_str());
+
+    const dev_t wholeDev = makedev(env.major, env.minor);
+    const std::string volId = VolIdFromDev(wholeDev);
+    if (CreateAndSetupVolume(diskId, wholeDev, false, 0) != ERR_OK) {
+        return;
+    }
+
+    std::string uuid;
+    std::string type;
+    std::string label;
+    const std::string volDevPath = BlockPathForId(volId);
+    ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
+
+    if (DiskManager::GetInstance().IsPartitioning(diskId)) {
+        const int32_t formatRet = DiskManager::GetInstance().Format(volId, PARTITION_TARGET_FS_TYPE);
+        if (formatRet != ERR_OK) {
+            LOGE("DiscoverWholeDiskVolume Format failed volId=%{public}s ret=%{public}d", volId.c_str(),
+                 formatRet);
+        }
+        return;
+    }
+
+    LOGI("DiscoverWholeDiskVolume AUTO_MOUNT=%{public}d type.empty=%{public}d uuid.empty=%{public}d",
+         AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
+    if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
+        return;
+    }
+
+    int32_t err = DiskManager::GetInstance().Mount(volId);
+    if (err != ERR_OK) {
+        LOGE("DiscoverWholeDiskVolume Mount failed volId=%{public}s", volId.c_str());
+        return;
+    }
+    LOGI("DiscoverWholeDiskVolume EXIT SUCCESS");
+}
+
 void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState state)
 {
     LOGI("HandleAddCD CD exists");
@@ -581,6 +621,9 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     for (const auto &p : parts) {
         LOGI("Discovering volume for partition number: %{public}d", p.partitionNumber);
         DiscoverSinglePartitionVolume(env, diskId, p, isUserData);
+    }
+    if (parts.empty()) {
+        DiscoverWholeDiskVolume(env, diskId);
     }
 
     return DiskManagerErrNo::E_OK;
