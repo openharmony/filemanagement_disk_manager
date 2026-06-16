@@ -649,7 +649,9 @@ int32_t UeventBootstrap::HandleDiskChange(const UeventEnv &env)
     }
 
     const bool publishNew = !DiskManager::GetInstance().HasDisk(diskId);
-    return DiscoverPartitionsAndVolumes(env, publishNew);
+    int32_t ret = DiscoverPartitionsAndVolumes(env, publishNew);
+    DiskManager::GetInstance().NotifyPartitionDone(diskId);
+    return ret;
 }
 
 int32_t UeventBootstrap::RediscoverDiskVolumes(const std::string &diskId)

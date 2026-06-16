@@ -79,6 +79,7 @@ constexpr int64_t EXFAT_TYPECODE_MIN_SIZE = 32 * 1024 * 1024;
 constexpr int64_t NTFS_TYPECODE_MIN_SIZE = 4 * 1024 * 1024;
 constexpr int64_t EXT4_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int64_t F2FS_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
+constexpr int32_t WAIT_UEVENT_TIMEOUT = 1 * 60 * 1000;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 const std::map<std::string, std::string> typeCodeMap_ = {
     {"vfat", "0x0700"},
@@ -970,6 +971,30 @@ void DiskManager::RemovePartitioningDisk(const std::string &diskId)
     partitioningDiskIds_.erase(diskId);
 }
 
+void DiskManager::NotifyPartitionDone(const std::string &diskId)
+{
+    std::lock_guard<std::mutex> lock(partitionLock_);
+    if (partitionDoneMap_.find(diskId) == partitionDoneMap_.end()) {
+        return;
+    }
+    partitionDoneMap_[diskId] = true;
+    partitionCv_.notify_all();
+}
+
+void DiskManager::WaitForPartitionDone(const std::string &diskId, int32_t timeoutMs)
+{
+    std::unique_lock<std::mutex> lock(partitionLock_);
+    partitionDoneMap_[diskId] = false;
+    auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutMs);
+    while (!partitionDoneMap_[diskId]) {
+        if (partitionCv_.wait_until(lock, deadline) == std::cv_status::timeout) {
+            LOGE("WaitForPartitionDone timeout diskId=%{public}s timeoutMs=%{public}d", diskId.c_str(), timeoutMs);
+            break;
+        }
+    }
+    partitionDoneMap_.erase(diskId);
+}
+
 bool DiskManager::IsPartitioning(const std::string &diskId) const
 {
     std::lock_guard<std::mutex> lock(partitionLock_);
@@ -1751,22 +1776,26 @@ int32_t DiskManager::CreatePartition(const std::string &diskId, const PartitionP
     if (IsDiskNotReady(diskId)) {
         return E_VOL_STATE;
     }
-    std::lock_guard<std::mutex> lock(partitionLock_);
-    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
-        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
-        return E_NON_EXIST;
+    {
+        std::lock_guard<std::mutex> lock(partitionLock_);
+        if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
+            LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
+            return E_NON_EXIST;
+        }
+        PartitionTableInfo info = partitionTableMap_[diskId];
+        if (!IsParamsValid(params, info)) {
+            return E_PARAMS_INVALID;
+        }
+        int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId,
+            params.GetPartitionNum(), params.GetStartSector(), params.GetEndSector(), codeIt->second);
+        if (ret != DiskManagerErrNo::E_OK) {
+            LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
+            return E_CREATE_PARTITION_ERROR;
+        }
     }
-    PartitionTableInfo info = partitionTableMap_[diskId];
-    if (!IsParamsValid(params, info)) {
-        return E_PARAMS_INVALID;
-    }
-    int32_t ret = StorageDaemonAdapter::GetInstance().CreatePartition("/dev/block/" + diskId,
-        params.GetPartitionNum(), params.GetStartSector(), params.GetEndSector(), codeIt->second);
-    if (ret != DiskManagerErrNo::E_OK) {
-        LOGE("CreatePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
-        return E_CREATE_PARTITION_ERROR;
-    }
-    LOGE("CreatePartition success");
+    LOGI("CreatePartition daemon call success, waiting for uevent diskId=%{public}s", diskId.c_str());
+    WaitForPartitionDone(diskId, WAIT_UEVENT_TIMEOUT);
+    LOGI("CreatePartition complete diskId=%{public}s", diskId.c_str());
     return DiskManagerErrNo::E_OK;
 }
 

@@ -23,6 +23,7 @@
 #include "volume_external.h"
 
 #include <cstdint>
+#include <condition_variable>
 #include <map>
 #include <set>
 #include <shared_mutex>
@@ -162,6 +163,9 @@ private:
     void AddPartitioningDisk(const std::string &diskId);
     void RemovePartitioningDisk(const std::string &diskId);
 
+    void NotifyPartitionDone(const std::string &diskId);
+    void WaitForPartitionDone(const std::string &diskId, int32_t timeoutMs);
+
     void SaveVolumeFreeSize(VolumeExternal &volume);
     void SetVolumeStateLocked(const std::string &volumeId, VolumeState state);
     void PublishFormatFailEvent(const std::string &volumeId);
@@ -186,6 +190,8 @@ private:
     std::map<std::string, VolumeExternal> volumeMap_;
 
     mutable std::mutex partitionLock_;
+    std::condition_variable partitionCv_;
+    std::map<std::string, bool> partitionDoneMap_;
     std::map<std::string, PartitionTableInfo> partitionTableMap_;
     std::set<std::string> partitioningDiskIds_;
 };
