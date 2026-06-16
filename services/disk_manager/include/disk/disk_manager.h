@@ -94,7 +94,7 @@ public:
     int32_t CreatePartition(const std::string &diskId, const PartitionParams &params);
     int32_t DeletePartition(const std::string &diskId, int32_t partitionNum);
     int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params);
-    void NotifyPartitionDone(const std::string &diskId);
+    static void NotifyPartitionDone(const std::string &diskId);
 
 private:
     DiskManager();
