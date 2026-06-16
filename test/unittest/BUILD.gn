@@ -171,6 +171,7 @@ ohos_unittest("disk_manager_server_test") {
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_parameter_find.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
@@ -183,6 +184,8 @@ ohos_unittest("disk_manager_server_test") {
     "StorageDaemonAdapter=MockStorageDaemonAdapter",
     "UsbFuseAdapter=MockUsbFuseAdapter",
     "UeventBootstrap=MockUeventBootstrap",
+    "FindParameter=MockFindParameter",
+    "GetParameterValue=MockGetParameterValue",
   ]
 
   if (car_device_enable) {
