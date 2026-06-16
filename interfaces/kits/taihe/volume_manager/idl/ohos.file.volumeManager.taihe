@@ -32,10 +32,19 @@ struct Volume {
     partitionNum: i32;
 }
 
+enum DiskType : i32 {
+    SD_CARD = 1,
+    USB_FLASH = 2,
+    CD_DVD_BD = 3,
+    DATA_DISK_SSD = 4,
+    DATA_DISK_HDD = 5,
+    UNKNOWN_DISK_TYPE = 255
+}
+
 struct Disk {
     diskId: String;
     sizeBytes: i64;
-    diskType: i32;
+    diskType: DiskType;
     removable: bool;
     volumeIds: Array<String>;
     extraInfo: String;
