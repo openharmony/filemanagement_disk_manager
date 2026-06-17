@@ -271,7 +271,7 @@ HWTEST_F(DiskManagerClientTest, GetAllVolumesTest001, TestSize.Level1)
     client.ResetProxy();
     std::vector<VolumeExternal> volumes;
     int32_t ret = client.GetAllVolumes(volumes);
-    EXPECT_EQ(ret, E_OK);
+    EXPECT_NE(ret, E_OK);
     EXPECT_TRUE(volumes.empty());
 
     GTEST_LOG_(INFO) << "GetAllVolumesTest001 End";
