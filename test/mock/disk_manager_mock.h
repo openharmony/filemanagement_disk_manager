@@ -52,12 +52,15 @@ public:
     MOCK_METHOD(int32_t, GetAllDisks, (std::vector<Disk> &out));
     MOCK_METHOD(int32_t, GetDiskById, (const std::string &diskId, Disk &out));
     MOCK_METHOD(int32_t, GetAllVolumes, (std::vector<VolumeExternal> &out));
+    MOCK_METHOD(int32_t, GetVolumeById, (const std::string &volumeId, VolumeExternal &out));
     MOCK_METHOD(int32_t, UpdateVolumeMetadata,
         (const std::string &volumeId, const std::string &fsUuid,
          const std::string &fsTypeStr, const std::string &description));
     MOCK_METHOD(int32_t, Erase, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Eject, (const std::string &diskId));
     MOCK_METHOD(void, NotifyPartitionDone, (const std::string &diskId));
+    MOCK_METHOD(std::string, GetDiscType, (const std::string &extraInfo));
+    MOCK_METHOD(std::string, GetDriverType, (const std::string &extraInfo));
 
     static DiskManager *mockInstance_;
 };

@@ -19,6 +19,7 @@
 #include "disk/uevent_bootstrap.h"
 #include "disk/uevent_env_parser.h"
 #include "disk/disk_config.h"
+#include "disk/disk_manager.h"
 #include "disk/storage_spec_models.h"
 #include "disk_manager_errno.h"
 #include "errors.h"
