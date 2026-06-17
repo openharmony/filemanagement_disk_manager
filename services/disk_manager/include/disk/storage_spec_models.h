@@ -37,6 +37,7 @@ enum class DiskStoreDiskType : uint8_t {
     CD_DVD_BD = 3,
     DATA_DISK_SSD = 4,
     DATA_DISK_HDD = 5,
+    DVR_USB = 6,
     UNKNOWN = 255,
 };
 

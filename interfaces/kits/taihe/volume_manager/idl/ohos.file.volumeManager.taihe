@@ -38,13 +38,14 @@ enum DiskType : i32 {
     CD_DVD_BD = 3,
     DATA_DISK_SSD = 4,
     DATA_DISK_HDD = 5,
+    DVR_USB = 6,
     UNKNOWN_DISK_TYPE = 255
 }
 
 struct Disk {
     diskId: String;
     sizeBytes: i64;
-    diskType: i32;
+    diskType: DiskType;
     removable: bool;
     volumeIds: Array<String>;
     extraInfo: String;

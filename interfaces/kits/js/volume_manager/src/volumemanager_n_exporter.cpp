@@ -216,6 +216,8 @@ napi_value CreateDiskTypeEnum(napi_env env)
          NVal::CreateInt32(env, static_cast<int32_t>(DiskType::DATA_DISK_SSD)).val_, napi_enumerable},
         {"DATA_DISK_HDD", nullptr, nullptr, nullptr, nullptr,
          NVal::CreateInt32(env, static_cast<int32_t>(DiskType::DATA_DISK_HDD)).val_, napi_enumerable},
+        {"DVR_USB", nullptr, nullptr, nullptr, nullptr,
+         NVal::CreateInt32(env, static_cast<int32_t>(DiskType::DVR_USB)).val_, napi_enumerable},
         {"UNKNOWN_DISK_TYPE", nullptr, nullptr, nullptr, nullptr,
          NVal::CreateInt32(env, static_cast<int32_t>(DiskType::DISK_TYPE_UNKNOWN)).val_, napi_enumerable},
     };
