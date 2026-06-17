@@ -1,7 +1,7 @@
 {
   "name": "@ohos/disk_manager",
   "description": "Disk manager system ability: volume and disk management, callbacks from storage_daemon, and related inner APIs.",
-  "version": "1.0.0",
+  "version": "1.0",
   "license": "Apache License 2.0",
   "publishAs": "code-segment",
   "segment": {
