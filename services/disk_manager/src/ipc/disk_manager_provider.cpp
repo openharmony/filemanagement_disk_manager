@@ -35,7 +35,7 @@ namespace DiskManager {
 
 using namespace OHOS::DiskManager;
 constexpr pid_t STORAGEDAEMON_UID = 0;
-constexpr pid_t STORAGE_MANAGER_UID = 1090; // storage_manager 进程 UID（来自 storage_manager.cfg）
+constexpr pid_t STORAGE_MANAGER_UID = 1090;
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
