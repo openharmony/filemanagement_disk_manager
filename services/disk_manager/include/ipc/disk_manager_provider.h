@@ -73,6 +73,7 @@ public:
 
 private:
     bool CheckClientPermission();
+    bool IsStorageManagerCaller() const;
 };
 } // namespace DiskManager
 } // namespace OHOS
