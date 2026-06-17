@@ -36,6 +36,10 @@ using namespace OHOS::DiskManager;
 using namespace testing;
 using namespace testing::ext;
 
+constexpr int DISK_METADATA_ARG_UUID = 1;
+constexpr int DISK_METADATA_ARG_TYPE = 2;
+constexpr int DISK_METADATA_ARG_LABEL = 3;
+
 class UeventBootstrapTest : public Test {
 protected:
     static void SetUpTestCase()
@@ -45,6 +49,7 @@ protected:
         testing::Mock::AllowLeak(&BlockInfoTable::GetInstance());
         testing::Mock::AllowLeak(&CommonEventPublisher::GetInstance());
     }
+
     void SetUp() override
     {
         UeventBootstrap::diskConfigList_.clear();
@@ -54,15 +59,17 @@ protected:
         ON_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), GetAllVolumes(_)).WillByDefault(Return(E_OK));
         ON_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
-            .WillByDefault(DoAll(SetArgReferee<1>(std::string("")),
-                                 SetArgReferee<2>(std::string("")),
-                                 SetArgReferee<3>(std::string("")),
+            .WillByDefault(DoAll(SetArgReferee<DISK_METADATA_ARG_UUID>(std::string("")),
+                                 SetArgReferee<DISK_METADATA_ARG_TYPE>(std::string("")),
+                                 SetArgReferee<DISK_METADATA_ARG_LABEL>(std::string("")),
                                  Return(E_OK)));
         ON_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
             .WillByDefault(Return(E_OK));
         ON_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _)).WillByDefault(Return(-1));
-        ON_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _)).WillByDefault(Return(std::string("{}")));
+        ON_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+            .WillByDefault(Return(std::string("{}")));
     }
+
     void TearDown() override
     {
         testing::Mock::VerifyAndClearExpectations(&DiskManager::GetInstance());
