@@ -23,7 +23,6 @@
 #include <iremote_object.h>
 #include <nocopyable.h>
 #include <refbase.h>
-#include <singleton.h>
 
 #include "disk.h"
 #include "partition_types.h"
@@ -34,11 +33,10 @@ namespace DiskManager {
 
 class IDiskManager;
 
-/** disk_manager SA 客户端；对外应用能力见 @ohos.file.volumeManager，进程内 / storage_daemon 专用接口见文末。 */
 class DiskManagerClient : public NoCopyable {
-    DECLARE_DELAYED_SINGLETON(DiskManagerClient);
-
 public:
+    static DiskManagerClient &GetInstance();
+    virtual ~DiskManagerClient();
     /* ---------- Volume（@ohos.file.volumeManager） ---------- */
     int32_t Mount(const std::string &volumeId);
     int32_t Unmount(const std::string &volumeId);
@@ -88,6 +86,10 @@ public:
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
 
 private:
+    DiskManagerClient() = default;
+    DiskManagerClient(const DiskManagerClient &) = delete;
+    DiskManagerClient &operator=(const DiskManagerClient &) = delete;
+
     int32_t Connect(sptr<IDiskManager> &proxy);
 
     sptr<IDiskManager> diskManager_;

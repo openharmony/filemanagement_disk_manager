@@ -169,7 +169,7 @@ napi_value ScheduleVolumeGetOpProcess(napi_env env, const std::string &volumeIdS
 {
     auto progress = std::make_shared<int32_t>(0);
     auto cbExec = [volumeIdStr, progress]() -> NError {
-        int32_t errNum = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeOpProcess(
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetVolumeOpProcess(
             volumeIdStr, *progress);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
@@ -286,7 +286,7 @@ napi_value GetAllVolumes(napi_env env, napi_callback_info info)
     auto volumeInfo = std::make_shared<std::vector<VolumeExternal>>();
     auto cbExec = [volumeInfo]() -> NError {
         int32_t errNum =
-            DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetAllVolumes(*volumeInfo);
+            OHOS::DiskManager::DiskManagerClient::GetInstance().GetAllVolumes(*volumeInfo);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -338,7 +338,7 @@ napi_value Mount(napi_env env, napi_callback_info info)
 
     std::string volumeIdString(volumeId.get());
     auto cbExec = [volumeIdString]() -> NError {
-        int32_t result = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Mount(volumeIdString);
+        int32_t result = OHOS::DiskManager::DiskManagerClient::GetInstance().Mount(volumeIdString);
         if (result != E_OK) {
             return NError(Convert2JsErrNum(result));
         }
@@ -380,7 +380,7 @@ napi_value Unmount(napi_env env, napi_callback_info info)
 
     std::string volumeIdString(volumeId.get());
     auto cbExec = [volumeIdString]() -> NError {
-        int32_t result = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Unmount(volumeIdString);
+        int32_t result = OHOS::DiskManager::DiskManagerClient::GetInstance().Unmount(volumeIdString);
         if (result != E_OK) {
             return NError(Convert2JsErrNum(result));
         }
@@ -422,7 +422,7 @@ napi_value GetVolumeByUuid(napi_env env, napi_callback_info info)
     auto volumeInfo = std::make_shared<VolumeExternal>();
     std::string uuidString(uuid.get());
     auto cbExec = [uuidString, volumeInfo]() -> NError {
-        int32_t errNum = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeByUuid(
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetVolumeByUuid(
             uuidString, *volumeInfo);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
@@ -468,7 +468,7 @@ napi_value GetVolumeById(napi_env env, napi_callback_info info)
     auto volumeInfo = std::make_shared<VolumeExternal>();
     std::string volumeIdString(volumeId.get());
     auto cbExec = [volumeIdString, volumeInfo]() -> NError {
-        int32_t errNum = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetVolumeById(
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetVolumeById(
             volumeIdString, *volumeInfo);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
@@ -559,7 +559,7 @@ napi_value SetVolumeDescription(napi_env env, napi_callback_info info)
 
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "SetVolumeDescription", [uuidString, descStr]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->SetVolumeDescription(
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().SetVolumeDescription(
             uuidString, descStr);
     });
 }
@@ -584,7 +584,7 @@ napi_value Format(napi_env env, napi_callback_info info)
 
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "Format", [volumeIdString, fsTypeString]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Format(
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().Format(
             volumeIdString, fsTypeString);
     });
 }
@@ -628,7 +628,7 @@ napi_value Partition(napi_env env, napi_callback_info info)
 
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "Partition", [diskIdString, type]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Partition(diskIdString, type);
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().Partition(diskIdString, type);
     });
 }
 
@@ -641,7 +641,7 @@ napi_value GetAllDisks(napi_env env, napi_callback_info info)
     }
     auto disks = std::make_shared<std::vector<Disk>>();
     auto cbExec = [disks]() -> NError {
-        int32_t errNum = DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->GetAllDisks(*disks);
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetAllDisks(*disks);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -680,7 +680,7 @@ napi_value GetDiskById(napi_env env, napi_callback_info info)
     auto disk = std::make_shared<Disk>();
     auto cbExec = [diskIdStr, disk]() -> NError {
         int32_t errNum =
-            DelayedSingleton<DiskManagerClient>::GetInstance()->GetDiskById(diskIdStr, *disk);
+            DiskManagerClient::GetInstance().GetDiskById(diskIdStr, *disk);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -718,7 +718,7 @@ napi_value Erase(napi_env env, napi_callback_info info)
     std::string volumeIdStr(volumeId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "Erase", [volumeIdStr]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Erase(volumeIdStr);
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().Erase(volumeIdStr);
     });
 }
 
@@ -743,7 +743,7 @@ napi_value Eject(napi_env env, napi_callback_info info)
     std::string diskIdString(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "Eject", [diskIdString]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Eject(diskIdString);
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().Eject(diskIdString);
     });
 }
 
@@ -775,8 +775,7 @@ napi_value CreateIsoImage(napi_env env, napi_callback_info info)
     std::string filePathStr(filePath.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "CreateIsoImage", [volIdStr, filePathStr]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::
-            GetInstance()->CreateIsoImage(volIdStr, filePathStr);
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().CreateIsoImage(volIdStr, filePathStr);
     });
 }
 
@@ -825,7 +824,7 @@ napi_value Burn(napi_env env, napi_callback_info info)
     std::string volumeIdStr(volumeId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "Burn", [volumeIdStr, burnOpts]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->Burn(volumeIdStr, burnOpts);
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().Burn(volumeIdStr, burnOpts);
     });
 }
 
@@ -878,7 +877,7 @@ napi_value VerifyBurnData(napi_env env, napi_callback_info info)
     std::string volIdStr(volumeId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "VerifyBurnData", [volIdStr, vType]() {
-        return DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance()->VerifyBurnData(volIdStr, vType);
+        return OHOS::DiskManager::DiskManagerClient::GetInstance().VerifyBurnData(volIdStr, vType);
     });
 }
 
@@ -953,7 +952,7 @@ napi_value GetPartitionTable(napi_env env, napi_callback_info info)
     std::string diskIdStr(diskId.get());
     auto tableInfo = std::make_shared<PartitionTableInfo>();
     auto cbExec = [diskIdStr, tableInfo]() -> NError {
-        int32_t errNum = DelayedSingleton<DiskManagerClient>::GetInstance()->GetPartitionTable(diskIdStr, *tableInfo);
+        int32_t errNum = DiskManagerClient::GetInstance().GetPartitionTable(diskIdStr, *tableInfo);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -1058,7 +1057,7 @@ napi_value CreatePartition(napi_env env, napi_callback_info info)
     std::string diskIdStr(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "CreatePartition", [diskIdStr, params]() {
-        return DelayedSingleton<DiskManagerClient>::GetInstance()->CreatePartition(diskIdStr, params);
+        return DiskManagerClient::GetInstance().CreatePartition(diskIdStr, params);
     });
 }
 
@@ -1095,7 +1094,7 @@ napi_value DeletePartition(napi_env env, napi_callback_info info)
     std::string diskIdStr(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "DeletePartition", [diskIdStr, partitionNum]() {
-        return DelayedSingleton<DiskManagerClient>::GetInstance()->DeletePartition(diskIdStr, partitionNum);
+        return DiskManagerClient::GetInstance().DeletePartition(diskIdStr, partitionNum);
     });
 }
 
@@ -1182,7 +1181,7 @@ napi_value FormatPartition(napi_env env, napi_callback_info info)
     }
     NVal thisVar(env, funcArg.GetThisVar());
     return PromiseVoidOp(env, thisVar, "FormatPartition", [diskId, partitionNum, params]() {
-        return DelayedSingleton<DiskManagerClient>::GetInstance()->FormatPartition(diskId, partitionNum, params);
+        return DiskManagerClient::GetInstance().FormatPartition(diskId, partitionNum, params);
     });
 }
 
