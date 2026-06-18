@@ -1158,7 +1158,8 @@ int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
         VolumeCore core("0", CD_FLAG, disk.GetDiskId(), MOUNTED, "udf", disk.GetExtraInfo());
         VolumeExternal volExternal(core);
         volExternal.SetFsType(volExternal.GetFsTypeByStr("udf"));
-        volExternal.SetDescription("DVD RW");
+        std::string discType = GetDriverType(disk.GetExtraInfo());
+        volExternal.SetDescription(discType.empty() ? "DVD RW" : discType);
         result.push_back(volExternal);
     }
     out = result;
@@ -1350,7 +1351,7 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
     return DiskManagerErrNo::E_OK;
 }
 
-std::string DiskManager::ExtractDiscTypeFromExtraInfo(const std::string &extraInfo) const
+std::string DiskManager::GetDiscType(const std::string &extraInfo)
 {
     if (extraInfo.empty()) {
         return "";
@@ -1358,7 +1359,7 @@ std::string DiskManager::ExtractDiscTypeFromExtraInfo(const std::string &extraIn
     
     json extraInfoJson = json::parse(extraInfo, nullptr, false);
     if (extraInfoJson.is_discarded() || !extraInfoJson.is_object()) {
-        LOGW("ExtractDiscTypeFromExtraInfo: Failed to parse extraInfo JSON");
+        LOGW("GetDiscType: Failed to parse extraInfo JSON");
         return "";
     }
     
@@ -1372,8 +1373,35 @@ std::string DiskManager::ExtractDiscTypeFromExtraInfo(const std::string &extraIn
     }
     
     std::string discType = oddInfo["DISC_TYPE"].get<std::string>();
-    LOGI("ExtractDiscTypeFromExtraInfo: discType=%{public}s", discType.c_str());
+    LOGI("GetDiscType: discType=%{public}s", discType.c_str());
     return discType;
+}
+
+std::string DiskManager::GetDriverType(const std::string &extraInfo)
+{
+    LOGI("GetDriverType: extraInfo=%{public}s", extraInfo.c_str());
+    if (extraInfo.empty()) {
+        return "";
+    }
+    
+    json extraInfoJson = json::parse(extraInfo, nullptr, false);
+    if (extraInfoJson.is_discarded() || !extraInfoJson.is_object()) {
+        LOGW("GetDriverType: Failed to parse extraInfo JSON");
+        return "";
+    }
+    
+    if (!extraInfoJson.contains("ODD_INFO") || !extraInfoJson["ODD_INFO"].is_object()) {
+        return "";
+    }
+    
+    const auto& oddInfo = extraInfoJson["ODD_INFO"];
+    if (!oddInfo.contains("DRIVE_TYPE") || !oddInfo["DRIVE_TYPE"].is_string()) {
+        return "";
+    }
+    
+    std::string driverType = oddInfo["DRIVE_TYPE"].get<std::string>();
+    LOGI("GetDriverType: driverType=%{public}s", driverType.c_str());
+    return driverType;
 }
 
 int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions)
@@ -1400,7 +1428,7 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
     }
-    std::string discType = ExtractDiscTypeFromExtraInfo(extraInfo);
+    std::string discType = GetDiscType(extraInfo);
     if (!discType.empty() && (discType == "DVD+RW" || discType.find("BD") != std::string::npos)) {
         LOGI("Burn: discType %{public}s requires eject before burn, calling Eject for diskId %{public}s",
              discType.c_str(), diskId.c_str());

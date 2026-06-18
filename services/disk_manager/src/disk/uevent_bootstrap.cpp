@@ -500,7 +500,16 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     if (state == CdromState::EMPTY_DISC) {
         uuid = " ";
         type = "udf";
-        label = "DVD RW";
+        VolumeExternal volume;
+        if (DiskManager::GetInstance().GetVolumeById(volId, volume) == DiskManagerErrNo::E_OK) {
+            const std::string extraInfo = volume.GetExtraInfo();
+            label = DiskManager::GetInstance().GetDriverType(extraInfo);
+            if (label.empty()) {
+                label = "DVD RW";
+            }
+        } else {
+            label = "DVD RW";
+        }
     } else {
         ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
     }
