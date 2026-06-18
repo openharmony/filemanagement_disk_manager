@@ -762,9 +762,12 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         return prepErr;
     }
 
+    const VolumeState previousState = NotifyVolumeEjecting(volumeId, volExternal);
+
     const int32_t err = UnmountVolumeMountPoints(volExternal, forceUnmount);
     if (err != ERR_OK) {
         LOGE("Unmount vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
+        RestoreVolumeState(volumeId, volExternal, previousState);
         return err;
     }
 
@@ -834,9 +837,11 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
     }
 
     if (volExternal.GetState() == VolumeState::DAMAGED_MOUNTED || volExternal.GetState() == VolumeState::MOUNTED) {
+        const VolumeState previousState = NotifyVolumeEjecting(volumeId, volExternal);
         const int32_t umErr = UnmountVolumeMountPoints(volExternal, true);
         if (umErr != ERR_OK) {
             LOGE("TryToFix: Unmount failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), umErr);
+            RestoreVolumeState(volumeId, volExternal, previousState);
             return umErr;
         }
         volExternal.SetPath("");
@@ -2055,6 +2060,31 @@ int32_t DiskManager::RepairAndCheckVolume(VolumeExternal &volExternal, const std
     volExternal.SetState(UNMOUNTED);
     SetVolumeStateLocked(volumeId, UNMOUNTED);
     return E_OK;
+}
+
+VolumeState DiskManager::NotifyVolumeEjecting(const std::string &volumeId, VolumeExternal &volExternal)
+{
+    const VolumeState previousState = volExternal.GetState();
+    volExternal.SetState(EJECTING);
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it != volumeMap_.end()) {
+            it->second.SetState(EJECTING);
+        }
+    }
+    CommonEventPublisher::PublishVolumeChange(EJECTING, volExternal);
+    return previousState;
+}
+
+void DiskManager::RestoreVolumeState(const std::string &volumeId, VolumeExternal &volExternal, VolumeState state)
+{
+    volExternal.SetState(state);
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    const auto it = volumeMap_.find(volumeId);
+    if (it != volumeMap_.end()) {
+        it->second.SetState(state);
+    }
 }
 
 void DiskManager::SaveVolumeFreeSize(VolumeExternal &volExternal)
