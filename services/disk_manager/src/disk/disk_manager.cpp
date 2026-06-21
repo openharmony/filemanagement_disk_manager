@@ -1368,11 +1368,16 @@ std::string DiskManager::GetDiscType(const std::string &extraInfo)
     }
     
     const auto& oddInfo = extraInfoJson["ODD_INFO"];
-    if (!oddInfo.contains("DISC_TYPE") || !oddInfo["DISC_TYPE"].is_string()) {
+    const auto* target = &oddInfo;
+    if (oddInfo.contains("ODD_INFO") && oddInfo["ODD_INFO"].is_object()) {
+        target = &oddInfo["ODD_INFO"];
+    }
+    
+    if (!target->contains("DISC_TYPE") || !(*target)["DISC_TYPE"].is_string()) {
         return "";
     }
     
-    std::string discType = oddInfo["DISC_TYPE"].get<std::string>();
+    std::string discType = (*target)["DISC_TYPE"].get<std::string>();
     LOGI("GetDiscType: discType=%{public}s", discType.c_str());
     return discType;
 }
@@ -1425,16 +1430,16 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
 
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
     if (err != ERR_OK) {
-        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
     }
     std::string discType = GetDiscType(extraInfo);
     if (!discType.empty() && (discType == "DVD+RW" || discType.find("BD") != std::string::npos)) {
-        LOGI("Burn: discType %{public}s requires eject before burn, calling Eject for diskId %{public}s",
+        LOGI("Burn: discType %{public}s requires eject after burn, calling Eject for diskId %{public}s",
              discType.c_str(), diskId.c_str());
         int32_t ejectErr = Eject(diskId);
         if (ejectErr != DiskManagerErrNo::E_OK) {
-            LOGW("Burn: Eject failed with err=%{public}d, but continue burning", ejectErr);
+            LOGW("Burn: Eject failed with err=%{public}d, post-burn eject failed", ejectErr);
         } else {
             LOGI("Burn: Eject succeeded for diskId %{public}s", diskId.c_str());
         }
