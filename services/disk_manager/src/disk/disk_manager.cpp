@@ -1910,30 +1910,34 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
     if (IsDiskNotReady(diskId)) {
         return E_VOL_STATE;
     }
-    std::lock_guard<std::mutex> lock(partitionLock_);
-    if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
-        LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
-        return E_NON_EXIST;
-    }
-    PartitionTableInfo info = partitionTableMap_[diskId];
-    bool partNumValid = false;
-    std::vector<PartitionInfo> infos = info.GetPartitions();
-    for (const auto &item: infos) {
-        if (item.GetPartitionNum() == partitionNum) {
-            partNumValid = true;
-            break;
+    {
+        std::lock_guard<std::mutex> lock(partitionLock_);
+        if (partitionTableMap_.find(diskId) == partitionTableMap_.end()) {
+            LOGE("partition table info not exists, id=%{public}s", diskId.c_str());
+            return E_NON_EXIST;
         }
+        PartitionTableInfo info = partitionTableMap_[diskId];
+        bool partNumValid = false;
+        std::vector<PartitionInfo> infos = info.GetPartitions();
+        for (const auto &item: infos) {
+            if (item.GetPartitionNum() == partitionNum) {
+                partNumValid = true;
+                break;
+            }
+        }
+        if (!partNumValid) {
+            LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
+            return E_NON_EXIST;
+        }
+        int32_t ret = StorageDaemonAdapter::GetInstance().DeletePartition(disk.GetSysPath(), diskId, partitionNum);
+        if (ret != DiskManagerErrNo::E_OK) {
+            LOGE("DeletePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
+            return E_DELETE_PARTITION_ERROR;
+        }
+        DestroyVolumeByDiskIdAndPartNum(diskId, partitionNum);
     }
-    if (!partNumValid) {
-        LOGE("partition num not exists, partitionNum=%{public}d.", partitionNum);
-        return E_NON_EXIST;
-    }
-    int32_t ret = StorageDaemonAdapter::GetInstance().DeletePartition(disk.GetSysPath(), diskId, partitionNum);
-    if (ret != DiskManagerErrNo::E_OK) {
-        LOGE("DeletePartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
-        return E_DELETE_PARTITION_ERROR;
-    }
-    DestroyVolumeByDiskIdAndPartNum(diskId, partitionNum);
+    LOGI("DeletePartition daemon call success, waiting for uevent diskId=%{public}s", diskId.c_str());
+    WaitForPartitionDone(diskId, WAIT_UEVENT_TIMEOUT);
     LOGI("DeletePartition success");
     return DiskManagerErrNo::E_OK;
 }
