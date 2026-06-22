@@ -1353,6 +1353,7 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
 
 std::string DiskManager::GetDiscType(const std::string &extraInfo)
 {
+    LOGI("GetDiscType: extraInfo=%{public}s", extraInfo.c_str());
     if (extraInfo.empty()) {
         return "";
     }
@@ -1368,16 +1369,11 @@ std::string DiskManager::GetDiscType(const std::string &extraInfo)
     }
     
     const auto& oddInfo = extraInfoJson["ODD_INFO"];
-    const auto* target = &oddInfo;
-    if (oddInfo.contains("ODD_INFO") && oddInfo["ODD_INFO"].is_object()) {
-        target = &oddInfo["ODD_INFO"];
-    }
-    
-    if (!target->contains("DISC_TYPE") || !(*target)["DISC_TYPE"].is_string()) {
+    if (!oddInfo.contains("DISC_TYPE") || !oddInfo["DISC_TYPE"].is_string()) {
         return "";
     }
     
-    std::string discType = (*target)["DISC_TYPE"].get<std::string>();
+    std::string discType = oddInfo["DISC_TYPE"].get<std::string>();
     LOGI("GetDiscType: discType=%{public}s", discType.c_str());
     return discType;
 }
