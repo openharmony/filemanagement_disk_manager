@@ -272,7 +272,7 @@ int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
             LOGE("the caller is not sysapp");
             return E_SYS_APP_PERMISSION_DENIED;
         }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
             LOGE("GetAllDisks: permission denied");
             return E_PERMISSION_DENIED;
         }
