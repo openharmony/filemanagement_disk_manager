@@ -39,14 +39,8 @@ namespace ANI::VolumeManager {
 
 ohos::file::volumeManager::Volume GetVolumeByUuidSync(taihe::string_view uuid)
 {
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return {"", "", "", "", true, 0, "", "", "", 0};
-    }
     auto volumeInfo = std::make_shared<OHOS::DiskManager::VolumeExternal>();
-    int32_t errNum = instance->GetVolumeByUuid(uuid.c_str(), *volumeInfo);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetVolumeByUuid(uuid.c_str(), *volumeInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return {"", "", "", "", true, 0, "", "", "", 0};
@@ -65,14 +59,8 @@ ohos::file::volumeManager::Volume GetVolumeByUuidSync(taihe::string_view uuid)
 
 taihe::array<ohos::file::volumeManager::Volume> GetAllVolumesSync()
 {
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return taihe::array<ohos::file::volumeManager::Volume>::make(0, ohos::file::volumeManager::Volume{});
-    }
     auto volumeInfo = std::make_shared<std::vector<OHOS::DiskManager::VolumeExternal>>();
-    int32_t errNum = instance->GetAllVolumes(*volumeInfo);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetAllVolumes(*volumeInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return taihe::array<ohos::file::volumeManager::Volume>::make(0, ohos::file::volumeManager::Volume{});
@@ -96,13 +84,7 @@ void FormatSync(::taihe::string_view volumeId, ::taihe::string_view fsType)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t result = instance->Format(volumeIdString, fsTypeString);
+    int32_t result = OHOS::DiskManager::DiskManagerClient::GetInstance().Format(volumeIdString, fsTypeString);
     if (result != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(result);
         return;
@@ -118,13 +100,7 @@ ohos::file::volumeManager::Volume GetVolumeByIdSync(::taihe::string_view volumeI
         return {"", "", "", "", true, 0, "", "", "", 0};
     }
     auto volumeInfo = std::make_shared<OHOS::DiskManager::VolumeExternal>();
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return {"", "", "", "", true, 0, "", "", "", 0};
-    }
-    int32_t errNum = instance->GetVolumeById(volumeIdString, *volumeInfo);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetVolumeById(volumeIdString, *volumeInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return {"", "", "", "", true, 0, "", "", "", 0};
@@ -149,14 +125,8 @@ void MountSync(::taihe::string_view volumeId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
 
-    int32_t errNum = instance->Mount(volumeIdString);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Mount(volumeIdString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -171,13 +141,7 @@ void UnmountSync(::taihe::string_view volumeId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->Unmount(volumeIdString);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Unmount(volumeIdString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -192,13 +156,7 @@ void PartitionSync(::taihe::string_view diskId, int32_t type)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->Partition(diskIdString, type);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Partition(diskIdString, type);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -214,13 +172,7 @@ void SetVolumeDescriptionSync(::taihe::string_view uuid, ::taihe::string_view de
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->SetVolumeDescription(uuidString, descStr);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().SetVolumeDescription(uuidString, descStr);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -232,13 +184,7 @@ void SetVolumeDescriptionSync(::taihe::string_view uuid, ::taihe::string_view de
 ohos::file::volumeManager::Disk GetDiskByIdSync(::taihe::string_view diskId)
 {
     auto diskInfo = std::make_shared<OHOS::DiskManager::Disk>();
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return MakeEmptyTaiheDisk();
-    }
-    int32_t errNum = instance->GetDiskById(std::string(diskId), *diskInfo);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetDiskById(std::string(diskId), *diskInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return MakeEmptyTaiheDisk();
@@ -259,14 +205,8 @@ ohos::file::volumeManager::Disk GetDiskByIdSync(::taihe::string_view diskId)
 
 taihe::array<ohos::file::volumeManager::Disk> GetAllDisksSync()
 {
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return taihe::array<ohos::file::volumeManager::Disk>::make(0, MakeEmptyTaiheDisk());
-    }
     auto disks = std::make_shared<std::vector<OHOS::DiskManager::Disk>>();
-    int32_t errNum = instance->GetAllDisks(*disks);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetAllDisks(*disks);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return taihe::array<ohos::file::volumeManager::Disk>::make(0, MakeEmptyTaiheDisk());
@@ -292,14 +232,9 @@ taihe::array<ohos::file::volumeManager::Disk> GetAllDisksSync()
 
 ohos::file::volumeManager::PartitionTableInfo GetPartitionTableSync(::taihe::string_view diskId)
 {
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return {};
-    }
     auto tableInfo = std::make_shared<OHOS::DiskManager::PartitionTableInfo>();
-    int32_t errNum = instance->GetPartitionTable(std::string(diskId), *tableInfo);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetPartitionTable(
+        std::string(diskId), *tableInfo);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return {};
@@ -328,13 +263,8 @@ void CreatePartitionSync(::taihe::string_view diskId, const ohos::file::volumeMa
     nativeParams.SetStartSector(params.startSector);
     nativeParams.SetEndSector(params.endSector);
     nativeParams.SetTypeCode(std::string(params.typeCode));
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->CreatePartition(std::string(diskId), nativeParams);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().CreatePartition(
+        std::string(diskId), nativeParams);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -343,13 +273,8 @@ void CreatePartitionSync(::taihe::string_view diskId, const ohos::file::volumeMa
 
 void DeletePartitionSync(::taihe::string_view diskId, int32_t partitionNum)
 {
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->DeletePartition(std::string(diskId), partitionNum);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().DeletePartition(
+        std::string(diskId), partitionNum);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -368,13 +293,8 @@ void FormatPartitionSync(::taihe::string_view diskId, int32_t partitionNum,
         std::string volName = std::string(params.volumeName.value());
         nativeParams.SetVolumeName(volName);
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->FormatPartition(std::string(diskId), partitionNum, nativeParams);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().FormatPartition(
+        std::string(diskId), partitionNum, nativeParams);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -391,13 +311,7 @@ void EraseSync(::taihe::string_view volumeId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->Erase(volumeIdString);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Erase(volumeIdString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -412,13 +326,7 @@ void EjectSync(::taihe::string_view diskId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->Eject(diskIdString);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Eject(diskIdString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -434,13 +342,7 @@ void CreateIsoImageSync(::taihe::string_view volumeId, ::taihe::string_view path
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->CreateIsoImage(volumeIdString, pathString);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().CreateIsoImage(volumeIdString, pathString);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -465,13 +367,7 @@ void BurnSync(::taihe::string_view volumeId, const ohos::file::volumeManager::Bu
     oss << "fsType=" << std::string(options.fsType) << '\n';
     oss << "isIncBurnSupport=" << (options.isIncBurnSupport ? "true" : "false") << '\n';
 
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
-    int32_t errNum = instance->Burn(volumeIdString, oss.str());
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Burn(volumeIdString, oss.str());
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;
@@ -486,14 +382,8 @@ int32_t GetOpProcessSync(::taihe::string_view volumeId)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return -1;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return -1;
-    }
     int32_t progress = 0;
-    int32_t errNum = instance->GetVolumeOpProcess(volumeIdString, progress);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetVolumeOpProcess(volumeIdString, progress);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return -1;
@@ -509,14 +399,8 @@ void VerifyBurnDataSync(::taihe::string_view volumeId, int32_t verifyType)
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return;
     }
-    auto instance = OHOS::DelayedSingleton<OHOS::DiskManager::DiskManagerClient>::GetInstance();
-    if (instance == nullptr) {
-        LOGE("Get DiskManagerClient instance failed");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_IPCSS);
-        return;
-    }
     int32_t vType = static_cast<int32_t>(verifyType);
-    int32_t errNum = instance->VerifyBurnData(volumeIdString, vType);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().VerifyBurnData(volumeIdString, vType);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;

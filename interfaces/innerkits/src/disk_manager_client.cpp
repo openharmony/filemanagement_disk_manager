@@ -30,6 +30,12 @@
 namespace OHOS {
 namespace DiskManager {
 
+DiskManagerClient &DiskManagerClient::GetInstance()
+{
+    static DiskManagerClient instance_;
+    return instance_;
+}
+
 namespace {
 constexpr int32_t SA_LOAD_WAIT_TIMEOUT_MS = 30000;
 constexpr int32_t IPC_OK = 0;
@@ -41,8 +47,7 @@ public:
     void OnRemoteDied(const wptr<IRemoteObject> &remote) override
     {
         (void)remote;
-        DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
-        client.ResetProxy();
+        DiskManagerClient::GetInstance().ResetProxy();
     }
 };
 
@@ -125,8 +130,6 @@ int32_t GetDiskManagerSaObject(ISystemAbilityManager &mgr, sptr<IRemoteObject> &
 }
 
 } // namespace
-
-DiskManagerClient::DiskManagerClient() {}
 
 DiskManagerClient::~DiskManagerClient()
 {

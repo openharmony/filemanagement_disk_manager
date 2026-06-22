@@ -69,7 +69,7 @@ HWTEST_F(DiskManagerClientTest, ResetProxyTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ResetProxyTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     int32_t ret = client.ResetProxy();
     EXPECT_EQ(ret, E_OK);
 
@@ -86,7 +86,7 @@ HWTEST_F(DiskManagerClientTest, ResetProxyTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ResetProxyTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     for (int i = 0; i < 3; ++i) {
         int32_t ret = client.ResetProxy();
         EXPECT_EQ(ret, E_OK);
@@ -105,7 +105,7 @@ HWTEST_F(DiskManagerClientTest, MountTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "MountTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Mount("");
     EXPECT_NE(ret, E_OK);
@@ -123,7 +123,7 @@ HWTEST_F(DiskManagerClientTest, MountTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "MountTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Mount(TEST_VOLUME_ID);
     EXPECT_NE(ret, E_OK);
@@ -141,7 +141,7 @@ HWTEST_F(DiskManagerClientTest, UnmountTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "UnmountTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Unmount("");
     EXPECT_NE(ret, E_OK);
@@ -159,7 +159,7 @@ HWTEST_F(DiskManagerClientTest, UnmountTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "UnmountTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Unmount(TEST_VOLUME_ID);
     EXPECT_NE(ret, E_OK);
@@ -177,7 +177,7 @@ HWTEST_F(DiskManagerClientTest, FormatTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "FormatTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Format("", TEST_FS_TYPE);
     EXPECT_NE(ret, E_OK);
@@ -195,7 +195,7 @@ HWTEST_F(DiskManagerClientTest, FormatTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "FormatTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Format(TEST_VOLUME_ID, TEST_FS_TYPE);
     EXPECT_NE(ret, E_OK);
@@ -213,7 +213,7 @@ HWTEST_F(DiskManagerClientTest, FormatTest003, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "FormatTest003 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Format(TEST_VOLUME_ID, "");
     EXPECT_NE(ret, E_OK);
@@ -231,7 +231,7 @@ HWTEST_F(DiskManagerClientTest, SetVolumeDescriptionTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "SetVolumeDescriptionTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.SetVolumeDescription("", TEST_DESCRIPTION);
     EXPECT_NE(ret, E_OK);
@@ -249,7 +249,7 @@ HWTEST_F(DiskManagerClientTest, SetVolumeDescriptionTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "SetVolumeDescriptionTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.SetVolumeDescription(TEST_FS_UUID, TEST_DESCRIPTION);
     EXPECT_NE(ret, E_OK);
@@ -267,7 +267,7 @@ HWTEST_F(DiskManagerClientTest, GetAllVolumesTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "GetAllVolumesTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     std::vector<VolumeExternal> volumes;
     int32_t ret = client.GetAllVolumes(volumes);
@@ -287,7 +287,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByUuidTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "GetVolumeByUuidTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeByUuid("", vol);
@@ -306,7 +306,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByUuidTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "GetVolumeByUuidTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeByUuid(TEST_FS_UUID, vol);
@@ -325,7 +325,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByIdTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "GetVolumeByIdTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeById("", vol);
@@ -344,7 +344,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByIdTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "GetVolumeByIdTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeById(TEST_VOLUME_ID, vol);
@@ -363,7 +363,7 @@ HWTEST_F(DiskManagerClientTest, PartitionTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "PartitionTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Partition("", TEST_PARTITION_TYPE);
     EXPECT_NE(ret, E_OK);
@@ -381,7 +381,7 @@ HWTEST_F(DiskManagerClientTest, PartitionTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "PartitionTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Partition(TEST_DISK_ID, TEST_PARTITION_TYPE);
     EXPECT_NE(ret, E_OK);
@@ -399,7 +399,7 @@ HWTEST_F(DiskManagerClientTest, PartitionTest003, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "PartitionTest003 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
 
     int32_t types[] = {0, 1, 2};
@@ -421,7 +421,7 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUeventTest001 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.OnBlockDiskUevent("");
     EXPECT_NE(ret, E_OK);
@@ -439,7 +439,7 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUeventTest002 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     std::string ueventMsg = "ACTION=add\nDEVTYPE=disk\nDISK=test-disk\n";
     int32_t ret = client.OnBlockDiskUevent(ueventMsg);
@@ -458,7 +458,7 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest003, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUeventTest003 Start";
 
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
 
     std::vector<std::string> messages = {
@@ -476,7 +476,7 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest003, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int64_t freeSize = 0;
     int32_t ret = client.GetFreeSizeOfVolume(TEST_VOLUME_ID, freeSize);
@@ -485,7 +485,7 @@ HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int64_t totalSize = 0;
     int32_t ret = client.GetTotalSizeOfVolume(TEST_VOLUME_ID, totalSize);
@@ -494,7 +494,7 @@ HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, GetAllDisksTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     std::vector<Disk> disks;
     int32_t ret = client.GetAllDisks(disks);
@@ -503,7 +503,7 @@ HWTEST_F(DiskManagerClientTest, GetAllDisksTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, GetDiskByIdTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     Disk disk;
     int32_t ret = client.GetDiskById(TEST_DISK_ID, disk);
@@ -512,7 +512,7 @@ HWTEST_F(DiskManagerClientTest, GetDiskByIdTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, EraseTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Erase(TEST_VOLUME_ID);
     EXPECT_NE(ret, E_OK);
@@ -520,7 +520,7 @@ HWTEST_F(DiskManagerClientTest, EraseTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, EjectTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Eject(TEST_DISK_ID);
     EXPECT_NE(ret, E_OK);
@@ -528,7 +528,7 @@ HWTEST_F(DiskManagerClientTest, EjectTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, CreateIsoImageTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.CreateIsoImage(TEST_VOLUME_ID, "/tmp/test.iso");
     EXPECT_NE(ret, E_OK);
@@ -536,7 +536,7 @@ HWTEST_F(DiskManagerClientTest, CreateIsoImageTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, BurnTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Burn(TEST_VOLUME_ID, "burnOptions");
     EXPECT_NE(ret, E_OK);
@@ -544,7 +544,7 @@ HWTEST_F(DiskManagerClientTest, BurnTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, GetVolumeOpProcessTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t progressPct = 0;
     int32_t ret = client.GetVolumeOpProcess(TEST_VOLUME_ID, progressPct);
@@ -553,7 +553,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeOpProcessTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.TryToFix(TEST_VOLUME_ID);
     EXPECT_NE(ret, E_OK);
@@ -561,7 +561,7 @@ HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     bool isUsbFuse = false;
     int32_t ret = client.IsUsbFuseByType(0, isUsbFuse);
@@ -570,7 +570,7 @@ HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.NotifyMtpMounted("mtp-1", "/mnt/mtp", "desc", "uuid", "vfat");
     EXPECT_EQ(ret, E_OK);
@@ -578,7 +578,7 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.NotifyMtpUnmounted("mtp-1", false);
     EXPECT_EQ(ret, E_OK);
@@ -586,7 +586,7 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, GetPartitionTableTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     PartitionTableInfo info;
     int32_t ret = client.GetPartitionTable(TEST_DISK_ID, info);
@@ -595,7 +595,7 @@ HWTEST_F(DiskManagerClientTest, GetPartitionTableTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, CreatePartitionTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     PartitionParams params;
     int32_t ret = client.CreatePartition(TEST_DISK_ID, params);
@@ -604,7 +604,7 @@ HWTEST_F(DiskManagerClientTest, CreatePartitionTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, DeletePartitionTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.DeletePartition(TEST_DISK_ID, 1);
     EXPECT_NE(ret, E_OK);
@@ -612,7 +612,7 @@ HWTEST_F(DiskManagerClientTest, DeletePartitionTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, FormatPartitionTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     FormatParams params;
     int32_t ret = client.FormatPartition(TEST_DISK_ID, 1, params);
@@ -621,7 +621,7 @@ HWTEST_F(DiskManagerClientTest, FormatPartitionTest001, TestSize.Level1)
 
 HWTEST_F(DiskManagerClientTest, VerifyBurnDataTest001, TestSize.Level1)
 {
-    DiskManagerClient &client = *DelayedSingleton<DiskManagerClient>::GetInstance();
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.VerifyBurnData(TEST_VOLUME_ID, 0);
     EXPECT_NE(ret, E_OK);
