@@ -407,6 +407,23 @@ void VerifyBurnDataSync(::taihe::string_view volumeId, int32_t verifyType)
     }
 }
 
+bool QueryUsbIsInUseSync(::taihe::string_view diskPath)
+{
+    std::string diskPathString = std::string(diskPath);
+    if (diskPathString.empty()) {
+        LOGE("Invalid parameter, diskPath is empty");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return false;
+    }
+    bool isInUse = true;
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(diskPathString, isInUse);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return isInUse;
+    }
+    return isInUse;
+}
+
 } // namespace ANI::VolumeManager
 
 // Since these macros are auto-generate, lint will cause false positive.
@@ -437,4 +454,5 @@ TH_EXPORT_CPP_API_CreateIsoImageSync(ANI::VolumeManager::CreateIsoImageSync);
 TH_EXPORT_CPP_API_BurnSync(ANI::VolumeManager::BurnSync);
 TH_EXPORT_CPP_API_GetOpProcessSync(ANI::VolumeManager::GetOpProcessSync);
 TH_EXPORT_CPP_API_VerifyBurnDataSync(ANI::VolumeManager::VerifyBurnDataSync);
+TH_EXPORT_CPP_API_QueryUsbIsInUseSync(ANI::VolumeManager::QueryUsbIsInUseSync);
 // NOLINTEND

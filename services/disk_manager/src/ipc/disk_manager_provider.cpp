@@ -36,6 +36,10 @@ namespace DiskManager {
 using namespace OHOS::DiskManager;
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
+constexpr const char *PATH_INVALID_FLAG1 = "../";
+constexpr const char *PATH_INVALID_FLAG2 = "/..";
+constexpr int32_t PATH_INVALID_FLAG_LEN = 3;
+constexpr char FILE_SEPARATOR_CHAR = '/';
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
@@ -59,6 +63,24 @@ void DiskManagerProvider::OnStart()
 void DiskManagerProvider::OnStop()
 {
     LOGI("OnStop");
+}
+
+static bool IsFilePathInvalid(const std::string &filePath)
+{
+    size_t pos = filePath.find(PATH_INVALID_FLAG1);
+    while (pos != std::string::npos) {
+        if (pos == 0 || filePath[pos - 1] == FILE_SEPARATOR_CHAR) {
+            LOGE("Relative path is not allowed, path contain ../");
+            return true;
+        }
+        pos = filePath.find(PATH_INVALID_FLAG1, pos + PATH_INVALID_FLAG_LEN);
+    }
+    pos = filePath.rfind(PATH_INVALID_FLAG2);
+    if ((pos != std::string::npos) && (filePath.size() - pos == PATH_INVALID_FLAG_LEN)) {
+        LOGE("Relative path is not allowed, path tail is /..");
+        return true;
+    }
+    return false;
 }
 
 bool DiskManagerProvider::CheckClientPermission()
@@ -307,10 +329,25 @@ int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
 int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)
 {
     LOGI("QueryUsbIsInUse pathLen=%{public}zu", diskPath.size());
-    isInUse = false;
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("the caller is not sysapp");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    if (diskPath.empty()) {
+        LOGI("diskPath is empty.");
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(diskPath)) {
+        LOGI("diskPath is invalid.");
+        return E_PARAMS_INVALID;
+    }
+    isInUse = true;
     const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
     LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
-    return err;
+    return err != DiskManagerErrNo::E_OK ? E_QUERY_USB_IN_USE_ERROR : DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::IsUsbFuseByType(int32_t type, bool &isUsbFuse)

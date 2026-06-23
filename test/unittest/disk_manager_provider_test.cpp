@@ -465,7 +465,7 @@ HWTEST_F(DiskManagerProviderTest, IsUsbFuseByType_TestCase_004, TestSize.Level0)
 
 /**
  * @tc.name: QueryUsbIsInUse_TestCase_001
- * @tc.desc: QueryUsbIsInUse delegates to StorageDaemonAdapter and returns result.
+ * @tc.desc: QueryUsbIsInUse delegates to StorageDaemonAdapter and returns result with isInUse=true.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -484,7 +484,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: QueryUsbIsInUse_TestCase_002
- * @tc.desc: QueryUsbIsInUse initializes isInUse=false before delegating.
+ * @tc.desc: QueryUsbIsInUse returns E_QUERY_USB_IN_USE_ERROR when adapter returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -496,14 +496,14 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_002, TestSize.Level0)
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-2", isInUse);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_QUERY_USB_IN_USE_ERROR);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_002 End";
 }
 
 /**
  * @tc.name: QueryUsbIsInUse_TestCase_003
- * @tc.desc: QueryUsbIsInUse returns adapter error code when IPC fails.
+ * @tc.desc: QueryUsbIsInUse returns result with isInUse=false.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -518,6 +518,95 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_003, TestSize.Level0)
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_003 End";
+}
+
+/**
+ * @tc.name: QueryUsbIsInUse_NotSysApp_001
+ * @tc.desc: QueryUsbIsInUse returns E_SYS_APP_PERMISSION_DENIED when caller is not system app.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_NotSysApp_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_NotSysApp_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_isSystemApp = false;
+    bool isInUse = false;
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1", isInUse);
+    EXPECT_EQ(ret, E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_FALSE(isInUse);
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_NotSysApp_001 End";
+}
+
+/**
+ * @tc.name: QueryUsbIsInUse_PermissionDenied_001
+ * @tc.desc: QueryUsbIsInUse returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    bool isInUse = false;
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1", isInUse);
+    EXPECT_EQ(ret, E_PERMISSION_DENIED);
+    EXPECT_FALSE(isInUse);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: QueryUsbIsInUse_EmptyPath_001
+ * @tc.desc: QueryUsbIsInUse returns E_PARAMS_INVALID when diskPath is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_EmptyPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_EmptyPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    bool isInUse = false;
+    int32_t ret = provider.QueryUsbIsInUse("", isInUse);
+    EXPECT_EQ(ret, E_PARAMS_INVALID);
+    EXPECT_FALSE(isInUse);
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_EmptyPath_001 End";
+}
+
+/**
+ * @tc.name: QueryUsbIsInUse_InvalidPath_001
+ * @tc.desc: QueryUsbIsInUse returns E_PARAMS_INVALID when diskPath contains ../ relative path.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    bool isInUse = false;
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/../disk-1", isInUse);
+    EXPECT_EQ(ret, E_PARAMS_INVALID);
+    EXPECT_FALSE(isInUse);
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: QueryUsbIsInUse_InvalidPath_002
+ * @tc.desc: QueryUsbIsInUse returns E_PARAMS_INVALID when diskPath ends with /..
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_InvalidPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    bool isInUse = false;
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1/..", isInUse);
+    EXPECT_EQ(ret, E_PARAMS_INVALID);
+    EXPECT_FALSE(isInUse);
+    GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_002 End";
 }
 
 /**
