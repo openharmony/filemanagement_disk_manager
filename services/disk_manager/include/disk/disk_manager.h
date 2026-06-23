@@ -169,6 +169,9 @@ private:
     void WaitForPartitionDone(const std::string &diskId, int32_t timeoutMs);
 
     void SaveVolumeFreeSize(VolumeExternal &volume);
+    /** 卸载前置 EJECTING 状态并发送 COMMON_EVENT_VOLUME_EJECT，返回操作前状态。 */
+    int32_t NotifyVolumeEjecting(const std::string &volumeId, VolumeExternal &volExternal);
+    void RestoreVolumeState(const std::string &volumeId, VolumeExternal &volExternal, int32_t state);
     void SetVolumeStateLocked(const std::string &volumeId, VolumeState state);
     void PublishFormatFailEvent(const std::string &volumeId);
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
