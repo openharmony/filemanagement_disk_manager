@@ -407,16 +407,16 @@ void VerifyBurnDataSync(::taihe::string_view volumeId, int32_t verifyType)
     }
 }
 
-bool QueryUsbIsInUseSync(::taihe::string_view diskPath)
+bool IsVolumeInUseSync(::taihe::string_view volumePath)
 {
-    std::string diskPathString = std::string(diskPath);
-    if (diskPathString.empty()) {
-        LOGE("Invalid parameter, diskPath is empty");
+    std::string volumePathString = std::string(volumePath);
+    if (volumePathString.empty()) {
+        LOGE("Invalid parameter, volumePath is empty");
         OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
         return false;
     }
     bool isInUse = true;
-    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(diskPathString, isInUse);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(volumePathString, isInUse);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return isInUse;
@@ -454,5 +454,5 @@ TH_EXPORT_CPP_API_CreateIsoImageSync(ANI::VolumeManager::CreateIsoImageSync);
 TH_EXPORT_CPP_API_BurnSync(ANI::VolumeManager::BurnSync);
 TH_EXPORT_CPP_API_GetOpProcessSync(ANI::VolumeManager::GetOpProcessSync);
 TH_EXPORT_CPP_API_VerifyBurnDataSync(ANI::VolumeManager::VerifyBurnDataSync);
-TH_EXPORT_CPP_API_QueryUsbIsInUseSync(ANI::VolumeManager::QueryUsbIsInUseSync);
+TH_EXPORT_CPP_API_IsVolumeInUseSync(ANI::VolumeManager::IsVolumeInUseSync);
 // NOLINTEND

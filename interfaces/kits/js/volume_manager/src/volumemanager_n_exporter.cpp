@@ -881,7 +881,7 @@ napi_value VerifyBurnData(napi_env env, napi_callback_info info)
     });
 }
 
-napi_value QueryUsbIsInUse(napi_env env, napi_callback_info info)
+napi_value IsVolumeInUse(napi_env env, napi_callback_info info)
 {
     NFuncArg funcArg(env, info);
     if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
@@ -889,16 +889,16 @@ napi_value QueryUsbIsInUse(napi_env env, napi_callback_info info)
         return nullptr;
     }
     bool succ = false;
-    std::unique_ptr<char[]> diskPath;
-    std::tie(succ, diskPath, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    std::unique_ptr<char[]> volumePath;
+    std::tie(succ, volumePath, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
     if (!succ) {
         NError(E_PARAMS).ThrowErr(env);
         return nullptr;
     }
-    std::string diskPathStr(diskPath.get());
+    std::string volumePathStr(volumePath.get());
     auto isInUse = std::make_shared<bool>(true);
-    auto cbExec = [diskPathStr, isInUse]() -> NError {
-        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(diskPathStr, *isInUse);
+    auto cbExec = [volumePathStr, isInUse]() -> NError {
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(volumePathStr, *isInUse);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -911,7 +911,7 @@ napi_value QueryUsbIsInUse(napi_env env, napi_callback_info info)
         return {NVal::CreateBool(env, *isInUse)};
     };
     NVal thisVar(env, funcArg.GetThisVar());
-    return NAsyncWorkPromise(env, thisVar).Schedule("QueryUsbIsInUse", cbExec, cbComplete).val_;
+    return NAsyncWorkPromise(env, thisVar).Schedule("IsVolumeInUse", cbExec, cbComplete).val_;
 }
 
 // ========== Partition management APIs ==========
@@ -1240,7 +1240,7 @@ static napi_property_descriptor g_properties[] = {
     DECLARE_NAPI_FUNCTION("burn", Burn),
     DECLARE_NAPI_FUNCTION("getOpProcess", GetOpProcess),
     DECLARE_NAPI_FUNCTION("verifyBurnData", VerifyBurnData),
-    DECLARE_NAPI_FUNCTION("queryUsbIsInUse", QueryUsbIsInUse),
+    DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
     // 分区管理接口 (since 26.0.0)
     DECLARE_NAPI_FUNCTION("getPartitionTable", GetPartitionTable),
     DECLARE_NAPI_FUNCTION("createPartition", CreatePartition),

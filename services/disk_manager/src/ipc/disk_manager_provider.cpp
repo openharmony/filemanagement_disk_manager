@@ -347,7 +347,7 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
     isInUse = true;
     const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
     LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
-    return err != DiskManagerErrNo::E_OK ? E_QUERY_USB_IN_USE_ERROR : DiskManagerErrNo::E_OK;
+    return err != DiskManagerErrNo::E_OK ? E_QUERY_VOLUME_IN_USE_ERROR : DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
