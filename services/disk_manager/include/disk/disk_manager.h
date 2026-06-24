@@ -196,6 +196,7 @@ private:
     std::map<std::string, bool> partitionDoneMap_;
     std::map<std::string, PartitionTableInfo> partitionTableMap_;
     std::set<std::string> partitioningDiskIds_;
+    mutable std::shared_mutex oddMutex_;
 };
 
 } // namespace DiskManager

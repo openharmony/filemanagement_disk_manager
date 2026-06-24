@@ -1239,6 +1239,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         int64_t totalSize = 0;
         int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
         int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+        std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
         const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
         LOGI("totalSize is %{public}" PRIu64 " freeSize is %{public}" PRIu64 ", ret val is %{public}d",
              static_cast<uint64_t>(totalSize), static_cast<uint64_t>(freeSize), oddRet);
@@ -1280,6 +1281,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     }
     if (IsOddFsType(fsType)) {
         int64_t freeSize = 0;
+        std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
         (void)GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
         return DiskManagerErrNo::E_OK;
     }
@@ -1324,7 +1326,7 @@ int32_t DiskManager::Eject(const std::string &diskId)
     std::string devName = disk.GetDevName();
     int32_t err = StorageDaemonAdapter::GetInstance().Eject(devName);
     if (err != ERR_OK) {
-        LOGE("Erase diskId %{public}s err=%{public}d", diskId.c_str(), err);
+        LOGE("Eject diskId %{public}s err=%{public}d", diskId.c_str(), err);
         return err;
     }
     return DiskManagerErrNo::E_OK;
@@ -1350,7 +1352,7 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
     int32_t err = StorageDaemonAdapter::GetInstance().CreateIsoImage("/dev/block/" + blockVolId,
                                                                      filePath, fsType, mountedPath);
     if (err != ERR_OK) {
-        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        LOGE("CreateIsoImage vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
     }
     return DiskManagerErrNo::E_OK;
@@ -1462,7 +1464,7 @@ int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &pr
     }
     int32_t err = StorageDaemonAdapter::GetInstance().GetVolumeOpProcess(blockVolId, progressPct);
     if (err != ERR_OK) {
-        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        LOGE("GetVolumeOpProcess vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
     }
     LOGI("DiskManager GetVolumeOpProcess volumeId = %{public}s, progressPct = %{public}d",
@@ -1484,7 +1486,7 @@ int32_t DiskManager::VerifyBurnData(const std::string &volumeId, int32_t verifyT
     }
     int32_t err = StorageDaemonAdapter::GetInstance().VerifyBurnData("/dev/block/" + blockVolId, verifyType);
     if (err != ERR_OK) {
-        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
+        LOGE("VerifyBurnData vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
     }
     return DiskManagerErrNo::E_OK;
