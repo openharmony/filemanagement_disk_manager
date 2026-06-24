@@ -881,6 +881,39 @@ napi_value VerifyBurnData(napi_env env, napi_callback_info info)
     });
 }
 
+napi_value IsVolumeInUse(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    bool succ = false;
+    std::unique_ptr<char[]> volumePath;
+    std::tie(succ, volumePath, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    std::string volumePathStr(volumePath.get());
+    auto isInUse = std::make_shared<bool>(true);
+    auto cbExec = [volumePathStr, isInUse]() -> NError {
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(volumePathStr, *isInUse);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [isInUse](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return {NVal::CreateBool(env, *isInUse)};
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("IsVolumeInUse", cbExec, cbComplete).val_;
+}
+
 // ========== Partition management APIs ==========
 
 // 辅助函数：构建单个分区信息JS对象
@@ -1212,6 +1245,7 @@ static napi_property_descriptor g_properties[] = {
     DECLARE_NAPI_FUNCTION("createPartition", CreatePartition),
     DECLARE_NAPI_FUNCTION("deletePartition", DeletePartition),
     DECLARE_NAPI_FUNCTION("formatPartition", FormatPartition),
+    DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
 };
 
 // 辅助函数：导出模块枚举类型

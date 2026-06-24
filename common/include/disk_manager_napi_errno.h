@@ -66,6 +66,7 @@ enum class DiskManagerNativeErr : int32_t {
     E_DELETE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1745,
     E_FORMAT_PARTITION_NOT_SUPPORT = STORAGE_SERVICE_SYS_CAP_TAG + 1748,
     E_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1750,
+    E_QUERY_VOLUME_IN_USE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1751,
 };
 
 /** JS / Taihe 业务错误码（与 storage_service 原 JsErrCode 数值一致） */
@@ -104,6 +105,7 @@ enum class DiskManagerJsErr : int32_t {
     E_JS_EXT_VERIFY_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 30,
     E_JS_EXT_VERIFY_MISMATCH = STORAGE_SERVICE_SYS_CAP_TAG + 31,
     E_JS_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 32,
+    E_JS_QUERY_VOLUME_IN_USE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 33,
 };
 
 constexpr int32_t E_OK = static_cast<int32_t>(DiskManagerNativeErr::E_OK);
@@ -152,6 +154,7 @@ constexpr int32_t E_DELETE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNat
 constexpr int32_t E_FORMAT_PARTITION_NOT_SUPPORT =
     static_cast<int32_t>(DiskManagerNativeErr::E_FORMAT_PARTITION_NOT_SUPPORT);
 constexpr int32_t E_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_FORMAT_PARTITION_ERROR);
+constexpr int32_t E_QUERY_VOLUME_IN_USE_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_QUERY_VOLUME_IN_USE_ERROR);
 
 constexpr int32_t E_PERMISSION = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION);
 constexpr int32_t E_PERMISSION_SYS = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION_SYS);
@@ -183,6 +186,8 @@ constexpr int32_t E_JS_GET_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsE
 constexpr int32_t E_JS_CREATE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_CREATE_PARTITION_ERROR);
 constexpr int32_t E_JS_DELETE_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_DELETE_PARTITION_ERROR);
 constexpr int32_t E_JS_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_FORMAT_PARTITION_ERROR);
+constexpr int32_t E_JS_QUERY_VOLUME_IN_USE_ERROR =
+    static_cast<int32_t>(DiskManagerJsErr::E_JS_QUERY_VOLUME_IN_USE_ERROR);
 
 /** volumeManager 光盘/刻录扩展 JS 错误码 */
 constexpr int32_t E_JS_EXT_EMPTY_DISC = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_EMPTY_DISC);

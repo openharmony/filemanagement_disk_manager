@@ -535,6 +535,5 @@ int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t pa
     IDiskManager &dm = *proxy;
     return dm.FormatPartition(diskId, partitionNum, params);
 }
-
 } // namespace DiskManager
 } // namespace OHOS

@@ -174,3 +174,7 @@ function GetOpProcessSync(volumeId: String): i32;
 @gen_async("verifyBurnData")
 @gen_promise("verifyBurnData")
 function VerifyBurnDataSync(volumeId: String, verifyType: i32): void;
+
+@gen_async("isVolumeInUse")
+@gen_promise("isVolumeInUse")
+function IsVolumeInUseSync(volumePath: String): bool;
