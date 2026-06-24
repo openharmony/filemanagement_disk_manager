@@ -898,7 +898,7 @@ napi_value IsVolumeInUse(napi_env env, napi_callback_info info)
     std::string volumePathStr(volumePath.get());
     auto isInUse = std::make_shared<bool>(true);
     auto cbExec = [volumePathStr, isInUse]() -> NError {
-        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().IsVolumeInUse(volumePathStr, *isInUse);
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(volumePathStr, *isInUse);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
@@ -1240,12 +1240,12 @@ static napi_property_descriptor g_properties[] = {
     DECLARE_NAPI_FUNCTION("burn", Burn),
     DECLARE_NAPI_FUNCTION("getOpProcess", GetOpProcess),
     DECLARE_NAPI_FUNCTION("verifyBurnData", VerifyBurnData),
-    DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
     // 分区管理接口 (since 26.0.0)
     DECLARE_NAPI_FUNCTION("getPartitionTable", GetPartitionTable),
     DECLARE_NAPI_FUNCTION("createPartition", CreatePartition),
     DECLARE_NAPI_FUNCTION("deletePartition", DeletePartition),
     DECLARE_NAPI_FUNCTION("formatPartition", FormatPartition),
+    DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
 };
 
 // 辅助函数：导出模块枚举类型
