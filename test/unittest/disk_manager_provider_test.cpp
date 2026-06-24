@@ -109,6 +109,9 @@ public:
     void SetUp() override
     {
         ClearDiskManagerState();
+        testing::Mock::VerifyAndClear(&MockStorageDaemonAdapter::GetInstance());
+        testing::Mock::VerifyAndClear(&MockUsbFuseAdapter::GetInstance());
+        testing::Mock::VerifyAndClear(&MockUeventBootstrap::GetInstance());
         MockIPCSkeleton::mockCallingUid_ = 0;
         g_accessTokenType = 1;
         g_isSystemApp = true;
@@ -119,6 +122,9 @@ public:
     void TearDown() override
     {
         ClearDiskManagerState();
+        testing::Mock::VerifyAndClear(&MockStorageDaemonAdapter::GetInstance());
+        testing::Mock::VerifyAndClear(&MockUsbFuseAdapter::GetInstance());
+        testing::Mock::VerifyAndClear(&MockUeventBootstrap::GetInstance());
         MockIPCSkeleton::mockCallingUid_ = 0;
         g_accessTokenType = 1;
         g_isSystemApp = true;
@@ -484,7 +490,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: QueryUsbIsInUse_TestCase_002
- * @tc.desc: QueryUsbIsInUse returns E_QUERY_USB_IN_USE_ERROR when adapter returns error.
+ * @tc.desc: QueryUsbIsInUse returns E_QUERY_VOLUME_IN_USE_ERROR when adapter returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -492,9 +498,9 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    bool isInUse = true;
+    bool isInUse = false;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
-        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+        .WillOnce(DoAll(SetArgReferee<1>(false), Return(E_DAEMON_IPC_FAILED)));
     int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-2", isInUse);
     EXPECT_EQ(ret, E_QUERY_VOLUME_IN_USE_ERROR);
     EXPECT_FALSE(isInUse);
@@ -530,11 +536,13 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_NotSysApp_001, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_NotSysApp_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
     g_isSystemApp = false;
     bool isInUse = false;
     int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1", isInUse);
     EXPECT_EQ(ret, E_SYS_APP_PERMISSION_DENIED);
     EXPECT_FALSE(isInUse);
+    g_accessTokenType = 1;
     g_isSystemApp = true;
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_NotSysApp_001 End";
 }
