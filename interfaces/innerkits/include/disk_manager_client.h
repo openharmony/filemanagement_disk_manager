@@ -84,6 +84,7 @@ public:
                              const std::string &uuid, const std::string &fsType);
     int32_t NotifyMtpUnmounted(const std::string &id, const bool isBadRemove);
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
+    int32_t IsVolumeInUse(const std::string &volumePath, bool &isInUse);
 
 private:
     DiskManagerClient() = default;

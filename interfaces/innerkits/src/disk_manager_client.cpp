@@ -536,5 +536,16 @@ int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t pa
     return dm.FormatPartition(diskId, partitionNum, params);
 }
 
+int32_t DiskManagerClient::IsVolumeInUse(const std::string &volumePath, bool &isInUse)
+{
+    LOGI("IsVolumeInUse volumePath=%{public}s", volumePath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.QueryUsbIsInUse(volumePath, isInUse);
+}
 } // namespace DiskManager
 } // namespace OHOS

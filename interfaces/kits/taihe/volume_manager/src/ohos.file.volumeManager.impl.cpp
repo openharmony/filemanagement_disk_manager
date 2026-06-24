@@ -416,7 +416,7 @@ bool IsVolumeInUseSync(::taihe::string_view volumePath)
         return false;
     }
     bool isInUse = true;
-    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(volumePathString, isInUse);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().IsVolumeInUse(volumePathString, isInUse);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return isInUse;

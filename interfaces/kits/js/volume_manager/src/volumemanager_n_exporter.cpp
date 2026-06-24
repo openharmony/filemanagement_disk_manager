@@ -898,7 +898,7 @@ napi_value IsVolumeInUse(napi_env env, napi_callback_info info)
     std::string volumePathStr(volumePath.get());
     auto isInUse = std::make_shared<bool>(true);
     auto cbExec = [volumePathStr, isInUse]() -> NError {
-        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().QueryUsbIsInUse(volumePathStr, *isInUse);
+        int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().IsVolumeInUse(volumePathStr, *isInUse);
         if (errNum != E_OK) {
             return NError(Convert2JsErrNum(errNum));
         }
