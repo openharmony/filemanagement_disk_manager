@@ -496,7 +496,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_002, TestSize.Level0)
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-2", isInUse);
-    EXPECT_EQ(ret, E_QUERY_USB_IN_USE_ERROR);
+    EXPECT_EQ(ret, E_QUERY_VOLUME_IN_USE_ERROR);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_002 End";
 }
