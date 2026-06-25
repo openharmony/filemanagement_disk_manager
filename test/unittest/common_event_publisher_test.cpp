@@ -400,5 +400,39 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_008, TestSize.Le
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_008 End";
 }
 
+/**
+ * @tc.name: PublishDiskChange_TestCase_002
+ * @tc.desc: MOUNTED 分支覆盖 SSD 类型磁盘及 sysPath 参数传递。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishDiskChange_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishDiskChange_TestCase_002 Start";
+
+    Disk ssdDisk("disk-ssd-ut", kUtDiskSizeBytes, "/dev/block/disk-ssd-ut", DATA_DISK_SSD);
+    ssdDisk.SetDiskType(DATA_DISK_SSD);
+    EXPECT_NO_THROW(CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, ssdDisk));
+
+    GTEST_LOG_(INFO) << "PublishDiskChange_TestCase_002 End";
+}
+
+/**
+ * @tc.name: PublishVolumeChange_TestCase_009
+ * @tc.desc: MOUNTED + 默认 VFAT 覆盖 SetMountedEventParams 调用 GetFreeSizeOfVolume 路径。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_009, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_009 Start";
+
+    VolumeExternal vMounted = MakeSampleVolume();
+    vMounted.SetPath("/mnt/data/external/fs-uuid-ut");
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vMounted));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_009 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

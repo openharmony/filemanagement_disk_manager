@@ -20,6 +20,7 @@
 #include "disk_manager_client.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_napi_errno.h"
+#include "partition_types.h"
 #include "volume_external.h"
 
 namespace OHOS {
@@ -474,157 +475,623 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest003, TestSize.Level1)
     GTEST_LOG_(INFO) << "OnBlockDiskUeventTest003 End";
 }
 
+/**
+ * @tc.name: GetFreeSizeOfVolumeTest001
+ * @tc.desc: 测试 GetFreeSizeOfVolume 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolumeTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int64_t freeSize = 0;
     int32_t ret = client.GetFreeSizeOfVolume(TEST_VOLUME_ID, freeSize);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolumeTest001 End";
 }
 
+/**
+ * @tc.name: GetTotalSizeOfVolumeTest001
+ * @tc.desc: 测试 GetTotalSizeOfVolume 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolumeTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int64_t totalSize = 0;
     int32_t ret = client.GetTotalSizeOfVolume(TEST_VOLUME_ID, totalSize);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolumeTest001 End";
 }
 
+/**
+ * @tc.name: GetAllDisksTest001
+ * @tc.desc: 测试 GetAllDisks 在 ResetProxy 后无可用代理，预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, GetAllDisksTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "GetAllDisksTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     std::vector<Disk> disks;
     int32_t ret = client.GetAllDisks(disks);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetAllDisksTest001 End";
 }
 
+/**
+ * @tc.name: GetDiskByIdTest001
+ * @tc.desc: 测试 GetDiskById 传入有效 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, GetDiskByIdTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "GetDiskByIdTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     Disk disk;
     int32_t ret = client.GetDiskById(TEST_DISK_ID, disk);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetDiskByIdTest001 End";
 }
 
+/**
+ * @tc.name: EraseTest001
+ * @tc.desc: 测试 Erase 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, EraseTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "EraseTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Erase(TEST_VOLUME_ID);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "EraseTest001 End";
 }
 
+/**
+ * @tc.name: EjectTest001
+ * @tc.desc: 测试 Eject 传入有效 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, EjectTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "EjectTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Eject(TEST_DISK_ID);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "EjectTest001 End";
 }
 
+/**
+ * @tc.name: CreateIsoImageTest001
+ * @tc.desc: 测试 CreateIsoImage 传入有效参数，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, CreateIsoImageTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "CreateIsoImageTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.CreateIsoImage(TEST_VOLUME_ID, "/tmp/test.iso");
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "CreateIsoImageTest001 End";
 }
 
+/**
+ * @tc.name: BurnTest001
+ * @tc.desc: 测试 Burn 传入有效 volumeId 与刻录选项，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, BurnTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "BurnTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.Burn(TEST_VOLUME_ID, "burnOptions");
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "BurnTest001 End";
 }
 
+/**
+ * @tc.name: GetVolumeOpProcessTest001
+ * @tc.desc: 测试 GetVolumeOpProcess 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, GetVolumeOpProcessTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "GetVolumeOpProcessTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t progressPct = 0;
     int32_t ret = client.GetVolumeOpProcess(TEST_VOLUME_ID, progressPct);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcessTest001 End";
 }
 
+/**
+ * @tc.name: TryToFixTest001
+ * @tc.desc: 测试 TryToFix 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "TryToFixTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.TryToFix(TEST_VOLUME_ID);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "TryToFixTest001 End";
 }
 
+/**
+ * @tc.name: IsUsbFuseByTypeTest001
+ * @tc.desc: 测试 IsUsbFuseByType 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     bool isUsbFuse = false;
     int32_t ret = client.IsUsbFuseByType(0, isUsbFuse);
     EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 End";
 }
 
+/**
+ * @tc.name: NotifyMtpMountedTest001
+ * @tc.desc: 测试 NotifyMtpMounted 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "NotifyMtpMountedTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.NotifyMtpMounted("mtp-1", "/mnt/mtp", "desc", "uuid", "vfat");
     EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "NotifyMtpMountedTest001 End";
 }
 
+/**
+ * @tc.name: NotifyMtpUnmountedTest001
+ * @tc.desc: 测试 NotifyMtpUnmounted 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "NotifyMtpUnmountedTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.NotifyMtpUnmounted("mtp-1", false);
     EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "NotifyMtpUnmountedTest001 End";
 }
 
+/**
+ * @tc.name: GetPartitionTableTest001
+ * @tc.desc: 测试 GetPartitionTable 传入有效 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, GetPartitionTableTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "GetPartitionTableTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     PartitionTableInfo info;
     int32_t ret = client.GetPartitionTable(TEST_DISK_ID, info);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetPartitionTableTest001 End";
 }
 
+/**
+ * @tc.name: CreatePartitionTest001
+ * @tc.desc: 测试 CreatePartition 传入有效 diskId 与分区参数，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, CreatePartitionTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "CreatePartitionTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     PartitionParams params;
     int32_t ret = client.CreatePartition(TEST_DISK_ID, params);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "CreatePartitionTest001 End";
 }
 
+/**
+ * @tc.name: DeletePartitionTest001
+ * @tc.desc: 测试 DeletePartition 传入有效 diskId 与分区号，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, DeletePartitionTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "DeletePartitionTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.DeletePartition(TEST_DISK_ID, 1);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "DeletePartitionTest001 End";
 }
 
+/**
+ * @tc.name: FormatPartitionTest001
+ * @tc.desc: 测试 FormatPartition 传入有效 diskId 与格式化参数，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, FormatPartitionTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "FormatPartitionTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     FormatParams params;
     int32_t ret = client.FormatPartition(TEST_DISK_ID, 1, params);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "FormatPartitionTest001 End";
 }
 
+/**
+ * @tc.name: VerifyBurnDataTest001
+ * @tc.desc: 测试 VerifyBurnData 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
 HWTEST_F(DiskManagerClientTest, VerifyBurnDataTest001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "VerifyBurnDataTest001 Start";
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.VerifyBurnData(TEST_VOLUME_ID, 0);
     EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "VerifyBurnDataTest001 End";
 }
+
+/**
+ * @tc.name: QueryUsbIsInUseTest001
+ * @tc.desc: 测试 QueryUsbIsInUse 传入空 diskPath，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, QueryUsbIsInUseTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUseTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    bool isInUse = true;
+    int32_t ret = client.QueryUsbIsInUse("", isInUse);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "QueryUsbIsInUseTest001 End";
+}
+
+/**
+ * @tc.name: QueryUsbIsInUseTest002
+ * @tc.desc: 测试 QueryUsbIsInUse 传入有效块设备路径，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, QueryUsbIsInUseTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "QueryUsbIsInUseTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    bool isInUse = false;
+    int32_t ret = client.QueryUsbIsInUse("/dev/block/sda", isInUse);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "QueryUsbIsInUseTest002 End";
+}
+
+/**
+ * @tc.name: GetFreeSizeOfVolumeTest002
+ * @tc.desc: 测试 GetFreeSizeOfVolume 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolumeTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int64_t freeSize = 123;
+    int32_t ret = client.GetFreeSizeOfVolume("", freeSize);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolumeTest002 End";
+}
+
+/**
+ * @tc.name: GetTotalSizeOfVolumeTest002
+ * @tc.desc: 测试 GetTotalSizeOfVolume 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolumeTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int64_t totalSize = 456;
+    int32_t ret = client.GetTotalSizeOfVolume("", totalSize);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolumeTest002 End";
+}
+
+/**
+ * @tc.name: GetDiskByIdTest002
+ * @tc.desc: 测试 GetDiskById 传入空 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskByIdTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskByIdTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    Disk disk;
+    int32_t ret = client.GetDiskById("", disk);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetDiskByIdTest002 End";
+}
+
+/**
+ * @tc.name: TryToFixTest002
+ * @tc.desc: 测试 TryToFix 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, TryToFixTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TryToFixTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.TryToFix(""), E_OK);
+
+    GTEST_LOG_(INFO) << "TryToFixTest002 End";
+}
+
+/**
+ * @tc.name: VerifyBurnDataTest002
+ * @tc.desc: 测试 VerifyBurnData 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, VerifyBurnDataTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnDataTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.VerifyBurnData("", 1), E_OK);
+
+    GTEST_LOG_(INFO) << "VerifyBurnDataTest002 End";
+}
+
+/**
+ * @tc.name: BurnTest002
+ * @tc.desc: 测试 Burn 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, BurnTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "BurnTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.Burn("", "{}"), E_OK);
+
+    GTEST_LOG_(INFO) << "BurnTest002 End";
+}
+
+/**
+ * @tc.name: CreateIsoImageTest002
+ * @tc.desc: 测试 CreateIsoImage 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, CreateIsoImageTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImageTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.CreateIsoImage("", "/tmp/test.iso"), E_OK);
+
+    GTEST_LOG_(INFO) << "CreateIsoImageTest002 End";
+}
+
+/**
+ * @tc.name: EraseTest002
+ * @tc.desc: 测试 Erase 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, EraseTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "EraseTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.Erase(""), E_OK);
+
+    GTEST_LOG_(INFO) << "EraseTest002 End";
+}
+
+/**
+ * @tc.name: EjectTest002
+ * @tc.desc: 测试 Eject 传入空 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, EjectTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "EjectTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.Eject(""), E_OK);
+
+    GTEST_LOG_(INFO) << "EjectTest002 End";
+}
+
+/**
+ * @tc.name: GetVolumeOpProcessTest002
+ * @tc.desc: 测试 GetVolumeOpProcess 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetVolumeOpProcessTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcessTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t progress = 99;
+    EXPECT_NE(client.GetVolumeOpProcess("", progress), E_OK);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcessTest002 End";
+}
+
+/**
+ * @tc.name: GetPartitionTableTest002
+ * @tc.desc: 测试 GetPartitionTable 传入空 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetPartitionTableTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTableTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    PartitionTableInfo info;
+    EXPECT_NE(client.GetPartitionTable("", info), E_OK);
+
+    GTEST_LOG_(INFO) << "GetPartitionTableTest002 End";
+}
+
+/**
+ * @tc.name: DeletePartitionTest002
+ * @tc.desc: 测试 DeletePartition 传入无效分区号 0，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, DeletePartitionTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DeletePartitionTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.DeletePartition(TEST_DISK_ID, 0), E_OK);
+
+    GTEST_LOG_(INFO) << "DeletePartitionTest002 End";
+}
+
+/**
+ * @tc.name: FormatPartitionTest002
+ * @tc.desc: 测试 FormatPartition 传入空 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, FormatPartitionTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartitionTest002 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    FormatParams params("vfat", true, "vol");
+    EXPECT_NE(client.FormatPartition("", 1, params), E_OK);
+
+    GTEST_LOG_(INFO) << "FormatPartitionTest002 End";
+}
+
+/**
+ * @tc.name: GetInstanceTest001
+ * @tc.desc: 测试 GetInstance 单例模式，多次调用应返回同一实例地址。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetInstanceTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetInstanceTest001 Start";
+
+    DiskManagerClient &client1 = DiskManagerClient::GetInstance();
+    DiskManagerClient &client2 = DiskManagerClient::GetInstance();
+    EXPECT_EQ(&client1, &client2);
+
+    GTEST_LOG_(INFO) << "GetInstanceTest001 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

@@ -18,6 +18,10 @@
 int32_t g_accessTokenType = 1;
 bool g_isSystemApp = true;
 int32_t g_permissionGranted = 0;
+int32_t g_nativeTokenInfoRet = 0;
+int32_t g_hapTokenInfoRet = 0;
+std::string g_nativeProcessName = "foundation";
+std::string g_hapBundleName = "com.ohos.test";
 
 namespace OHOS {
 namespace Security {
@@ -49,13 +53,19 @@ bool AccessTokenKit::IsSystemAppByFullTokenID(uint64_t fullTokenId)
 
 int32_t AccessTokenKit::GetNativeTokenInfo(AccessTokenID tokenID, NativeTokenInfo &nativeTokenInfoRes)
 {
-    nativeTokenInfoRes.processName = "foundation";
+    if (g_nativeTokenInfoRet != 0) {
+        return g_nativeTokenInfoRet;
+    }
+    nativeTokenInfoRes.processName = g_nativeProcessName;
     return 0;
 }
 
 int32_t AccessTokenKit::GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapTokenInfoRes)
 {
-    hapTokenInfoRes.bundleName = "com.ohos.test";
+    if (g_hapTokenInfoRet != 0) {
+        return g_hapTokenInfoRet;
+    }
+    hapTokenInfoRes.bundleName = g_hapBundleName;
     return 0;
 }
 

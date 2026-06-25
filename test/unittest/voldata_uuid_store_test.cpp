@@ -160,6 +160,24 @@ HWTEST_F(VoldataUuidStoreTest, FromJson_TestCase_010, TestSize.Level0)
     EXPECT_EQ(entry.slotIndex, 1u);
 }
 
+/**
+ * @tc.name: FromJson_TestCase_011
+ * @tc.desc: 非法 fsUuid 字符 FromJson 解析失败
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VoldataUuidStoreTest, FromJson_TestCase_011, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FromJson_TestCase_011 Start";
+
+    VoldataUuidEntry entry;
+    nlohmann::json j;
+    j["fsUuid"] = "bad/uuid";
+    j["mountPath"] = "/mnt/data/voldata/data1";
+    EXPECT_FALSE(entry.FromJson(j));
+    GTEST_LOG_(INFO) << "FromJson_TestCase_011 End";
+}
+
 HWTEST_F(VoldataUuidStoreTest, ToJson_TestCase_001, TestSize.Level0)
 {
     VoldataUuidEntry entry;

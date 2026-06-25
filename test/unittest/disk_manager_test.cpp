@@ -15,10 +15,12 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <chrono>
 #include <cstring>
 #include <securec.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
+#include <thread>
 
 #define private public
 #define protected public
@@ -76,6 +78,13 @@ Disk MakeHddDisk(const std::string &diskId = "disk-hdd-1")
 {
     Disk d(diskId, SIZE, "/dev/block/" + diskId, DATA_DISK_HDD);
     d.SetDiskType(DATA_DISK_HDD);
+    return d;
+}
+
+Disk MakeDvrDisk(const std::string &diskId = "disk-dvr-1")
+{
+    Disk d(diskId, SIZE, "/dev/block/" + diskId, DVR_USB);
+    d.SetDiskType(DVR_USB);
     return d;
 }
 
@@ -1680,6 +1689,42 @@ HWTEST_F(DiskManagerTest, ComputeVolumeMountPolicy_TestCase_004, TestSize.Level0
     EXPECT_FALSE(policy.useVoldataPath);
 }
 
+/**
+ * @tc.name: ComputeVolumeMountPolicy_TestCase_005
+ * @tc.desc: ext4 文件系统挂载策略不使用 voldata 路径
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ComputeVolumeMountPolicy_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ComputeVolumeMountPolicy_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-cvp-5"));
+    auto policy = dm.ComputeVolumeMountPolicy("disk-cvp-5", "ext4");
+    EXPECT_FALSE(policy.useVoldataPath);
+    EXPECT_FALSE(policy.useFuseData);
+    GTEST_LOG_(INFO) << "ComputeVolumeMountPolicy_TestCase_005 End";
+}
+
+/**
+ * @tc.name: ComputeVolumeMountPolicy_TestCase_006
+ * @tc.desc: DVR USB 磁盘挂载策略使用 DVR 路径
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ComputeVolumeMountPolicy_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ComputeVolumeMountPolicy_TestCase_006 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDvrDisk("disk-cvp-dvr"));
+    auto policy = dm.ComputeVolumeMountPolicy("disk-cvp-dvr", "vfat");
+    EXPECT_TRUE(policy.useDvrPath);
+    EXPECT_FALSE(policy.useFuseData);
+    GTEST_LOG_(INFO) << "ComputeVolumeMountPolicy_TestCase_006 End";
+}
+
 HWTEST_F(DiskManagerTest, BuildMountDataPath_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
@@ -2269,6 +2314,50 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
     EXPECT_EQ(dm.Burn("nonexistent-vol", "options"), E_NON_EXIST);
+}
+
+/**
+ * @tc.name: Burn_TestCase_004
+ * @tc.desc: 刻录成功后正常弹出光盘
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_004 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-bn-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-bn-4", "disk-bn-4", "uuid-bn-4");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Burn("vol-bn-4", "dao"), DiskManagerErrNo::E_OK);
+    GTEST_LOG_(INFO) << "Burn_TestCase_004 End";
+}
+
+/**
+ * @tc.name: Burn_TestCase_005
+ * @tc.desc: 刻录成功但 Eject 失败仍返回 E_OK
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-bn-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-bn-5", "disk-bn-5", "uuid-bn-5");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.Burn("vol-bn-5", "dao"), DiskManagerErrNo::E_OK);
+    GTEST_LOG_(INFO) << "Burn_TestCase_005 End";
 }
 
 HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_003, TestSize.Level0)
@@ -3260,6 +3349,352 @@ HWTEST_F(DiskManagerTest, Unmount_TestCase_008, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, QueryUsbIsInUse(_, _)).WillOnce(DoAll(SetArgReferee<1>(true), Return(ERR_OK)));
     EXPECT_EQ(dm.Unmount("vol-um-8"), E_UMOUNT_BUSY);
+}
+
+/**
+ * @tc.name: GetDiscType_Empty_TestCase_001
+ * @tc.desc: 空 extraInfo 返回空 disc 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDiscType_Empty_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiscType_Empty_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDiscType(""), "");
+    GTEST_LOG_(INFO) << "GetDiscType_Empty_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetDiscType_InvalidJson_TestCase_002
+ * @tc.desc: 非法 JSON extraInfo 返回空 disc 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDiscType_InvalidJson_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiscType_InvalidJson_TestCase_002 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDiscType("not-json"), "");
+    GTEST_LOG_(INFO) << "GetDiscType_InvalidJson_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetDiscType_MissingOddInfo_TestCase_003
+ * @tc.desc: 缺少 ODD_INFO 返回空 disc 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDiscType_MissingOddInfo_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiscType_MissingOddInfo_TestCase_003 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDiscType(R"({"OTHER":"value"})"), "");
+    GTEST_LOG_(INFO) << "GetDiscType_MissingOddInfo_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetDiscType_MissingDiscType_TestCase_004
+ * @tc.desc: 缺少 DISC_TYPE 返回空 disc 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDiscType_MissingDiscType_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiscType_MissingDiscType_TestCase_004 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDiscType(R"({"ODD_INFO":{"DRIVE_TYPE":"DVD"}})"), "");
+    GTEST_LOG_(INFO) << "GetDiscType_MissingDiscType_TestCase_004 End";
+}
+
+/**
+ * @tc.name: GetDiscType_Success_TestCase_005
+ * @tc.desc: 合法 ODD_INFO 解析 disc 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDiscType_Success_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiscType_Success_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDiscType(R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})"), "BD-R");
+    GTEST_LOG_(INFO) << "GetDiscType_Success_TestCase_005 End";
+}
+
+/**
+ * @tc.name: GetDriverType_Empty_TestCase_001
+ * @tc.desc: 空 extraInfo 返回空 drive 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDriverType_Empty_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDriverType_Empty_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDriverType(""), "");
+    GTEST_LOG_(INFO) << "GetDriverType_Empty_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetDriverType_InvalidJson_TestCase_002
+ * @tc.desc: 非法 JSON extraInfo 返回空 drive 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDriverType_InvalidJson_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDriverType_InvalidJson_TestCase_002 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDriverType("{bad json"), "");
+
+    GTEST_LOG_(INFO) << "GetDriverType_InvalidJson_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetDriverType_MissingOddInfo_TestCase_003
+ * @tc.desc: 缺少 ODD_INFO 返回空 drive 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDriverType_MissingOddInfo_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDriverType_MissingOddInfo_TestCase_003 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDriverType(R"({"OTHER":"value"})"), "");
+
+    GTEST_LOG_(INFO) << "GetDriverType_MissingOddInfo_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetDriverType_MissingDriveType_TestCase_004
+ * @tc.desc: 缺少 DRIVE_TYPE 返回空 drive 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDriverType_MissingDriveType_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDriverType_MissingDriveType_TestCase_004 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDriverType(R"({"ODD_INFO":{"DISC_TYPE":"CD-R"}})"), "");
+
+    GTEST_LOG_(INFO) << "GetDriverType_MissingDriveType_TestCase_004 End";
+}
+
+/**
+ * @tc.name: GetDriverType_Success_TestCase_005
+ * @tc.desc: 合法 ODD_INFO 解析 drive 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetDriverType_Success_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDriverType_Success_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.GetDriverType(R"({"ODD_INFO":{"DRIVE_TYPE":"DVD-RW"}})"), "DVD-RW");
+
+    GTEST_LOG_(INFO) << "GetDriverType_Success_TestCase_005 End";
+}
+
+/**
+ * @tc.name: SetPartitions_NoHeader_TestCase_001
+ * @tc.desc: 分区表内容缺少表头时不解析分区
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetPartitions_NoHeader_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetPartitions_NoHeader_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    std::vector<std::string> content = {"Disk /dev/block/sda: 8 GiB", "1 2048 500000"};
+    PartitionTableInfo info;
+    info.SetDiskId("disk-sp-1");
+    info.SetSectorSize(512);
+    dm.SetPartitions(content, info);
+    EXPECT_TRUE(info.GetPartitions().empty());
+
+    GTEST_LOG_(INFO) << "SetPartitions_NoHeader_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetPartitions_Success_TestCase_002
+ * @tc.desc: 合法分区表解析单分区并匹配卷 fs 类型
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetPartitions_Success_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetPartitions_Success_TestCase_002 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-sp-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-sp-2", "disk-sp-2", "uuid-sp-2", UNMOUNTED);
+    vol.SetPartitionNum(1);
+    dm.OnVolumeCreated(vol);
+    std::vector<std::string> content = {
+        "Disk /dev/block/disk-sp-2: 8 GiB",
+        "Number  Start   End",
+        "1 2048 500000",
+        "invalid line",
+    };
+    PartitionTableInfo info;
+    info.SetDiskId("disk-sp-2");
+    info.SetSectorSize(512);
+    dm.SetPartitions(content, info);
+    ASSERT_EQ(info.GetPartitions().size(), 1U);
+    EXPECT_EQ(info.GetPartitions()[0].GetPartitionNum(), 1);
+    EXPECT_EQ(info.GetPartitions()[0].GetFsType(), "vfat");
+
+    GTEST_LOG_(INFO) << "SetPartitions_Success_TestCase_002 End";
+}
+
+/**
+ * @tc.name: SetPartitions_MultiPartition_TestCase_003
+ * @tc.desc: 多分区解析及 size 计算
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetPartitions_MultiPartition_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetPartitions_MultiPartition_TestCase_003 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-sp-3"));
+    VolumeExternal vol1 = MakeUsbVolume("vol-sp-3a", "disk-sp-3", "uuid-sp-3a", UNMOUNTED);
+    vol1.SetPartitionNum(1);
+    dm.OnVolumeCreated(vol1);
+    VolumeExternal vol2 = MakeUsbVolume("vol-sp-3b", "disk-sp-3", "uuid-sp-3b", UNMOUNTED);
+    vol2.SetPartitionNum(2);
+    vol2.SetFsType(static_cast<int32_t>(EXT4));
+    dm.OnVolumeCreated(vol2);
+    std::vector<std::string> content = {
+        "Disk /dev/block/disk-sp-3: 16 GiB",
+        "Number  Start   End",
+        "1 2048 500000",
+        "2 500001 1000000",
+    };
+    PartitionTableInfo info;
+    info.SetDiskId("disk-sp-3");
+    info.SetSectorSize(512);
+    dm.SetPartitions(content, info);
+    ASSERT_EQ(info.GetPartitions().size(), 2U);
+    EXPECT_EQ(info.GetPartitions()[0].GetPartitionNum(), 1);
+    EXPECT_EQ(info.GetPartitions()[0].GetFsType(), "vfat");
+    EXPECT_EQ(info.GetPartitions()[1].GetPartitionNum(), 2);
+    EXPECT_EQ(info.GetPartitions()[1].GetFsType(), "ext4");
+    EXPECT_EQ(info.GetPartitions()[0].GetSizeBytes(), (500000LL - 2048LL + 1) * 512);
+
+    GTEST_LOG_(INFO) << "SetPartitions_MultiPartition_TestCase_003 End";
+}
+
+/**
+ * @tc.name: NotifyPartitionDone_NoWaiter_TestCase_001
+ * @tc.desc: 无等待者时 NotifyPartitionDone 清除分区状态
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, NotifyPartitionDone_NoWaiter_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyPartitionDone_NoWaiter_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.NotifyPartitionDone("disk-npd-1");
+    EXPECT_FALSE(dm.IsPartitioning("disk-npd-1"));
+
+    GTEST_LOG_(INFO) << "NotifyPartitionDone_NoWaiter_TestCase_001 End";
+}
+
+/**
+ * @tc.name: WaitForPartitionDone_Timeout_TestCase_001
+ * @tc.desc: WaitForPartitionDone 超时后清除分区状态
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, WaitForPartitionDone_Timeout_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "WaitForPartitionDone_Timeout_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.WaitForPartitionDone("disk-wfpd-1", 1);
+    EXPECT_FALSE(dm.IsPartitioning("disk-wfpd-1"));
+
+    GTEST_LOG_(INFO) << "WaitForPartitionDone_Timeout_TestCase_001 End";
+}
+
+/**
+ * @tc.name: WaitForPartitionDone_Notify_TestCase_002
+ * @tc.desc: NotifyPartitionDone 唤醒 WaitForPartitionDone
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, WaitForPartitionDone_Notify_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "WaitForPartitionDone_Notify_TestCase_002 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    std::thread waiter([&dm]() { dm.WaitForPartitionDone("disk-wfpd-2", 3000); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    dm.NotifyPartitionDone("disk-wfpd-2");
+    waiter.join();
+
+    GTEST_LOG_(INFO) << "WaitForPartitionDone_Notify_TestCase_002 End";
+}
+
+/**
+ * @tc.name: NotifyVolumeEjecting_TestCase_001
+ * @tc.desc: NotifyVolumeEjecting 将卷状态置为 EJECTING
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, NotifyVolumeEjecting_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyVolumeEjecting_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-nve-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-nve-1", "disk-nve-1", "uuid-nve-1", MOUNTED);
+    dm.OnVolumeCreated(vol);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-nve-1", volOut);
+    EXPECT_EQ(dm.NotifyVolumeEjecting("vol-nve-1", volOut), MOUNTED);
+    EXPECT_EQ(volOut.GetState(), EJECTING);
+
+    GTEST_LOG_(INFO) << "NotifyVolumeEjecting_TestCase_001 End";
+}
+
+/**
+ * @tc.name: RestoreVolumeState_TestCase_001
+ * @tc.desc: RestoreVolumeState 恢复卷先前状态
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, RestoreVolumeState_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "RestoreVolumeState_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-rvs-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-rvs-1", "disk-rvs-1", "uuid-rvs-1", EJECTING);
+    dm.OnVolumeCreated(vol);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-rvs-1", volOut);
+    dm.RestoreVolumeState("vol-rvs-1", volOut, MOUNTED);
+    EXPECT_EQ(volOut.GetState(), MOUNTED);
+    VolumeExternal volCheck;
+    dm.GetVolumeById("vol-rvs-1", volCheck);
+    EXPECT_EQ(volCheck.GetState(), MOUNTED);
+
+    GTEST_LOG_(INFO) << "RestoreVolumeState_TestCase_001 End";
 }
 
 } // namespace DiskManager

@@ -31,19 +31,6 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
 
   sources = [
     disk_manager_path + "/test/fuzztest/diskmanagerstub_fuzzer/diskmanagerstub_fuzzer.cpp",
-    disk_manager_path + "/services/disk_manager/src/ipc/disk_manager_provider.cpp",
-    disk_manager_path + "/services/disk_manager/src/disk/uevent_bootstrap.cpp",
-    disk_manager_path + "/services/disk_manager/src/disk/uevent_env_parser.cpp",
-    disk_manager_path + "/services/disk_manager/src/disk/disk_config.cpp",
-    disk_manager_path + "/services/disk_manager/src/disk/disk_manager.cpp",
-    disk_manager_path + "/services/disk_manager/src/disk/partition_table_parser.cpp",
-    disk_manager_path + "/services/disk_manager/src/notification/common_event_publisher.cpp",
-    disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_adapter.cpp",
-    disk_manager_path + "/services/disk_manager/src/adapter/storage_daemon_proxy.cpp",
-    disk_manager_path + "/services/disk_manager/src/adapter/usb_fuse_adapter.cpp",
-    disk_manager_path + "/services/disk_manager/src/db/block_info_table.cpp",
-    disk_manager_path + "/services/disk_manager/src/db/voldata_uuid_store.cpp",
-    disk_manager_path + "/utils/src/ipc_caller_auth.cpp",
   ]
 
   configs = [
@@ -60,6 +47,7 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
 
   deps = [
     disk_manager_path + "/interfaces/innerkits:disk_manager_innerkits",
+    disk_manager_path + "/services/disk_manager:disk_manager_server",
   ]
 
   external_deps = [
@@ -77,10 +65,15 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
   ]
 
   cflags = [
+    "-fno-lto",
     "-g",
     "-O0",
     "-Wno-unused-variable",
     "-fno-omit-frame-pointer",
+  ]
+
+  ldflags = [
+    "-fno-lto",
   ]
 
   subsystem_name = "filemanagement"
