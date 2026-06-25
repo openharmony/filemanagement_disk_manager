@@ -304,6 +304,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
                 {"fwVersion", blockInfo.fwVersion}}));
         }
     }
+    diskForEvent.SetVendor(blockInfo.vendor);
     diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);

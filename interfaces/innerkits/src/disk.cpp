@@ -152,6 +152,16 @@ std::string Disk::GetDevName() const
 {
     return devName_;
 }
+
+void Disk::SetVendor(const std::string &vendor)
+{
+    vendor_ = vendor;
+}
+
+std::string Disk::GetVendor() const
+{
+    return vendor_;
+}
 bool Disk::IsInternalDataDisk() const
 {
     return IsInternalDataDiskType(diskType_);
