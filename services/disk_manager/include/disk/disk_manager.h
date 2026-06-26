@@ -181,6 +181,7 @@ private:
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
     bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
+    int32_t MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
