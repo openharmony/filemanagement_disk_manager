@@ -688,6 +688,18 @@ bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
     return false;
 }
 
+int32_t DiskManager::MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath)
+{
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    const auto it = volumeMap_.find(volExternal.GetId());
+    if (it == volumeMap_.end()) {
+        return E_NON_EXIST;
+    }
+
+    it->second.SetPath(dataMountPath);
+    return ERR_OK;
+}
+
 int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
                                            const std::string &fsType,
                                            const std::string &fsUuid)
@@ -736,13 +748,9 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
-    {
-        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-        const auto it = volumeMap_.find(volExternal.GetId());
-        if (it == volumeMap_.end()) {
-            return E_NON_EXIST;
-        }
-        it->second.SetPath(dataMountPath);
+    err = MountVolumeSetPath(volExternal, dataMountPath);
+    if (err != ERR_OK) {
+        return err;
     }
 
     volExternal.SetFlags(flag);
