@@ -716,7 +716,8 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
         flag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
-    }   
+    }
+
     // 企业空间使能时，不支持挂载数据盘
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(flag)) {
         return DiskManagerErrNo::E_OK;
