@@ -2765,6 +2765,46 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_002, TestSize.Level0)
     EXPECT_NE(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-mvf-2"), E_OK);
 }
 
+HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
+{
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 4;
+    strcpy_s(g_mockParameterValue,sizeof(g_mockParameterValue), "true")
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-mvfs-hmfs"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvfs-hmfs", "disk-mvfs-hmfs", "uuid-mvfs-hmfs", UNMOUNTED);
+    dm.SetFsType(static_cast<int32_t>(HMFS));
+    dm.OnVolumeCreated(vol);
+
+    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
+    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillOnce(Return(false));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-mvfs-hmfs", volOut);
+    EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
+{
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 4;
+    strcpy_s(g_mockParameterValue,sizeof(g_mockParameterValue), "true")
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeHddDisk("disk-ad-hdd"));
+    VolumeExternal vol = MakeUsbVolume("vol-ad-hdd", "disk-ad-hdd", "uuid-ad-hdd", UNMOUNTED);
+    dm.SetFsType(static_cast<int32_t>(HMFS));
+    dm.OnVolumeCreated(vol);
+
+    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
+    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillOnce(Return(false));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-ad-hdd", volOut);
+    EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
+}
+
 HWTEST_F(DiskManagerTest, ReadPersistUsbReadonlyMount_TestCase_001, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
