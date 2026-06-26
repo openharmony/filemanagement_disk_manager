@@ -681,7 +681,7 @@ bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
     }
 
     if (flag == DATA_DISK_SSD || flag == DATA_DISK_HDD) {
-        LOGW("Enterprise space enable, disk type is SSD or HDD, skipping mount operation.")
+        LOGW("Enterprise space enable, disk type is SSD or HDD, skipping mount operation.");
         return true;
     }
 
