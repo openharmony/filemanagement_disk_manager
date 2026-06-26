@@ -2765,7 +2765,7 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_002, TestSize.Level0)
     EXPECT_NE(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-mvf-2"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
+HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_003, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
     g_mockGetParameterValueResult = 4;
@@ -2785,7 +2785,7 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
     EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
+HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
     g_mockGetParameterValueResult = 4;
