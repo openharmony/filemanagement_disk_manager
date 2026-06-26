@@ -2769,11 +2769,11 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_003, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
     g_mockGetParameterValueResult = 4;
-    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true")
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeSsdDisk("disk-mvfs-hmfs"));
     VolumeExternal vol = MakeUsbVolume("vol-mvfs-hmfs", "disk-mvfs-hmfs", "uuid-mvfs-hmfs", UNMOUNTED);
-    dm.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetFsType(static_cast<int32_t>(HMFS));
     dm.OnVolumeCreated(vol);
 
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
@@ -2789,11 +2789,11 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
     g_mockGetParameterValueResult = 4;
-    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true")
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeHddDisk("disk-ad-hdd"));
     VolumeExternal vol = MakeUsbVolume("vol-ad-hdd", "disk-ad-hdd", "uuid-ad-hdd", UNMOUNTED);
-    dm.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetFsType(static_cast<int32_t>(HMFS));
     dm.OnVolumeCreated(vol);
 
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
