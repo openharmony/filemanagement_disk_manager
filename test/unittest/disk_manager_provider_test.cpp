@@ -26,6 +26,7 @@
 #include "partition_types.h"
 #include "storage_spec_models.h"
 #include "block_info_table.h"
+#include "voldata_uuid_store.h"
 #include "mock_storage_daemon_adapter.h"
 #include "mock_usb_fuse_adapter.h"
 #include "mock_uevent_bootstrap.h"
@@ -37,6 +38,7 @@
 extern int32_t g_accessTokenType;
 extern bool g_isSystemApp;
 extern int32_t g_permissionGranted;
+extern std::string g_nativeProcessName;
 
 constexpr int32_t MOCK_PERMISSION_GRANTED = 0;
 constexpr int32_t MOCK_PERMISSION_DENIED = -1;
@@ -1365,6 +1367,867 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_PermissionDenied_002, TestSize
     EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Mount_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Mount_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Mount("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Mount_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Mount_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Mount_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Mount("vol-1"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Mount_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Unmount_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Unmount_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Unmount_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Unmount("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Unmount_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Unmount_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Unmount_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Unmount_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Unmount("vol-1"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Unmount_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Format_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Format("vol-1", "vfat"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Format_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Format_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Format("vol-1", "vfat"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Format_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: TryToFix_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, TryToFix_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "TryToFix_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.TryToFix("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "TryToFix_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: TryToFix_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, TryToFix_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "TryToFix_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.TryToFix("vol-1"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "TryToFix_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: SetVolumeDescription_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, SetVolumeDescription_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDescription_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.SetVolumeDescription("uuid-1", "desc"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "SetVolumeDescription_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: SetVolumeDescription_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, SetVolumeDescription_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDescription_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.SetVolumeDescription("uuid-1", "desc"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "SetVolumeDescription_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetAllVolumes_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetAllVolumes_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetAllVolumes_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    std::vector<VolumeExternal> volumes;
+    EXPECT_EQ(provider.GetAllVolumes(volumes), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "GetAllVolumes_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetAllVolumes_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetAllVolumes_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetAllVolumes_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    std::vector<VolumeExternal> volumes;
+    EXPECT_EQ(provider.GetAllVolumes(volumes), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetAllVolumes_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetVolumeByUuid_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetVolumeByUuid_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeByUuid_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    VolumeExternal vc;
+    EXPECT_EQ(provider.GetVolumeByUuid("uuid-1", vc), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "GetVolumeByUuid_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetVolumeByUuid_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetVolumeByUuid_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeByUuid_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    VolumeExternal vc;
+    EXPECT_EQ(provider.GetVolumeByUuid("uuid-1", vc), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetVolumeByUuid_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetVolumeById_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetVolumeById_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeById_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    VolumeExternal vc;
+    EXPECT_EQ(provider.GetVolumeById("vol-1", vc), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "GetVolumeById_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetVolumeById_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetVolumeById_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeById_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    VolumeExternal vc;
+    EXPECT_EQ(provider.GetVolumeById("vol-1", vc), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetVolumeById_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetFreeSizeOfVolume_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetFreeSizeOfVolume_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolume_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    int64_t freeSize = 0;
+    EXPECT_EQ(provider.GetFreeSizeOfVolume("uuid-1", freeSize), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolume_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetFreeSizeOfVolume_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetFreeSizeOfVolume_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolume_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    int64_t freeSize = 0;
+    EXPECT_EQ(provider.GetFreeSizeOfVolume("uuid-1", freeSize), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetFreeSizeOfVolume_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetTotalSizeOfVolume_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetTotalSizeOfVolume_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolume_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    int64_t totalSize = 0;
+    EXPECT_EQ(provider.GetTotalSizeOfVolume("uuid-1", totalSize), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolume_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetTotalSizeOfVolume_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetTotalSizeOfVolume_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolume_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    int64_t totalSize = 0;
+    EXPECT_EQ(provider.GetTotalSizeOfVolume("uuid-1", totalSize), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetTotalSizeOfVolume_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Partition_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Partition("disk-1", 1), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Partition_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Partition_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Partition("disk-1", 1), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Partition_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Erase_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Erase_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Erase("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Erase_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Erase_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Erase_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Erase("vol-1"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Erase_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Eject_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Eject_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Eject_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Eject("disk-1"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Eject_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Eject_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Eject_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Eject_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Eject("disk-1"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Eject_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: Burn_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Burn_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.Burn("vol-1", "{}"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "Burn_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: Burn_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Burn_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Burn("vol-1", "{}"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Burn_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.CreateIsoImage("vol-1", "/data/test.iso"), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.CreateIsoImage("vol-1", "/data/test.iso"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: GetVolumeOpProcess_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    int32_t progress = 0;
+    EXPECT_EQ(provider.GetVolumeOpProcess("vol-1", progress), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetVolumeOpProcess_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    int32_t progress = 0;
+    EXPECT_EQ(provider.GetVolumeOpProcess("vol-1", progress), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: VerifyBurnData_PermissionDenied_001
+ * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, VerifyBurnData_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    EXPECT_EQ(provider.VerifyBurnData("vol-1", 0), E_SYS_APP_PERMISSION_DENIED);
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: VerifyBurnData_PermissionDenied_002
+ * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, VerifyBurnData_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.VerifyBurnData("vol-1", 0), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: OnStart_InitPaths_TestCase_001
+ * @tc.desc: 覆盖 OnStart 中 UeventBootstrap/BlockInfoTable/VoldataUuidStore 初始化路径。
+ *           UT 进程内不可直接调用 OnStart（会触发 SystemAbility::Publish，栈对象析构时崩溃）。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, OnStart_InitPaths_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "OnStart_InitPaths_TestCase_001 Start";
+
+    auto &mockBootstrap = MockUeventBootstrap::GetInstance();
+    EXPECT_CALL(mockBootstrap, InitImpl()).Times(1);
+    MockUeventBootstrap::Init();
+    EXPECT_EQ(BlockInfoTable::GetInstance().ReloadFromDaemon(), E_OK);
+    EXPECT_EQ(VoldataUuidStore::GetInstance().Init(), DiskManagerErrNo::E_OK);
+    GTEST_LOG_(INFO) << "OnStart_InitPaths_TestCase_001 End";
+}
+
+/**
+ * @tc.name: Mount_StorageManagerCaller_TestCase_001
+ * @tc.desc: storage_manager UID 调用 Mount 绕过权限校验
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Mount_StorageManagerCaller_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_StorageManagerCaller_TestCase_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 1090;
+    g_accessTokenType = 0;
+    g_isSystemApp = false;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Mount("nonexistent-vol"), E_NON_EXIST);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_accessTokenType = 1;
+    g_isSystemApp = true;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Mount_StorageManagerCaller_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CheckClientPermission_TestCase_002
+ * @tc.desc: uid=0 的调用方 CheckClientPermission 返回 true
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CheckClientPermission_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    EXPECT_TRUE(provider.CheckClientPermission());
+
+    GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_002 End";
+}
+
+/**
+ * @tc.name: Mount_StorageManagerCaller_TestCase_002
+ * @tc.desc: native process 匹配 storage_manager 时 Mount 绕过权限
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Mount_StorageManagerCaller_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_StorageManagerCaller_TestCase_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 1090;
+    g_accessTokenType = 1;
+    g_nativeProcessName = "storage_manager";
+    g_isSystemApp = false;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.Mount("nonexistent-vol"), E_NON_EXIST);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
+    g_isSystemApp = true;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "Mount_StorageManagerCaller_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetPartitionTable_ParamsInvalid_001
+ * @tc.desc: 空 diskId 参数非法时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetPartitionTable_ParamsInvalid_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTable_ParamsInvalid_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    PartitionTableInfo out;
+    EXPECT_EQ(provider.GetPartitionTable("", out), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "GetPartitionTable_ParamsInvalid_001 End";
+}
+
+/**
+ * @tc.name: CreatePartition_ParamsInvalid_001
+ * @tc.desc: 空 diskId 参数非法时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    PartitionParams params(1, 2048, 500000, "vfat");
+    EXPECT_EQ(provider.CreatePartition("", params), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_001 End";
+}
+
+/**
+ * @tc.name: CreatePartition_ParamsInvalid_002
+ * @tc.desc: 分区号非法时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_002 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    PartitionParams params(0, 2048, 500000, "vfat");
+    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_002 End";
+}
+
+/**
+ * @tc.name: CreatePartition_ParamsInvalid_003
+ * @tc.desc: 起始扇区大于结束扇区时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_003 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    PartitionParams params(1, 500000, 2048, "vfat");
+    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_003 End";
+}
+
+/**
+ * @tc.name: CreatePartition_ParamsInvalid_004
+ * @tc.desc: typeCode 为空时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_004 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    PartitionParams params(1, 2048, 500000, "");
+    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_004 End";
+}
+
+/**
+ * @tc.name: DeletePartition_ParamsInvalid_001
+ * @tc.desc: 空 diskId 参数非法时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DeletePartition_ParamsInvalid_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DeletePartition_ParamsInvalid_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.DeletePartition("disk-1", 0), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "DeletePartition_ParamsInvalid_001 End";
+}
+
+/**
+ * @tc.name: FormatPartition_ParamsInvalid_001
+ * @tc.desc: 空 diskId 参数非法时返回 E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_ParamsInvalid_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_ParamsInvalid_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    FormatParams params("vfat", true, "vol");
+    EXPECT_EQ(provider.FormatPartition("", 1, params), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "FormatPartition_ParamsInvalid_001 End";
 }
 
 } // namespace DiskManager

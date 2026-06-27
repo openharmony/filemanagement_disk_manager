@@ -286,5 +286,62 @@ HWTEST_F(VolumeExternalTest, Unmarshalling_Success_TestCase_001, TestSize.Level0
     EXPECT_EQ(result->GetPartitionNum(), 2);
     delete result;
 }
+
+/**
+ * @tc.name: SetUserData_GetUserData_TestCase_001
+ * @tc.desc: SetUserData/GetUserData 读写 userData 标志
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetUserData_GetUserData_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetUserData_GetUserData_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_FALSE(ve.GetUserData());
+    ve.SetUserData(true);
+    EXPECT_TRUE(ve.GetUserData());
+    ve.SetUserData(false);
+    EXPECT_FALSE(ve.GetUserData());
+    GTEST_LOG_(INFO) << "SetUserData_GetUserData_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetFreeSize_GetFreeSize_TestCase_001
+ * @tc.desc: SetFreeSize/GetFreeSize 读写剩余空间
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetFreeSize_GetFreeSize_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetFreeSize_GetFreeSize_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_EQ(ve.GetFreeSize(), 0);
+    ve.SetFreeSize(4096);
+    EXPECT_EQ(ve.GetFreeSize(), 4096);
+    ve.SetFreeSize(-1);
+    EXPECT_EQ(ve.GetFreeSize(), -1);
+    GTEST_LOG_(INFO) << "SetFreeSize_GetFreeSize_TestCase_001 End";
+}
+
+/**
+ * @tc.name: Unmarshalling_EmptyParcel_TestCase_001
+ * @tc.desc: 空 Parcel Unmarshalling 返回默认 VolumeExternal
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, Unmarshalling_EmptyParcel_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Unmarshalling_EmptyParcel_TestCase_001 Start";
+
+    Parcel parcel;
+    VolumeExternal *result = VolumeExternal::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->GetId(), "");
+    delete result;
+
+    GTEST_LOG_(INFO) << "Unmarshalling_EmptyParcel_TestCase_001 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

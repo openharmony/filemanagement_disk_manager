@@ -195,5 +195,77 @@ HWTEST_F(UsbFuseAdapterMockTest, IsUsbFuseEnabledForFsType_CcmEnabled_EmptyFsTyp
     EXPECT_FALSE(adapter.IsUsbFuseEnabledForFsType(""));
 }
 
+/**
+ * @tc.name: NotifyUsbFuseMount_Success_001
+ * @tc.desc: NotifyUsbFuseMount 成功路径
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseMount_Success_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyUsbFuseMount_Success_001 Start";
+
+    auto &adapter = UsbFuseAdapter::GetInstance();
+    MockDlfcnConfig::GetInstance().SetDlsymResult("NotifyExternalVolumeFuseMount",
+        reinterpret_cast<uintptr_t>(&MockNotifyExternalVolumeFuseMount));
+    MockDlfcnConfig::GetInstance().SetMountResult(E_OK);
+    EXPECT_EQ(adapter.NotifyUsbFuseMount(3, "vol-fuse-1", "uuid-fuse-1"), E_OK);
+    GTEST_LOG_(INFO) << "NotifyUsbFuseMount_Success_001 End";
+}
+
+/**
+ * @tc.name: NotifyUsbFuseMount_FuncFailed_001
+ * @tc.desc: NotifyUsbFuseMount 底层失败返回错误码
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseMount_FuncFailed_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyUsbFuseMount_FuncFailed_001 Start";
+
+    auto &adapter = UsbFuseAdapter::GetInstance();
+    MockDlfcnConfig::GetInstance().SetDlsymResult("NotifyExternalVolumeFuseMount",
+        reinterpret_cast<uintptr_t>(&MockNotifyExternalVolumeFuseMount));
+    MockDlfcnConfig::GetInstance().SetMountResult(E_DAEMON_IPC_FAILED);
+    EXPECT_EQ(adapter.NotifyUsbFuseMount(3, "vol-fuse-2", "uuid-fuse-2"), E_DAEMON_IPC_FAILED);
+    GTEST_LOG_(INFO) << "NotifyUsbFuseMount_FuncFailed_001 End";
+}
+
+/**
+ * @tc.name: NotifyUsbFuseUmount_Success_001
+ * @tc.desc: NotifyUsbFuseUmount 成功路径
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseUmount_Success_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyUsbFuseUmount_Success_001 Start";
+
+    auto &adapter = UsbFuseAdapter::GetInstance();
+    MockDlfcnConfig::GetInstance().SetDlsymResult("NotifyExternalVolumeFuseUmount",
+        reinterpret_cast<uintptr_t>(&MockNotifyExternalVolumeFuseUmount));
+    MockDlfcnConfig::GetInstance().SetUMountResult(E_OK);
+    EXPECT_EQ(adapter.NotifyUsbFuseUmount("vol-fuse-1"), E_OK);
+    GTEST_LOG_(INFO) << "NotifyUsbFuseUmount_Success_001 End";
+}
+
+/**
+ * @tc.name: NotifyUsbFuseUmount_FuncFailed_001
+ * @tc.desc: NotifyUsbFuseUmount 底层失败返回错误码
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseUmount_FuncFailed_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyUsbFuseUmount_FuncFailed_001 Start";
+
+    auto &adapter = UsbFuseAdapter::GetInstance();
+    MockDlfcnConfig::GetInstance().SetDlsymResult("NotifyExternalVolumeFuseUmount",
+        reinterpret_cast<uintptr_t>(&MockNotifyExternalVolumeFuseUmount));
+    MockDlfcnConfig::GetInstance().SetUMountResult(E_DAEMON_IPC_FAILED);
+    EXPECT_EQ(adapter.NotifyUsbFuseUmount("vol-fuse-2"), E_DAEMON_IPC_FAILED);
+    GTEST_LOG_(INFO) << "NotifyUsbFuseUmount_FuncFailed_001 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
