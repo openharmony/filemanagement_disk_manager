@@ -59,6 +59,7 @@ constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 /** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
 constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
+constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_space.enterprise_space_enable";
 
 std::string NormalizeDiskBlockPath(const std::string &diskPath)
 {
@@ -666,6 +667,39 @@ std::string DiskManager::BuildMountDataPath(const MountDataPathParams &params)
     return std::string(EXTERNAL_MOUNT_ROOT) + params.fsUuid;
 }
 
+bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
+{
+    int32_t handle = static_cast<int32_t>(FindParameter(PERSIST_ENTERPRISE_SPACE_ENABLE));
+    if (handle == -1) {
+        return false;
+    }
+
+    char spaceEnable[RD_ENABLE_LENGTH] = {"false"};
+    auto res = GetParameterValue(handle, spaceEnable, RD_ENABLE_LENGTH);
+    if (res >= 0 && strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
+        return false;
+    }
+
+    if (flag == DATA_DISK_SSD || flag == DATA_DISK_HDD) {
+        LOGW("Enterprise space enable, disk type is SSD or HDD, skipping mount operation.");
+        return true;
+    }
+
+    return false;
+}
+
+int32_t DiskManager::MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath)
+{
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    const auto it = volumeMap_.find(volExternal.GetId());
+    if (it == volumeMap_.end()) {
+        return E_NON_EXIST;
+    }
+
+    it->second.SetPath(dataMountPath);
+    return ERR_OK;
+}
+
 int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
                                            const std::string &fsType,
                                            const std::string &fsUuid)
@@ -690,6 +724,17 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
         mountFlag = HMFS_FLAG;
     }
 
+    int32_t flag = 0;
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        flag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
+    }
+
+    // 企业空间使能时，不支持挂载数据盘
+    if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(flag)) {
+        return DiskManagerErrNo::E_OK;
+    }
+
     const std::string mountData = BuildMountDataOptions(policy.useVoldataPath);
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(), dataMountPath, fsType,
                                                             mountFlag, mountData);
@@ -703,20 +748,11 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
     volExternal.SetPath(dataMountPath);
     volExternal.SetState(MOUNTED);
-    {
-        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-        const auto it = volumeMap_.find(volExternal.GetId());
-        if (it == volumeMap_.end()) {
-            return E_NON_EXIST;
-        }
-        it->second.SetPath(dataMountPath);
+    err = MountVolumeSetPath(volExternal, dataMountPath);
+    if (err != ERR_OK) {
+        return err;
     }
 
-    int32_t flag = 0;
-    {
-        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
-        flag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
-    }
     volExternal.SetFlags(flag);
     ApplyDefaultVolumeDescriptionIfUnset(volExternal, flag);
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
