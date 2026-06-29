@@ -103,6 +103,7 @@ std::string BuildBurnOptionsLines(napi_env env, napi_value wantObj)
     (void)AppendWantLineInt32(oss, "burnSpeed", env, wantObj);
     (void)AppendWantLineUtf8(oss, "fsType", env, wantObj);
     (void)AppendWantLineBool(oss, "isIncBurnSupport", env, wantObj);
+    (void)AppendWantLineBool(oss, "isVerifyBurn", env, wantObj);
     return oss.str();
 }
 

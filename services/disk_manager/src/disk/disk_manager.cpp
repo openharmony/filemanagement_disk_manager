@@ -1472,17 +1472,6 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;
     }
-    std::string discType = GetDiscType(extraInfo);
-    if (!discType.empty() && (discType == "DVD+RW" || discType.find("BD") != std::string::npos)) {
-        LOGI("Burn: discType %{public}s requires eject after burn, calling Eject for diskId %{public}s",
-             discType.c_str(), diskId.c_str());
-        int32_t ejectErr = Eject(diskId);
-        if (ejectErr != DiskManagerErrNo::E_OK) {
-            LOGW("Burn: Eject failed with err=%{public}d, post-burn eject failed", ejectErr);
-        } else {
-            LOGI("Burn: Eject succeeded for diskId %{public}s", diskId.c_str());
-        }
-    }
     return DiskManagerErrNo::E_OK;
 }
 
