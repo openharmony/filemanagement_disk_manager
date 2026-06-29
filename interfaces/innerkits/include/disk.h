@@ -54,6 +54,8 @@ public:
     const std::vector<std::string> &GetVolumeIds() const;
     void SetExtraInfo(const std::string &extraInfo);
     const std::string &GetExtraInfo() const;
+    void SetVendor(const std::string &vendor);
+    std::string GetVendor() const;
 
     // --- 进程内 ---
     /** 块设备节点路径，如 /dev/block/sda。 */
@@ -80,6 +82,7 @@ private:
     // 进程内扩展（CommonEvent），不导出 JS
     std::string sysPath_;    // /dev/block/{diskId}
     std::string devName_;
+    std::string vendor_;
 };
 } // namespace DiskManager
 } // namespace OHOS
