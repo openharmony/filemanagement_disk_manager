@@ -587,7 +587,8 @@ int32_t DiskManager::Mount(const std::string &volumeId)
             return E_NON_EXIST;
         }
         if ((it->second.GetState() != VolumeState::UNMOUNTED) &&
-            (it->second.GetState() != VolumeState::DECRYPTING)) {
+            (it->second.GetState() != VolumeState::DECRYPTING) &&
+            (it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL)) {
             LOGE("Mount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(),
                  it->second.GetState());
             return E_VOL_MOUNT_ERR;
@@ -604,7 +605,9 @@ int32_t DiskManager::Mount(const std::string &volumeId)
             return E_NON_EXIST;
         }
         if (mountErr == DiskManagerErrNo::E_OK &&
-            it->second.GetState() != VolumeState::UNMOUNTED && it->second.GetState() != VolumeState::DECRYPTING) {
+            it->second.GetState() != VolumeState::UNMOUNTED &&
+            it->second.GetState() != VolumeState::DECRYPTING &&
+            it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL) {
             LOGE("Mount: volumeId=%{public}s state changed during mount", volumeId.c_str());
             return E_VOL_MOUNT_ERR;
         }
@@ -841,7 +844,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             LOGE("Not support file system, volumeId=%{public}s", volumeId.c_str());
             return E_NOT_SUPPORT;
         }
-        if (it->second.GetState() != VolumeState::UNMOUNTED) {
+        if (it->second.GetState() != VolumeState::UNMOUNTED &&
+            it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL) {
             LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted",
                  volumeId.c_str(), it->second.GetState());
             return E_VOL_STATE;
