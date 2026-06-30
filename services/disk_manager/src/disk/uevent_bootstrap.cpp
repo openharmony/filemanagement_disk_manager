@@ -409,18 +409,19 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     } else {
         pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
     }
-
     const std::string volId = VolIdFromDev(pDev);
+    VolumeExternal vol;
+    if (DiskManager::GetInstance().GetVolumeById(volId, vol) == E_OK && vol.GetState() == VolumeState::MOUNTED) {
+        return;
+    }
     if (CreateAndSetupVolume(diskId, pDev, isUserData, static_cast<int32_t>(p.partitionNumber)) != ERR_OK) {
         return;
     }
-
     std::string uuid;
     std::string type;
     std::string label;
     const std::string volDevPath = BlockPathForId(volId);
     ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
-
     if (DiskManager::GetInstance().IsPartitioning(diskId)) {
         const int32_t formatRet = DiskManager::GetInstance().Format(volId, PARTITION_TARGET_FS_TYPE);
         if (formatRet != ERR_OK) {
@@ -429,13 +430,11 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
         }
         return;
     }
-
     LOGI("AUTO_MOUNT_EXTERNAL_VOLUMES: %{public}d, type.empty(): %{public}d, uuid.empty(): %{public}d",
          AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
     if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
         return;
     }
-
     int32_t err = DiskManager::GetInstance().Mount(volId);
     if (err != ERR_OK) {
         LOGE("DiscoverSinglePartitionVolume Mount failed volId=%{public}s", volId.c_str());
