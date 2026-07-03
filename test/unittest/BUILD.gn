@@ -68,6 +68,7 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "security_guard:libsg_collect_sdk",
   ]
 
   subsystem_name = "filemanagement"
@@ -209,6 +210,7 @@ ohos_unittest("disk_manager_server_test") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "security_guard:libsg_collect_sdk",
   ]
 
   subsystem_name = "filemanagement"
@@ -503,6 +505,7 @@ ohos_unittest("disk_manager_provider_test") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "security_guard:libsg_collect_sdk",
   ]
 
   subsystem_name = "filemanagement"

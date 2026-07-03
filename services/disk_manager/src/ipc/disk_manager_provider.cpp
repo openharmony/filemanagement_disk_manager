@@ -450,7 +450,9 @@ int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Burn(volumeId, burnOptions);
+    std::string callerBundle = IpcCallerAuth::GetCallingBundleOrNativeProcessName();
+    int32_t callerUserId = IpcCallerAuth::GetCallingUserId();
+    return DiskManager::GetInstance().Burn(volumeId, burnOptions, callerBundle, callerUserId);
 }
 
 int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)

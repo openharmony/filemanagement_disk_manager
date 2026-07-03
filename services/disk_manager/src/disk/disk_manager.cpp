@@ -13,9 +13,13 @@
  * limitations under the License.
  */
 
+#include "accesstoken_kit.h"
 #include "block_info_table.h"
 #include "disk_manager.h"
+#include "event_info.h"
+#include "ipc_skeleton.h"
 #include "partition_table_parser.h"
+#include "sg_collect_client.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
 
@@ -28,6 +32,8 @@
 #include "disk_manager_napi_errno.h"
 #include "notification/common_event_publisher.h"
 
+#include <nlohmann/json.hpp>
+#include <chrono>
 #include <cctype>
 #include <cerrno>
 #include <algorithm>
@@ -50,6 +56,7 @@
 
 namespace OHOS {
 namespace DiskManager {
+using json = nlohmann::json;
 
 namespace {
 constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
@@ -60,6 +67,33 @@ constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_space.enterprise_space_enable";
+constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
+constexpr const char *BURN_REPORT_VERSION = "1.0";
+
+int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType)
+{
+    LOGI("ReportBurnSecurityInfo start");
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    int64_t happenTime = ms.count();
+
+    json contentJson;
+    contentJson["userId"] = userId;
+    contentJson["appId"] = appId;
+    contentJson["burningType"] = fsType;
+    contentJson["happenTime"] = happenTime;
+
+    std::string content = contentJson.dump();
+
+    OHOS::Security::SecurityGuard::EventInfo eventInfo(BURN_REPORT_EVENT_ID, BURN_REPORT_VERSION, content);
+    LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " version=%{public}s content=%{public}s",
+        BURN_REPORT_EVENT_ID, BURN_REPORT_VERSION, content.c_str());
+    auto wrappedInfo = std::make_shared<OHOS::Security::SecurityGuard::EventInfo>(eventInfo);
+    OHOS::Security::SecurityGuard::NativeDataCollectKit nativeDataCollectKit;
+    int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
+    LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d", reportResult);
+    return reportResult;
+}
 
 std::string NormalizeDiskBlockPath(const std::string &diskPath)
 {
@@ -1448,7 +1482,8 @@ std::string DiskManager::GetDriverType(const std::string &extraInfo)
     return driverType;
 }
 
-int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions)
+int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions,
+                          const std::string &callerBundle, int32_t callerUserId)
 {
     std::string blockVolId;
     std::string fsType;
@@ -1468,6 +1503,10 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
     }
 
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
+    LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
+        callerBundle.c_str(), callerUserId, fsType.c_str());
+    int32_t reportRet = ReportBurnSecurityInfo(callerUserId, callerBundle, fsType);
+    LOGI("Burn result: reportResult=%{public}d", reportRet);
     if (err != ERR_OK) {
         LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return err;

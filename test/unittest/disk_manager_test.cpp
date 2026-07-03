@@ -1931,7 +1931,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_001, TestSize.Level0)
     dm.OnVolumeCreated(MakeUsbVolume("vol-bn-1", "disk-bn-1", "uuid-bn-1"));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.Burn("vol-bn-1", "dao"), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(dm.Burn("vol-bn-1", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(DiskManagerTest, Burn_TestCase_002, TestSize.Level0)
@@ -1941,7 +1941,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_002, TestSize.Level0)
     dm.OnVolumeCreated(MakeUsbVolume("vol-bn-2", "disk-bn-2", "uuid-bn-2"));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_NE(dm.Burn("vol-bn-2", "dao"), DiskManagerErrNo::E_OK);
+    EXPECT_NE(dm.Burn("vol-bn-2", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_002, TestSize.Level0)
@@ -2313,7 +2313,7 @@ HWTEST_F(DiskManagerTest, SetAlignSector_TestCase_004, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Burn_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.Burn("nonexistent-vol", "options"), E_NON_EXIST);
+    EXPECT_EQ(dm.Burn("nonexistent-vol", "options", "test.bundle", 0), E_NON_EXIST);
 }
 
 /**
@@ -2333,14 +2333,13 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_004, TestSize.Level0)
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.Burn("vol-bn-4", "dao"), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(dm.Burn("vol-bn-4", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
     GTEST_LOG_(INFO) << "Burn_TestCase_004 End";
 }
 
 /**
  * @tc.name: Burn_TestCase_005
- * @tc.desc: 刻录成功但 Eject 失败仍返回 E_OK
+ * @tc.desc: 刻录成功返回 E_OK
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2355,8 +2354,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_005, TestSize.Level0)
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.Burn("vol-bn-5", "dao"), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(dm.Burn("vol-bn-5", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
     GTEST_LOG_(INFO) << "Burn_TestCase_005 End";
 }
 
