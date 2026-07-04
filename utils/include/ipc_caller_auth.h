@@ -72,6 +72,9 @@ public:
     /** 按令牌类型读取调用方标识：原生为进程名，HAP 为 bundleName；其它或未取到为空串。 */
     static std::string GetCallingBundleOrNativeProcessName();
 
+    /** 按令牌类型读取调用方 userId：HAP 从 HapTokenInfo.userID 取值，非 HAP 按 uid/200000 推算。 */
+    static int32_t GetCallingUserId();
+
     /** 工具类禁止构造。 */
     IpcCallerAuth() = delete;
 

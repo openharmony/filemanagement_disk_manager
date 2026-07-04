@@ -80,7 +80,8 @@ public:
     int32_t Erase(const std::string &volumeId);
     int32_t Eject(const std::string &diskId);
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath);
-    int32_t Burn(const std::string &volumeId, const std::string &burnOptions);
+    int32_t Burn(const std::string &volumeId, const std::string &burnOptions,
+                 const std::string &callerBundle, int32_t callerUserId);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 

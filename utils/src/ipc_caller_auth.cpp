@@ -28,6 +28,7 @@ namespace {
 using Security::AccessToken::AccessTokenID;
 using Security::AccessToken::AccessTokenKit;
 constexpr int32_t GRANTED = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+constexpr int32_t UID_BASE_DIVISOR = 200000;
 } // namespace
 
 bool IpcCallerAuth::VerifyCallerPermission(const std::string &permissionName)
@@ -125,6 +126,21 @@ std::string IpcCallerAuth::GetCallingBundleOrNativeProcessName()
         return hapInfo.bundleName;
     }
     return "";
+}
+
+int32_t IpcCallerAuth::GetCallingUserId()
+{
+    AccessTokenID tokenCaller = IPCSkeleton::GetCallingTokenID();
+    auto tokenType = AccessTokenKit::GetTokenTypeFlag(tokenCaller);
+    if (tokenType == Security::AccessToken::TOKEN_HAP) {
+        Security::AccessToken::HapTokenInfo hapInfo;
+        if (AccessTokenKit::GetHapTokenInfo(tokenCaller, hapInfo) != ERR_OK) {
+            LOGE("IpcCallerAuth: GetHapTokenInfo failed for userId");
+            return IPCSkeleton::GetCallingUid() / UID_BASE_DIVISOR;
+        }
+        return hapInfo.userID;
+    }
+    return IPCSkeleton::GetCallingUid() / UID_BASE_DIVISOR;
 }
 
 } // namespace DiskManager
