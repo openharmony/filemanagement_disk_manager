@@ -1333,6 +1333,27 @@ HWTEST_F(DiskManagerTest, NotifyMtpUnmounted_TestCase_003, TestSize.Level0)
 }
 
 /**
+ * @tc.name: NotifyMtpUnmounted_TestCase_004
+ * @tc.desc: After JS Unmount, MTP volume is erased and NotifyMtpUnmounted skips duplicate BAD_REMOVAL.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, NotifyMtpUnmounted_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.NotifyMtpMounted("mtp-dup-1", "/mnt/data/external/mtp-dup-1", "MTP", "mtp-dup-uuid", "mtpfs");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Unmount("mtp-dup-1"), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("mtp-dup-1", out), E_NON_EXIST);
+    EXPECT_NO_THROW(dm.NotifyMtpUnmounted("mtp-dup-1", true));
+    EXPECT_EQ(dm.GetVolumeById("mtp-dup-1", out), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_004 End";
+}
+
+/**
  * @tc.name: GetPartitionTable_TestCase_001
  * @tc.desc: GetPartitionTable with non-existent disk returns E_NON_EXIST.
  * @tc.type: FUNC
