@@ -239,12 +239,6 @@ HWTEST_F(StorageDaemonAdapterTest, GetVolumeOpProcess_ErrorPath_001, TestSize.Le
     EXPECT_NE(adapter.GetVolumeOpProcess("vol-1", progressPct), E_OK);
 }
 
-HWTEST_F(StorageDaemonAdapterTest, VerifyBurnData_ErrorPath_001, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_NE(adapter.VerifyBurnData("/dev/sr0", 1), E_OK);
-}
-
 class StorageDaemonAdapterProxyTest : public testing::Test {
 public:
     void SetUp() override
@@ -513,13 +507,6 @@ HWTEST_F(StorageDaemonAdapterProxyTest, GetVolumeOpProcess_Success_001, TestSize
         .WillOnce(DoAll(SetArgReferee<1>(50), Return(E_OK)));
     EXPECT_EQ(adapter.GetVolumeOpProcess("vol-1", progressPct), E_OK);
     EXPECT_EQ(progressPct, 50);
-}
-
-HWTEST_F(StorageDaemonAdapterProxyTest, VerifyBurnData_Success_001, TestSize.Level0)
-{
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, VerifyBurnData(_, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.VerifyBurnData("/dev/sr0", 1), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, SdDeathRecipient_OnRemoteDied_001, TestSize.Level0)

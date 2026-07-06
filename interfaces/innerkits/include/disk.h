@@ -35,6 +35,12 @@ enum DiskType : int32_t {
     DISK_TYPE_UNKNOWN = 255,
 };
 
+enum class CdromState {
+    NO_DISC,
+    NON_EMPTY_DISC,
+    EMPTY_DISC,
+};
+
 class Disk : public Parcelable {
 public:
     Disk();
@@ -56,6 +62,8 @@ public:
     const std::string &GetExtraInfo() const;
     void SetVendor(const std::string &vendor);
     std::string GetVendor() const;
+    CdromState GetCdromState() const;
+    void SetCdromState(CdromState cdromState);
 
     // --- 进程内 ---
     /** 块设备节点路径，如 /dev/block/sda。 */
@@ -78,6 +86,7 @@ private:
     bool removable_ {true};                      // removable，默认 true；仅 HDD/SSD 为 false
     std::vector<std::string> volumeIds_;          // volumeIds
     std::string extraInfo_;                        // extraInfo
+    CdromState cdromState_ {CdromState::NO_DISC};
 
     // 进程内扩展（CommonEvent），不导出 JS
     std::string sysPath_;    // /dev/block/{diskId}

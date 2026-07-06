@@ -48,7 +48,6 @@ void EjectSync(taihe::string_view diskId);
 void CreateIsoImageSync(taihe::string_view volumeId, taihe::string_view path);
 void BurnSync(taihe::string_view volumeId, const ohos::file::volumeManager::BurnOptions &options);
 int32_t GetOpProcessSync(taihe::string_view volumeId);
-void VerifyBurnDataSync(taihe::string_view volumeId, int32_t verifyType);
 bool IsVolumeInUseSync(taihe::string_view volumePath);
 } // namespace ANI::VolumeManager
 #endif // OHOS_FILE_VOLUMEMANAGER_IMPL_H

@@ -851,37 +851,6 @@ napi_value GetOpProcess(napi_env env, napi_callback_info info)
     return ScheduleVolumeGetOpProcess(env, std::string(volumeId.get()), thisVar, funcArg);
 }
 
-napi_value VerifyBurnData(napi_env env, napi_callback_info info)
-{
-    if (!IsSystemApp()) {
-        NError(E_PERMISSION_SYS).ThrowErr(env);
-        return nullptr;
-    }
-    NFuncArg funcArg(env, info);
-    if (!funcArg.InitArgs((int)NARG_CNT::TWO, (int)NARG_CNT::TWO)) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-    bool succ = false;
-    std::unique_ptr<char[]> volumeId;
-    std::tie(succ, volumeId, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
-    if (!succ) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-    int32_t vType = 0;
-    std::tie(succ, vType) = NVal(env, funcArg[(int)NARG_POS::SECOND]).ToInt32();
-    if (!succ) {
-        NError(E_PARAMS).ThrowErr(env);
-        return nullptr;
-    }
-    std::string volIdStr(volumeId.get());
-    NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "VerifyBurnData", [volIdStr, vType]() {
-        return OHOS::DiskManager::DiskManagerClient::GetInstance().VerifyBurnData(volIdStr, vType);
-    });
-}
-
 napi_value IsVolumeInUse(napi_env env, napi_callback_info info)
 {
     NFuncArg funcArg(env, info);
@@ -1240,7 +1209,6 @@ static napi_property_descriptor g_properties[] = {
     DECLARE_NAPI_FUNCTION("createIsoImage", CreateIsoImage),
     DECLARE_NAPI_FUNCTION("burn", Burn),
     DECLARE_NAPI_FUNCTION("getOpProcess", GetOpProcess),
-    DECLARE_NAPI_FUNCTION("verifyBurnData", VerifyBurnData),
     // 分区管理接口 (since 26.0.0)
     DECLARE_NAPI_FUNCTION("getPartitionTable", GetPartitionTable),
     DECLARE_NAPI_FUNCTION("createPartition", CreatePartition),

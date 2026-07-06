@@ -162,6 +162,17 @@ std::string Disk::GetVendor() const
 {
     return vendor_;
 }
+
+CdromState Disk::GetCdromState() const
+{
+    return cdromState_;
+}
+
+void Disk::SetCdromState(CdromState cdromState)
+{
+    cdromState_ = cdromState;
+}
+
 bool Disk::IsInternalDataDisk() const
 {
     return IsInternalDataDiskType(diskType_);

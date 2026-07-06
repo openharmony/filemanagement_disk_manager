@@ -52,6 +52,7 @@ public:
     MOCK_METHOD(int32_t, GetDiskById, (const std::string &diskId, Disk &out));
     MOCK_METHOD(int32_t, GetAllVolumes, (std::vector<VolumeExternal> &out));
     MOCK_METHOD(int32_t, GetVolumeById, (const std::string &volumeId, VolumeExternal &out));
+    MOCK_METHOD(int32_t, UpdateDisk, (const Disk &disk));
     MOCK_METHOD(int32_t, GetVolumeByUuid, (const std::string &fsUuid, VolumeExternal &out));
     MOCK_METHOD(int32_t, UpdateVolumeMetadata,
         (const std::string &volumeId, const std::string &fsUuid,
@@ -61,9 +62,9 @@ public:
     MOCK_METHOD(int32_t, Erase, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Eject, (const std::string &diskId));
     MOCK_METHOD(int32_t, CreateIsoImage, (const std::string &volumeId, const std::string &filePath));
-    MOCK_METHOD(int32_t, Burn, (const std::string &volumeId, const std::string &burnOptions));
+    MOCK_METHOD(int32_t, Burn, (const std::string &volumeId, const std::string &burnOptions,
+                                const std::string &callerBundle, int32_t callerUserId));
     MOCK_METHOD(int32_t, GetVolumeOpProcess, (const std::string &volumeId, int32_t &progressPct));
-    MOCK_METHOD(int32_t, VerifyBurnData, (const std::string &volumeId, int32_t verifyType));
     MOCK_METHOD(void, NotifyMtpMounted,
         (const std::string &id, const std::string &path,
          const std::string &desc, const std::string &uuid, const std::string &fsType));

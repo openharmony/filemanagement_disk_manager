@@ -1207,6 +1207,18 @@ int32_t DiskManager::GetDiskById(const std::string &diskId, Disk &out)
     return DiskManagerErrNo::E_OK;
 }
 
+int32_t DiskManager::UpdateDisk(const Disk &disk)
+{
+    std::unique_lock<std::shared_mutex> diskWriteLock(diskMapMutex_);
+    auto it = diskMap_.find(disk.GetDiskId());
+    if (it == diskMap_.end()) {
+        LOGE("DiskManager::UpdateDisk id %{public}s not exists", disk.GetDiskId().c_str());
+        return E_NON_EXIST;
+    }
+    it->second = disk;
+    return DiskManagerErrNo::E_OK;
+}
+
 int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
 {
     std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
@@ -1363,25 +1375,31 @@ int32_t DiskManager::Erase(const std::string &volumeId)
 {
     std::string blockVolId;
     std::string diskId;
+    std::string fsType;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_NON_EXIST;
+            return E_PARAMS_INVALID;
         }
         blockVolId = it->second.GetId();
         diskId = it->second.GetDiskId();
+        fsType = it->second.GetFsTypeString();
+    }
+    if (!IsOddFsType(fsType)) {
+        LOGE("Erase only support odd fsType, fsType is %{public}s", fsType.c_str());
+        return E_NOT_SUPPORT;
     }
     int32_t err = StorageDaemonAdapter::GetInstance().Erase("/dev/block/" + blockVolId);
     if (err != ERR_OK) {
-        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), err);
-        return err;
+        LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), E_ERASE_FAILED);
+        return E_ERASE_FAILED;
     }
     err = Eject(diskId);
     if (err != ERR_OK) {
-        LOGE("Erase-Eject vol %{public}s err=%{public}d", blockVolId.c_str(), err);
-        return err;
+        LOGE("Erase-Eject vol %{public}s err=%{public}d", blockVolId.c_str(), E_ERASE_FAILED);
+        return E_ERASE_FAILED;
     }
     return DiskManagerErrNo::E_OK;
 }
@@ -1391,13 +1409,17 @@ int32_t DiskManager::Eject(const std::string &diskId)
     Disk disk;
     if (GetDiskById(diskId, disk) != E_OK) {
         LOGE("Disk with id %{public}s not found", diskId.c_str());
-        return E_NON_EXIST;
+        return E_NOT_SUPPORT;
+    }
+    if (disk.GetDiskType() != DiskType::CD_FLAG) {
+        LOGE("Eject only support cd disk, diskId is %{public}s", diskId.c_str());
+        return E_NOT_SUPPORT;
     }
     std::string devName = disk.GetDevName();
     int32_t err = StorageDaemonAdapter::GetInstance().Eject(devName);
     if (err != ERR_OK) {
-        LOGE("Eject diskId %{public}s err=%{public}d", diskId.c_str(), err);
-        return err;
+        LOGE("Eject diskId %{public}s err=%{public}d", diskId.c_str(), E_EJECT_FAILED);
+        return E_EJECT_FAILED;
     }
     return DiskManagerErrNo::E_OK;
 }
@@ -1408,22 +1430,46 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
     std::string blockVolId;
     std::string fsType;
     std::string mountedPath;
+    std::string diskId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_NON_EXIST;
+            return E_NOT_SUPPORT;
+        }
+        if (it->second.GetState() != VolumeState::MOUNTED) {
+            LOGE("Volume with id %{public}s not mounted", volumeId.c_str());
+            return E_VOL_STATE;
         }
         blockVolId = it->second.GetId();
         fsType = it->second.GetFsTypeString();
         mountedPath = it->second.GetPath();
+        diskId = it->second.GetDiskId();
     }
+    if (!IsOddFsType(fsType)) {
+        LOGE("CreateIsoImage only support odd fsType, fsType is %{public}s", fsType.c_str());
+        return E_NOT_SUPPORT;
+    }
+    if (filePath.empty()) {
+        LOGE("CreateIsoImage: filePath is empty");
+        return E_PARAMS_INVALID;
+    }
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        LOGE("Disk with id %{public}s not found", diskId.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (disk.GetCdromState() == CdromState::EMPTY_DISC) {
+        LOGE("CreateIsoImage: cdrom state is EMPTY_DISC");
+        return E_EMPTY_DISC;
+    }
+ 
     int32_t err = StorageDaemonAdapter::GetInstance().CreateIsoImage("/dev/block/" + blockVolId,
                                                                      filePath, fsType, mountedPath);
     if (err != ERR_OK) {
-        LOGE("CreateIsoImage vol %{public}s err=%{public}d", blockVolId.c_str(), err);
-        return err;
+        LOGE("CreateIsoImage vol %{public}s err=%{public}d", blockVolId.c_str(), E_ISO_WRITE_FAILED);
+        return E_ISO_WRITE_FAILED;
     }
     return DiskManagerErrNo::E_OK;
 }
@@ -1487,19 +1533,23 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
 {
     std::string blockVolId;
     std::string fsType;
-    std::string extraInfo;
-    std::string diskId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_NON_EXIST;
+            return E_PARAMS_INVALID;
         }
         blockVolId = it->second.GetId();
         fsType = it->second.GetFsTypeString();
-        extraInfo = it->second.GetExtraInfo();
-        diskId = it->second.GetDiskId();
+    }
+    if (!IsOddFsType(fsType)) {
+        LOGE("Burn only support odd fsType, fsType is %{public}s", fsType.c_str());
+        return E_NOT_SUPPORT;
+    }
+    if (burnOptions.empty()) {
+        LOGE("Burn: burnOptions is empty");
+        return E_PARAMS_INVALID;
     }
 
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
@@ -1508,8 +1558,8 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
     int32_t reportRet = ReportBurnSecurityInfo(callerUserId, callerBundle, fsType);
     LOGI("Burn result: reportResult=%{public}d", reportRet);
     if (err != ERR_OK) {
-        LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), err);
-        return err;
+        LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), E_BURN_FAILED);
+        return E_BURN_FAILED;
     }
     return DiskManagerErrNo::E_OK;
 }
@@ -1517,14 +1567,20 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
 int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
 {
     std::string blockVolId;
+    std::string fsType;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_NON_EXIST;
+            return E_PARAMS_INVALID;
         }
         blockVolId = it->second.GetId();
+        fsType = it->second.GetFsTypeString();
+    }
+    if (!IsOddFsType(fsType)) {
+        LOGE("GetVolumeOpProcess only support odd fsType, fsType is %{public}s", fsType.c_str());
+        return E_NOT_SUPPORT;
     }
     int32_t err = StorageDaemonAdapter::GetInstance().GetVolumeOpProcess(blockVolId, progressPct);
     if (err != ERR_OK) {
@@ -1533,26 +1589,6 @@ int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &pr
     }
     LOGI("DiskManager GetVolumeOpProcess volumeId = %{public}s, progressPct = %{public}d",
         volumeId.c_str(), progressPct);
-    return DiskManagerErrNo::E_OK;
-}
-
-int32_t DiskManager::VerifyBurnData(const std::string &volumeId, int32_t verifyType)
-{
-    std::string blockVolId;
-    {
-        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
-        const auto it = volumeMap_.find(volumeId);
-        if (it == volumeMap_.end()) {
-            LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_NON_EXIST;
-        }
-        blockVolId = it->second.GetId();
-    }
-    int32_t err = StorageDaemonAdapter::GetInstance().VerifyBurnData("/dev/block/" + blockVolId, verifyType);
-    if (err != ERR_OK) {
-        LOGE("VerifyBurnData vol %{public}s err=%{public}d", blockVolId.c_str(), err);
-        return err;
-    }
     return DiskManagerErrNo::E_OK;
 }
 

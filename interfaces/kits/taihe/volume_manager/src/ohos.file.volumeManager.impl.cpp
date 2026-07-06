@@ -391,22 +391,6 @@ int32_t GetOpProcessSync(::taihe::string_view volumeId)
     return progress;
 }
 
-void VerifyBurnDataSync(::taihe::string_view volumeId, int32_t verifyType)
-{
-    std::string volumeIdString = std::string(volumeId);
-    if (volumeIdString.empty()) {
-        LOGE("Invalid parameter, volumeId is empty");
-        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
-        return;
-    }
-    int32_t vType = static_cast<int32_t>(verifyType);
-    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().VerifyBurnData(volumeIdString, vType);
-    if (errNum != OHOS::E_OK) {
-        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
-        return;
-    }
-}
-
 bool IsVolumeInUseSync(::taihe::string_view volumePath)
 {
     std::string volumePathString = std::string(volumePath);
@@ -453,6 +437,5 @@ TH_EXPORT_CPP_API_EjectSync(ANI::VolumeManager::EjectSync);
 TH_EXPORT_CPP_API_CreateIsoImageSync(ANI::VolumeManager::CreateIsoImageSync);
 TH_EXPORT_CPP_API_BurnSync(ANI::VolumeManager::BurnSync);
 TH_EXPORT_CPP_API_GetOpProcessSync(ANI::VolumeManager::GetOpProcessSync);
-TH_EXPORT_CPP_API_VerifyBurnDataSync(ANI::VolumeManager::VerifyBurnDataSync);
 TH_EXPORT_CPP_API_IsVolumeInUseSync(ANI::VolumeManager::IsVolumeInUseSync);
 // NOLINTEND

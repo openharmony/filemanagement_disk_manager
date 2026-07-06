@@ -791,24 +791,6 @@ HWTEST_F(DiskManagerClientTest, FormatPartitionTest001, TestSize.Level1)
 }
 
 /**
- * @tc.name: VerifyBurnDataTest001
- * @tc.desc: 测试 VerifyBurnData 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerClientTest, VerifyBurnDataTest001, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "VerifyBurnDataTest001 Start";
-
-    DiskManagerClient &client = DiskManagerClient::GetInstance();
-    client.ResetProxy();
-    int32_t ret = client.VerifyBurnData(TEST_VOLUME_ID, 0);
-    EXPECT_NE(ret, E_OK);
-
-    GTEST_LOG_(INFO) << "VerifyBurnDataTest001 End";
-}
-
-/**
  * @tc.name: QueryUsbIsInUseTest001
  * @tc.desc: 测试 QueryUsbIsInUse 传入空 diskPath，ResetProxy 后 IPC 失败预期返回非 E_OK。
  * @tc.type: FUNC
@@ -918,23 +900,6 @@ HWTEST_F(DiskManagerClientTest, TryToFixTest002, TestSize.Level1)
     EXPECT_NE(client.TryToFix(""), E_OK);
 
     GTEST_LOG_(INFO) << "TryToFixTest002 End";
-}
-
-/**
- * @tc.name: VerifyBurnDataTest002
- * @tc.desc: 测试 VerifyBurnData 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerClientTest, VerifyBurnDataTest002, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "VerifyBurnDataTest002 Start";
-
-    DiskManagerClient &client = DiskManagerClient::GetInstance();
-    client.ResetProxy();
-    EXPECT_NE(client.VerifyBurnData("", 1), E_OK);
-
-    GTEST_LOG_(INFO) << "VerifyBurnDataTest002 End";
 }
 
 /**

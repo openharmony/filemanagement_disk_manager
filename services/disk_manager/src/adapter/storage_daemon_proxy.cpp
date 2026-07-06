@@ -641,27 +641,5 @@ ErrCode StorageDaemonProxy::GetVolumeOpProcess(const std::string &volumeId, int3
     }
     return ERR_OK;
 }
-
-ErrCode StorageDaemonProxy::VerifyBurnData(const std::string &devPath, int32_t verifyType)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
-        return ERR_TRANSACTION_FAILED;
-    }
-    if (!data.WriteString16(Str8ToStr16(devPath))) {
-        return ERR_INVALID_DATA;
-    }
-    if (!data.WriteInt32(verifyType)) {
-        return ERR_INVALID_DATA;
-    }
-    int32_t ret = Remote()->SendRequest(static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_VERIFY_BURN_DATA),
-                                        data, reply, option);
-    if (ret != ERR_OK) {
-        return ret;
-    }
-    return reply.ReadInt32();
-}
 } // namespace StorageDaemon
 } // namespace OHOS

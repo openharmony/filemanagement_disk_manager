@@ -471,22 +471,6 @@ int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int
     return DiskManager::GetInstance().GetVolumeOpProcess(volumeId, progressPct);
 }
 
-int32_t DiskManagerProvider::VerifyBurnData(const std::string &volumeId, int32_t verifyType)
-{
-    LOGI("VerifyBurnData volumeId=%{public}s type=%{public}d", volumeId.c_str(), verifyType);
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("VerifyBurnData: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("VerifyBurnData: permission denied");
-            return E_PERMISSION_DENIED;
-        }
-    }
-    return DiskManager::GetInstance().VerifyBurnData(volumeId, verifyType);
-}
-
 int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
 {
     if (!IpcCallerAuth::IsCallingSystemApp()) {

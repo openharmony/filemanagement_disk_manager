@@ -461,18 +461,5 @@ int32_t StorageDaemonAdapter::GetVolumeOpProcess(const std::string &volumeId, in
     LOGI("GetVolumeOpProcess exit ret=%{public}d, progressPct=%{public}d", ret, progressPct);
     return ret;
 }
-
-int32_t StorageDaemonAdapter::VerifyBurnData(const std::string &devPath, int32_t verifyType)
-{
-    LOGI("VerifyBurnData enter, devPath=%{public}s, verifyType=%{public}d", devPath.c_str(), verifyType);
-    int32_t err = EnsureProxyReady();
-    if (err != E_OK) {
-        LOGE("VerifyBurnData exit err=%{public}d (proxy not ready)", err);
-        return err;
-    }
-    const int32_t ret = storageDaemon_->VerifyBurnData(devPath, verifyType);
-    LOGI("VerifyBurnData exit ret=%{public}d", ret);
-    return ret;
-}
 } // namespace DiskManager
 } // namespace OHOS

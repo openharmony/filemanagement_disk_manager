@@ -67,6 +67,13 @@ enum class DiskManagerNativeErr : int32_t {
     E_FORMAT_PARTITION_NOT_SUPPORT = STORAGE_SERVICE_SYS_CAP_TAG + 1748,
     E_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1750,
     E_QUERY_VOLUME_IN_USE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 1751,
+
+    // burn errno
+    E_EMPTY_DISC = STORAGE_SERVICE_SYS_CAP_TAG + 1801,
+    E_ISO_WRITE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1802,
+    E_ERASE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1803,
+    E_EJECT_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1804,
+    E_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1805,
 };
 
 /** JS / Taihe 业务错误码（与 storage_service 原 JsErrCode 数值一致） */
@@ -96,14 +103,11 @@ enum class DiskManagerJsErr : int32_t {
     E_JS_GET_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 21,
     E_JS_CREATE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 22,
     E_JS_DELETE_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 23,
-    E_JS_EXT_EMPTY_DISC = STORAGE_SERVICE_SYS_CAP_TAG + 24,
-    E_JS_EXT_ISO_WRITE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 25,
-    E_JS_EXT_ERASE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 26,
-    E_JS_EXT_BURN_SRC_NOTFOUND = STORAGE_SERVICE_SYS_CAP_TAG + 27,
-    E_JS_EXT_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 28,
-    E_JS_EXT_NO_ONGOING_OP = STORAGE_SERVICE_SYS_CAP_TAG + 29,
-    E_JS_EXT_VERIFY_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 30,
-    E_JS_EXT_VERIFY_MISMATCH = STORAGE_SERVICE_SYS_CAP_TAG + 31,
+    E_JS_EMPTY_DISC = STORAGE_SERVICE_SYS_CAP_TAG + 24,
+    E_JS_ISO_WRITE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 25,
+    E_JS_ERASE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 26,
+    E_JS_EJECT_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 27,
+    E_JS_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 28,
     E_JS_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 32,
     E_JS_QUERY_VOLUME_IN_USE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 33,
 };
@@ -156,6 +160,12 @@ constexpr int32_t E_FORMAT_PARTITION_NOT_SUPPORT =
 constexpr int32_t E_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_FORMAT_PARTITION_ERROR);
 constexpr int32_t E_QUERY_VOLUME_IN_USE_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_QUERY_VOLUME_IN_USE_ERROR);
 
+constexpr int32_t E_EMPTY_DISC = static_cast<int32_t>(DiskManagerNativeErr::E_EMPTY_DISC);
+constexpr int32_t E_ISO_WRITE_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_ISO_WRITE_FAILED);
+constexpr int32_t E_ERASE_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_ERASE_FAILED);
+constexpr int32_t E_EJECT_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_EJECT_FAILED);
+constexpr int32_t E_BURN_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_BURN_FAILED);
+
 constexpr int32_t E_PERMISSION = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION);
 constexpr int32_t E_PERMISSION_SYS = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION_SYS);
 constexpr int32_t E_PARAMS = static_cast<int32_t>(DiskManagerJsErr::E_PARAMS);
@@ -190,25 +200,11 @@ constexpr int32_t E_JS_QUERY_VOLUME_IN_USE_ERROR =
     static_cast<int32_t>(DiskManagerJsErr::E_JS_QUERY_VOLUME_IN_USE_ERROR);
 
 /** volumeManager 光盘/刻录扩展 JS 错误码 */
-constexpr int32_t E_JS_EXT_EMPTY_DISC = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_EMPTY_DISC);
-constexpr int32_t E_JS_EXT_ISO_WRITE_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_ISO_WRITE_FAILED);
-constexpr int32_t E_JS_EXT_ERASE_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_ERASE_FAILED);
-constexpr int32_t E_JS_EXT_BURN_SRC_NOTFOUND = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_BURN_SRC_NOTFOUND);
-constexpr int32_t E_JS_EXT_BURN_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_BURN_FAILED);
-constexpr int32_t E_JS_EXT_NO_ONGOING_OP = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_NO_ONGOING_OP);
-constexpr int32_t E_JS_EXT_VERIFY_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_VERIFY_FAILED);
-constexpr int32_t E_JS_EXT_VERIFY_MISMATCH = static_cast<int32_t>(DiskManagerJsErr::E_JS_EXT_VERIFY_MISMATCH);
-
-/** volumeManager 光盘/刻录扩展，与 ark 文档中 13600023–13600031 段对齐 */
-constexpr int32_t E_STORAGE_JS_EXT_DISC_NOT_ERASABLE = STORAGE_SERVICE_SYS_CAP_TAG + 23;
-constexpr int32_t E_STORAGE_JS_EXT_EMPTY_DISC = STORAGE_SERVICE_SYS_CAP_TAG + 24;
-constexpr int32_t E_STORAGE_JS_EXT_ISO_WRITE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 25;
-constexpr int32_t E_STORAGE_JS_EXT_ERASE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 26;
-constexpr int32_t E_STORAGE_JS_EXT_BURN_SRC_NOTFOUND = STORAGE_SERVICE_SYS_CAP_TAG + 27;
-constexpr int32_t E_STORAGE_JS_EXT_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 28;
-constexpr int32_t E_STORAGE_JS_EXT_NO_ONGOING_OP = STORAGE_SERVICE_SYS_CAP_TAG + 29;
-constexpr int32_t E_STORAGE_JS_EXT_VERIFY_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 30;
-constexpr int32_t E_STORAGE_JS_EXT_VERIFY_MISMATCH = STORAGE_SERVICE_SYS_CAP_TAG + 31;
+constexpr int32_t E_JS_EMPTY_DISC = static_cast<int32_t>(DiskManagerJsErr::E_JS_EMPTY_DISC);
+constexpr int32_t E_JS_ISO_WRITE_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_ISO_WRITE_FAILED);
+constexpr int32_t E_JS_ERASE_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_ERASE_FAILED);
+constexpr int32_t E_JS_EJECT_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_EJECT_FAILED);
+constexpr int32_t E_JS_BURN_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_BURN_FAILED);
 } // namespace OHOS
 
 #endif // DISK_MANAGER_NAPI_ERRNO_H
