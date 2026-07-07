@@ -850,8 +850,13 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
     if (it == volumeMap_.end()) {
         return E_NON_EXIST;
     }
-    it->second.SetPath("");
-    it->second.SetState(UNMOUNTED);
+    const int32_t fsType = volExternal.GetFsType();
+    if (fsType == FsType::MTP || fsType == FsType::PTP) {
+        volumeMap_.erase(it);
+    } else {
+        it->second.SetPath("");
+        it->second.SetState(UNMOUNTED);
+    }
     return DiskManagerErrNo::E_OK;
 }
 
@@ -1603,20 +1608,21 @@ void DiskManager::NotifyMtpMounted(const std::string &id,
 
 void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemove)
 {
-    LOGI("DiskManager NotifyMtpUnmounted");
+    LOGI("DiskManager NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(),
+         static_cast<int>(isBadRemove));
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
-    auto it = volumeMap_.find(id);
+    const auto it = volumeMap_.find(id);
     if (it == volumeMap_.end()) {
-        LOGE("DiskManager::Unmount id %{public}s not exists", id.c_str());
+        LOGI("NotifyMtpUnmounted: volume %{public}s not in map, skip", id.c_str());
         return;
     }
-    VolumeExternal &volExternal = it->second;
+    VolumeExternal volExternal = it->second;
     if (!isBadRemove) {
         CommonEventPublisher::PublishVolumeChange(VolumeState::UNMOUNTED, volExternal);
     } else {
         CommonEventPublisher::PublishVolumeChange(VolumeState::BAD_REMOVAL, volExternal);
     }
-    volumeMap_.erase(id);
+    volumeMap_.erase(it);
 }
 
 int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTableInfo &info)
