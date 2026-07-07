@@ -442,18 +442,6 @@ int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
     return dm.OnBlockDiskUevent(rawUeventMsg);
 }
 
-int32_t DiskManagerClient::VerifyBurnData(const std::string &volumeId, int32_t verifyType)
-{
-    LOGI("VerifyBurnData volumeId=%{public}s type=%{public}d", volumeId.c_str(), verifyType);
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.VerifyBurnData(volumeId, verifyType);
-}
-
 int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
                                             const std::string &uuid, const std::string &fsType)
 {

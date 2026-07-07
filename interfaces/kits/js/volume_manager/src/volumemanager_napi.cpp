@@ -46,7 +46,6 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getOpProcess", GetOpProcess),
         /* 与 storage_service 既有命名兼容 */
         DECLARE_NAPI_FUNCTION("getOpticalDriveOpsProgress", GetOpProcess),
-        DECLARE_NAPI_FUNCTION("verifyBurnData", VerifyBurnData),
         // 分区管理接口
         DECLARE_NAPI_FUNCTION("getPartitionTable", GetPartitionTable),
         DECLARE_NAPI_FUNCTION("createPartition", CreatePartition),

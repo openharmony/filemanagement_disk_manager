@@ -65,6 +65,7 @@ public:
 
     int32_t GetAllDisks(std::vector<Disk> &out);
     int32_t GetDiskById(const std::string &diskId, Disk &out);
+    int32_t UpdateDisk(const Disk &disk);
     int32_t GetAllVolumes(std::vector<VolumeExternal> &out);
     int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &out);
     int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &out);
@@ -83,7 +84,6 @@ public:
     int32_t Burn(const std::string &volumeId, const std::string &burnOptions,
                  const std::string &callerBundle, int32_t callerUserId);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
-    int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 
     void NotifyMtpMounted(const std::string &id,
                           const std::string &path,

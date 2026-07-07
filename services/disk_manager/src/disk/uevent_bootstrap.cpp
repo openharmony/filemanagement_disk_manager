@@ -69,12 +69,6 @@ const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
 constexpr const char *BLOCK_PATH = "/dev/block";
 constexpr int DEC_BASE = 10;
 
-enum class CdromState {
-    NO_DISC,
-    NON_EMPTY_DISC,
-    EMPTY_DISC,
-};
-
 CdromState QueryCdromState(const std::string &devPath)
 {
     int32_t status = 0;
@@ -547,6 +541,11 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
         DestroyALLVolume(diskId);
         LOGI("CD not exist, cleared");
         return;
+    }
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) == DiskManagerErrNo::E_OK) {
+        disk.SetCdromState(state);
+        (void)DiskManager::GetInstance().UpdateDisk(disk);
     }
     HandleAddCD(env, diskId, state);
 }

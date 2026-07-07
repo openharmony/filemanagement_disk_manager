@@ -1158,46 +1158,285 @@ HWTEST_F(DiskManagerTest, Partition_TestCase_003, TestSize.Level0)
 }
 
 /**
+ * @tc.name: Erase_TestCase_005
+ * @tc.desc: Erase volume with non-existent volumeId returns E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Erase_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.Erase("nonexistent-vol"), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_005 End";
+}
+
+/**
+ * @tc.name: Erase_TestCase_006
+ * @tc.desc: Erase volume with non-ODD fsType (vfat) returns E_NOT_SUPPORT
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Erase_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_006 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-er-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-er-6", "disk-er-6", "uuid-er-6", UNMOUNTED, VFAT);
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.Erase("vol-er-6"), E_NOT_SUPPORT);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_006 End";
+}
+
+/**
+ * @tc.name: Erase_TestCase_007
+ * @tc.desc: Erase succeeds but Eject fails returns E_ERASE_FAILED
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Erase_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_TestCase_007 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-er-7"));
+    VolumeExternal vol = MakeUdfVolume("vol-er-7", "disk-er-7", "uuid-er-7");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Erase(_)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.Erase("vol-er-7"), E_ERASE_FAILED);
+
+    GTEST_LOG_(INFO) << "Erase_TestCase_007 End";
+}
+
+/**
+ * @tc.name: Eject_TestCase_004
+ * @tc.desc: Eject non-CD disk returns E_NOT_SUPPORT
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Eject_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Eject_TestCase_004 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-ej-4"));
+    EXPECT_EQ(dm.Eject("disk-ej-4"), E_NOT_SUPPORT);
+
+    GTEST_LOG_(INFO) << "Eject_TestCase_004 End";
+}
+
+/**
  * @tc.name: CreateIsoImage_TestCase_001
-* @tc.desc: CreateIsoImage with nonexistent volumeId returns E_NON_EXIST.
+ * @tc.desc: CreateIsoImage with non-existent volumeId returns E_NOT_SUPPORT
  * @tc.type: FUNC
  * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 Start";
+
     auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.CreateIsoImage("nonexistent-vol", "/path"), E_NON_EXIST);
+    EXPECT_EQ(dm.CreateIsoImage("nonexistent-vol", "/tmp/img.iso"), E_NOT_SUPPORT);
+
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
 }
 
 /**
+ * @tc.name: CreateIsoImage_TestCase_004
+ * @tc.desc: CreateIsoImage with unmounted volume returns E_VOL_STATE
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_004 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-cii-4"));
+    VolumeExternal vol = MakeUdfVolume("vol-cii-4", "disk-cii-4", "uuid-cii-4");
+    vol.SetState(UNMOUNTED);
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.CreateIsoImage("vol-cii-4", "/tmp/img.iso"), E_VOL_STATE);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_004 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_TestCase_005
+ * @tc.desc: CreateIsoImage with non-ODD fsType returns E_NOT_SUPPORT
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-cii-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-cii-5", "disk-cii-5", "uuid-cii-5", MOUNTED, VFAT);
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.CreateIsoImage("vol-cii-5", "/tmp/img.iso"), E_NOT_SUPPORT);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_005 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_TestCase_006
+ * @tc.desc: CreateIsoImage with empty filePath returns E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_006 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-cii-6"));
+    VolumeExternal vol = MakeUdfVolume("vol-cii-6", "disk-cii-6", "uuid-cii-6");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.CreateIsoImage("vol-cii-6", ""), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_006 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_TestCase_007
+ * @tc.desc: CreateIsoImage with EMPTY_DISC cdrom state returns E_EMPTY_DISC
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_007 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeCdDisk("disk-cii-7");
+    disk.SetCdromState(CdromState::EMPTY_DISC);
+    dm.OnDiskCreated(disk);
+    VolumeExternal vol = MakeUdfVolume("vol-cii-7", "disk-cii-7", "uuid-cii-7");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.CreateIsoImage("vol-cii-7", "/tmp/img.iso"), E_EMPTY_DISC);
+
+    GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_007 End";
+}
+
+/**
+ * @tc.name: Burn_TestCase_006
+ * @tc.desc: Burn with non-existent volumeId returns E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_006 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.Burn("nonexistent-vol", "dao", "", 0), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_006 End";
+}
+
+/**
+ * @tc.name: Burn_TestCase_007
+ * @tc.desc: Burn with non-ODD fsType returns E_NOT_SUPPORT
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_007 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-bn-7"));
+    VolumeExternal vol = MakeUsbVolume("vol-bn-7", "disk-bn-7", "uuid-bn-7", UNMOUNTED, VFAT);
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.Burn("vol-bn-7", "dao", "", 0), E_NOT_SUPPORT);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_007 End";
+}
+
+/**
+ * @tc.name: Burn_TestCase_008
+ * @tc.desc: Burn with empty burnOptions returns E_PARAMS_INVALID
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_008, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_008 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-bn-8"));
+    VolumeExternal vol = MakeUdfVolume("vol-bn-8", "disk-bn-8", "uuid-bn-8");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.Burn("vol-bn-8", "", "", 0), E_PARAMS_INVALID);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_008 End";
+}
+
+/**
  * @tc.name: GetVolumeOpProcess_TestCase_001
- * @tc.desc: GetVolumeOpProcess returns E_OK with progressPct=0.
+ * @tc.desc: GetVolumeOpProcess with non-existent volumeId returns E_PARAMS_INVALID
  * @tc.type: FUNC
  * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 Start";
+
     auto &dm = DiskManager::GetInstance();
-    int32_t progress = -1;
-    EXPECT_EQ(dm.GetVolumeOpProcess("nonexistent-vol", progress), E_NON_EXIST);
+    int32_t progress = 0;
+    EXPECT_EQ(dm.GetVolumeOpProcess("nonexistent-vol", progress), E_PARAMS_INVALID);
+
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 End";
 }
 
 /**
- * @tc.name: VerifyBurnData_TestCase_001
- * @tc.desc: VerifyBurnData returns E_OK (stub).
+ * @tc.name: GetVolumeOpProcess_TestCase_004
+ * @tc.desc: GetVolumeOpProcess with non-ODD fsType returns E_NOT_SUPPORT
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerTest, VerifyBurnData_TestCase_001, TestSize.Level0)
+HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_004, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 Start";
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_004 Start";
+
     auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.VerifyBurnData("nonexistent-vol", 0), E_NON_EXIST);
-    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 End";
+    dm.OnDiskCreated(MakeUsbDisk("disk-gvo-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-gvo-4", "disk-gvo-4", "uuid-gvo-4", UNMOUNTED, VFAT);
+    dm.OnVolumeCreated(vol);
+    int32_t progress = 0;
+    EXPECT_EQ(dm.GetVolumeOpProcess("vol-gvo-4", progress), E_NOT_SUPPORT);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_004 End";
+}
+
+/**
+ * @tc.name: GetVolumeOpProcess_TestCase_005
+ * @tc.desc: GetVolumeOpProcess with StorageDaemon error returns error code
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-gvo-5"));
+    VolumeExternal vol = MakeUdfVolume("vol-gvo-5", "disk-gvo-5", "uuid-gvo-5");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, GetVolumeOpProcess(_, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    int32_t progress = 0;
+    EXPECT_NE(dm.GetVolumeOpProcess("vol-gvo-5", progress), E_OK);
+
+    GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_005 End";
 }
 
 /**
@@ -1905,8 +2144,10 @@ HWTEST_F(DiskManagerTest, MountUsbFuseIfNeeded_TestCase_003, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Erase_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-er-1"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-er-1", "disk-er-1", "uuid-er-1", MOUNTED));
+    dm.OnDiskCreated(MakeCdDisk("disk-er-1"));
+    VolumeExternal vol = MakeUdfVolume("vol-er-1", "disk-er-1", "uuid-er-1");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Erase(_)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(ERR_OK));
@@ -1918,13 +2159,13 @@ HWTEST_F(DiskManagerTest, Erase_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeUsbDisk("disk-er-2"));
     dm.OnVolumeCreated(MakeUsbVolume("vol-er-2", "disk-er-2", "uuid-er-2"));
-    EXPECT_EQ(dm.Erase("nonexistent-vol"), E_NON_EXIST);
+    EXPECT_EQ(dm.Erase("nonexistent-vol"), E_PARAMS_INVALID);
 }
 
 HWTEST_F(DiskManagerTest, Eject_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-ej-1"));
+    dm.OnDiskCreated(MakeCdDisk("disk-ej-1"));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Eject("disk-ej-1"), DiskManagerErrNo::E_OK);
@@ -1933,7 +2174,7 @@ HWTEST_F(DiskManagerTest, Eject_TestCase_001, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Eject_TestCase_002, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-ej-2"));
+    dm.OnDiskCreated(MakeCdDisk("disk-ej-2"));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Eject("disk-ej-2"), ERR_OK);
@@ -1942,14 +2183,16 @@ HWTEST_F(DiskManagerTest, Eject_TestCase_002, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Eject_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.Eject("nonexistent-disk"), E_NON_EXIST);
+    EXPECT_EQ(dm.Eject("nonexistent-disk"), E_NOT_SUPPORT);
 }
 
 HWTEST_F(DiskManagerTest, Burn_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-bn-1"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-bn-1", "disk-bn-1", "uuid-bn-1"));
+    dm.OnDiskCreated(MakeCdDisk("disk-bn-1"));
+    VolumeExternal vol = MakeUdfVolume("vol-bn-1", "disk-bn-1", "uuid-bn-1");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Burn("vol-bn-1", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
@@ -1958,8 +2201,10 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_001, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Burn_TestCase_002, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-bn-2"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-bn-2", "disk-bn-2", "uuid-bn-2"));
+    dm.OnDiskCreated(MakeCdDisk("disk-bn-2"));
+    VolumeExternal vol = MakeUdfVolume("vol-bn-2", "disk-bn-2", "uuid-bn-2");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Burn("vol-bn-2", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
@@ -1968,8 +2213,10 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_002, TestSize.Level0)
 HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_002, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-cii-2"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-cii-2", "disk-cii-2", "uuid-cii-2"));
+    dm.OnDiskCreated(MakeCdDisk("disk-cii-2"));
+    VolumeExternal vol = MakeUdfVolume("vol-cii-2", "disk-cii-2", "uuid-cii-2");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, CreateIsoImage(_, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.CreateIsoImage("vol-cii-2", "/tmp/img.iso"), DiskManagerErrNo::E_OK);
@@ -1978,8 +2225,10 @@ HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_002, TestSize.Level0)
 HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-cii-3"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-cii-3", "disk-cii-3", "uuid-cii-3"));
+    dm.OnDiskCreated(MakeCdDisk("disk-cii-3"));
+    VolumeExternal vol = MakeUdfVolume("vol-cii-3", "disk-cii-3", "uuid-cii-3");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, CreateIsoImage(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.CreateIsoImage("vol-cii-3", "/tmp/img.iso"), DiskManagerErrNo::E_OK);
@@ -1988,23 +2237,15 @@ HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_003, TestSize.Level0)
 HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_002, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-gvo-2"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-gvo-2", "disk-gvo-2", "uuid-gvo-2"));
+    dm.OnDiskCreated(MakeCdDisk("disk-gvo-2"));
+    VolumeExternal vol = MakeUdfVolume("vol-gvo-2", "disk-gvo-2", "uuid-gvo-2");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, GetVolumeOpProcess(_, _)).WillOnce(DoAll(SetArgReferee<1>(50), Return(ERR_OK)));
     int32_t progress = 0;
     EXPECT_EQ(dm.GetVolumeOpProcess("vol-gvo-2", progress), DiskManagerErrNo::E_OK);
     EXPECT_EQ(progress, 50);
-}
-
-HWTEST_F(DiskManagerTest, VerifyBurnData_TestCase_002, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-vbd-2"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-vbd-2", "disk-vbd-2", "uuid-vbd-2"));
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, VerifyBurnData(_, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.VerifyBurnData("vol-vbd-2", 1), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(DiskManagerTest, RepairAndCheckVolume_TestCase_001, TestSize.Level0)
@@ -2334,7 +2575,7 @@ HWTEST_F(DiskManagerTest, SetAlignSector_TestCase_004, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Burn_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.Burn("nonexistent-vol", "options", "test.bundle", 0), E_NON_EXIST);
+    EXPECT_EQ(dm.Burn("nonexistent-vol", "options", "test.bundle", 0), E_PARAMS_INVALID);
 }
 
 /**
@@ -2349,7 +2590,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_004, TestSize.Level0)
 
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeCdDisk("disk-bn-4"));
-    VolumeExternal vol = MakeUsbVolume("vol-bn-4", "disk-bn-4", "uuid-bn-4");
+    VolumeExternal vol = MakeUdfVolume("vol-bn-4", "disk-bn-4", "uuid-bn-4");
     vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
@@ -2370,7 +2611,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_005, TestSize.Level0)
 
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeCdDisk("disk-bn-5"));
-    VolumeExternal vol = MakeUsbVolume("vol-bn-5", "disk-bn-5", "uuid-bn-5");
+    VolumeExternal vol = MakeUdfVolume("vol-bn-5", "disk-bn-5", "uuid-bn-5");
     vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})");
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
@@ -2382,29 +2623,23 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_005, TestSize.Level0)
 HWTEST_F(DiskManagerTest, GetVolumeOpProcess_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-gvo-3"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-gvo-3", "disk-gvo-3", "uuid-gvo-3", UNMOUNTED));
+    dm.OnDiskCreated(MakeCdDisk("disk-gvo-3"));
+    VolumeExternal vol = MakeUdfVolume("vol-gvo-3", "disk-gvo-3", "uuid-gvo-3");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, GetVolumeOpProcess(_, _)).WillOnce(Return(ERR_OK));
     int32_t progress = 0;
     EXPECT_EQ(dm.GetVolumeOpProcess("vol-gvo-3", progress), ERR_OK);
 }
 
-HWTEST_F(DiskManagerTest, VerifyBurnData_TestCase_003, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-vbd-3"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-vbd-3", "disk-vbd-3", "uuid-vbd-3", UNMOUNTED));
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, VerifyBurnData(_, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.VerifyBurnData("vol-vbd-3", 0), ERR_OK);
-}
-
 HWTEST_F(DiskManagerTest, Erase_TestCase_003, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-er-3"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-er-3", "disk-er-3", "uuid-er-3", MOUNTED));
+    dm.OnDiskCreated(MakeCdDisk("disk-er-3"));
+    VolumeExternal vol = MakeUdfVolume("vol-er-3", "disk-er-3", "uuid-er-3");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Erase(_)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Erase("vol-er-3"), ERR_OK);
@@ -2413,8 +2648,10 @@ HWTEST_F(DiskManagerTest, Erase_TestCase_003, TestSize.Level0)
 HWTEST_F(DiskManagerTest, Erase_TestCase_004, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-er-4"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-er-4", "disk-er-4", "uuid-er-4", MOUNTED));
+    dm.OnDiskCreated(MakeCdDisk("disk-er-4"));
+    VolumeExternal vol = MakeUdfVolume("vol-er-4", "disk-er-4", "uuid-er-4");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Erase(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Erase("vol-er-4"), E_OK);

@@ -67,7 +67,6 @@ public:
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath);
     int32_t Burn(const std::string &volumeId, const std::string &burnOptions);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
-    int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType);
 
     /*
      * ---------- Inner-only（IDiskManager / 进程内，不导出 @ohos.file.volumeManager） ----------

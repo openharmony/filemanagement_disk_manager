@@ -537,6 +537,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_TestCase_004, TestSize.Lev
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryCDStatus(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .WillOnce(Return(E_OK));
@@ -576,6 +577,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_EmptyDisc_TestCase_005, TestSize.Level0
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryCDStatus(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(3), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .WillOnce(Return(E_OK));
@@ -633,6 +635,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_TypeEmpty_TestCase_007, Te
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryCDStatus(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .WillOnce(Return(E_OK));
@@ -670,6 +673,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_MountFail_TestCase_008, Te
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryCDStatus(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .WillOnce(Return(E_OK));

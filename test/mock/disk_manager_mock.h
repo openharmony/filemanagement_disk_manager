@@ -51,6 +51,7 @@ public:
         (const std::string &diskId, const std::vector<PartitionRecord> &partitions));
     MOCK_METHOD(int32_t, GetAllDisks, (std::vector<Disk> &out));
     MOCK_METHOD(int32_t, GetDiskById, (const std::string &diskId, Disk &out));
+    MOCK_METHOD(int32_t, UpdateDisk, (const Disk &disk));
     MOCK_METHOD(int32_t, GetAllVolumes, (std::vector<VolumeExternal> &out));
     MOCK_METHOD(int32_t, GetVolumeById, (const std::string &volumeId, VolumeExternal &out));
     MOCK_METHOD(int32_t, UpdateVolumeMetadata,

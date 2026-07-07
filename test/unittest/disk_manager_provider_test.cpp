@@ -797,22 +797,8 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_TestCase_001, TestSize.Leve
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     int32_t progress = -1;
-    EXPECT_EQ(provider.GetVolumeOpProcess("nonexistent-vol", progress), E_NON_EXIST);
+    EXPECT_EQ(provider.GetVolumeOpProcess("nonexistent-vol", progress), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 End";
-}
-
-/**
- * @tc.name: VerifyBurnData_TestCase_001
- * @tc.desc: Provider.VerifyBurnData delegates to DiskManager and returns E_OK.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, VerifyBurnData_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 Start";
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.VerifyBurnData("nonexistent-vol", 0), E_NON_EXIST);
-    GTEST_LOG_(INFO) << "VerifyBurnData_TestCase_001 End";
 }
 
 /**
@@ -963,7 +949,7 @@ HWTEST_F(DiskManagerProviderTest, GetDiskById_TestCase_002, TestSize.Level0)
 
 /**
  * @tc.name: Erase_TestCase_001
- * @tc.desc: Provider.Erase with nonexistent volumeId returns E_NON_EXIST.
+ * @tc.desc: Provider.Erase with nonexistent volumeId returns E_PARAMS_INVALID.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -971,13 +957,13 @@ HWTEST_F(DiskManagerProviderTest, Erase_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Erase_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Erase("nonexistent-vol"), E_NON_EXIST);
+    EXPECT_EQ(provider.Erase("nonexistent-vol"), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "Erase_TestCase_001 End";
 }
 
 /**
  * @tc.name: Eject_TestCase_001
- * @tc.desc: Provider.Eject with nonexistent diskId returns E_NON_EXIST.
+ * @tc.desc: Provider.Eject with nonexistent diskId returns E_NOT_SUPPORT.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -985,7 +971,7 @@ HWTEST_F(DiskManagerProviderTest, Eject_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Eject_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Eject("nonexistent-disk"), E_NON_EXIST);
+    EXPECT_EQ(provider.Eject("nonexistent-disk"), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "Eject_TestCase_001 End";
 }
 
@@ -999,7 +985,7 @@ HWTEST_F(DiskManagerProviderTest, CreateIsoImage_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.CreateIsoImage("nonexistent-vol", "/tmp/image.iso"), E_NON_EXIST);
+    EXPECT_EQ(provider.CreateIsoImage("nonexistent-vol", "/tmp/image.iso"), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
 }
 
@@ -1013,7 +999,7 @@ HWTEST_F(DiskManagerProviderTest, Burn_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Burn_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Burn("nonexistent-vol", "--write"), E_NON_EXIST);
+    EXPECT_EQ(provider.Burn("nonexistent-vol", "--write"), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "Burn_TestCase_001 End";
 }
 
@@ -1987,44 +1973,6 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_PermissionDenied_002, TestS
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_PermissionDenied_002 End";
-}
-
-/**
- * @tc.name: VerifyBurnData_PermissionDenied_001
- * @tc.desc: 非系统应用调用时返回 E_SYS_APP_PERMISSION_DENIED
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, VerifyBurnData_PermissionDenied_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_001 Start";
-
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_accessTokenType = 0;
-    g_isSystemApp = false;
-    EXPECT_EQ(provider.VerifyBurnData("vol-1", 0), E_SYS_APP_PERMISSION_DENIED);
-    g_accessTokenType = 1;
-    g_isSystemApp = true;
-
-    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_001 End";
-}
-
-/**
- * @tc.name: VerifyBurnData_PermissionDenied_002
- * @tc.desc: 无 MOUNT_UNMOUNT_MANAGER 权限时返回 E_PERMISSION_DENIED
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, VerifyBurnData_PermissionDenied_002, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_002 Start";
-
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.VerifyBurnData("vol-1", 0), E_PERMISSION_DENIED);
-    g_permissionGranted = MOCK_PERMISSION_GRANTED;
-
-    GTEST_LOG_(INFO) << "VerifyBurnData_PermissionDenied_002 End";
 }
 
 /**

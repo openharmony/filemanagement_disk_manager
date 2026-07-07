@@ -112,7 +112,6 @@ public:
                                    const std::string &mountPath) = 0;
     virtual ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) = 0;
     virtual ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) = 0;
-    virtual ErrCode VerifyBurnData(const std::string &devPath, int32_t verifyType) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

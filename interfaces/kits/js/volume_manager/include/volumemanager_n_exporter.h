@@ -36,7 +36,6 @@ napi_value Eject(napi_env env, napi_callback_info info);
 napi_value CreateIsoImage(napi_env env, napi_callback_info info);
 napi_value Burn(napi_env env, napi_callback_info info);
 napi_value GetOpProcess(napi_env env, napi_callback_info info);
-napi_value VerifyBurnData(napi_env env, napi_callback_info info);
 napi_value IsVolumeInUse(napi_env env, napi_callback_info info);
 
 // Partition management APIs (new_api @since 26.0.0)

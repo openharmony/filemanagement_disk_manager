@@ -57,7 +57,6 @@ public:
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath) override;
     int32_t Burn(const std::string &volumeId, const std::string &burnOptions) override;
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) override;
-    int32_t VerifyBurnData(const std::string &volumeId, int32_t verifyType) override;
     int32_t NotifyMtpMounted(const std::string &id,
                              const std::string &path,
                              const std::string &desc,
