@@ -20,7 +20,11 @@
 #include "partition_types.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
+#include "timer.h"
 
+#include <atomic>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -31,7 +35,7 @@ class DiskManagerProvider : public SystemAbility, public DiskManagerStub {
 
 public:
     explicit DiskManagerProvider(int32_t saId = DISK_MANAGER_SA_ID, bool runOnCreate = false);
-    ~DiskManagerProvider() override = default;
+    ~DiskManagerProvider() override;
 
     void OnStart() override;
     void OnStop() override;
@@ -73,6 +77,15 @@ public:
 private:
     bool CheckClientPermission();
     bool IsStorageManagerCaller() const;
+
+    void StartIdleMonitor();
+    void StopIdleMonitor();
+    void CheckAndUnloadIfIdle();
+
+    std::mutex idleTimerMutex_;
+    std::unique_ptr<Utils::Timer> idleTimer_;
+    uint32_t idleTimerId_ = 0;
+    std::atomic<bool> idleMonitorStopped_{false};
 };
 } // namespace DiskManager
 } // namespace OHOS

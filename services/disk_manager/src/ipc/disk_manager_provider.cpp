@@ -17,6 +17,8 @@
 
 #include <cinttypes>
 
+#include <iservice_registry.h>
+
 #include "block_info_table.h"
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
@@ -34,16 +36,24 @@ namespace OHOS {
 namespace DiskManager {
 
 using namespace OHOS::DiskManager;
+namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr const char *PATH_INVALID_FLAG1 = "../";
 constexpr const char *PATH_INVALID_FLAG2 = "/..";
 constexpr int32_t PATH_INVALID_FLAG_LEN = 3;
 constexpr char FILE_SEPARATOR_CHAR = '/';
+constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
+} // namespace
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
 DiskManagerProvider::DiskManagerProvider(int32_t saId, bool runOnCreate) : SystemAbility(saId, runOnCreate) {}
+
+DiskManagerProvider::~DiskManagerProvider()
+{
+    StopIdleMonitor();
+}
 
 void DiskManagerProvider::OnStart()
 {
@@ -57,12 +67,66 @@ void DiskManagerProvider::OnStart()
     LOGI("OnStart BlockInfoTable::ReloadFromDaemon ret=%{public}d", reloadErr);
     const int32_t voldataMapErr = VoldataUuidStore::GetInstance().Init();
     LOGI("OnStart VoldataUuidStore::Init ret=%{public}d", voldataMapErr);
+    StartIdleMonitor();
     LOGI("OnStart end");
 }
 
 void DiskManagerProvider::OnStop()
 {
     LOGI("OnStop");
+    StopIdleMonitor();
+}
+
+void DiskManagerProvider::StartIdleMonitor()
+{
+    idleMonitorStopped_.store(false, std::memory_order_release);
+    {
+        std::lock_guard<std::mutex> lock(idleTimerMutex_);
+        if (idleTimer_ != nullptr) {
+            return;
+        }
+        idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle", -1);
+        idleTimer_->Setup();
+        idleTimerId_ = idleTimer_->Register([this]() { CheckAndUnloadIfIdle(); }, IDLE_CHECK_INTERVAL_MS);
+        LOGI("StartIdleMonitor intervalMs=%{public}u", IDLE_CHECK_INTERVAL_MS);
+    }
+    CheckAndUnloadIfIdle();
+}
+
+void DiskManagerProvider::StopIdleMonitor()
+{
+    idleMonitorStopped_.store(true, std::memory_order_release);
+    std::lock_guard<std::mutex> lock(idleTimerMutex_);
+    if (idleTimer_ == nullptr) {
+        return;
+    }
+    idleTimer_->Unregister(idleTimerId_);
+    idleTimer_->Shutdown();
+    idleTimer_.reset();
+    idleTimerId_ = 0;
+}
+
+void DiskManagerProvider::CheckAndUnloadIfIdle()
+{
+    if (idleMonitorStopped_.load(std::memory_order_acquire)) {
+        return;
+    }
+    if (DiskManager::GetInstance().HasManagedResources()) {
+        LOGI("CheckAndUnloadIfIdle: managed resources exist, skip unload");
+        return;
+    }
+    LOGI("CheckAndUnloadIfIdle: unloading SA");
+    auto samgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgr == nullptr) {
+        LOGE("CheckAndUnloadIfIdle: GetSystemAbilityManager failed");
+        return;
+    }
+    const int32_t ret = samgr->UnloadSystemAbility(DISK_MANAGER_SA_ID);
+    if (ret != ERR_OK) {
+        LOGE("CheckAndUnloadIfIdle: UnloadSystemAbility failed ret=%{public}d", ret);
+        return;
+    }
+    LOGI("CheckAndUnloadIfIdle: UnloadSystemAbility success");
 }
 
 static bool IsFilePathInvalid(const std::string &filePath)
