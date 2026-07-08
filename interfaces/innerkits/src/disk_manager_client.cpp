@@ -136,42 +136,68 @@ DiskManagerClient::~DiskManagerClient()
     ResetProxy();
 }
 
-int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
+int32_t DiskManagerClient::ConnectIfPresent(sptr<IDiskManager> &proxy)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (diskManager_ == nullptr) {
-        SystemAbilityManagerClient &samClient = SystemAbilityManagerClient::GetInstance();
-        sptr<ISystemAbilityManager> sam = samClient.GetSystemAbilityManager();
-        if (sam == nullptr) {
-            LOGE("DiskManagerClient::Connect samgr == nullptr");
-            return E_SA_IS_NULLPTR;
-        }
-        ISystemAbilityManager &mgr = *sam;
-        sptr<IRemoteObject> object = nullptr;
-        int32_t saRet = GetDiskManagerSaObject(mgr, object);
+    if (diskManager_ != nullptr) {
+        proxy = diskManager_;
+        return E_OK;
+    }
+    SystemAbilityManagerClient &samClient = SystemAbilityManagerClient::GetInstance();
+    sptr<ISystemAbilityManager> sam = samClient.GetSystemAbilityManager();
+    if (sam == nullptr) {
+        LOGE("DiskManagerClient::ConnectIfPresent samgr == nullptr");
+        return E_SA_IS_NULLPTR;
+    }
+    sptr<IRemoteObject> object = sam->GetSystemAbility(DISK_MANAGER_SA_ID);
+    if (object == nullptr) {
+        return E_SERVICE_IS_NULLPTR;
+    }
+    return InitProxyLocked(object, proxy);
+}
+
+int32_t DiskManagerClient::ConnectAndLoad(sptr<IDiskManager> &proxy)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (diskManager_ != nullptr) {
+        proxy = diskManager_;
+        return E_OK;
+    }
+    SystemAbilityManagerClient &samClient = SystemAbilityManagerClient::GetInstance();
+    sptr<ISystemAbilityManager> sam = samClient.GetSystemAbilityManager();
+    if (sam == nullptr) {
+        LOGE("DiskManagerClient::ConnectAndLoad samgr == nullptr");
+        return E_SA_IS_NULLPTR;
+    }
+    ISystemAbilityManager &mgr = *sam;
+    sptr<IRemoteObject> object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
+    if (object == nullptr) {
+        const int32_t saRet = GetDiskManagerSaObject(mgr, object);
         if (saRet != E_OK) {
             return saRet;
         }
-        diskManager_ = iface_cast<IDiskManager>(object);
-        if (diskManager_ == nullptr) {
-            LOGE("DiskManagerClient::Connect iface_cast IDiskManager failed");
-            return E_SERVICE_IS_NULLPTR;
-        }
-        deathRecipient_ = new (std::nothrow) DmDeathRecipient();
-        if (deathRecipient_ == nullptr) {
-            LOGE("DiskManagerClient::Connect death recipient null");
-            diskManager_ = nullptr;
-            return E_SERVICE_IS_NULLPTR;
-        }
-        sptr<IRemoteObject> remote = diskManager_->AsObject();
-        if (remote != nullptr) {
-            remote->AddDeathRecipient(deathRecipient_);
-        }
     }
-    proxy = diskManager_;
-    if (proxy == nullptr) {
+    return InitProxyLocked(object, proxy);
+}
+
+int32_t DiskManagerClient::InitProxyLocked(const sptr<IRemoteObject> &object, sptr<IDiskManager> &proxy)
+{
+    diskManager_ = iface_cast<IDiskManager>(object);
+    if (diskManager_ == nullptr) {
+        LOGE("DiskManagerClient::InitProxyLocked iface_cast IDiskManager failed");
         return E_SERVICE_IS_NULLPTR;
     }
+    deathRecipient_ = new (std::nothrow) DmDeathRecipient();
+    if (deathRecipient_ == nullptr) {
+        LOGE("DiskManagerClient::InitProxyLocked death recipient null");
+        diskManager_ = nullptr;
+        return E_SERVICE_IS_NULLPTR;
+    }
+    sptr<IRemoteObject> remote = diskManager_->AsObject();
+    if (remote != nullptr) {
+        remote->AddDeathRecipient(deathRecipient_);
+    }
+    proxy = diskManager_;
     return E_OK;
 }
 
@@ -194,7 +220,7 @@ int32_t DiskManagerClient::Mount(const std::string &volumeId)
 {
     LOGI("Mount volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -206,7 +232,7 @@ int32_t DiskManagerClient::Unmount(const std::string &volumeId)
 {
     LOGI("Unmount volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -218,7 +244,7 @@ int32_t DiskManagerClient::Format(const std::string &volumeId, const std::string
 {
     LOGI("Format volumeId=%{public}s fsType=%{public}s", volumeId.c_str(), fsType.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -230,7 +256,7 @@ int32_t DiskManagerClient::SetVolumeDescription(const std::string &fsUuid, const
 {
     LOGI("SetVolumeDescription fsUuid=%{public}s", fsUuid.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -242,7 +268,11 @@ int32_t DiskManagerClient::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 {
     LOGI("GetAllVolumes enter");
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        vecOfVol.clear();
+        return E_OK;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -254,7 +284,7 @@ int32_t DiskManagerClient::GetVolumeByUuid(const std::string &uuid, VolumeExtern
 {
     LOGI("GetVolumeByUuid uuid=%{public}s", uuid.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -266,7 +296,7 @@ int32_t DiskManagerClient::GetVolumeById(const std::string &volumeId, VolumeExte
 {
     LOGI("GetVolumeById volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -278,7 +308,7 @@ int32_t DiskManagerClient::GetFreeSizeOfVolume(const std::string &volumeUuid, in
 {
     LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -290,7 +320,7 @@ int32_t DiskManagerClient::GetTotalSizeOfVolume(const std::string &volumeUuid, i
 {
     LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -302,7 +332,7 @@ int32_t DiskManagerClient::Partition(const std::string &diskId, int32_t type)
 {
     LOGI("Partition diskId=%{public}s type=%{public}d", diskId.c_str(), type);
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -314,7 +344,11 @@ int32_t DiskManagerClient::GetAllDisks(std::vector<Disk> &vecOfDisk)
 {
     LOGI("GetAllDisks enter");
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        vecOfDisk.clear();
+        return E_OK;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -326,7 +360,7 @@ int32_t DiskManagerClient::GetDiskById(const std::string &diskId, Disk &disk)
 {
     LOGI("GetDiskById diskId=%{public}s", diskId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -338,7 +372,7 @@ int32_t DiskManagerClient::Erase(const std::string &volumeId)
 {
     LOGI("Erase volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -350,7 +384,7 @@ int32_t DiskManagerClient::Eject(const std::string &diskId)
 {
     LOGI("Eject diskId=%{public}s", diskId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -362,7 +396,7 @@ int32_t DiskManagerClient::CreateIsoImage(const std::string &volumeId, const std
 {
     LOGI("CreateIsoImage volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -374,7 +408,7 @@ int32_t DiskManagerClient::Burn(const std::string &volumeId, const std::string &
 {
     LOGI("Burn volumeId=%{public}s, burnOptions=%{public}s", volumeId.c_str(), burnOptions.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -386,7 +420,7 @@ int32_t DiskManagerClient::GetVolumeOpProcess(const std::string &volumeId, int32
 {
     LOGI("GetVolumeOpProcess volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -398,7 +432,7 @@ int32_t DiskManagerClient::TryToFix(const std::string &volumeId)
 {
     LOGI("TryToFix volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -410,7 +444,7 @@ int32_t DiskManagerClient::QueryUsbIsInUse(const std::string &diskPath, bool &is
 {
     LOGI("QueryUsbIsInUse diskPath=%{public}s", diskPath.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -422,7 +456,7 @@ int32_t DiskManagerClient::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
 {
     LOGI("IsUsbFuseByType type=%{public}d", type);
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -434,7 +468,7 @@ int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectAndLoad(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -448,7 +482,7 @@ int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::st
     LOGI("[L1:DiskManagerClient] NotifyMtpMounted: >>> ENTER <<< id=%{public}s, path=%{public}s, desc=%{public}s",
          id.c_str(), path.c_str(), desc.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectAndLoad(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -463,7 +497,7 @@ int32_t DiskManagerClient::NotifyMtpUnmounted(const std::string &id, const bool 
     LOGI("[L1:DiskManagerClient] NotifyMtpUnmounted: >>> ENTER <<< id=%{public}s, isBadRemove=%{public}d",
          id.c_str(), isBadRemove);
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectAndLoad(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -479,7 +513,7 @@ int32_t DiskManagerClient::GetPartitionTable(const std::string &diskId, Partitio
 {
     LOGI("GetPartitionTable diskId=%{public}s", diskId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -491,7 +525,7 @@ int32_t DiskManagerClient::CreatePartition(const std::string &diskId, const Part
 {
     LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), params.GetPartitionNum());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -503,7 +537,7 @@ int32_t DiskManagerClient::DeletePartition(const std::string &diskId, int32_t pa
 {
     LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -516,7 +550,7 @@ int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t pa
     LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s",
          diskId.c_str(), partitionNum, params.GetFsType().c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         return err;
     }
