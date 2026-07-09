@@ -151,6 +151,7 @@ int32_t DiskManagerClient::ConnectIfPresent(sptr<IDiskManager> &proxy)
     }
     sptr<IRemoteObject> object = sam->GetSystemAbility(DISK_MANAGER_SA_ID);
     if (object == nullptr) {
+        LOGE("ConnectIfPresent: DiskManager SA(8640) not running, will not load");
         return E_SERVICE_IS_NULLPTR;
     }
     return InitProxyLocked(object, proxy);
@@ -308,7 +309,7 @@ int32_t DiskManagerClient::GetFreeSizeOfVolume(const std::string &volumeUuid, in
 {
     LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = ConnectIfPresent(proxy);
+    int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -320,7 +321,7 @@ int32_t DiskManagerClient::GetTotalSizeOfVolume(const std::string &volumeUuid, i
 {
     LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = ConnectIfPresent(proxy);
+    int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
@@ -450,18 +451,6 @@ int32_t DiskManagerClient::QueryUsbIsInUse(const std::string &diskPath, bool &is
     }
     IDiskManager &dm = *proxy;
     return dm.QueryUsbIsInUse(diskPath, isInUse);
-}
-
-int32_t DiskManagerClient::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
-{
-    LOGI("IsUsbFuseByType type=%{public}d", type);
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.IsUsbFuseByType(type, isUsbFuse);
 }
 
 int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)

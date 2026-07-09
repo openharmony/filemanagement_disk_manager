@@ -26,6 +26,7 @@
 namespace OHOS {
 namespace DiskManager {
 
+using namespace testing;
 using namespace testing::ext;
 
 namespace {
@@ -659,25 +660,6 @@ HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
     EXPECT_NE(ret, E_OK);
 
     GTEST_LOG_(INFO) << "TryToFixTest001 End";
-}
-
-/**
- * @tc.name: IsUsbFuseByTypeTest001
- * @tc.desc: 测试 IsUsbFuseByType 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 Start";
-
-    DiskManagerClient &client = DiskManagerClient::GetInstance();
-    client.ResetProxy();
-    bool isUsbFuse = false;
-    int32_t ret = client.IsUsbFuseByType(0, isUsbFuse);
-    EXPECT_EQ(ret, E_OK);
-
-    GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 End";
 }
 
 /**

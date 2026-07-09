@@ -54,7 +54,6 @@ public:
     int32_t GetAllDisks(std::vector<Disk> &vecOfDisk) override;
     int32_t GetDiskById(const std::string &diskId, Disk &disk) override;
     int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) override;
-    int32_t IsUsbFuseByType(int32_t type, bool &isUsbFuse) override;
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg) override;
     int32_t Erase(const std::string &volumeId) override;
     int32_t Eject(const std::string &diskId) override;
@@ -81,11 +80,14 @@ private:
     void StartIdleMonitor();
     void StopIdleMonitor();
     void CheckAndUnloadIfIdle();
+    void BeginPendingStorageDaemonCallback();
+    void EndPendingStorageDaemonCallback();
 
     std::mutex idleTimerMutex_;
     std::unique_ptr<Utils::Timer> idleTimer_;
     uint32_t idleTimerId_ = 0;
     std::atomic<bool> idleMonitorStopped_{false};
+    std::atomic<int32_t> pendingStorageDaemonCallbackCount_{0};
 };
 } // namespace DiskManager
 } // namespace OHOS
