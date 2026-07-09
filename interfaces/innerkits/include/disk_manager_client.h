@@ -89,8 +89,8 @@ private:
     DiskManagerClient(const DiskManagerClient &) = delete;
     DiskManagerClient &operator=(const DiskManagerClient &) = delete;
 
+    int32_t Connect(sptr<IDiskManager> &proxy);
     int32_t ConnectIfPresent(sptr<IDiskManager> &proxy);
-    int32_t ConnectAndLoad(sptr<IDiskManager> &proxy);
     int32_t InitProxyLocked(const sptr<IRemoteObject> &object, sptr<IDiskManager> &proxy);
 
     sptr<IDiskManager> diskManager_;

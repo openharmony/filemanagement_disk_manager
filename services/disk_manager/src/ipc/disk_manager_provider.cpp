@@ -79,10 +79,12 @@ void DiskManagerProvider::OnStop()
 
 void DiskManagerProvider::StartIdleMonitor()
 {
+    LOGI("StartIdleMonitor begin");
     idleMonitorStopped_.store(false, std::memory_order_release);
     {
         std::lock_guard<std::mutex> lock(idleTimerMutex_);
         if (idleTimer_ != nullptr) {
+            LOGI("StartIdleMonitor: timer already running, skip");
             return;
         }
         idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle", -1);
@@ -90,20 +92,23 @@ void DiskManagerProvider::StartIdleMonitor()
         idleTimerId_ = idleTimer_->Register([this]() { CheckAndUnloadIfIdle(); }, IDLE_CHECK_INTERVAL_MS);
         LOGI("StartIdleMonitor intervalMs=%{public}u", IDLE_CHECK_INTERVAL_MS);
     }
-    CheckAndUnloadIfIdle();
+    LOGI("StartIdleMonitor end");
 }
 
 void DiskManagerProvider::StopIdleMonitor()
 {
+    LOGI("StopIdleMonitor begin");
     idleMonitorStopped_.store(true, std::memory_order_release);
     std::lock_guard<std::mutex> lock(idleTimerMutex_);
     if (idleTimer_ == nullptr) {
+        LOGI("StopIdleMonitor: timer not running, skip");
         return;
     }
     idleTimer_->Unregister(idleTimerId_);
     idleTimer_->Shutdown();
     idleTimer_.reset();
     idleTimerId_ = 0;
+    LOGI("StopIdleMonitor end");
 }
 
 void DiskManagerProvider::CheckAndUnloadIfIdle()

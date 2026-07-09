@@ -663,7 +663,7 @@ HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
 
 /**
  * @tc.name: IsUsbFuseByTypeTest001
- * @tc.desc: 测试 IsUsbFuseByType 在 SA 未运行时预期返回错误码。
+ * @tc.desc: 测试 IsUsbFuseByType 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -675,7 +675,7 @@ HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
     client.ResetProxy();
     bool isUsbFuse = false;
     int32_t ret = client.IsUsbFuseByType(0, isUsbFuse);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_OK);
 
     GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 End";
 }
