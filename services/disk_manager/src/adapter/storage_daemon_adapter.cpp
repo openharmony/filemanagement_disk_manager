@@ -21,6 +21,7 @@
 #include <system_ability_definition.h>
 
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
 #include "errors.h"
 
 #include <sys/mount.h>
@@ -183,7 +184,7 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
 #endif
     LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}" PRIu64
          ", mountData=%{public}s",
-         devPath.c_str(), mountPath.c_str(), fsType.c_str(), mountFlag, mountData.c_str());
+         devPath.c_str(), GetAnonyString(mountPath).c_str(), fsType.c_str(), mountFlag, mountData.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Mount exit err=%{public}d (proxy not ready)", err);
@@ -196,7 +197,8 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
 
 int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::string &fsType, bool force)
 {
-    LOGI("Unmount enter, mountPath=%{public}s, force=%{public}d", mountPath.c_str(), static_cast<int32_t>(force));
+    LOGI("Unmount enter, mountPath=%{public}s, force=%{public}d",
+         GetAnonyString(mountPath).c_str(), static_cast<int32_t>(force));
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Unmount exit err=%{public}d (proxy not ready)", err);
@@ -250,7 +252,7 @@ int32_t StorageDaemonAdapter::Repair(const std::string &devPath, const std::stri
 int32_t StorageDaemonAdapter::SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label)
 {
     LOGI("SetLabel enter, devPath=%{public}s, fsType=%{public}s, label=%{public}s", devPath.c_str(), fsType.c_str(),
-         label.c_str());
+         GetAnonyString(label).c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("SetLabel exit err=%{public}d (proxy not ready)", err);
@@ -294,7 +296,7 @@ int32_t StorageDaemonAdapter::GetCapacity(const std::string &devPath, int64_t &t
 
 int32_t StorageDaemonAdapter::MountFuseDevice(const std::string &mountPath, int32_t &fuseFd)
 {
-    LOGI("MountFuseDevice enter, mountPath=%{public}s", mountPath.c_str());
+    LOGI("MountFuseDevice enter, mountPath=%{public}s", GetAnonyString(mountPath).c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("MountFuseDevice exit err=%{public}d (proxy not ready)", err);

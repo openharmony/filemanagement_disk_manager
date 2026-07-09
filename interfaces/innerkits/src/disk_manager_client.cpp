@@ -26,6 +26,7 @@
 
 #include "disk_manager_hilog.h"
 #include "disk_manager_napi_errno.h"
+#include "disk_manager_utils.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -228,7 +229,7 @@ int32_t DiskManagerClient::Format(const std::string &volumeId, const std::string
 
 int32_t DiskManagerClient::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
 {
-    LOGI("SetVolumeDescription fsUuid=%{public}s", fsUuid.c_str());
+    LOGI("SetVolumeDescription fsUuid=%{public}s", GetAnonyString(fsUuid).c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
@@ -252,7 +253,7 @@ int32_t DiskManagerClient::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 
 int32_t DiskManagerClient::GetVolumeByUuid(const std::string &uuid, VolumeExternal &vc)
 {
-    LOGI("GetVolumeByUuid uuid=%{public}s", uuid.c_str());
+    LOGI("GetVolumeByUuid uuid=%{public}s", GetAnonyString(uuid).c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
@@ -276,7 +277,7 @@ int32_t DiskManagerClient::GetVolumeById(const std::string &volumeId, VolumeExte
 
 int32_t DiskManagerClient::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
-    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
+    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
@@ -288,7 +289,7 @@ int32_t DiskManagerClient::GetFreeSizeOfVolume(const std::string &volumeUuid, in
 
 int32_t DiskManagerClient::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
 {
-    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
+    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
@@ -445,8 +446,9 @@ int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
 int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
                                             const std::string &uuid, const std::string &fsType)
 {
-    LOGI("[L1:DiskManagerClient] NotifyMtpMounted: >>> ENTER <<< id=%{public}s, path=%{public}s, desc=%{public}s",
-         id.c_str(), path.c_str(), desc.c_str());
+    LOGI("[L1:DiskManagerClient] NotifyMtpMounted: >>> ENTER <<< id=%{public}s, "
+         "path=%{public}s, desc=%{public}s",
+         id.c_str(), GetAnonyString(path).c_str(), GetAnonyString(desc).c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {

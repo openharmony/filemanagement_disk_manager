@@ -629,9 +629,12 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_TestCase_001, TestSize.Level
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
         .WillOnce(Return(E_OK));
     EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_001 End";
 }
 
@@ -645,9 +648,12 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_TestCase_002, TestSize.Level
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
         .WillOnce(Return(E_UEVENT_PARSE_FAILED));
     EXPECT_EQ(provider.OnBlockDiskUevent("invalid-msg"), E_UEVENT_PARSE_FAILED);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_002 End";
 }
 
@@ -661,8 +667,62 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_TestCase_001, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "NotifyMtpMounted_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "mtpfs"), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpMounted_TestCase_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_EmptyPath_001
+ * @tc.desc: NotifyMtpMounted returns E_PARAMS_INVALID when path is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_EmptyPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_EmptyPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "", "desc", "uuid", "mtpfs"), E_PARAMS_INVALID);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_EmptyPath_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_InvalidPath_001
+ * @tc.desc: NotifyMtpMounted returns E_PARAMS_INVALID when path contains ../ path traversal.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/../path", "desc", "uuid", "mtpfs"), E_PARAMS_INVALID);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_InvalidPath_002
+ * @tc.desc: NotifyMtpMounted returns E_PARAMS_INVALID when path ends with /..
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_InvalidPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/..", "desc", "uuid", "mtpfs"), E_PARAMS_INVALID);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_002 End";
 }
 
 /**
@@ -675,7 +735,10 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_001, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_EQ(provider.NotifyMtpUnmounted("mtp-id", false), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_001 End";
 }
 
@@ -689,7 +752,10 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_002, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_EQ(provider.NotifyMtpUnmounted("mtp-id", true), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_002 End";
 }
 
@@ -987,6 +1053,48 @@ HWTEST_F(DiskManagerProviderTest, CreateIsoImage_TestCase_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     EXPECT_EQ(provider.CreateIsoImage("nonexistent-vol", "/tmp/image.iso"), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_EmptyFilePath_001
+ * @tc.desc: CreateIsoImage returns E_PARAMS_INVALID when filePath is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_EmptyFilePath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_EmptyFilePath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.CreateIsoImage("vol-1", ""), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "CreateIsoImage_EmptyFilePath_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_InvalidPath_001
+ * @tc.desc: CreateIsoImage returns E_PARAMS_INVALID when filePath contains ../ path traversal.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.CreateIsoImage("vol-1", "/tmp/../etc/image.iso"), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_InvalidPath_002
+ * @tc.desc: CreateIsoImage returns E_PARAMS_INVALID when filePath ends with /..
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_InvalidPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.CreateIsoImage("vol-1", "/tmp/.."), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_002 End";
 }
 
 /**
@@ -2030,7 +2138,9 @@ HWTEST_F(DiskManagerProviderTest, CheckClientPermission_TestCase_002, TestSize.L
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_TRUE(provider.CheckClientPermission());
+    g_nativeProcessName = "foundation";
 
     GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_002 End";
 }

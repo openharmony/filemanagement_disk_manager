@@ -17,10 +17,12 @@
 
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
 
 #include <cerrno>
 #include <cctype>
 #include <cstdlib>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -35,13 +37,16 @@ constexpr const char *VOLDATA_UUID_MAPPING_JSON = "voldata_uuid_mapping.json";
 constexpr const char *TMP_FILE_SUFFIX = ".tmp";
 constexpr const char *VOLDATA_MOUNT_PREFIX = "/mnt/data/voldata/data";
 constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 1000;
+constexpr size_t FS_UUID_MAX_LEN = 4096;
 
 bool IsSafeFsUuidLocal(const std::string &fsUuid)
 {
-    if (fsUuid.empty()) {
+    if (fsUuid.empty() || fsUuid.size() > FS_UUID_MAX_LEN) {
+        LOGE("IsSafeFsUuidLocal fsUuid is empty or size:%{public}zu over 4096", fsUuid.size());
         return false;
     }
-    return fsUuid.find("..") == std::string::npos && fsUuid.find('/') == std::string::npos;
+    return fsUuid.find("..") == std::string::npos &&
+           fsUuid.find('/') == std::string::npos;
 }
 
 bool ParseVoldataSlotFromMountPath(const std::string &mountPath, uint32_t &outSlot)
@@ -105,10 +110,12 @@ VoldataUuidStore &VoldataUuidStore::GetInstance()
 
 bool VoldataUuidStore::IsSafeFsUuid(const std::string &fsUuid)
 {
-    if (fsUuid.empty()) {
+    if (fsUuid.empty() || fsUuid.size() > FS_UUID_MAX_LEN) {
+        LOGE("IsSafeFsUuid fsUuid is empty or size:%{public}zu over 4096", fsUuid.size());
         return false;
     }
-    return fsUuid.find("..") == std::string::npos && fsUuid.find('/') == std::string::npos;
+    return fsUuid.find("..") == std::string::npos &&
+           fsUuid.find('/') == std::string::npos;
 }
 
 std::string VoldataUuidStore::BuildMountPathForSlot(uint32_t slotIndex)
@@ -166,7 +173,7 @@ int32_t VoldataUuidStore::ResolveMountPath(const std::string &fsUuid, std::strin
     const auto existing = uuidMap_.find(fsUuid);
     if (existing != uuidMap_.end()) {
         outMountPath = existing->second.mountPath;
-        LOGI("ResolveMountPath reuse uuid path=%{public}s", outMountPath.c_str());
+        LOGI("ResolveMountPath reuse uuid path=%{public}s", GetAnonyString(outMountPath).c_str());
         return DiskManagerErrNo::E_OK;
     }
 
@@ -187,7 +194,7 @@ int32_t VoldataUuidStore::ResolveMountPath(const std::string &fsUuid, std::strin
 
     outMountPath = entry.mountPath;
     outCreated = true;
-    LOGI("ResolveMountPath new uuid slot=%{public}u path=%{public}s", slot, outMountPath.c_str());
+    LOGI("ResolveMountPath new uuid slot=%{public}u path=%{public}s", slot, GetAnonyString(outMountPath).c_str());
     return DiskManagerErrNo::E_OK;
 }
 
@@ -217,7 +224,7 @@ int32_t VoldataUuidStore::RemoveByFsUuid(const std::string &fsUuid)
         return saveRet;
     }
 
-    LOGI("RemoveByFsUuid ok uuid=%{public}s", fsUuid.c_str());
+    LOGI("RemoveByFsUuid ok uuid=%{public}s", GetAnonyString(fsUuid).c_str());
     return DiskManagerErrNo::E_OK;
 }
 
@@ -239,11 +246,11 @@ int32_t VoldataUuidStore::ReplaceFsUuid(const std::string &oldFsUuid, const std:
     std::unique_lock<std::shared_mutex> dataLock(dataMutex_);
     const auto oldIt = uuidMap_.find(oldFsUuid);
     if (oldIt == uuidMap_.end()) {
-        LOGI("ReplaceFsUuid no mapping for old uuid=%{public}s", oldFsUuid.c_str());
+        LOGI("ReplaceFsUuid no mapping for old uuid=%{public}s", GetAnonyString(oldFsUuid).c_str());
         return DiskManagerErrNo::E_OK;
     }
     if (uuidMap_.find(newFsUuid) != uuidMap_.end()) {
-        LOGE("ReplaceFsUuid new uuid already mapped uuid=%{public}s", newFsUuid.c_str());
+        LOGE("ReplaceFsUuid new uuid already mapped uuid=%{public}s", GetAnonyString(newFsUuid).c_str());
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
@@ -260,8 +267,9 @@ int32_t VoldataUuidStore::ReplaceFsUuid(const std::string &oldFsUuid, const std:
         return saveRet;
     }
 
-    LOGI("ReplaceFsUuid ok old=%{public}s new=%{public}s path=%{public}s slot=%{public}u", oldFsUuid.c_str(),
-         newFsUuid.c_str(), entry.mountPath.c_str(), entry.slotIndex);
+    LOGI("ReplaceFsUuid ok old=%{public}s new=%{public}s path=%{public}s slot=%{public}u",
+         GetAnonyString(oldFsUuid).c_str(), GetAnonyString(newFsUuid).c_str(),
+         GetAnonyString(entry.mountPath).c_str(), entry.slotIndex);
     return DiskManagerErrNo::E_OK;
 }
 
@@ -287,8 +295,8 @@ void VoldataUuidStore::EvictSlotOneIfFullLocked()
     }
     for (auto it = uuidMap_.begin(); it != uuidMap_.end(); ++it) {
         if (it->second.slotIndex == 1U) {
-            LOGI("EvictSlotOneIfFullLocked remove uuid=%{public}s path=%{public}s", it->first.c_str(),
-                 it->second.mountPath.c_str());
+            LOGI("EvictSlotOneIfFullLocked remove uuid=%{public}s path=%{public}s", GetAnonyString(it->first).c_str(),
+                 GetAnonyString(it->second.mountPath).c_str());
             uuidMap_.erase(it);
             return;
         }
@@ -414,6 +422,14 @@ int32_t VoldataUuidStore::SaveJsonToFile(const std::string &filePath, const nloh
         LOGE("VoldataUuidStore write temp failed");
         std::remove(tempFilePath.c_str());
         return DiskManagerErrNo::DISK_MGR_ERR;
+    }
+
+    int fd = open(tempFilePath.c_str(), O_RDONLY);
+    if (fd >= 0) {
+        if (fsync(fd) != 0) {
+            LOGW("VoldataUuidStore fsync failed errno=%{public}d", errno);
+        }
+        close(fd);
     }
 
     if (rename(tempFilePath.c_str(), filePath.c_str()) != 0) {

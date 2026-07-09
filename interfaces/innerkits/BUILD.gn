@@ -79,6 +79,7 @@ ohos_shared_library("disk_manager_innerkits") {
   }
 
   sources = [
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "src/disk.cpp",
     "src/disk_manager_client.cpp",
     "src/partition_types.cpp",

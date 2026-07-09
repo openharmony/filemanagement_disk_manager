@@ -30,6 +30,7 @@
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
 #include "disk_manager_napi_errno.h"
+#include "disk_manager_utils.h"
 #include "notification/common_event_publisher.h"
 
 #include <nlohmann/json.hpp>
@@ -69,6 +70,7 @@ constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_space.enterprise_space_enable";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
+constexpr size_t FS_UUID_MAX_LEN = 4096;
 
 int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType)
 {
@@ -296,7 +298,7 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
     std::string dataMountPath;
     if (mappingStore.TryGetMountPath(fsUuid, dataMountPath)) {
         LOGI("Mount path voldata existing: path=%{public}s vol=%{public}s uuid=%{public}s",
-             dataMountPath.c_str(), volExternal.GetId().c_str(), fsUuid.c_str());
+             GetAnonyString(dataMountPath).c_str(), volExternal.GetId().c_str(), GetAnonyString(fsUuid).c_str());
         return dataMountPath;
     }
     bool created = false;
@@ -310,7 +312,8 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
         *voldataMappingCreated = created;
     }
     LOGI("Mount path voldata new: path=%{public}s vol=%{public}s uuid=%{public}s created=%{public}d",
-         dataMountPath.c_str(), volExternal.GetId().c_str(), fsUuid.c_str(), created ? 1 : 0);
+         GetAnonyString(dataMountPath).c_str(), volExternal.GetId().c_str(),
+         GetAnonyString(fsUuid).c_str(), created ? 1 : 0);
     return dataMountPath;
 }
 
@@ -412,7 +415,11 @@ DiskManager::VolumeMountPolicy DiskManager::ComputeVolumeMountPolicy(const std::
 
 bool DiskManager::IsSafeFsUuid(const std::string &fsUuid)
 {
-    return !(fsUuid.find("..") != std::string::npos || fsUuid.find('/') != std::string::npos);
+    if (fsUuid.empty() || fsUuid.size() > FS_UUID_MAX_LEN) {
+        return false;
+    }
+    return !(fsUuid.find("..") != std::string::npos ||
+             fsUuid.find('/') != std::string::npos);
 }
 
 int32_t DiskManager::LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const
@@ -420,7 +427,7 @@ int32_t DiskManager::LookupVolumeByUuidUnlocked(const std::string &fsUuid, Volum
     for (auto it = volumeMap_.begin(); it != volumeMap_.end(); ++it) {
         const VolumeExternal &volExternal = it->second;
         if (volExternal.GetUuid() == fsUuid) {
-            LOGI("VolumeManagerService::GetVolumeByUuid volumeUuid %{public}s exists", fsUuid.c_str());
+            LOGI("VolumeManagerService::GetVolumeByUuid volumeUuid %{public}s exists", GetAnonyString(fsUuid).c_str());
             out = volExternal;
             return DiskManagerErrNo::E_OK;
         }
@@ -568,7 +575,7 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
         mountPath = std::string(EXTERNAL_MOUNT_ROOT) + uuid;
     }
     LOGI("UnmountVolumeMountPoints, fsType=%{public}s, volumeId=%{public}s, mountPath=%{public}s", fsType.c_str(),
-         volumeId.c_str(), mountPath.c_str());
+         volumeId.c_str(), GetAnonyString(mountPath).c_str());
     return StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, force);
 }
 
@@ -589,12 +596,13 @@ int32_t DiskManager::ResolveUnmountForceFlag(const VolumeExternal &volExternal, 
     bool isInUse = false;
     const int32_t queryErr = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(queryPath, isInUse);
     if (queryErr != ERR_OK) {
-        LOGE("Unmount: QueryUsbIsInUse failed mountPath=%{public}s err=%{public}d", queryPath.c_str(), queryErr);
+        LOGE("Unmount: QueryUsbIsInUse failed mountPath=%{public}s err=%{public}d",
+             GetAnonyString(queryPath).c_str(), queryErr);
         return queryErr;
     }
     if (isInUse) {
-        LOGE("Unmount: internal data disk in use mountPath=%{public}s volumeId=%{public}s", queryPath.c_str(),
-             volExternal.GetId().c_str());
+        LOGE("Unmount: internal data disk in use mountPath=%{public}s volumeId=%{public}s",
+             GetAnonyString(queryPath).c_str(), volExternal.GetId().c_str());
         return E_UMOUNT_BUSY;
     }
     return DiskManagerErrNo::E_OK;
@@ -953,12 +961,12 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         VolumeExternal volExternal;
         if (LookupVolumeByUuidUnlocked(fsUuid, volExternal) != E_OK) {
-            LOGE("Volume with id %{public}s not found", fsUuid.c_str());
+            LOGE("Volume with id %{public}s not found", GetAnonyString(fsUuid).c_str());
             return E_NON_EXIST;
         }
         if (volExternal.GetState() != VolumeState::UNMOUNTED) {
-            LOGE("SetVolumeDescription: fsUuid=%{public}s state=%{public}d not unmounted",
-                 fsUuid.c_str(), volExternal.GetState());
+        LOGE("SetVolumeDescription: fsUuid=%{public}s state=%{public}d not unmounted",
+             GetAnonyString(fsUuid).c_str(), volExternal.GetState());
             return E_VOL_STATE;
         }
         blockVolId = volExternal.GetId();
@@ -968,13 +976,13 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
 
     if (IsDiskSupported(diskId) != E_OK) {
         LOGE("SetVolumeDescription: disk not support, fsUuid=%{public}s diskId=%{public}s",
-             fsUuid.c_str(), diskId.c_str());
+             GetAnonyString(fsUuid).c_str(), diskId.c_str());
         return E_NOT_SUPPORT;
     }
     
     if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
         LOGE("SetVolumeDescription: fsType not support, fsUuid=%{public}s fsType=%{public}s",
-             fsUuid.c_str(), fsTypeStr.c_str());
+             GetAnonyString(fsUuid).c_str(), fsTypeStr.c_str());
         return E_NOT_SUPPORT;
     }
 
@@ -1031,7 +1039,7 @@ int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
         const int32_t removeRet = VoldataUuidStore::GetInstance().RemoveByFsUuid(fsUuid);
         if (removeRet != DiskManagerErrNo::E_OK) {
             LOGE("PurgeVolumesForDisk RemoveByFsUuid failed diskId=%{public}s uuid=%{public}s ret=%{public}d",
-                 diskId.c_str(), fsUuid.c_str(), removeRet);
+                 diskId.c_str(), GetAnonyString(fsUuid).c_str(), removeRet);
             ret = removeRet;
         }
     }
@@ -1266,7 +1274,7 @@ int32_t DiskManager::GetVolumeById(const std::string &volumeId, VolumeExternal &
     if (it == volumeMap_.end()) {
         return E_NON_EXIST;
     }
-    LOGI("VolumeManagerService::GetVolumeByUuid volumeUuid %{public}s exists", volumeId.c_str());
+    LOGI("VolumeManagerService::GetVolumeByUuid volumeid %{public}s exists", volumeId.c_str());
     out = it->second;
     return DiskManagerErrNo::E_OK;
 }
@@ -1293,7 +1301,8 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
     volExternal.SetFsType(volExternal.GetFsTypeByStr(fsTypeStr));
     volExternal.SetDescription(description);
     LOGI("Updated metadata for volume %{public}s: uuid=%{public}s, fsType=%{public}d, description=%{public}s",
-         volumeId.c_str(), fsUuid.c_str(), volExternal.GetFsType(), description.c_str());
+         volumeId.c_str(), GetAnonyString(fsUuid).c_str(),
+         volExternal.GetFsType(), GetAnonyString(description).c_str());
     return DiskManagerErrNo::E_OK;
 }
 
@@ -1319,7 +1328,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     }
     struct statvfs diskInfo {};
     const int ret = statvfs(path.c_str(), &diskInfo);
-    if (ret != DiskManagerErrNo::E_OK) {
+    if (ret != 0) {
         return DiskManagerErrNo::E_STATVFS;
     }
     if (IsOddFsType(fsType)) {
@@ -1363,7 +1372,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     }
     struct statvfs diskInfo {};
     const int ret = statvfs(path.c_str(), &diskInfo);
-    if (ret != DiskManagerErrNo::E_OK) {
+    if (ret != 0) {
         return DiskManagerErrNo::E_STATVFS;
     }
     if (IsOddFsType(fsType)) {

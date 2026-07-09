@@ -21,6 +21,7 @@
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
 #include "errors.h"
 #include "ipc_caller_auth.h"
 #include "ipc_skeleton.h"
@@ -85,12 +86,8 @@ static bool IsFilePathInvalid(const std::string &filePath)
 
 bool DiskManagerProvider::CheckClientPermission()
 {
-    auto uid = IPCSkeleton::GetCallingUid();
-    if (uid == STORAGEDAEMON_UID) {
-        return true;
-    }
-    LOGE("DiskManagerProvider CheckClientPermission error");
-    return false;
+    return IpcCallerAuth::VerifyNativeCallerMatches("storage_daemon",
+                                                    STORAGEDAEMON_UID);
 }
 
 bool DiskManagerProvider::IsStorageManagerCaller() const
@@ -165,7 +162,7 @@ int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
 
 int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
 {
-    LOGI("SetVolumeDescription fsUuid=%{public}s", fsUuid.c_str());
+    LOGI("SetVolumeDescription fsUuid=%{public}s", GetAnonyString(fsUuid).c_str());
     if (!IsStorageManagerCaller()) {
         if (!IpcCallerAuth::IsCallingSystemApp()) {
             LOGE("SetVolumeDescription: caller is not system app");
@@ -209,7 +206,7 @@ int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeEx
         }
     }
     const int32_t err = DiskManager::GetInstance().GetVolumeByUuid(fsUuid, vc);
-    LOGI("GetVolumeByUuid fsUuid=%{public}s err=%{public}d", fsUuid.c_str(), err);
+    LOGI("GetVolumeByUuid fsUuid=%{public}s err=%{public}d", GetAnonyString(fsUuid).c_str(), err);
     return err;
 }
 
@@ -242,7 +239,7 @@ int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, 
             return E_PERMISSION_DENIED;
         }
     }
-    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
+    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     return DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
 }
 
@@ -258,7 +255,7 @@ int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid,
             return E_PERMISSION_DENIED;
         }
     }
-    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
+    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     return DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
 }
 
@@ -374,6 +371,14 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
         LOGE("DiskManagerProvider CheckClientPermission error");
         return E_PERMISSION_DENIED;
     }
+    if (path.empty()) {
+        LOGE("NotifyMtpMounted: path is empty");
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(path)) {
+        LOGE("NotifyMtpMounted: path is invalid, path traversal detected");
+        return E_PARAMS_INVALID;
+    }
     DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
     return DiskManagerErrNo::E_OK;
 }
@@ -433,6 +438,14 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
             LOGE("CreateIsoImage: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (filePath.empty()) {
+        LOGE("CreateIsoImage: filePath is empty");
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(filePath)) {
+        LOGE("CreateIsoImage: filePath is invalid, path traversal detected");
+        return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
 }

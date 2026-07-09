@@ -13,7 +13,6 @@
 
 import("//build/ohos.gni")
 
-# HiLog 宏（LOGI/LOGE/LOGW/LOGF/LOGD）。错误码见 common/include/disk_manager_errno.h（config: disk_manager_common_include）。
 config("disk_manager_utils_include") {
   include_dirs = [ "include" ]
 }

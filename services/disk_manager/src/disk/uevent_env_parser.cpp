@@ -15,6 +15,8 @@
 
 #include "uevent_env_parser.h"
 
+#include "disk_manager_hilog.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -27,6 +29,7 @@ namespace DiskManager {
 namespace {
 
 constexpr int DEC_BASE = 10;
+constexpr size_t UEVENT_MAX_LEN = 4096;
 
 constexpr uint32_t KeyHash(std::string_view sv)
 {
@@ -97,6 +100,10 @@ void ApplyEnvValue(UeventEnv &out, uint32_t keyHash, const std::string &val)
 
 bool UeventEnvParser::Parse(const std::string &raw, UeventEnv &out)
 {
+    if (raw.size() > UEVENT_MAX_LEN) {
+        LOGE("UeventEnvParser: raw msg too long, size=%{public}zu", raw.size());
+        return false;
+    }
     out = UeventEnv{};
     std::stringstream ss(raw);
     std::string line;

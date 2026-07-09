@@ -114,6 +114,7 @@ ohos_unittest("disk_manager_client_test") {
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/partition_types.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
