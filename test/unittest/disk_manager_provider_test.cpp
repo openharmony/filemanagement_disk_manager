@@ -400,78 +400,6 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: IsUsbFuseByType_TestCase_001
- * @tc.desc: IsUsbFuseByType with known type (NTFS) maps via FS_TYPE_MAP.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, IsUsbFuseByType_TestCase_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_001 Start";
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    bool isUsbFuse = false;
-    EXPECT_CALL(MockUsbFuseAdapter::GetInstance(), IsUsbFuseEnabledForFsType("ntfs"))
-        .WillOnce(Return(true));
-    EXPECT_EQ(provider.IsUsbFuseByType(NTFS, isUsbFuse), E_OK);
-    EXPECT_TRUE(isUsbFuse);
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_001 End";
-}
-
-/**
- * @tc.name: IsUsbFuseByType_TestCase_002
- * @tc.desc: IsUsbFuseByType with unknown type falls back to "undefined".
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, IsUsbFuseByType_TestCase_002, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_002 Start";
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    bool isUsbFuse = true;
-    EXPECT_CALL(MockUsbFuseAdapter::GetInstance(), IsUsbFuseEnabledForFsType("undefined"))
-        .WillOnce(Return(false));
-    EXPECT_EQ(provider.IsUsbFuseByType(-999, isUsbFuse), E_OK);
-    EXPECT_FALSE(isUsbFuse);
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_002 End";
-}
-
-/**
- * @tc.name: IsUsbFuseByType_TestCase_003
- * @tc.desc: IsUsbFuseByType with EXFAT type delegates correctly.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, IsUsbFuseByType_TestCase_003, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_003 Start";
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    bool isUsbFuse = false;
-    EXPECT_CALL(MockUsbFuseAdapter::GetInstance(), IsUsbFuseEnabledForFsType("exfat"))
-        .WillOnce(Return(false));
-    EXPECT_EQ(provider.IsUsbFuseByType(EXFAT, isUsbFuse), E_OK);
-    EXPECT_FALSE(isUsbFuse);
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_003 End";
-}
-
-/**
- * @tc.name: IsUsbFuseByType_TestCase_004
- * @tc.desc: IsUsbFuseByType always returns E_OK regardless of adapter result.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerProviderTest, IsUsbFuseByType_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_004 Start";
-    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    bool isUsbFuse = false;
-    EXPECT_CALL(MockUsbFuseAdapter::GetInstance(), IsUsbFuseEnabledForFsType("vfat"))
-        .WillOnce(Return(true));
-    EXPECT_EQ(provider.IsUsbFuseByType(VFAT, isUsbFuse), E_OK);
-    EXPECT_TRUE(isUsbFuse);
-    GTEST_LOG_(INFO) << "IsUsbFuseByType_TestCase_004 End";
-}
-
-/**
  * @tc.name: QueryUsbIsInUse_TestCase_001
  * @tc.desc: QueryUsbIsInUse delegates to StorageDaemonAdapter and returns result with isInUse=true.
  * @tc.type: FUNC
@@ -1031,8 +959,96 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_TestCase_003, TestSize.Level
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = 1000;
     EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_003 End";
+}
+
+/**
+ * @tc.name: OnBlockDiskUevent_PendingCount_TestCase_001
+ * @tc.desc: OnBlockDiskUevent 处理期间 pendingStorageDaemonCallbackCount_ 为 1，结束后归零。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_PendingCount_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "OnBlockDiskUevent_PendingCount_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
+        .WillOnce(Invoke([&provider](const std::string &) {
+            EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 1);
+            return E_OK;
+        }));
+    EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_OK);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    GTEST_LOG_(INFO) << "OnBlockDiskUevent_PendingCount_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CheckAndUnloadIfIdle_PendingUevent_TestCase_001
+ * @tc.desc: 存在进行中的 uevent 时 CheckAndUnloadIfIdle 跳过卸载。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CheckAndUnloadIfIdle_PendingUevent_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CheckAndUnloadIfIdle_PendingUevent_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    provider.pendingStorageDaemonCallbackCount_.store(1);
+    provider.CheckAndUnloadIfIdle();
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 1);
+    provider.pendingStorageDaemonCallbackCount_.store(0);
+    GTEST_LOG_(INFO) << "CheckAndUnloadIfIdle_PendingUevent_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CheckAndUnloadIfIdle_ManagedResources_TestCase_001
+ * @tc.desc: 存在 managed disk 时 CheckAndUnloadIfIdle 跳过卸载。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CheckAndUnloadIfIdle_ManagedResources_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CheckAndUnloadIfIdle_ManagedResources_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-idle-ut-1"));
+    provider.CheckAndUnloadIfIdle();
+    EXPECT_TRUE(DiskManager::GetInstance().HasManagedResources());
+    GTEST_LOG_(INFO) << "CheckAndUnloadIfIdle_ManagedResources_TestCase_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_PendingCount_TestCase_001
+ * @tc.desc: NotifyMtpMounted 处理期间 pendingStorageDaemonCallbackCount_ 为 1，结束后归零。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_PendingCount_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_PendingCount_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "vfat"), E_OK);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_PendingCount_TestCase_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpUnmounted_PendingCount_TestCase_001
+ * @tc.desc: NotifyMtpUnmounted 权限拒绝时 pendingStorageDaemonCallbackCount_ 归零。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_PendingCount_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpUnmounted_PendingCount_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 1000;
+    EXPECT_EQ(provider.NotifyMtpUnmounted("mtp-id", false), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "NotifyMtpUnmounted_PendingCount_TestCase_001 End";
 }
 
 /**

@@ -38,7 +38,6 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 12] void GetAllDisks([out] Disk[] vecOfDisk);
     [ipccode 13] void GetDiskById([in] String diskId, [out] Disk disk);
     [ipccode 14] void QueryUsbIsInUse([in] String diskPath, [out] boolean isInUse);
-    [ipccode 15] void IsUsbFuseByType([in] int type, [out] boolean isUsbFuse);
 
     /* ---------- storage_daemon 转发 block/disk 级 uevent（已由 daemon 过滤 DEVTYPE=disk） ---------- */
     [ipccode 39] void OnBlockDiskUevent([in] String rawUeventMsg);

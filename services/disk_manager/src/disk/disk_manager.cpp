@@ -1141,6 +1141,21 @@ bool DiskManager::HasDisk(const std::string &diskId)
     return diskMap_.find(diskId) != diskMap_.end();
 }
 
+bool DiskManager::HasManagedResources() const
+{
+    std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+    std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+    LOGI("HasManagedResources: diskCount=%{public}zu volumeCount=%{public}zu",
+         diskMap_.size(), volumeMap_.size());
+    for (const auto &item : diskMap_) {
+        LOGI("HasManagedResources: diskId=%{public}s", item.first.c_str());
+    }
+    for (const auto &item : volumeMap_) {
+        LOGI("HasManagedResources: volumeId=%{public}s", item.first.c_str());
+    }
+    return !diskMap_.empty() || !volumeMap_.empty();
+}
+
 int32_t DiskManager::OnDiskDestroyed(const std::string &diskId)
 {
     std::unique_lock<std::shared_mutex> diskWriteLock(diskMapMutex_);

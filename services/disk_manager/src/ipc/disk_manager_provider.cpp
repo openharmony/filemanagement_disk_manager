@@ -17,6 +17,8 @@
 
 #include <cinttypes>
 
+#include <iservice_registry.h>
+
 #include "block_info_table.h"
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
@@ -27,23 +29,30 @@
 #include "partition_types.h"
 #include "storage_daemon_adapter.h"
 #include "uevent_bootstrap.h"
-#include "usb_fuse_adapter.h"
 #include "voldata_uuid_store.h"
 
 namespace OHOS {
 namespace DiskManager {
 
 using namespace OHOS::DiskManager;
+namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr const char *PATH_INVALID_FLAG1 = "../";
 constexpr const char *PATH_INVALID_FLAG2 = "/..";
 constexpr int32_t PATH_INVALID_FLAG_LEN = 3;
 constexpr char FILE_SEPARATOR_CHAR = '/';
+constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
+} // namespace
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
 DiskManagerProvider::DiskManagerProvider(int32_t saId, bool runOnCreate) : SystemAbility(saId, runOnCreate) {}
+
+DiskManagerProvider::~DiskManagerProvider()
+{
+    StopIdleMonitor();
+}
 
 void DiskManagerProvider::OnStart()
 {
@@ -57,12 +66,87 @@ void DiskManagerProvider::OnStart()
     LOGI("OnStart BlockInfoTable::ReloadFromDaemon ret=%{public}d", reloadErr);
     const int32_t voldataMapErr = VoldataUuidStore::GetInstance().Init();
     LOGI("OnStart VoldataUuidStore::Init ret=%{public}d", voldataMapErr);
+    StartIdleMonitor();
     LOGI("OnStart end");
 }
 
 void DiskManagerProvider::OnStop()
 {
     LOGI("OnStop");
+    StopIdleMonitor();
+}
+
+void DiskManagerProvider::StartIdleMonitor()
+{
+    LOGI("StartIdleMonitor begin");
+    idleMonitorStopped_.store(false, std::memory_order_release);
+    {
+        std::lock_guard<std::mutex> lock(idleTimerMutex_);
+        if (idleTimer_ != nullptr) {
+            LOGI("StartIdleMonitor: timer already running, skip");
+            return;
+        }
+        idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle", -1);
+        idleTimer_->Setup();
+        idleTimerId_ = idleTimer_->Register([this]() { CheckAndUnloadIfIdle(); }, IDLE_CHECK_INTERVAL_MS);
+        LOGI("StartIdleMonitor intervalMs=%{public}u", IDLE_CHECK_INTERVAL_MS);
+    }
+    LOGI("StartIdleMonitor end");
+}
+
+void DiskManagerProvider::StopIdleMonitor()
+{
+    LOGI("StopIdleMonitor begin");
+    idleMonitorStopped_.store(true, std::memory_order_release);
+    std::lock_guard<std::mutex> lock(idleTimerMutex_);
+    if (idleTimer_ == nullptr) {
+        LOGI("StopIdleMonitor: timer not running, skip");
+        return;
+    }
+    idleTimer_->Unregister(idleTimerId_);
+    idleTimer_->Shutdown();
+    idleTimer_.reset();
+    idleTimerId_ = 0;
+    LOGI("StopIdleMonitor end");
+}
+
+void DiskManagerProvider::BeginPendingStorageDaemonCallback()
+{
+    pendingStorageDaemonCallbackCount_.fetch_add(1, std::memory_order_acq_rel);
+}
+
+void DiskManagerProvider::EndPendingStorageDaemonCallback()
+{
+    pendingStorageDaemonCallbackCount_.fetch_sub(1, std::memory_order_acq_rel);
+}
+
+void DiskManagerProvider::CheckAndUnloadIfIdle()
+{
+    if (idleMonitorStopped_.load(std::memory_order_acquire)) {
+        return;
+    }
+    if (DiskManager::GetInstance().HasManagedResources()) {
+        LOGI("CheckAndUnloadIfIdle: managed resources exist, skip unload");
+        return;
+    }
+    const int32_t pendingCallbacks = pendingStorageDaemonCallbackCount_.load(std::memory_order_acquire);
+    if (pendingCallbacks > 0) {
+        LOGI("CheckAndUnloadIfIdle: pending storage_daemon callback count=%{public}d, skip unload",
+             pendingCallbacks);
+        return;
+    }
+    LOGI("CheckAndUnloadIfIdle: unloading SA");
+    auto samgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgr == nullptr) {
+        LOGE("CheckAndUnloadIfIdle: GetSystemAbilityManager failed");
+        return;
+    }
+    const int32_t ret = samgr->UnloadSystemAbility(DISK_MANAGER_SA_ID);
+    if (ret != ERR_OK) {
+        LOGE("CheckAndUnloadIfIdle: UnloadSystemAbility failed ret=%{public}d", ret);
+        return;
+    }
+    LOGI("CheckAndUnloadIfIdle: UnloadSystemAbility success");
 }
 
 static bool IsFilePathInvalid(const std::string &filePath)
@@ -112,7 +196,9 @@ int32_t DiskManagerProvider::Mount(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Mount(volumeId);
+    const int32_t err = DiskManager::GetInstance().Mount(volumeId);
+    LOGI("Mount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
@@ -128,7 +214,9 @@ int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Unmount(volumeId);
+    const int32_t err = DiskManager::GetInstance().Unmount(volumeId);
+    LOGI("Unmount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::string &fsType)
@@ -144,7 +232,9 @@ int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::stri
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Format(volumeId, fsType);
+    const int32_t err = DiskManager::GetInstance().Format(volumeId, fsType);
+    LOGI("Format volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
@@ -160,7 +250,9 @@ int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().TryToFix(volumeId);
+    const int32_t err = DiskManager::GetInstance().TryToFix(volumeId);
+    LOGI("TryToFix volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
@@ -176,11 +268,14 @@ int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, con
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().SetVolumeDescription(fsUuid, description);
+    const int32_t err = DiskManager::GetInstance().SetVolumeDescription(fsUuid, description);
+    LOGI("SetVolumeDescription fsUuid=%{public}s err=%{public}d", fsUuid.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 {
+    LOGI("GetAllVolumes");
     if (!IsStorageManagerCaller()) {
         if (!IpcCallerAuth::IsCallingSystemApp()) {
             LOGE("GetAllVolumes: caller is not system app");
@@ -198,6 +293,7 @@ int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol
 
 int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &vc)
 {
+    LOGI("GetVolumeByUuid fsUuid=%{public}s", fsUuid.c_str());
     if (!IsStorageManagerCaller()) {
         if (!IpcCallerAuth::IsCallingSystemApp()) {
             LOGE("GetVolumeByUuid: caller is not system app");
@@ -215,6 +311,7 @@ int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeEx
 
 int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeExternal &vc)
 {
+    LOGI("GetVolumeById volumeId=%{public}s", volumeId.c_str());
     if (!IsStorageManagerCaller()) {
         if (!IpcCallerAuth::IsCallingSystemApp()) {
             LOGE("GetVolumeById: caller is not system app");
@@ -243,7 +340,9 @@ int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, 
         }
     }
     LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
-    return DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
+    const int32_t err = DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
+    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s err=%{public}d", volumeUuid.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
@@ -259,7 +358,9 @@ int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid,
         }
     }
     LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
-    return DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
+    const int32_t err = DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
+    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s err=%{public}d", volumeUuid.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
@@ -275,20 +376,28 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Partition(diskId, type);
+    const int32_t err = DiskManager::GetInstance().Partition(diskId, type);
+    LOGI("Partition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
+    BeginPendingStorageDaemonCallback();
     if (!CheckClientPermission()) {
+        EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
-    return UeventBootstrap::OnBlockDiskUevent(rawUeventMsg);
+    const int32_t ret = UeventBootstrap::OnBlockDiskUevent(rawUeventMsg);
+    EndPendingStorageDaemonCallback();
+    LOGI("OnBlockDiskUevent err=%{public}d", ret);
+    return ret;
 }
 
 int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 {
+    LOGI("GetAllDisks");
     if (!IsStorageManagerCaller()) {
         if (!IpcCallerAuth::IsCallingSystemApp()) {
             LOGE("the caller is not sysapp");
@@ -350,19 +459,6 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
     return err != DiskManagerErrNo::E_OK ? E_QUERY_VOLUME_IN_USE_ERROR : DiskManagerErrNo::E_OK;
 }
 
-int32_t DiskManagerProvider::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
-{
-    LOGI("IsUsbFuseByType type=%{public}d", type);
-    static constexpr const char *UNDEFINED_FS_TYPE = "undefined";
-    std::string fsTypeStr = UNDEFINED_FS_TYPE;
-    auto it = FS_TYPE_MAP.find(type);
-    if (it != FS_TYPE_MAP.end()) {
-        fsTypeStr = it->second;
-    }
-    isUsbFuse = UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsTypeStr);
-    return DiskManagerErrNo::E_OK;
-}
-
 int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
                                               const std::string &path,
                                               const std::string &desc,
@@ -370,22 +466,30 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
                                               const std::string &fsType)
 {
     LOGI("NotifyMtpMounted id=%{public}s fsType=%{public}s", id.c_str(), fsType.c_str());
+    BeginPendingStorageDaemonCallback();
     if (!CheckClientPermission()) {
         LOGE("DiskManagerProvider CheckClientPermission error");
+        EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
     DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
+    EndPendingStorageDaemonCallback();
+    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
     return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
 {
     LOGI("NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(), static_cast<int>(isBadRemove));
+    BeginPendingStorageDaemonCallback();
     if (!CheckClientPermission()) {
         LOGE("DiskManagerProvider CheckClientPermission error");
+        EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
     DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
+    EndPendingStorageDaemonCallback();
+    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
     return DiskManagerErrNo::E_OK;
 }
 
@@ -402,7 +506,9 @@ int32_t DiskManagerProvider::Erase(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Erase(volumeId);
+    const int32_t err = DiskManager::GetInstance().Erase(volumeId);
+    LOGI("Erase volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Eject(const std::string &diskId)
@@ -418,7 +524,9 @@ int32_t DiskManagerProvider::Eject(const std::string &diskId)
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().Eject(diskId);
+    const int32_t err = DiskManager::GetInstance().Eject(diskId);
+    LOGI("Eject diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
@@ -434,7 +542,9 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
+    const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
+    LOGI("CreateIsoImage volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string &burnOptions)
@@ -452,7 +562,9 @@ int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string
     }
     std::string callerBundle = IpcCallerAuth::GetCallingBundleOrNativeProcessName();
     int32_t callerUserId = IpcCallerAuth::GetCallingUserId();
-    return DiskManager::GetInstance().Burn(volumeId, burnOptions, callerBundle, callerUserId);
+    const int32_t err = DiskManager::GetInstance().Burn(volumeId, burnOptions, callerBundle, callerUserId);
+    LOGI("Burn volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
@@ -468,7 +580,9 @@ int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int
             return E_PERMISSION_DENIED;
         }
     }
-    return DiskManager::GetInstance().GetVolumeOpProcess(volumeId, progressPct);
+    const int32_t err = DiskManager::GetInstance().GetVolumeOpProcess(volumeId, progressPct);
+    LOGI("GetVolumeOpProcess volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
@@ -485,7 +599,9 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
         LOGI("diskId is empty.");
         return E_PARAMS_INVALID;
     }
-    return DiskManager::GetInstance().GetPartitionTable(diskId, out);
+    const int32_t err = DiskManager::GetInstance().GetPartitionTable(diskId, out);
+    LOGI("GetPartitionTable diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const PartitionParams &params)
@@ -515,7 +631,9 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
         LOGE("CreatePartition: typeCode is empty");
         return E_PARAMS_INVALID;
     }
-    return DiskManager::GetInstance().CreatePartition(diskId, params);
+    const int32_t err = DiskManager::GetInstance().CreatePartition(diskId, params);
+    LOGI("CreatePartition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
@@ -536,7 +654,9 @@ int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t 
         LOGE("DeletePartition: invalid partitionNum=%{public}d", partitionNum);
         return E_PARAMS_INVALID;
     }
-    return DiskManager::GetInstance().DeletePartition(diskId, partitionNum);
+    const int32_t err = DiskManager::GetInstance().DeletePartition(diskId, partitionNum);
+    LOGI("DeletePartition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t partitionNum,
@@ -571,6 +691,7 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
 }
+
 
 } // namespace DiskManager
 } // namespace OHOS

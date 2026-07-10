@@ -262,6 +262,53 @@ HWTEST_F(DiskManagerTest, HasDisk_TestCase_002, TestSize.Level0)
 }
 
 /**
+ * @tc.name: HasManagedResources_TestCase_001
+ * @tc.desc: HasManagedResources returns false when disk and volume maps are empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, HasManagedResources_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "HasManagedResources_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_FALSE(dm.HasManagedResources());
+    GTEST_LOG_(INFO) << "HasManagedResources_TestCase_001 End";
+}
+
+/**
+ * @tc.name: HasManagedResources_TestCase_002
+ * @tc.desc: HasManagedResources returns true when a disk exists.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, HasManagedResources_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "HasManagedResources_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-mr-1");
+    EXPECT_EQ(dm.OnDiskCreated(disk), DiskManagerErrNo::E_OK);
+    EXPECT_TRUE(dm.HasManagedResources());
+    GTEST_LOG_(INFO) << "HasManagedResources_TestCase_002 End";
+}
+
+/**
+ * @tc.name: HasManagedResources_TestCase_003
+ * @tc.desc: HasManagedResources returns true when a volume exists.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, HasManagedResources_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "HasManagedResources_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-mr-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-mr-2", "disk-mr-2", "uuid-mr-2", UNMOUNTED);
+    EXPECT_EQ(dm.OnVolumeCreated(vol), DiskManagerErrNo::E_OK);
+    EXPECT_TRUE(dm.HasManagedResources());
+    GTEST_LOG_(INFO) << "HasManagedResources_TestCase_003 End";
+}
+
+/**
  * @tc.name: OnDiskDestroyed_TestCase_001
  * @tc.desc: Destroy existing disk returns E_OK.
  * @tc.type: FUNC
