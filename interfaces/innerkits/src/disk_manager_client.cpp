@@ -272,6 +272,9 @@ int32_t DiskManagerClient::GetVolumeByUuid(const std::string &uuid, VolumeExtern
     LOGI("GetVolumeByUuid uuid=%{public}s", uuid.c_str());
     sptr<IDiskManager> proxy;
     int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -284,6 +287,9 @@ int32_t DiskManagerClient::GetVolumeById(const std::string &volumeId, VolumeExte
     LOGI("GetVolumeById volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
     int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
     if (err != E_OK) {
         return err;
     }

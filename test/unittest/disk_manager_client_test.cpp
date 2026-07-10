@@ -325,7 +325,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByUuidTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetVolumeByUuidTest002
- * @tc.desc: 测试 GetVolumeByUuid 方法传入有效 uuid，SA 未运行时预期返回错误码。
+ * @tc.desc: 测试 GetVolumeByUuid 方法传入有效 uuid，SA 未运行时预期返回 E_NON_EXIST（13600008）。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -337,7 +337,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByUuidTest002, TestSize.Level1)
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeByUuid(TEST_FS_UUID, vol);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_NON_EXIST);
 
     GTEST_LOG_(INFO) << "GetVolumeByUuidTest002 End";
 }
@@ -363,7 +363,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByIdTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetVolumeByIdTest002
- * @tc.desc: 测试 GetVolumeById 方法传入有效 volumeId，SA 未运行时预期返回错误码。
+ * @tc.desc: 测试 GetVolumeById 方法传入有效 volumeId，SA 未运行时预期返回 E_NON_EXIST（13600008）。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -375,7 +375,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByIdTest002, TestSize.Level1)
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeById(TEST_VOLUME_ID, vol);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_NON_EXIST);
 
     GTEST_LOG_(INFO) << "GetVolumeByIdTest002 End";
 }
