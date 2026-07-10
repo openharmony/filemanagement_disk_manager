@@ -20,6 +20,8 @@
 #include "disk_manager_client.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_napi_errno.h"
+#include "disk_manager_stub_mock.h"
+#include "mock_system_ability_manager.h"
 #include "partition_types.h"
 #include "volume_external.h"
 
@@ -28,6 +30,9 @@ namespace DiskManager {
 
 using namespace testing;
 using namespace testing::ext;
+using OHOS::ISystemAbilityBase;
+using OHOS::SystemAbilityManagerMock;
+using OHOS::SystemAbilityMock;
 
 namespace {
 constexpr const char *TEST_VOLUME_ID = "vol-test-001";
@@ -53,12 +58,32 @@ public:
     void SetUp() override
     {
         GTEST_LOG_(INFO) << "DiskManagerClientTest SetUp";
+        saMock_ = std::make_shared<SystemAbilityMock>();
+        ISystemAbilityBase::sab = saMock_;
+        samMock_ = sptr(new SystemAbilityManagerMock());
+        dmStubMock_ = sptr(new DiskManagerStubMock());
+
+        ON_CALL(*saMock_, GetSystemAbilityManager()).WillByDefault(Return(samMock_));
+        ON_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillByDefault(Return(nullptr));
+        ON_CALL(*samMock_, LoadSystemAbility(_, An<const sptr<ISystemAbilityLoadCallback> &>()))
+            .WillByDefault(Return(-1));
+
+        DiskManagerClient::GetInstance().ResetProxy();
     }
 
     void TearDown() override
     {
         GTEST_LOG_(INFO) << "DiskManagerClientTest TearDown";
+        DiskManagerClient::GetInstance().ResetProxy();
+        ISystemAbilityBase::sab = nullptr;
+        saMock_ = nullptr;
+        samMock_ = nullptr;
+        dmStubMock_ = nullptr;
     }
+
+    static inline std::shared_ptr<SystemAbilityMock> saMock_ = nullptr;
+    static inline sptr<SystemAbilityManagerMock> samMock_ = nullptr;
+    static inline sptr<DiskManagerStubMock> dmStubMock_ = nullptr;
 };
 
 /**
@@ -672,6 +697,9 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "NotifyMtpMountedTest001 Start";
 
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, NotifyMtpMounted(_, _, _, _, _)).WillOnce(Return(E_OK));
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.NotifyMtpMounted("mtp-1", "/mnt/mtp", "desc", "uuid", "vfat");
@@ -689,6 +717,9 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
 HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "NotifyMtpUnmountedTest001 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, NotifyMtpUnmounted(_, _)).WillOnce(Return(E_OK));
 
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
