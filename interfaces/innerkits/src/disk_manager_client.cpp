@@ -100,35 +100,6 @@ private:
     sptr<IRemoteObject> remoteObject_ = nullptr;
 };
 
-int32_t GetDiskManagerSaObject(ISystemAbilityManager &mgr, sptr<IRemoteObject> &object)
-{
-    object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
-    if (object != nullptr) {
-        return E_OK;
-    }
-    sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
-    if (loadCallback == nullptr) {
-        LOGE("GetDiskManagerSaObject load callback null");
-        return E_SERVICE_IS_NULLPTR;
-    }
-    int32_t loadRet = mgr.LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
-    if (loadRet != IPC_OK) {
-        LOGE("GetDiskManagerSaObject LoadSystemAbility failed ret=%{public}d", loadRet);
-        return E_REMOTE_IS_NULLPTR;
-    }
-    bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
-    if (!callbackNotified || !loadCallback->IsSuccess()) {
-        LOGE("GetDiskManagerSaObject wait callback failed timeout=%{public}dms", SA_LOAD_WAIT_TIMEOUT_MS);
-        return E_REMOTE_IS_NULLPTR;
-    }
-    object = loadCallback->GetRemoteObject();
-    if (object == nullptr) {
-        LOGE("GetDiskManagerSaObject object == nullptr");
-        return E_REMOTE_IS_NULLPTR;
-    }
-    return E_OK;
-}
-
 } // namespace
 
 DiskManagerClient::~DiskManagerClient()
@@ -149,7 +120,7 @@ int32_t DiskManagerClient::ConnectIfPresent(sptr<IDiskManager> &proxy)
         LOGE("DiskManagerClient::ConnectIfPresent samgr == nullptr");
         return E_SA_IS_NULLPTR;
     }
-    sptr<IRemoteObject> object = sam->GetSystemAbility(DISK_MANAGER_SA_ID);
+    sptr<IRemoteObject> object = sam->CheckSystemAbility(DISK_MANAGER_SA_ID);
     if (object == nullptr) {
         LOGE("ConnectIfPresent: DiskManager SA(8640) not running, will not load");
         return E_SERVICE_IS_NULLPTR;
@@ -170,12 +141,27 @@ int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
         LOGE("DiskManagerClient::Connect samgr == nullptr");
         return E_SA_IS_NULLPTR;
     }
-    ISystemAbilityManager &mgr = *sam;
-    sptr<IRemoteObject> object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
+    sptr<IRemoteObject> object = sam->CheckSystemAbility(DISK_MANAGER_SA_ID);
     if (object == nullptr) {
-        const int32_t saRet = GetDiskManagerSaObject(mgr, object);
-        if (saRet != E_OK) {
-            return saRet;
+        sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
+        if (loadCallback == nullptr) {
+            LOGE("Connect load callback null");
+            return E_SERVICE_IS_NULLPTR;
+        }
+        int32_t loadRet = sam->LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
+        if (loadRet != IPC_OK) {
+            LOGE("Connect LoadSystemAbility failed ret=%{public}d", loadRet);
+            return E_REMOTE_IS_NULLPTR;
+        }
+        bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
+        if (!callbackNotified || !loadCallback->IsSuccess()) {
+            LOGE("Connect wait LoadSystemAbility callback failed timeout=%{public}dms", SA_LOAD_WAIT_TIMEOUT_MS);
+            return E_REMOTE_IS_NULLPTR;
+        }
+        object = loadCallback->GetRemoteObject();
+        if (object == nullptr) {
+            LOGE("Connect LoadSystemAbility object == nullptr");
+            return E_REMOTE_IS_NULLPTR;
         }
     }
     return InitProxyLocked(object, proxy);
