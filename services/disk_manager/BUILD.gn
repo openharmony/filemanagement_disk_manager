@@ -58,6 +58,7 @@ ohos_shared_library("disk_manager_server") {
     "src/adapter/storage_daemon_adapter.cpp",
     "src/adapter/storage_daemon_proxy.cpp",
     "src/adapter/usb_fuse_adapter.cpp",
+    "src/adapter/pc_encryption_adapter.cpp",
   ]
 
   defines = [
