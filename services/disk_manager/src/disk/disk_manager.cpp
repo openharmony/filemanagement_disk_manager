@@ -16,10 +16,12 @@
 #include "accesstoken_kit.h"
 #include "block_info_table.h"
 #include "disk_manager.h"
+#ifdef HAS_SECURITY_GUARD
 #include "event_info.h"
+#include "sg_collect_client.h"
+#endif
 #include "ipc_skeleton.h"
 #include "partition_table_parser.h"
-#include "sg_collect_client.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
 
@@ -68,12 +70,14 @@ constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_space.enterprise_space_enable";
+#ifdef HAS_SECURITY_GUARD
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
-constexpr size_t FS_UUID_MAX_LEN = 4096;
+#endif
 
 int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType)
 {
+#ifdef HAS_SECURITY_GUARD
     LOGI("ReportBurnSecurityInfo start");
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
@@ -95,6 +99,10 @@ int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const s
     int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
     LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d", reportResult);
     return reportResult;
+#else
+    LOGI("ReportBurnSecurityInfo skipped (security_guard not available)");
+    return DiskManagerErrNo::E_OK;
+#endif
 }
 
 std::string NormalizeDiskBlockPath(const std::string &diskPath)
@@ -325,11 +333,6 @@ std::string BuildMountDataOptions(bool useVoldataPath)
     return "";
 }
 
-bool IsSafeFsUuidForPath(const std::string &fsUuid)
-{
-    return !fsUuid.empty() && fsUuid.find("..") == std::string::npos && fsUuid.find('/') == std::string::npos;
-}
-
 /** QueryUsbIsInUse 入参：已挂载用实际 path，否则按策略推导 voldata/external 路径。 */
 std::string ResolveQueryUsbIsInUseMountPath(const VolumeExternal &volExternal, bool isInternalDataDisk)
 {
@@ -338,13 +341,13 @@ std::string ResolveQueryUsbIsInUseMountPath(const VolumeExternal &volExternal, b
     }
     const std::string fsNormLower = NormalizeFsTypeAsciiLower(volExternal.GetFsTypeString());
     const std::string fsUuid = volExternal.GetUuid();
-    if (isInternalDataDisk && fsNormLower == "f2fs" && IsSafeFsUuidForPath(fsUuid)) {
+    if (isInternalDataDisk && fsNormLower == "f2fs" && IsUuidValid(fsUuid)) {
         std::string voldataPath;
         if (VoldataUuidStore::GetInstance().TryGetMountPath(fsUuid, voldataPath)) {
             return voldataPath;
         }
     }
-    if (IsSafeFsUuidForPath(fsUuid)) {
+    if (IsUuidValid(fsUuid)) {
         return std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
     }
     return "";
@@ -376,12 +379,12 @@ void DiskManager::UpdateVoldataMappingAfterFormat(const std::string &diskId,
 
     auto &store = VoldataUuidStore::GetInstance();
     if (!useVoldataPath) {
-        if (!oldFsUuid.empty() && IsSafeFsUuid(oldFsUuid)) {
+        if (!oldFsUuid.empty() && IsUuidValid(oldFsUuid)) {
             (void)store.RemoveByFsUuid(oldFsUuid);
         }
         return;
     }
-    if (oldFsUuid.empty() || newFsUuid.empty() || !IsSafeFsUuid(oldFsUuid) || !IsSafeFsUuid(newFsUuid)) {
+    if (oldFsUuid.empty() || newFsUuid.empty() || !IsUuidValid(oldFsUuid) || !IsUuidValid(newFsUuid)) {
         return;
     }
     std::string unused;
@@ -411,15 +414,6 @@ DiskManager::VolumeMountPolicy DiskManager::ComputeVolumeMountPolicy(const std::
     policy.useFuseData = !policy.useVoldataPath && !policy.useDvrPath && !bypassTobForPcNonDataFs &&
                          UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType);
     return policy;
-}
-
-bool DiskManager::IsSafeFsUuid(const std::string &fsUuid)
-{
-    if (fsUuid.empty() || fsUuid.size() > FS_UUID_MAX_LEN) {
-        return false;
-    }
-    return !(fsUuid.find("..") != std::string::npos ||
-             fsUuid.find('/') != std::string::npos);
 }
 
 int32_t DiskManager::LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const
@@ -490,6 +484,11 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
 {
     outFsUuid = volExternal.GetUuid();
     if (!outFsUuid.empty()) {
+        if (!IsUuidValid(outFsUuid)) {
+            LOGE("EnsureFsUuidReady: uuid is invalid volId=%{public}s uuid=%{public}s",
+                 volExternal.GetId().c_str(), GetAnonyString(outFsUuid).c_str());
+            return E_PARAMS_INVALID;
+        }
         return DiskManagerErrNo::E_OK;
     }
     std::string uuid;
@@ -501,6 +500,11 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
         LOGE("EnsureFsUuidReady: ReadMetadata failed volId=%{public}s err=%{public}d", volExternal.GetId().c_str(),
              err);
         return err;
+    }
+    if (!IsUuidValid(uuid)) {
+        LOGE("EnsureFsUuidReady: uuid is invalid volId=%{public}s uuid=%{public}s",
+             volExternal.GetId().c_str(), GetAnonyString(uuid).c_str());
+        return E_PARAMS_INVALID;
     }
     volExternal.SetFsUuid(uuid);
     outFsUuid = uuid;
@@ -520,7 +524,7 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
     if (!UsbFuseAdapter::GetInstance().IsUsbFuseEnabledForFsType(fsType)) {
         return DiskManagerErrNo::E_OK;
     }
-    if (!IsSafeFsUuid(fsUuid)) {
+    if (!IsUuidValid(fsUuid)) {
         LOGE("MountUsbFuseIfNeeded: invalid fsUuid for volumeId=%{public}s", volumeId.c_str());
         return E_PARAMS_INVALID;
     }
@@ -539,6 +543,9 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
     err = UsbFuseAdapter::GetInstance().NotifyUsbFuseMount(fuseFd, volumeId, fsUuid);
     if (err != DiskManagerErrNo::E_OK) {
         LOGE("MountUsbFuseIfNeeded: NotifyUsbFuseMount failed err=%{public}d", err);
+        if (fuseFd >= 0) {
+            close(fuseFd);
+        }
         return err;
     }
     return DiskManagerErrNo::E_OK;
@@ -663,11 +670,6 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
     if (uuidErr != DiskManagerErrNo::E_OK) {
         volExternal.SetState(VolumeState::UNMOUNTED);
         return uuidErr;
-    }
-    if (!IsSafeFsUuid(fsUuid)) {
-        LOGE("Mount: invalid fsUuid for volumeId=%{public}s", volumeId.c_str());
-        volExternal.SetState(VolumeState::UNMOUNTED);
-        return E_PARAMS_INVALID;
     }
 
     if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
@@ -979,7 +981,7 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
              GetAnonyString(fsUuid).c_str(), diskId.c_str());
         return E_NOT_SUPPORT;
     }
-    
+
     if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
         LOGE("SetVolumeDescription: fsType not support, fsUuid=%{public}s fsType=%{public}s",
              GetAnonyString(fsUuid).c_str(), fsTypeStr.c_str());
@@ -1018,7 +1020,7 @@ int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
             }
             volIds.push_back(kv.first);
             const std::string &fsUuid = kv.second.GetUuid();
-            if (IsSafeFsUuid(fsUuid)) {
+            if (IsUuidValid(fsUuid)) {
                 fsUuids.push_back(fsUuid);
             } else if (!fsUuid.empty()) {
                 LOGW("PurgeVolumesForDisk skip invalid fsUuid volId=%{public}s diskId=%{public}s",
@@ -1274,7 +1276,7 @@ int32_t DiskManager::GetVolumeById(const std::string &volumeId, VolumeExternal &
     if (it == volumeMap_.end()) {
         return E_NON_EXIST;
     }
-    LOGI("VolumeManagerService::GetVolumeByUuid volumeid %{public}s exists", volumeId.c_str());
+    LOGI("VolumeManagerService::GetVolumeById volumeid %{public}s exists", volumeId.c_str());
     out = it->second;
     return DiskManagerErrNo::E_OK;
 }
@@ -1478,7 +1480,7 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
         LOGE("CreateIsoImage: cdrom state is EMPTY_DISC");
         return E_EMPTY_DISC;
     }
- 
+
     int32_t err = StorageDaemonAdapter::GetInstance().CreateIsoImage("/dev/block/" + blockVolId,
                                                                      filePath, fsType, mountedPath);
     if (err != ERR_OK) {
@@ -1494,22 +1496,22 @@ std::string DiskManager::GetDiscType(const std::string &extraInfo)
     if (extraInfo.empty()) {
         return "";
     }
-    
+
     json extraInfoJson = json::parse(extraInfo, nullptr, false);
     if (extraInfoJson.is_discarded() || !extraInfoJson.is_object()) {
         LOGW("GetDiscType: Failed to parse extraInfo JSON");
         return "";
     }
-    
+
     if (!extraInfoJson.contains("ODD_INFO") || !extraInfoJson["ODD_INFO"].is_object()) {
         return "";
     }
-    
+
     const auto& oddInfo = extraInfoJson["ODD_INFO"];
     if (!oddInfo.contains("DISC_TYPE") || !oddInfo["DISC_TYPE"].is_string()) {
         return "";
     }
-    
+
     std::string discType = oddInfo["DISC_TYPE"].get<std::string>();
     LOGI("GetDiscType: discType=%{public}s", discType.c_str());
     return discType;
@@ -1521,22 +1523,22 @@ std::string DiskManager::GetDriverType(const std::string &extraInfo)
     if (extraInfo.empty()) {
         return "";
     }
-    
+
     json extraInfoJson = json::parse(extraInfo, nullptr, false);
     if (extraInfoJson.is_discarded() || !extraInfoJson.is_object()) {
         LOGW("GetDriverType: Failed to parse extraInfo JSON");
         return "";
     }
-    
+
     if (!extraInfoJson.contains("ODD_INFO") || !extraInfoJson["ODD_INFO"].is_object()) {
         return "";
     }
-    
+
     const auto& oddInfo = extraInfoJson["ODD_INFO"];
     if (!oddInfo.contains("DRIVE_TYPE") || !oddInfo["DRIVE_TYPE"].is_string()) {
         return "";
     }
-    
+
     std::string driverType = oddInfo["DRIVE_TYPE"].get<std::string>();
     LOGI("GetDriverType: driverType=%{public}s", driverType.c_str());
     return driverType;
@@ -2155,6 +2157,11 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     std::string type;
     std::string label;
     StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + blockVolId, uuid, type, label);
+    if (!IsUuidValid(uuid)) {
+        LOGE("UpdateVolumeAfterFormat: uuid is invalid volId=%{public}s uuid=%{public}s",
+             volumeId.c_str(), GetAnonyString(uuid).c_str());
+        return E_PARAMS_INVALID;
+    }
     UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     auto it = volumeMap_.find(volumeId);

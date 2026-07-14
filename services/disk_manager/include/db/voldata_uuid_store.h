@@ -66,7 +66,7 @@ private:
     VoldataUuidStore(const VoldataUuidStore &) = delete;
     VoldataUuidStore &operator=(const VoldataUuidStore &) = delete;
 
-    static bool IsSafeFsUuid(const std::string &fsUuid);
+
     static std::string BuildMountPathForSlot(uint32_t slotIndex);
 
     int32_t LoadFromFile();
