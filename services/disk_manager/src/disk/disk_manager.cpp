@@ -1242,6 +1242,7 @@ int32_t DiskManager::UpdateDisk(const Disk &disk)
 
 int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
 {
+    std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
     std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
     std::vector<VolumeExternal> result;
     std::vector<std::string> dvdDiskIds;

@@ -113,8 +113,8 @@ bool IsFilePathInvalid(const std::string &filePath)
         }
     }
 
-    if (filePath.find(NULL_BYTE_STR) != std::string::npos) {
-        LOGE("Relative path is not allowed, path contain null byte \\0");
+    if (filePath.find(NULL_BYTE_STR) != std::string::npos || filePath.find('\0') != std::string::npos) {
+        LOGE("Relative path is not allowed, path contains null byte");
         return true;
     }
 

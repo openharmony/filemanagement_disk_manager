@@ -2306,6 +2306,119 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_ParamsInvalid_001, TestSize.Le
     GTEST_LOG_(INFO) << "FormatPartition_ParamsInvalid_001 End";
 }
 
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_001
+ * @tc.desc: 合法 burnOptions（无子字段）通过校验。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_TRUE(provider.ValidateBurnOptionsSubfields("--write"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_001 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_002
+ * @tc.desc: 合法 burnPath 和 diskName 子字段通过校验。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_TRUE(provider.ValidateBurnOptionsSubfields("burnPath=/data/tmp\ndiskName=usb1"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_002 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_003
+ * @tc.desc: burnPath 含路径穿越 ../ 时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("burnPath=../etc/passwd"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_003 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_004
+ * @tc.desc: diskName 含路径穿越 ../ 时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_004 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("diskName=../../../tmp"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_004 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_005
+ * @tc.desc: burnPath 含 %00 URL 编码 null byte 时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_005, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_005 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("burnPath=/tmp%00/etc"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_005 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_006
+ * @tc.desc: 非 burnPath/diskName 的键被忽略，校验通过。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_006, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_006 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_TRUE(provider.ValidateBurnOptionsSubfields("speed=4x\nmode=dao"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_006 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_007
+ * @tc.desc: burnOptions 整体含路径穿越时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_007, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_007 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("../etc/passwd"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_007 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_008
+ * @tc.desc: burnPath 含内嵌真实 \0 字符时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_008, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_008 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string opts = "burnPath=" + std::string("/tmp\0/etc", 8) + "\ndiskName=usb1";
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields(opts));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_008 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
 

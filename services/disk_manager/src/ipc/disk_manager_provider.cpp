@@ -17,6 +17,7 @@
 
 #include <cinttypes>
 #include <climits>
+#include <sstream>
 
 #include <iservice_registry.h>
 
@@ -148,16 +149,38 @@ void DiskManagerProvider::CheckAndUnloadIfIdle()
     LOGI("CheckAndUnloadIfIdle: UnloadSystemAbility success");
 }
 
+bool DiskManagerProvider::ValidateBurnOptionsSubfields(const std::string &burnOptions)
+{
+    if (IsFilePathInvalid(burnOptions)) {
+        return false;
+    }
+    std::istringstream ss(burnOptions);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, pos);
+        std::string val = line.substr(pos + 1);
+        if (key == "burnPath" || key == "diskName") {
+            if (IsFilePathInvalid(val)) {
+                LOGE("ValidateBurnOptionsSubfields: %{public}s value invalid", key.c_str());
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool DiskManagerProvider::CheckStorageDaemonPermission()
 {
-    return IpcCallerAuth::VerifyNativeCallerMatches("storage_daemon",
-                                                    STORAGEDAEMON_UID);
+    return IpcCallerAuth::VerifyNativeCallerMatches("storage_daemon", STORAGEDAEMON_UID);
 }
 
 bool DiskManagerProvider::IsStorageManagerCaller() const
 {
-    return IpcCallerAuth::IsCallingUid(STORAGE_MANAGER_UID) ||
-           IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
+    return IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
 }
 
 int32_t DiskManagerProvider::Mount(const std::string &volumeId)
@@ -480,7 +503,7 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
         return E_PARAMS_INVALID;
     }
     isInUse = false;
-    const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
+    const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(realPath, isInUse);
     LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
     return err != DiskManagerErrNo::E_OK ? E_QUERY_VOLUME_IN_USE_ERROR : DiskManagerErrNo::E_OK;
 }
@@ -509,7 +532,7 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
+    DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
     EndPendingStorageDaemonCallback();
     LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
     return DiskManagerErrNo::E_OK;
@@ -600,7 +623,7 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
         LOGE("DiskManagerProvider::CreateIsoImage realpath failed, errno=%{public}d", errno);
         return E_PARAMS_INVALID;
     }
-    const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
+    const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, realPath);
     LOGI("CreateIsoImage volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
     return err;
 }
@@ -622,8 +645,8 @@ int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string
         LOGE("Burn: volumeId is invalid");
         return E_PARAMS_INVALID;
     }
-    if (IsFilePathInvalid(burnOptions)) {
-        LOGE("Burn: burnOptions is invalid, path traversal detected");
+    if (!ValidateBurnOptionsSubfields(burnOptions)) {
+        LOGE("Burn: burnOptions subfield validation failed");
         return E_PARAMS_INVALID;
     }
     std::string callerBundle = IpcCallerAuth::GetCallingBundleOrNativeProcessName();

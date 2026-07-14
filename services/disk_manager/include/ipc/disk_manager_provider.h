@@ -74,6 +74,7 @@ public:
     int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params) override;
 
 private:
+    bool ValidateBurnOptionsSubfields(const std::string &burnOptions);
     bool CheckStorageDaemonPermission();
     bool IsStorageManagerCaller() const;
 
