@@ -40,7 +40,7 @@ using namespace OHOS::DiskManager;
 namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
-constexpr size_t UEVENT_MAX_LEN = 4096;
+constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
 } // namespace
 
@@ -266,7 +266,7 @@ int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, con
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().SetVolumeDescription(fsUuid, description);
-    LOGI("SetVolumeDescription fsUuid=%{public}s err=%{public}d", fsUuid.c_str(), err);
+    LOGI("SetVolumeDescription fsUuid=%{public}s err=%{public}d", GetAnonyString(fsUuid).c_str(), err);
     return err;
 }
 
@@ -290,7 +290,7 @@ int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol
 
 int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &vc)
 {
-    LOGI("GetVolumeByUuid fsUuid=%{public}s", fsUuid.c_str());
+    LOGI("GetVolumeByUuid fsUuid=%{public}s", GetAnonyString(fsUuid).c_str());
     if (!IsStorageManagerCaller()) {
         if (!IpcCallerAuth::IsCallingSystemApp()) {
             LOGE("GetVolumeByUuid: caller is not system app");
@@ -348,9 +348,8 @@ int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, 
         LOGE("GetFreeSizeOfVolume: volumeUuid is invalid");
         return E_PARAMS_INVALID;
     }
-    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     const int32_t err = DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
-    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s err=%{public}d", volumeUuid.c_str(), err);
+    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s err=%{public}d", GetAnonyString(volumeUuid).c_str(), err);
     return err;
 }
 
@@ -370,9 +369,8 @@ int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid,
         LOGE("GetTotalSizeOfVolume: volumeUuid is invalid");
         return E_PARAMS_INVALID;
     }
-    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     const int32_t err = DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
-    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s err=%{public}d", volumeUuid.c_str(), err);
+    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s err=%{public}d", GetAnonyString(volumeUuid).c_str(), err);
     return err;
 }
 
@@ -406,7 +404,7 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
-    if (rawUeventMsg.size() > UEVENT_MAX_LEN) {
+    if (rawUeventMsg.size() > UEVENT_RAW_MAX_LEN) {
         LOGE("OnBlockDiskUevent: rawUeventMsg msg too long, size=%{public}zu", rawUeventMsg.size());
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;

@@ -25,7 +25,6 @@
 namespace OHOS {
 namespace DiskManager {
 
-constexpr size_t UEVENT_MAX_LEN = 2048;
 constexpr size_t VOLUME_NAME_MAX_LEN = 64;
 
 std::string GetAnonyString(const std::string &value);
