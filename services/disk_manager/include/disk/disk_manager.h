@@ -119,7 +119,6 @@ private:
         bool *voldataMappingCreated = nullptr;
     };
 
-
     /** 调用方已持 volumeMapMutex_（读锁）。 */
     int32_t LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const;
     std::string GetVolumePath(const std::string &volumeUuid);
