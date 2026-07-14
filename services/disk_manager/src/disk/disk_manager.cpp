@@ -16,10 +16,8 @@
 #include "accesstoken_kit.h"
 #include "block_info_table.h"
 #include "disk_manager.h"
-#ifdef HAS_SECURITY_GUARD
 #include "event_info.h"
 #include "sg_collect_client.h"
-#endif
 #include "ipc_skeleton.h"
 #include "partition_table_parser.h"
 #include "uevent_bootstrap.h"
@@ -70,14 +68,11 @@ constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_space.enterprise_space_enable";
-#ifdef HAS_SECURITY_GUARD
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
-#endif
 
 int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType)
 {
-#ifdef HAS_SECURITY_GUARD
     LOGI("ReportBurnSecurityInfo start");
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
@@ -99,10 +94,6 @@ int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const s
     int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
     LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d", reportResult);
     return reportResult;
-#else
-    LOGI("ReportBurnSecurityInfo skipped (security_guard not available)");
-    return DiskManagerErrNo::E_OK;
-#endif
 }
 
 std::string NormalizeDiskBlockPath(const std::string &diskPath)
