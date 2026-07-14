@@ -45,7 +45,6 @@ StorageDaemonAdapter::~StorageDaemonAdapter() {}
 int32_t StorageDaemonAdapter::Connect()
 {
     LOGD("Connect start");
-    std::lock_guard<std::mutex> lock(mutex_);
     if (storageDaemon_ == nullptr) {
         auto sam = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
         if (sam == nullptr) {
@@ -75,6 +74,7 @@ int32_t StorageDaemonAdapter::Connect()
 
 int32_t StorageDaemonAdapter::EnsureProxyReady()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     int32_t err = Connect();
     if (err != E_OK) {
         return err;
