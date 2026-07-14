@@ -15,7 +15,7 @@
 
 #include "disk_manager_provider.h"
 
-#include <cinttypes>
+#include <climits>
 
 #include "block_info_table.h"
 #include "disk_manager.h"
@@ -37,10 +37,6 @@ namespace DiskManager {
 using namespace OHOS::DiskManager;
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
-constexpr const char *PATH_INVALID_FLAG1 = "../";
-constexpr const char *PATH_INVALID_FLAG2 = "/..";
-constexpr int32_t PATH_INVALID_FLAG_LEN = 3;
-constexpr char FILE_SEPARATOR_CHAR = '/';
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
@@ -66,25 +62,7 @@ void DiskManagerProvider::OnStop()
     LOGI("OnStop");
 }
 
-static bool IsFilePathInvalid(const std::string &filePath)
-{
-    size_t pos = filePath.find(PATH_INVALID_FLAG1);
-    while (pos != std::string::npos) {
-        if (pos == 0 || filePath[pos - 1] == FILE_SEPARATOR_CHAR) {
-            LOGE("Relative path is not allowed, path contain ../");
-            return true;
-        }
-        pos = filePath.find(PATH_INVALID_FLAG1, pos + PATH_INVALID_FLAG_LEN);
-    }
-    pos = filePath.rfind(PATH_INVALID_FLAG2);
-    if ((pos != std::string::npos) && (filePath.size() - pos == PATH_INVALID_FLAG_LEN)) {
-        LOGE("Relative path is not allowed, path tail is /..");
-        return true;
-    }
-    return false;
-}
-
-bool DiskManagerProvider::CheckClientPermission()
+bool DiskManagerProvider::CheckStorageDaemonPermission()
 {
     return IpcCallerAuth::VerifyNativeCallerMatches("storage_daemon",
                                                     STORAGEDAEMON_UID);
@@ -92,8 +70,7 @@ bool DiskManagerProvider::CheckClientPermission()
 
 bool DiskManagerProvider::IsStorageManagerCaller() const
 {
-    return IpcCallerAuth::IsCallingUid(STORAGE_MANAGER_UID) ||
-           IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
+    return IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
 }
 
 int32_t DiskManagerProvider::Mount(const std::string &volumeId)
@@ -108,6 +85,10 @@ int32_t DiskManagerProvider::Mount(const std::string &volumeId)
             LOGE("Mount: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Mount: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().Mount(volumeId);
 }
@@ -125,6 +106,10 @@ int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Unmount: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
     return DiskManager::GetInstance().Unmount(volumeId);
 }
 
@@ -140,6 +125,10 @@ int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::stri
             LOGE("Format: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Format: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().Format(volumeId, fsType);
 }
@@ -157,6 +146,10 @@ int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("TryToFix: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
     return DiskManager::GetInstance().TryToFix(volumeId);
 }
 
@@ -172,6 +165,10 @@ int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, con
             LOGE("SetVolumeDescription: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsUuidValid(fsUuid)) {
+        LOGE("SetVolumeDescription: fsUuid is invalid");
+        return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().SetVolumeDescription(fsUuid, description);
 }
@@ -205,6 +202,10 @@ int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeEx
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsUuidValid(fsUuid)) {
+        LOGE("GetVolumeByUuid: fsUuid is invalid");
+        return E_PARAMS_INVALID;
+    }
     const int32_t err = DiskManager::GetInstance().GetVolumeByUuid(fsUuid, vc);
     LOGI("GetVolumeByUuid fsUuid=%{public}s err=%{public}d", GetAnonyString(fsUuid).c_str(), err);
     return err;
@@ -221,6 +222,10 @@ int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeEx
             LOGE("GetVolumeById: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("GetVolumeById: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().GetVolumeById(volumeId, vc);
     LOGI("GetVolumeById volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -239,6 +244,10 @@ int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, 
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsUuidValid(volumeUuid)) {
+        LOGE("GetFreeSizeOfVolume: volumeUuid is invalid");
+        return E_PARAMS_INVALID;
+    }
     LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     return DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
 }
@@ -254,6 +263,10 @@ int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid,
             LOGE("GetTotalSizeOfVolume: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsUuidValid(volumeUuid)) {
+        LOGE("GetTotalSizeOfVolume: volumeUuid is invalid");
+        return E_PARAMS_INVALID;
     }
     LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", GetAnonyString(volumeUuid).c_str());
     return DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
@@ -272,14 +285,26 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("Partition: diskId is invalid");
+        return E_PARAMS_INVALID;
+    }
     return DiskManager::GetInstance().Partition(diskId, type);
 }
 
 int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
-    if (!CheckClientPermission()) {
+    if (!CheckStorageDaemonPermission()) {
         return E_PERMISSION_DENIED;
+    }
+    if (rawUeventMsg.size() > UEVENT_MAX_LEN) {
+        LOGE("OnBlockDiskUevent: rawUeventMsg msg too long, size=%{public}zu", rawUeventMsg.size());
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(rawUeventMsg)) {
+        LOGE("rawUeventMsg is invalid.");
+        return E_PARAMS_INVALID;
     }
     return UeventBootstrap::OnBlockDiskUevent(rawUeventMsg);
 }
@@ -314,8 +339,8 @@ int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
         }
     }
     LOGI("GetDiskById diskId=%{public}s.", diskId.c_str());
-    if (diskId.empty()) {
-        LOGI("diskId is empty.");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("GetDiskById: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().GetDiskById(diskId, disk);
@@ -333,15 +358,16 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         return E_PERMISSION_DENIED;
     }
-    if (diskPath.empty()) {
-        LOGI("diskPath is empty.");
+    if (!IsMountPathValid(diskPath)) {
+        LOGE("mountPath is invalid.");
         return E_PARAMS_INVALID;
     }
-    if (IsFilePathInvalid(diskPath)) {
-        LOGI("diskPath is invalid.");
+    char realPath[PATH_MAX] = {0};
+    if (realpath(diskPath.c_str(), realPath) == nullptr) {
+        LOGE("DiskManagerProvider::QueryUsbIsInUse realpath failed, errno=%{public}d", errno);
         return E_PARAMS_INVALID;
     }
-    isInUse = true;
+    isInUse = false;
     const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
     LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
     return err != DiskManagerErrNo::E_OK ? E_QUERY_VOLUME_IN_USE_ERROR : DiskManagerErrNo::E_OK;
@@ -367,16 +393,17 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
                                               const std::string &fsType)
 {
     LOGI("NotifyMtpMounted id=%{public}s fsType=%{public}s", id.c_str(), fsType.c_str());
-    if (!CheckClientPermission()) {
-        LOGE("DiskManagerProvider CheckClientPermission error");
+    if (!CheckStorageDaemonPermission()) {
+        LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
         return E_PERMISSION_DENIED;
     }
-    if (path.empty()) {
-        LOGE("NotifyMtpMounted: path is empty");
+    if (!IsMountPathValid(path)) {
+        LOGE("mountPath is invalid.");
         return E_PARAMS_INVALID;
     }
-    if (IsFilePathInvalid(path)) {
-        LOGE("NotifyMtpMounted: path is invalid, path traversal detected");
+    char realPath[PATH_MAX] = {0};
+    if (realpath(path.c_str(), realPath) == nullptr) {
+        LOGE("DiskManagerProvider::NotifyMtpMounted realpath failed, errno=%{public}d", errno);
         return E_PARAMS_INVALID;
     }
     DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
@@ -386,8 +413,8 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
 {
     LOGI("NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(), static_cast<int>(isBadRemove));
-    if (!CheckClientPermission()) {
-        LOGE("DiskManagerProvider CheckClientPermission error");
+    if (!CheckStorageDaemonPermission()) {
+        LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
         return E_PERMISSION_DENIED;
     }
     DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
@@ -407,6 +434,10 @@ int32_t DiskManagerProvider::Erase(const std::string &volumeId)
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Erase: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
     return DiskManager::GetInstance().Erase(volumeId);
 }
 
@@ -422,6 +453,10 @@ int32_t DiskManagerProvider::Eject(const std::string &diskId)
             LOGE("Eject: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("Eject: diskId is invalid");
+        return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().Eject(diskId);
 }
@@ -439,12 +474,17 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
             return E_PERMISSION_DENIED;
         }
     }
-    if (filePath.empty()) {
-        LOGE("CreateIsoImage: filePath is empty");
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("CreateIsoImage: volumeId is invalid");
         return E_PARAMS_INVALID;
     }
     if (IsFilePathInvalid(filePath)) {
         LOGE("CreateIsoImage: filePath is invalid, path traversal detected");
+        return E_PARAMS_INVALID;
+    }
+    char realPath[PATH_MAX] = {0};
+    if (realpath(filePath.c_str(), realPath) == nullptr) {
+        LOGE("DiskManagerProvider::CreateIsoImage realpath failed, errno=%{public}d", errno);
         return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
@@ -462,6 +502,14 @@ int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string
             LOGE("Burn: permission denied");
             return E_PERMISSION_DENIED;
         }
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Burn: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(burnOptions)) {
+        LOGE("Burn: burnOptions is invalid, path traversal detected");
+        return E_PARAMS_INVALID;
     }
     std::string callerBundle = IpcCallerAuth::GetCallingBundleOrNativeProcessName();
     int32_t callerUserId = IpcCallerAuth::GetCallingUserId();
@@ -481,6 +529,10 @@ int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int
             return E_PERMISSION_DENIED;
         }
     }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("GetVolumeOpProcess: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
     return DiskManager::GetInstance().GetVolumeOpProcess(volumeId, progressPct);
 }
 
@@ -494,8 +546,8 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
         return E_PERMISSION_DENIED;
     }
     LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
-    if (diskId.empty()) {
-        LOGI("diskId is empty.");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("GetPartitionTable: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     return DiskManager::GetInstance().GetPartitionTable(diskId, out);
@@ -511,8 +563,8 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
         return E_PERMISSION_DENIED;
     }
     LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
-    if (diskId.empty()) {
-        LOGE("CreatePartition: diskId is empty");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("CreatePartition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     if (params.GetPartitionNum() <= 0) {
@@ -541,8 +593,8 @@ int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t 
         return E_PERMISSION_DENIED;
     }
     LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
-    if (diskId.empty()) {
-        LOGE("DeletePartition: diskId is empty");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("DeletePartition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     if (partitionNum <= 0) {
@@ -564,8 +616,8 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     }
     LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s", diskId.c_str(),
          partitionNum, params.GetFsType().c_str());
-    if (diskId.empty()) {
-        LOGE("FormatPartition: diskId is empty");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("FormatPartition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     if (partitionNum <= 0) {
@@ -580,10 +632,14 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
         LOGE("FormatPartition: quickFormat is invalid");
         return E_PARAMS_INVALID;
     }
+    if (params.GetVolumeName().empty() || params.GetVolumeName().size() > VOLUME_NAME_MAX_LEN) {
+        LOGE("FormatPartition: volumeName is empty or length exceeds %{public}zu limit",
+             static_cast<size_t>(VOLUME_NAME_MAX_LEN));
+        return E_PARAMS_INVALID;
+    }
     int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
 }
-
 } // namespace DiskManager
 } // namespace OHOS

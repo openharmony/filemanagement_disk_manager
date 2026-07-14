@@ -37,17 +37,6 @@ constexpr const char *VOLDATA_UUID_MAPPING_JSON = "voldata_uuid_mapping.json";
 constexpr const char *TMP_FILE_SUFFIX = ".tmp";
 constexpr const char *VOLDATA_MOUNT_PREFIX = "/mnt/data/voldata/data";
 constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 1000;
-constexpr size_t FS_UUID_MAX_LEN = 4096;
-
-bool IsSafeFsUuidLocal(const std::string &fsUuid)
-{
-    if (fsUuid.empty() || fsUuid.size() > FS_UUID_MAX_LEN) {
-        LOGE("IsSafeFsUuidLocal fsUuid is empty or size:%{public}zu over 4096", fsUuid.size());
-        return false;
-    }
-    return fsUuid.find("..") == std::string::npos &&
-           fsUuid.find('/') == std::string::npos;
-}
 
 bool ParseVoldataSlotFromMountPath(const std::string &mountPath, uint32_t &outSlot)
 {
@@ -90,7 +79,7 @@ bool VoldataUuidEntry::FromJson(const nlohmann::json &jsonObject)
     if (!ParseVoldataSlotFromMountPath(mountPath, slotIndex)) {
         return false;
     }
-    return IsSafeFsUuidLocal(fsUuid);
+    return IsUuidValid(fsUuid);
 }
 
 nlohmann::json VoldataUuidEntry::ToJson() const
@@ -108,16 +97,6 @@ VoldataUuidStore &VoldataUuidStore::GetInstance()
     return instance;
 }
 
-bool VoldataUuidStore::IsSafeFsUuid(const std::string &fsUuid)
-{
-    if (fsUuid.empty() || fsUuid.size() > FS_UUID_MAX_LEN) {
-        LOGE("IsSafeFsUuid fsUuid is empty or size:%{public}zu over 4096", fsUuid.size());
-        return false;
-    }
-    return fsUuid.find("..") == std::string::npos &&
-           fsUuid.find('/') == std::string::npos;
-}
-
 std::string VoldataUuidStore::BuildMountPathForSlot(uint32_t slotIndex)
 {
     return std::string(VOLDATA_MOUNT_PREFIX) + std::to_string(slotIndex);
@@ -131,6 +110,7 @@ int32_t VoldataUuidStore::Init()
     }
 
     jsonFilePath_ = std::string(DISK_MANAGER_DATA_PATH) + VOLDATA_UUID_MAPPING_JSON;
+    std::unique_lock<std::shared_mutex> dataLock(dataMutex_);
     const int32_t loadRet = LoadFromFile();
     if (loadRet != DiskManagerErrNo::E_OK) {
         LOGE("VoldataUuidStore Init load failed ret=%{public}d", loadRet);
@@ -158,7 +138,7 @@ int32_t VoldataUuidStore::UnInit()
 int32_t VoldataUuidStore::ResolveMountPath(const std::string &fsUuid, std::string &outMountPath, bool &outCreated)
 {
     outCreated = false;
-    if (!IsSafeFsUuid(fsUuid)) {
+    if (!IsUuidValid(fsUuid)) {
         LOGE("ResolveMountPath invalid fsUuid");
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
@@ -200,7 +180,7 @@ int32_t VoldataUuidStore::ResolveMountPath(const std::string &fsUuid, std::strin
 
 int32_t VoldataUuidStore::RemoveByFsUuid(const std::string &fsUuid)
 {
-    if (!IsSafeFsUuid(fsUuid)) {
+    if (!IsUuidValid(fsUuid)) {
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
@@ -230,7 +210,7 @@ int32_t VoldataUuidStore::RemoveByFsUuid(const std::string &fsUuid)
 
 int32_t VoldataUuidStore::ReplaceFsUuid(const std::string &oldFsUuid, const std::string &newFsUuid)
 {
-    if (!IsSafeFsUuid(oldFsUuid) || !IsSafeFsUuid(newFsUuid)) {
+    if (!IsUuidValid(oldFsUuid) || !IsUuidValid(newFsUuid)) {
         LOGE("ReplaceFsUuid invalid fsUuid");
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
@@ -275,7 +255,7 @@ int32_t VoldataUuidStore::ReplaceFsUuid(const std::string &oldFsUuid, const std:
 
 bool VoldataUuidStore::TryGetMountPath(const std::string &fsUuid, std::string &outMountPath) const
 {
-    if (!IsSafeFsUuid(fsUuid)) {
+    if (!IsUuidValid(fsUuid)) {
         return false;
     }
 

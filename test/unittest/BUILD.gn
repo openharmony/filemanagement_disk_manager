@@ -68,8 +68,7 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
-    "security_guard:libsg_collect_sdk",
-  ]
+      ]
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
@@ -211,8 +210,7 @@ ohos_unittest("disk_manager_server_test") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
-    "security_guard:libsg_collect_sdk",
-  ]
+      ]
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
@@ -451,6 +449,27 @@ ohos_unittest("partition_table_parser_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("disk_manager_utils_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_manager_utils_test.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 ohos_unittest("disk_manager_provider_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
@@ -458,6 +477,7 @@ ohos_unittest("disk_manager_provider_test") {
   sources = [
     "disk_manager_provider_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/ipc/disk_manager_provider.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/utils/src/ipc_caller_auth.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
@@ -506,8 +526,7 @@ ohos_unittest("disk_manager_provider_test") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
-    "security_guard:libsg_collect_sdk",
-  ]
+      ]
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
@@ -620,6 +639,7 @@ group("disk_manager_ut") {
     ":disk_config_test",
     ":partition_table_parser_test",
     ":disk_manager_provider_test",
+    ":disk_manager_utils_test",
     ":block_info_table_test",
     ":uevent_bootstrap_test",
   ]
