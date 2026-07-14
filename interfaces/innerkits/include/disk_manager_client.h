@@ -70,13 +70,12 @@ public:
 
     /*
      * ---------- Inner-only（IDiskManager / 进程内，不导出 @ohos.file.volumeManager） ----------
-     * 含：Client 代理维护、卷修复、USB 占用/FUSE 策略查询。
+     * 含：Client 代理维护、卷修复、USB 占用查询。
      */
     int32_t ResetProxy();
     int32_t TryToFix(const std::string &volumeId);
     /** @param mountPath 挂载路径，如 /mnt/data/external/{uuid} 或 /mnt/data/voldata/dataX */
     int32_t QueryUsbIsInUse(const std::string &mountPath, bool &isInUse);
-    int32_t IsUsbFuseByType(int32_t type, bool &isUsbFuse);
 
     /* ---------- storage_daemon 回调（IDiskManager / 进程内，由 storage_daemon 调用） ---------- */
     int32_t NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
@@ -90,6 +89,8 @@ private:
     DiskManagerClient &operator=(const DiskManagerClient &) = delete;
 
     int32_t Connect(sptr<IDiskManager> &proxy);
+    int32_t ConnectIfPresent(sptr<IDiskManager> &proxy);
+    int32_t InitProxyLocked(const sptr<IRemoteObject> &object, sptr<IDiskManager> &proxy);
 
     sptr<IDiskManager> diskManager_;
     sptr<IRemoteObject::DeathRecipient> deathRecipient_;

@@ -20,13 +20,19 @@
 #include "disk_manager_client.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_napi_errno.h"
+#include "disk_manager_stub_mock.h"
+#include "mock_system_ability_manager.h"
 #include "partition_types.h"
 #include "volume_external.h"
 
 namespace OHOS {
 namespace DiskManager {
 
+using namespace testing;
 using namespace testing::ext;
+using OHOS::ISystemAbilityBase;
+using OHOS::SystemAbilityManagerMock;
+using OHOS::SystemAbilityMock;
 
 namespace {
 constexpr const char *TEST_VOLUME_ID = "vol-test-001";
@@ -52,12 +58,32 @@ public:
     void SetUp() override
     {
         GTEST_LOG_(INFO) << "DiskManagerClientTest SetUp";
+        saMock_ = std::make_shared<SystemAbilityMock>();
+        ISystemAbilityBase::sab = saMock_;
+        samMock_ = sptr(new SystemAbilityManagerMock());
+        dmStubMock_ = sptr(new DiskManagerStubMock());
+
+        ON_CALL(*saMock_, GetSystemAbilityManager()).WillByDefault(Return(samMock_));
+        ON_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillByDefault(Return(nullptr));
+        ON_CALL(*samMock_, LoadSystemAbility(_, An<const sptr<ISystemAbilityLoadCallback> &>()))
+            .WillByDefault(Return(-1));
+
+        DiskManagerClient::GetInstance().ResetProxy();
     }
 
     void TearDown() override
     {
         GTEST_LOG_(INFO) << "DiskManagerClientTest TearDown";
+        DiskManagerClient::GetInstance().ResetProxy();
+        ISystemAbilityBase::sab = nullptr;
+        saMock_ = nullptr;
+        samMock_ = nullptr;
+        dmStubMock_ = nullptr;
     }
+
+    static inline std::shared_ptr<SystemAbilityMock> saMock_ = nullptr;
+    static inline sptr<SystemAbilityManagerMock> samMock_ = nullptr;
+    static inline sptr<DiskManagerStubMock> dmStubMock_ = nullptr;
 };
 
 /**
@@ -272,7 +298,7 @@ HWTEST_F(DiskManagerClientTest, GetAllVolumesTest001, TestSize.Level1)
     client.ResetProxy();
     std::vector<VolumeExternal> volumes;
     int32_t ret = client.GetAllVolumes(volumes);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_OK);
     EXPECT_TRUE(volumes.empty());
 
     GTEST_LOG_(INFO) << "GetAllVolumesTest001 End";
@@ -280,7 +306,7 @@ HWTEST_F(DiskManagerClientTest, GetAllVolumesTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetVolumeByUuidTest001
- * @tc.desc: 测试 GetVolumeByUuid 方法传入空 uuid，预期返回错误码。
+ * @tc.desc: 测试 GetVolumeByUuid 方法传入空 uuid，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -299,7 +325,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByUuidTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetVolumeByUuidTest002
- * @tc.desc: 测试 GetVolumeByUuid 方法传入有效 uuid，无系统服务时预期返回错误码。
+ * @tc.desc: 测试 GetVolumeByUuid 方法传入有效 uuid，SA 未运行时预期返回 E_NON_EXIST（13600008）。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -311,14 +337,14 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByUuidTest002, TestSize.Level1)
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeByUuid(TEST_FS_UUID, vol);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_NON_EXIST);
 
     GTEST_LOG_(INFO) << "GetVolumeByUuidTest002 End";
 }
 
 /**
  * @tc.name: GetVolumeByIdTest001
- * @tc.desc: 测试 GetVolumeById 方法传入空 volumeId，预期返回错误码。
+ * @tc.desc: 测试 GetVolumeById 方法传入空 volumeId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -337,7 +363,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByIdTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetVolumeByIdTest002
- * @tc.desc: 测试 GetVolumeById 方法传入有效 volumeId，无系统服务时预期返回错误码。
+ * @tc.desc: 测试 GetVolumeById 方法传入有效 volumeId，SA 未运行时预期返回 E_NON_EXIST（13600008）。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -349,7 +375,7 @@ HWTEST_F(DiskManagerClientTest, GetVolumeByIdTest002, TestSize.Level1)
     client.ResetProxy();
     VolumeExternal vol;
     int32_t ret = client.GetVolumeById(TEST_VOLUME_ID, vol);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_NON_EXIST);
 
     GTEST_LOG_(INFO) << "GetVolumeByIdTest002 End";
 }
@@ -477,7 +503,7 @@ HWTEST_F(DiskManagerClientTest, OnBlockDiskUeventTest003, TestSize.Level1)
 
 /**
  * @tc.name: GetFreeSizeOfVolumeTest001
- * @tc.desc: 测试 GetFreeSizeOfVolume 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetFreeSizeOfVolume 传入有效 volumeId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -496,7 +522,7 @@ HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetTotalSizeOfVolumeTest001
- * @tc.desc: 测试 GetTotalSizeOfVolume 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetTotalSizeOfVolume 传入有效 volumeId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -515,7 +541,7 @@ HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetAllDisksTest001
- * @tc.desc: 测试 GetAllDisks 在 ResetProxy 后无可用代理，预期返回非 E_OK。
+ * @tc.desc: 测试 GetAllDisks 在 ResetProxy 后 SA 未运行，预期返回空列表。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -527,14 +553,15 @@ HWTEST_F(DiskManagerClientTest, GetAllDisksTest001, TestSize.Level1)
     client.ResetProxy();
     std::vector<Disk> disks;
     int32_t ret = client.GetAllDisks(disks);
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(disks.empty());
 
     GTEST_LOG_(INFO) << "GetAllDisksTest001 End";
 }
 
 /**
  * @tc.name: GetDiskByIdTest001
- * @tc.desc: 测试 GetDiskById 传入有效 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetDiskById 传入有效 diskId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -625,7 +652,7 @@ HWTEST_F(DiskManagerClientTest, BurnTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetVolumeOpProcessTest001
- * @tc.desc: 测试 GetVolumeOpProcess 传入有效 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetVolumeOpProcess 传入有效 volumeId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -661,25 +688,6 @@ HWTEST_F(DiskManagerClientTest, TryToFixTest001, TestSize.Level1)
 }
 
 /**
- * @tc.name: IsUsbFuseByTypeTest001
- * @tc.desc: 测试 IsUsbFuseByType 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 Start";
-
-    DiskManagerClient &client = DiskManagerClient::GetInstance();
-    client.ResetProxy();
-    bool isUsbFuse = false;
-    int32_t ret = client.IsUsbFuseByType(0, isUsbFuse);
-    EXPECT_EQ(ret, E_OK);
-
-    GTEST_LOG_(INFO) << "IsUsbFuseByTypeTest001 End";
-}
-
-/**
  * @tc.name: NotifyMtpMountedTest001
  * @tc.desc: 测试 NotifyMtpMounted 在设备 SA 可用时 Connect 成功，预期返回 E_OK。
  * @tc.type: FUNC
@@ -688,6 +696,9 @@ HWTEST_F(DiskManagerClientTest, IsUsbFuseByTypeTest001, TestSize.Level1)
 HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "NotifyMtpMountedTest001 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, NotifyMtpMounted(_, _, _, _, _)).WillOnce(Return(E_OK));
 
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
@@ -707,6 +718,9 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "NotifyMtpUnmountedTest001 Start";
 
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, NotifyMtpUnmounted(_, _)).WillOnce(Return(E_OK));
+
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
     int32_t ret = client.NotifyMtpUnmounted("mtp-1", false);
@@ -717,7 +731,7 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 
 /**
  * @tc.name: GetPartitionTableTest001
- * @tc.desc: 测试 GetPartitionTable 传入有效 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetPartitionTable 传入有效 diskId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -792,7 +806,7 @@ HWTEST_F(DiskManagerClientTest, FormatPartitionTest001, TestSize.Level1)
 
 /**
  * @tc.name: QueryUsbIsInUseTest001
- * @tc.desc: 测试 QueryUsbIsInUse 传入空 diskPath，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 QueryUsbIsInUse 传入空 diskPath，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -811,7 +825,7 @@ HWTEST_F(DiskManagerClientTest, QueryUsbIsInUseTest001, TestSize.Level1)
 
 /**
  * @tc.name: QueryUsbIsInUseTest002
- * @tc.desc: 测试 QueryUsbIsInUse 传入有效块设备路径，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 QueryUsbIsInUse 传入有效块设备路径，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -830,7 +844,7 @@ HWTEST_F(DiskManagerClientTest, QueryUsbIsInUseTest002, TestSize.Level1)
 
 /**
  * @tc.name: GetFreeSizeOfVolumeTest002
- * @tc.desc: 测试 GetFreeSizeOfVolume 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetFreeSizeOfVolume 传入空 volumeId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -849,7 +863,7 @@ HWTEST_F(DiskManagerClientTest, GetFreeSizeOfVolumeTest002, TestSize.Level1)
 
 /**
  * @tc.name: GetTotalSizeOfVolumeTest002
- * @tc.desc: 测试 GetTotalSizeOfVolume 传入空 volumeId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetTotalSizeOfVolume 传入空 volumeId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -868,7 +882,7 @@ HWTEST_F(DiskManagerClientTest, GetTotalSizeOfVolumeTest002, TestSize.Level1)
 
 /**
  * @tc.name: GetDiskByIdTest002
- * @tc.desc: 测试 GetDiskById 传入空 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.desc: 测试 GetDiskById 传入空 diskId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
  * @tc.require: NA
  */

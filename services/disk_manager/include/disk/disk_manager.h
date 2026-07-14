@@ -55,6 +55,7 @@ public:
 
     int32_t OnDiskCreated(const Disk &disk);
     bool HasDisk(const std::string &diskId);
+    bool HasManagedResources() const;
 
     int32_t OnDiskDestroyed(const std::string &diskId);
 

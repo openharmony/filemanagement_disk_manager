@@ -101,35 +101,6 @@ private:
     sptr<IRemoteObject> remoteObject_ = nullptr;
 };
 
-int32_t GetDiskManagerSaObject(ISystemAbilityManager &mgr, sptr<IRemoteObject> &object)
-{
-    object = mgr.GetSystemAbility(DISK_MANAGER_SA_ID);
-    if (object != nullptr) {
-        return E_OK;
-    }
-    sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
-    if (loadCallback == nullptr) {
-        LOGE("GetDiskManagerSaObject load callback null");
-        return E_SERVICE_IS_NULLPTR;
-    }
-    int32_t loadRet = mgr.LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
-    if (loadRet != IPC_OK) {
-        LOGE("GetDiskManagerSaObject LoadSystemAbility failed ret=%{public}d", loadRet);
-        return E_REMOTE_IS_NULLPTR;
-    }
-    bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
-    if (!callbackNotified || !loadCallback->IsSuccess()) {
-        LOGE("GetDiskManagerSaObject wait callback failed timeout=%{public}dms", SA_LOAD_WAIT_TIMEOUT_MS);
-        return E_REMOTE_IS_NULLPTR;
-    }
-    object = loadCallback->GetRemoteObject();
-    if (object == nullptr) {
-        LOGE("GetDiskManagerSaObject object == nullptr");
-        return E_REMOTE_IS_NULLPTR;
-    }
-    return E_OK;
-}
-
 } // namespace
 
 DiskManagerClient::~DiskManagerClient()
@@ -137,42 +108,84 @@ DiskManagerClient::~DiskManagerClient()
     ResetProxy();
 }
 
+int32_t DiskManagerClient::ConnectIfPresent(sptr<IDiskManager> &proxy)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (diskManager_ != nullptr) {
+        proxy = diskManager_;
+        return E_OK;
+    }
+    SystemAbilityManagerClient &samClient = SystemAbilityManagerClient::GetInstance();
+    sptr<ISystemAbilityManager> sam = samClient.GetSystemAbilityManager();
+    if (sam == nullptr) {
+        LOGE("DiskManagerClient::ConnectIfPresent samgr == nullptr");
+        return E_SA_IS_NULLPTR;
+    }
+    sptr<IRemoteObject> object = sam->CheckSystemAbility(DISK_MANAGER_SA_ID);
+    if (object == nullptr) {
+        LOGE("ConnectIfPresent: DiskManager SA(8640) not running, will not load");
+        return E_SERVICE_IS_NULLPTR;
+    }
+    return InitProxyLocked(object, proxy);
+}
+
 int32_t DiskManagerClient::Connect(sptr<IDiskManager> &proxy)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (diskManager_ == nullptr) {
-        SystemAbilityManagerClient &samClient = SystemAbilityManagerClient::GetInstance();
-        sptr<ISystemAbilityManager> sam = samClient.GetSystemAbilityManager();
-        if (sam == nullptr) {
-            LOGE("DiskManagerClient::Connect samgr == nullptr");
-            return E_SA_IS_NULLPTR;
-        }
-        ISystemAbilityManager &mgr = *sam;
-        sptr<IRemoteObject> object = nullptr;
-        int32_t saRet = GetDiskManagerSaObject(mgr, object);
-        if (saRet != E_OK) {
-            return saRet;
-        }
-        diskManager_ = iface_cast<IDiskManager>(object);
-        if (diskManager_ == nullptr) {
-            LOGE("DiskManagerClient::Connect iface_cast IDiskManager failed");
+    if (diskManager_ != nullptr) {
+        proxy = diskManager_;
+        return E_OK;
+    }
+    SystemAbilityManagerClient &samClient = SystemAbilityManagerClient::GetInstance();
+    sptr<ISystemAbilityManager> sam = samClient.GetSystemAbilityManager();
+    if (sam == nullptr) {
+        LOGE("DiskManagerClient::Connect samgr == nullptr");
+        return E_SA_IS_NULLPTR;
+    }
+    sptr<IRemoteObject> object = sam->CheckSystemAbility(DISK_MANAGER_SA_ID);
+    if (object == nullptr) {
+        sptr<DmLoadCallback> loadCallback = new (std::nothrow) DmLoadCallback();
+        if (loadCallback == nullptr) {
+            LOGE("Connect load callback null");
             return E_SERVICE_IS_NULLPTR;
         }
-        deathRecipient_ = new (std::nothrow) DmDeathRecipient();
-        if (deathRecipient_ == nullptr) {
-            LOGE("DiskManagerClient::Connect death recipient null");
-            diskManager_ = nullptr;
-            return E_SERVICE_IS_NULLPTR;
+        int32_t loadRet = sam->LoadSystemAbility(DISK_MANAGER_SA_ID, loadCallback);
+        if (loadRet != IPC_OK) {
+            LOGE("Connect LoadSystemAbility failed ret=%{public}d", loadRet);
+            return E_REMOTE_IS_NULLPTR;
         }
-        sptr<IRemoteObject> remote = diskManager_->AsObject();
-        if (remote != nullptr) {
-            remote->AddDeathRecipient(deathRecipient_);
+        bool callbackNotified = loadCallback->WaitResult(SA_LOAD_WAIT_TIMEOUT_MS);
+        if (!callbackNotified || !loadCallback->IsSuccess()) {
+            LOGE("Connect wait LoadSystemAbility callback failed timeout=%{public}dms", SA_LOAD_WAIT_TIMEOUT_MS);
+            return E_REMOTE_IS_NULLPTR;
+        }
+        object = loadCallback->GetRemoteObject();
+        if (object == nullptr) {
+            LOGE("Connect LoadSystemAbility object == nullptr");
+            return E_REMOTE_IS_NULLPTR;
         }
     }
-    proxy = diskManager_;
-    if (proxy == nullptr) {
+    return InitProxyLocked(object, proxy);
+}
+
+int32_t DiskManagerClient::InitProxyLocked(const sptr<IRemoteObject> &object, sptr<IDiskManager> &proxy)
+{
+    diskManager_ = iface_cast<IDiskManager>(object);
+    if (diskManager_ == nullptr) {
+        LOGE("DiskManagerClient::InitProxyLocked iface_cast IDiskManager failed");
         return E_SERVICE_IS_NULLPTR;
     }
+    deathRecipient_ = new (std::nothrow) DmDeathRecipient();
+    if (deathRecipient_ == nullptr) {
+        LOGE("DiskManagerClient::InitProxyLocked death recipient null");
+        diskManager_ = nullptr;
+        return E_SERVICE_IS_NULLPTR;
+    }
+    sptr<IRemoteObject> remote = diskManager_->AsObject();
+    if (remote != nullptr) {
+        remote->AddDeathRecipient(deathRecipient_);
+    }
+    proxy = diskManager_;
     return E_OK;
 }
 
@@ -243,7 +256,11 @@ int32_t DiskManagerClient::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 {
     LOGI("GetAllVolumes enter");
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        vecOfVol.clear();
+        return E_OK;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -255,7 +272,10 @@ int32_t DiskManagerClient::GetVolumeByUuid(const std::string &uuid, VolumeExtern
 {
     LOGI("GetVolumeByUuid uuid=%{public}s", GetAnonyString(uuid).c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -267,7 +287,10 @@ int32_t DiskManagerClient::GetVolumeById(const std::string &volumeId, VolumeExte
 {
     LOGI("GetVolumeById volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -315,7 +338,11 @@ int32_t DiskManagerClient::GetAllDisks(std::vector<Disk> &vecOfDisk)
 {
     LOGI("GetAllDisks enter");
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        vecOfDisk.clear();
+        return E_OK;
+    }
     if (err != E_OK) {
         return err;
     }
@@ -417,18 +444,6 @@ int32_t DiskManagerClient::QueryUsbIsInUse(const std::string &diskPath, bool &is
     }
     IDiskManager &dm = *proxy;
     return dm.QueryUsbIsInUse(diskPath, isInUse);
-}
-
-int32_t DiskManagerClient::IsUsbFuseByType(int32_t type, bool &isUsbFuse)
-{
-    LOGI("IsUsbFuseByType type=%{public}d", type);
-    sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
-    if (err != E_OK) {
-        return err;
-    }
-    IDiskManager &dm = *proxy;
-    return dm.IsUsbFuseByType(type, isUsbFuse);
 }
 
 int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
