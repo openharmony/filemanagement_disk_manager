@@ -27,6 +27,9 @@ constexpr size_t INT32_PLAINTEXT_LENGTH = 4;
 constexpr const char *PATH_INVALID_FLAG1 = "../";
 constexpr const char *PATH_INVALID_FLAG2 = "/..";
 constexpr int32_t PATH_INVALID_FLAG_LEN = 3;
+constexpr size_t DOUBLE_DOT_LEN = 2;
+constexpr size_t ID_SEG_MIN_DIGITS = 1;
+constexpr size_t ID_SEG_MAX_DIGITS = 4;
 constexpr char FILE_SEPARATOR_CHAR = '/';
 constexpr size_t VOL_PREFIX_LEN = 4;
 constexpr size_t DISK_PREFIX_LEN = 5;
@@ -91,7 +94,7 @@ bool IsFilePathInvalid(const std::string &filePath)
 
     pos = filePath.find(BACKSLASH_CHAR);
     while (pos != std::string::npos) {
-        if (pos > 0 && filePath[pos - 1] == '.' && filePath[pos - 2] == '.') {
+        if (pos > 0 && filePath[pos - 1] == '.' && filePath[pos - DOUBLE_DOT_LEN] == '.') {
             LOGE("Relative path is not allowed, path contain ..\\");
             return true;
         }
@@ -171,7 +174,8 @@ bool IsVolumeIdValid(const std::string &volumeId)
     }
     std::string seg1 = volumeId.substr(VOL_PREFIX_LEN, firstDash - VOL_PREFIX_LEN);
     std::string seg2 = volumeId.substr(firstDash + 1);
-    if (!IsPureDigitsInRange(seg1, 1, 4) || !IsPureDigitsInRange(seg2, 1, 4)) {
+    if (!IsPureDigitsInRange(seg1, ID_SEG_MIN_DIGITS, ID_SEG_MAX_DIGITS) ||
+        !IsPureDigitsInRange(seg2, ID_SEG_MIN_DIGITS, ID_SEG_MAX_DIGITS)) {
         LOGE("IsVolumeIdValid: volumeId segments not 1-4 digit numbers");
         return false;
     }
@@ -199,7 +203,8 @@ bool IsDiskIdValid(const std::string &diskId)
     }
     std::string seg1 = diskId.substr(DISK_PREFIX_LEN, firstDash - DISK_PREFIX_LEN);
     std::string seg2 = diskId.substr(firstDash + 1);
-    if (!IsPureDigitsInRange(seg1, 1, 4) || !IsPureDigitsInRange(seg2, 1, 4)) {
+    if (!IsPureDigitsInRange(seg1, ID_SEG_MIN_DIGITS, ID_SEG_MAX_DIGITS) ||
+        !IsPureDigitsInRange(seg2, ID_SEG_MIN_DIGITS, ID_SEG_MAX_DIGITS)) {
         LOGE("IsDiskIdValid: diskId segments not 1-4 digit numbers");
         return false;
     }
