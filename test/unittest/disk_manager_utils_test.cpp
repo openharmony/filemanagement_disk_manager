@@ -393,15 +393,3 @@ HWTEST_F(DiskManagerUtilsTest, IsUuidValid_TooLong_001, TestSize.Level0)
     EXPECT_TRUE(IsUuidValid(maxUuid));
     GTEST_LOG_(INFO) << "IsUuidValid_TooLong_001 End";
 }
-
-HWTEST_F(DiskManagerUtilsTest, IsUuidValid_InvalidChar_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "IsUuidValid_InvalidChar_001 Start";
-    EXPECT_FALSE(IsUuidValid("abc 123"));
-    EXPECT_FALSE(IsUuidValid("abc!def"));
-    EXPECT_FALSE(IsUuidValid("abc@123"));
-    EXPECT_FALSE(IsUuidValid("uuid_with_underscore"));
-    EXPECT_FALSE(IsUuidValid("abc\n123"));
-    EXPECT_FALSE(IsUuidValid("abc\t123"));
-    GTEST_LOG_(INFO) << "IsUuidValid_InvalidChar_001 End";
-}

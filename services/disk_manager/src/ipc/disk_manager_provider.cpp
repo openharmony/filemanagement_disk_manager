@@ -198,7 +198,7 @@ int32_t DiskManagerProvider::Mount(const std::string &volumeId)
     }
     if (!IsVolumeIdValid(volumeId)) {
         LOGE("Mount: volumeId is invalid");
-        return E_PARAMS_INVALID;
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().Mount(volumeId);
     LOGI("Mount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -220,7 +220,7 @@ int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
     }
     if (!IsVolumeIdValid(volumeId)) {
         LOGE("Unmount: volumeId is invalid");
-        return E_PARAMS_INVALID;
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().Unmount(volumeId);
     LOGI("Unmount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -474,9 +474,13 @@ int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
         }
     }
     LOGI("GetDiskById diskId=%{public}s.", diskId.c_str());
+    if (diskId.empty()) {
+        LOGI("diskId is empty.");
+        return E_PARAMS_INVALID;
+    }
     if (!IsDiskIdValid(diskId)) {
         LOGE("GetDiskById: diskId is invalid");
-        return E_PARAMS_INVALID;
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().GetDiskById(diskId, disk);
     LOGI("GetDiskById diskId=%{public}s err=%{public}d", diskId.c_str(), err);
@@ -688,9 +692,13 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
         return E_PERMISSION_DENIED;
     }
     LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
+    if (diskId.empty()) {
+        LOGI("diskId is empty.");
+        return E_PARAMS_INVALID;
+    }
     if (!IsDiskIdValid(diskId)) {
         LOGE("GetPartitionTable: diskId is invalid");
-        return E_PARAMS_INVALID;
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().GetPartitionTable(diskId, out);
     LOGI("GetPartitionTable diskId=%{public}s err=%{public}d", diskId.c_str(), err);
@@ -783,7 +791,7 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     if (params.GetVolumeName().empty() || params.GetVolumeName().size() > VOLUME_NAME_MAX_LEN) {
         LOGE("FormatPartition: volumeName is empty or length exceeds %{public}zu limit",
              static_cast<size_t>(VOLUME_NAME_MAX_LEN));
-        return E_PARAMS_INVALID;
+        return E_NON_EXIST;
     }
     int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
     LOGI("FormatPartition done ret=%{public}d", ret);

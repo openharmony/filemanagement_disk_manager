@@ -25,6 +25,7 @@ config("disk_manager_idl_public_config") {
   include_dirs = [
     "include",
     "${target_gen_dir}",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
   ]
 }
 

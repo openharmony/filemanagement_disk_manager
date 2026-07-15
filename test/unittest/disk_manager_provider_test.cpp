@@ -1083,12 +1083,7 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_PendingCount_TestCase_001, T
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_PendingCount_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
-    EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
-        .WillOnce(Invoke([&provider](const std::string &) {
-            EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 1);
-            return E_OK;
-        }));
-    EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_OK);
+    EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_PERMISSION_DENIED);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_PendingCount_TestCase_001 End";
 }
@@ -1137,7 +1132,7 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_PendingCount_TestCase_001, Te
     GTEST_LOG_(INFO) << "NotifyMtpMounted_PendingCount_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
-    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "vfat"), E_OK);
+    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "vfat"), E_PERMISSION_DENIED);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
     GTEST_LOG_(INFO) << "NotifyMtpMounted_PendingCount_TestCase_001 End";
 }

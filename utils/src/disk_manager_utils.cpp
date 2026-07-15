@@ -94,7 +94,7 @@ bool IsFilePathInvalid(const std::string &filePath)
 
     pos = filePath.find(BACKSLASH_CHAR);
     while (pos != std::string::npos) {
-        if (pos > 0 && filePath[pos - 1] == '.' && filePath[pos - DOUBLE_DOT_LEN] == '.') {
+        if (pos >= DOUBLE_DOT_LEN && filePath[pos - 1] == '.' && filePath[pos - DOUBLE_DOT_LEN] == '.') {
             LOGE("Relative path is not allowed, path contain ..\\");
             return true;
         }
@@ -159,6 +159,10 @@ bool IsVolumeIdValid(const std::string &volumeId)
         LOGE("IsVolumeIdValid: volumeId path traversal detected");
         return false;
     }
+    if (volumeId.find("mtp-") == 0 || volumeId.find("ptp-") == 0) {
+        LOGI("IsVolumeIdValid: volume is mtp or ptp");
+        return true;
+    }
     if (volumeId.find("vol-") != 0) {
         LOGE("IsVolumeIdValid: volumeId prefix is not vol-");
         return false;
@@ -221,13 +225,6 @@ bool IsUuidValid(const std::string &uuid)
         LOGE("IsUuidValid: uuid length exceeds %{public}zu limit, actual=%{public}zu",
              static_cast<size_t>(UUID_MAX_LEN), uuid.size());
         return false;
-    }
-    for (char c : uuid) {
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
-              (c >= 'A' && c <= 'Z') || c == '-')) {
-            LOGE("IsUuidValid: uuid contains invalid char");
-            return false;
-        }
     }
     return true;
 }

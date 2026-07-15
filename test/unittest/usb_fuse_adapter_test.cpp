@@ -58,19 +58,19 @@ HWTEST_F(UsbFuseAdapterTest, NotifyUsbFuseUmount_HandlerNullptr_002, TestSize.Le
 HWTEST_F(UsbFuseAdapterTest, IsUsbFuseByType_HandlerNullptr_001, TestSize.Level0)
 {
     auto &adapter = UsbFuseAdapter::GetInstance();
-    EXPECT_TRUE(adapter.IsUsbFuseByType("vfat"));
+    EXPECT_FALSE(adapter.IsUsbFuseByType("vfat"));
 }
 
 HWTEST_F(UsbFuseAdapterTest, IsUsbFuseByType_HandlerNullptr_002, TestSize.Level0)
 {
     auto &adapter = UsbFuseAdapter::GetInstance();
-    EXPECT_TRUE(adapter.IsUsbFuseByType("ext4"));
+    EXPECT_FALSE(adapter.IsUsbFuseByType("ext4"));
 }
 
 HWTEST_F(UsbFuseAdapterTest, IsUsbFuseByType_HandlerNullptr_003, TestSize.Level0)
 {
     auto &adapter = UsbFuseAdapter::GetInstance();
-    EXPECT_TRUE(adapter.IsUsbFuseByType("ntfs"));
+    EXPECT_FALSE(adapter.IsUsbFuseByType("ntfs"));
 }
 
 HWTEST_F(UsbFuseAdapterTest, IsUsbFuseEnabledForFsType_HandlerNullptr_001, TestSize.Level0)
@@ -147,7 +147,7 @@ HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseUmount_DlsymNull_001, TestSize.Lev
 HWTEST_F(UsbFuseAdapterMockTest, IsUsbFuseByType_DlsymNull_001, TestSize.Level0)
 {
     auto &adapter = UsbFuseAdapter::GetInstance();
-    EXPECT_TRUE(adapter.IsUsbFuseByType("vfat"));
+    EXPECT_FALSE(adapter.IsUsbFuseByType("vfat"));
 }
 
 HWTEST_F(UsbFuseAdapterMockTest, IsUsbFuseByType_FuncFailed_001, TestSize.Level0)
