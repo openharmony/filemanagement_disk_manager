@@ -78,10 +78,10 @@ CdromState QueryCdromState(const std::string &devPath)
         LOGE("QueryCdromState QueryCDStatus failed ret=%{public}d", ret);
         return CdromState::NO_DISC;
     }
-    if ((status & 0x01) == 0) {
+    if ((static_cast<uint32_t>(status) & 0x01) == 0) {
         return CdromState::NO_DISC;
     }
-    if ((status & 0x02) == 0) {
+    if ((static_cast<uint32_t>(status) & 0x02) == 0) {
         return CdromState::NON_EMPTY_DISC;
     }
     return CdromState::EMPTY_DISC;
