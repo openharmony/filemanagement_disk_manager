@@ -184,26 +184,5 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
 
     return true;
 }
-
-VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
-{
-    std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));
-    if (!volumeCorePtr) {
-        LOGE("VolumeExternal::Unmarshalling: VolumeCore::Unmarshalling returned null");
-        return nullptr;
-    }
-    VolumeExternal *obj = new (std::nothrow) VolumeExternal(*volumeCorePtr);
-    if (!obj) {
-        return nullptr;
-    }
-    obj->flags_ = parcel.ReadInt32();
-    obj->fsType_ = parcel.ReadInt32();
-    obj->fsUuid_ = parcel.ReadString();
-    obj->path_ = parcel.ReadString();
-    obj->description_ = parcel.ReadString();
-    obj->partitionNum_ = parcel.ReadInt32();
-    return obj;
-}
-
 } // namespace DiskManager
 } // namespace OHOS
