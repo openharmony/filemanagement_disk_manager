@@ -82,6 +82,17 @@ bool IsSystemApp()
     return Security::AccessToken::AccessTokenKit::IsSystemAppByFullTokenID(fullTokenId);
 }
 
+bool VerifyCallerPermission(const std::string &permissionName)
+{
+    Security::AccessToken::AccessTokenID tokenCaller = IPCSkeleton::GetCallingTokenID();
+    int32_t res = Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenCaller, permissionName);
+    if (res == Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
+        return true;
+    }
+    LOGE("VerifyCallerPermission denied, need %{public}s", permissionName.c_str());
+    return false;
+}
+
 int32_t Convert2JsErrNum(int32_t errNum)
 {
     auto it = errCodeTable.find(errNum);

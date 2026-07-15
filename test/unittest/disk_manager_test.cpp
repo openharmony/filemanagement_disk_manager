@@ -3149,8 +3149,8 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     VolumeExternal volOut;
-    dm.GetVolumeById("vol-64-3", volOut);
-    EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
+    dm.GetVolumeById("vol-mvfs-hmfs", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
@@ -3165,8 +3165,8 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     VolumeExternal volOut;
-    dm.GetVolumeById("vol-64-4", volOut);
-    EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
+    dm.GetVolumeById("vol-ad-hdd", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, ReadPersistUsbReadonlyMount_TestCase_001, TestSize.Level0)

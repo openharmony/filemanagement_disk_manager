@@ -59,6 +59,7 @@ constexpr int32_t MIN_LINES = 32;
 constexpr int32_t MAJORID_BLKEXT = 259;
 constexpr int32_t MAX_PARTITION = 16;
 constexpr int32_t MAX_INTERVAL_PARTITION = 15;
+constexpr int32_t MAX_SCSI_VOLUMES = 15;
 constexpr int32_t VOL_LENGTH = 3;
 const int32_t CONFIG_PARAM_NUM = 6;
 #ifdef CDC_STORAGE
@@ -78,10 +79,10 @@ CdromState QueryCdromState(const std::string &devPath)
         LOGE("QueryCdromState QueryCDStatus failed ret=%{public}d", ret);
         return CdromState::NO_DISC;
     }
-    if ((status & 0x01) == 0) {
+    if ((static_cast<uint32_t>(status) & 0x01) == 0) {
         return CdromState::NO_DISC;
     }
-    if ((status & 0x02) == 0) {
+    if ((static_cast<uint32_t>(status) & 0x02) == 0) {
         return CdromState::NON_EMPTY_DISC;
     }
     return CdromState::EMPTY_DISC;
@@ -130,6 +131,9 @@ std::string BlockPathForId(const std::string &id)
 
 dev_t PartitionDev(unsigned int diskMaj, unsigned int diskMin, uint32_t partIndex)
 {
+    if (partIndex > MAX_SCSI_VOLUMES) {
+        return makedev(MAJORID_BLKEXT, partIndex - MAX_PARTITION);
+    }
     return makedev(diskMaj, diskMin + partIndex);
 }
 

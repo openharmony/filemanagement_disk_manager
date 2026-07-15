@@ -17,6 +17,8 @@
 #include "disk_manager_client.h"
 #include "disk_manager_hilog.h"
 #include "disk_manager_napi_errno.h"
+#include "disk_manager_napi_utils.h"
+#include "ipc_caller_auth.h"
 #include "partition_types.h"
 #include "storageStatistics_taihe_error.h"
 
@@ -205,6 +207,14 @@ ohos::file::volumeManager::Disk GetDiskByIdSync(::taihe::string_view diskId)
 
 taihe::array<ohos::file::volumeManager::Disk> GetAllDisksSync()
 {
+    if (!OHOS::DiskManager::IsSystemApp()) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION_SYS);
+        return taihe::array<ohos::file::volumeManager::Disk>::make(0, MakeEmptyTaiheDisk());
+    }
+    if (!OHOS::DiskManager::VerifyCallerPermission(OHOS::DiskManager::PERMISSION_MOUNT_MANAGER)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return taihe::array<ohos::file::volumeManager::Disk>::make(0, MakeEmptyTaiheDisk());
+    }
     auto disks = std::make_shared<std::vector<OHOS::DiskManager::Disk>>();
     int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetAllDisks(*disks);
     if (errNum != OHOS::E_OK) {

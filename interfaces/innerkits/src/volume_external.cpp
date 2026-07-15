@@ -132,6 +132,26 @@ void VolumeExternal::SetPartitionNum(int32_t partitionNum)
     partitionNum_ = partitionNum;
 }
 
+VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
+{
+    std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));
+    if (volumeCorePtr == nullptr) {
+        LOGE("VolumeExternal Unmarshalling volumeCorePtr is nullptr");
+        return nullptr;
+    }
+    VolumeExternal *obj = new (std::nothrow) VolumeExternal(*volumeCorePtr);
+    if (!obj) {
+        return nullptr;
+    }
+    obj->flags_ = parcel.ReadInt32();
+    obj->fsType_ = parcel.ReadInt32();
+    obj->fsUuid_ = parcel.ReadString();
+    obj->path_ = parcel.ReadString();
+    obj->description_ = parcel.ReadString();
+    obj->partitionNum_ = parcel.ReadInt32();
+    return obj;
+}
+
 bool VolumeExternal::Marshalling(Parcel &parcel) const
 {
     if (!VolumeCore::Marshalling(parcel)) {
@@ -184,5 +204,6 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->partitionNum_ = parcel.ReadInt32();
     return obj;
 }
+
 } // namespace DiskManager
 } // namespace OHOS

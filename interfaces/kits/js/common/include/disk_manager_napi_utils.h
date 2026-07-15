@@ -17,6 +17,7 @@
 #define DISK_MANAGER_NAPI_UTILS_H
 
 #include <cstdint>
+#include <string>
 
 #include "disk_manager_hilog.h"
 #include "napi/native_api.h"
@@ -33,6 +34,7 @@
 namespace OHOS {
 namespace DiskManager {
 bool IsSystemApp();
+bool VerifyCallerPermission(const std::string &permissionName);
 int32_t Convert2JsErrNum(int32_t errNum);
 } // namespace DiskManager
 } // namespace OHOS
