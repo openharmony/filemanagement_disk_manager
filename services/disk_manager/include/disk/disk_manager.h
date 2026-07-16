@@ -39,6 +39,7 @@ public:
 
     int32_t Mount(const std::string &volumeId);
     int32_t Unmount(const std::string &volumeId);
+    int32_t ForceUnmount(const std::string &volumeId);
     int32_t Format(const std::string &volumeId, const std::string &fsType);
     int32_t TryToFix(const std::string &volumeId);
     int32_t SetVolumeDescription(const std::string &fsUuid, const std::string &description);
@@ -99,6 +100,8 @@ public:
     std::string GetDiscType(const std::string &extraInfo);
     std::string GetDriverType(const std::string &extraInfo);
 
+    bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
+
 private:
     DiskManager();
     ~DiskManager();
@@ -116,6 +119,9 @@ private:
         const std::string &fsUuid;
         const VolumeMountPolicy &policy;
         bool *voldataMappingCreated = nullptr;
+        std::string dataMountPath;
+        bool fuseMounted = false;
+        int32_t diskFlag = 0;
     };
 
     bool IsSafeFsUuid(const std::string &fsUuid);
@@ -129,17 +135,21 @@ private:
     int32_t MountUsbFuseIfNeeded(const std::string &volumeId,
                                  const std::string &fsType,
                                  const std::string &fsUuid,
-                                 bool useFuseData);
+                                 bool useFuseData,
+                                 bool *fuseMountedOut = nullptr);
+    int32_t RollbackFuseMount(const std::string &volumeId, const std::string &fsUuid);
     /** 调用方已按顺序持 diskMapMutex_、volumeMapMutex_ 读锁。 */
     bool ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId,
                                                   const std::string &fsNormLower) const;
     VolumeMountPolicy ComputeVolumeMountPolicy(const std::string &diskId, const std::string &fsType) const;
 
     int32_t MountVolumeFilesystem(VolumeExternal &volExternal, const std::string &fsType, const std::string &fsUuid);
+    int32_t ExecuteVolumeDataMount(VolumeExternal &volExternal, const std::string &fsType, MountDataPathParams &params);
 
     std::string BuildMountDataPath(const MountDataPathParams &params);
 
     int32_t UnmountVolumeMountPoints(const VolumeExternal &volExternal, bool force);
+    int32_t DoUnmountVolume(VolumeExternal &volExternal);
     /** SSD/HDD 数据盘卸载前 QueryUsbIsInUse 检查（传入挂载路径），并设置 forceUnmount。 */
     int32_t ResolveUnmountForceFlag(const VolumeExternal &volExternal, bool &forceUnmount);
     /** 调用方已持 diskMapMutex_（读锁）。优先父盘 diskType，否则兜底 USB。 */
@@ -180,7 +190,6 @@ private:
                                     const std::string &blockVolId);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
-    bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
     bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
     int32_t MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath);
 

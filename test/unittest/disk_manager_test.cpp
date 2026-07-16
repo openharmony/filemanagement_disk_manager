@@ -3062,8 +3062,10 @@ HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_004, TestSize
     dm.OnDiskCreated(MakeUsbDisk("disk-dv-4"));
     VolumeExternal vol = MakeUsbVolume("vol-dv-4", "disk-dv-4", "uuid-dv-4", MOUNTED);
     vol.SetPartitionNum(1);
+    vol.SetPath("/mnt/data/external/uuid-dv-4");
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, DestroyBlockDeviceNode(_)).WillOnce(Return(E_OK));
     EXPECT_TRUE(dm.DestroyVolumeByDiskIdAndPartNum("disk-dv-4", 1));
 }
@@ -3311,10 +3313,20 @@ HWTEST_F(DiskManagerTest, UnmountVolumeMountPoints_TestCase_006, TestSize.Level0
     VolumeExternal vol = MakeUsbVolume("vol-uvmp-6", "disk-uvmp-6", "uuid-uvmp-6", UNMOUNTED);
     vol.SetPath("");
     dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
     VolumeExternal volOut;
     dm.GetVolumeById("vol-uvmp-6", volOut);
+    EXPECT_EQ(dm.UnmountVolumeMountPoints(volOut, true), ERR_OK);
+}
+
+HWTEST_F(DiskManagerTest, UnmountVolumeMountPoints_TestCase_007, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-uvmp-7"));
+    VolumeExternal vol = MakeUsbVolume("vol-uvmp-7", "disk-uvmp-7", "", UNMOUNTED);
+    vol.SetPath("");
+    dm.OnVolumeCreated(vol);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-uvmp-7", volOut);
     EXPECT_EQ(dm.UnmountVolumeMountPoints(volOut, true), ERR_OK);
 }
 
@@ -3517,8 +3529,10 @@ HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_006, TestSize
     dm.OnDiskCreated(MakeUsbDisk("disk-dv-6"));
     VolumeExternal vol = MakeUsbVolume("vol-dv-6", "disk-dv-6", "uuid-dv-6", DAMAGED_MOUNTED);
     vol.SetPartitionNum(1);
+    vol.SetPath("/mnt/data/external/uuid-dv-6");
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, DestroyBlockDeviceNode(_)).WillOnce(Return(ERR_OK));
     EXPECT_TRUE(dm.DestroyVolumeByDiskIdAndPartNum("disk-dv-6", 1));
 }

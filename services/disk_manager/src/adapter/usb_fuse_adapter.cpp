@@ -98,8 +98,9 @@ int32_t UsbFuseAdapter::NotifyUsbFuseUmount(const std::string &volumeId)
         LOGE("NotifyUsbFuseUmount: dlsym NotifyExternalVolumeFuseUmount failed");
         return DiskManagerErrNo::E_DAEMON_IPC_FAILED;
     }
-    if (funcUMount(volumeId) != DiskManagerErrNo::E_OK) {
-        LOGE("NotifyUsbFuseUmount: policy returned failure");
+    int32_t ret = funcUMount(volumeId);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("NotifyUsbFuseUmount: policy returned failure, ret=%{public}d", ret);
         return DiskManagerErrNo::E_DAEMON_IPC_FAILED;
     }
     return DiskManagerErrNo::E_OK;
