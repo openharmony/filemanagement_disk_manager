@@ -2127,7 +2127,7 @@ HWTEST_F(DiskManagerProviderTest, Mount_StorageManagerCaller_TestCase_001, TestS
     g_nativeProcessName = "storage_manager";
     MockIPCSkeleton::mockCallingUid_ = 1090;
     g_accessTokenType = 0;
-    g_isSystemApp = false;
+    g_isSystemApp = true;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     EXPECT_EQ(provider.Mount("vol-99-99"), E_NON_EXIST);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2172,7 +2172,7 @@ HWTEST_F(DiskManagerProviderTest, Mount_StorageManagerCaller_TestCase_002, TestS
     MockIPCSkeleton::mockCallingUid_ = 1090;
     g_accessTokenType = 1;
     g_nativeProcessName = "storage_manager";
-    g_isSystemApp = false;
+    g_isSystemApp = true;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     EXPECT_EQ(provider.Mount("vol-99-99"), E_NON_EXIST);
     MockIPCSkeleton::mockCallingUid_ = 0;
