@@ -18,10 +18,13 @@
 
 #include "uevent_env_parser.h"
 #include "disk_config.h"
+#include "storage_spec_models.h"
 
 #include <list>
+#include <map>
 #include <mutex>
 #include <string>
+#include <vector>
 
 namespace OHOS {
 namespace DiskManager {
@@ -39,6 +42,8 @@ public:
     /** 复用 DiscoverPartitionsAndVolumes；Partition 完成后调用，不发布新盘事件。 */
     static int32_t RediscoverDiskVolumes(const std::string &diskId);
 
+    static void ResetPartitionSnapshotForTest();
+
 private:
     static int32_t HandleDiskRemove(const UeventEnv &env);
     /** 首次出现 / 重新枚举：发布磁盘事件（若本事件首次见到该 diskId）。 */
@@ -49,9 +54,18 @@ private:
     static std::vector<std::string> SplitLine(std::string &line, std::string &token);
     static bool ParasConfig();
 
+    static void ComputePartitionDiff(const std::string &diskId,
+                                     const std::vector<PartitionRecord> &newParts,
+                                     std::vector<PartitionRecord> &added,
+                                     std::vector<PartitionRecord> &removed);
+    static void ClearPartitionSnapshot(const std::string &diskId);
+
 private:
     static std::list<DiskConfig> diskConfigList_;
     static std::mutex diskConfigListMutex_;
+
+    static std::map<std::string, std::vector<PartitionRecord>> diskPartsSnapshot_;
+    static std::mutex diskPartsSnapshotMutex_;
 };
 
 } // namespace DiskManager

@@ -54,6 +54,7 @@ protected:
     void SetUp() override
     {
         UeventBootstrap::diskConfigList_.clear();
+        UeventBootstrap::ResetPartitionSnapshotForTest();
         ON_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillByDefault(Return(false));
@@ -259,7 +260,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskAdd_Success_TestCase_001, TestSize.Level
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -297,7 +298,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskAdd_HasDiskExist_TestCase_007, TestSize.
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
@@ -333,7 +334,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskChange_HasDiskExist_TestCase_003, TestSi
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
@@ -372,7 +373,7 @@ HWTEST_F(UeventBootstrapTest, UpsertDisk_HasBlockInfo_TestCase_004, TestSize.Lev
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -414,7 +415,7 @@ HWTEST_F(UeventBootstrapTest, UpsertDisk_ReadExtDiskInfoSuccess_TestCase_005, Te
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -461,7 +462,7 @@ HWTEST_F(UeventBootstrapTest, UpsertDisk_MatchConfigSuccess_TestCase_006, TestSi
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -720,31 +721,16 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_TestCase
 {
     UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
-        .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
-        .WillOnce(Return(-1));
-    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
-                        SetArgReferee<2>(std::string("")),
-                        SetArgReferee<3>(std::string("")),
-                        Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
-        .WillOnce(Return(false));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
-    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+    EXPECT_NE(ret, DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(UeventBootstrapTest, DiscoverPartitions_NonEmptyShortDump_TestCase_005, TestSize.Level0)
@@ -872,12 +858,9 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_IsPartitioning_FormatFail_T
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
-                        SetArgReferee<2>(std::string("")),
-                        SetArgReferee<3>(std::string("")),
-                        Return(E_OK)));
+        .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
-        .WillOnce(Return(E_OK));
+        .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
         .WillOnce(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _))
@@ -913,12 +896,9 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_IsPartitioning_FormatSucces
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
-                        SetArgReferee<2>(std::string("")),
-                        SetArgReferee<3>(std::string("")),
-                        Return(E_OK)));
+        .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
-        .WillOnce(Return(E_OK));
+        .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
         .WillOnce(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _))
@@ -1084,7 +1064,6 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_ReadMetadataFail_TestCase_0
     UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string partitionDump = "DISK 8 1 gpt\n8-1 0 1024 0700 userdata\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
-        .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
@@ -1095,7 +1074,6 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_ReadMetadataFail_TestCase_0
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
-        .WillOnce(Return(-1))
         .WillOnce(Return(-1));
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
         .WillOnce(Return(E_OK));
@@ -1104,9 +1082,9 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_ReadMetadataFail_TestCase_0
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
         .WillOnce(Return(false));
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
-        .WillOnce(Return(E_OK));
+        .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
-        .WillOnce(Return(E_OK));
+        .Times(0);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
         .WillOnce(Return(-1));
     int32_t ret = UeventBootstrap::HandleDiskAdd(env);
@@ -1169,7 +1147,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_UnmountFail_TestCase_007, TestSiz
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), Unmount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
         .WillOnce(Return(-1));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
@@ -1197,7 +1175,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_DestroyVolumeNodeFail_TestCase_00
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), Unmount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(-1))
@@ -1239,7 +1217,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskChange_NotPartitioning_TestCase_002, Tes
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -1291,7 +1269,7 @@ HWTEST_F(UeventBootstrapTest, OnBlockDiskUevent_Add_TestCase_005, TestSize.Level
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -1380,11 +1358,12 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_CD_Eject_TestCase_002
 HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_NoPartNoPublish_TestCase_003, TestSize.Level0)
 {
     UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK 8 1 gpt\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
@@ -1408,13 +1387,76 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_NoPartNoPublish_TestC
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }
 
+HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_WholeDiskNoFs_TestCase_005, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK 8 1 gpt\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(-1)));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_WholeDiskPartitioning_TestCase_006, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK 8 1 gpt\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(true));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _)).Times(0);
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, std::string("f2fs"))).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_EmptyDumpNoDiskLine_TestCase_004, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_NE(ret, DiskManagerErrNo::E_OK);
+}
+
 HWTEST_F(UeventBootstrapTest, RediscoverDiskVolumes_TestCase_001, TestSize.Level0)
 {
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("DISK 8 1 gpt\n")), SetArgReferee<2>(0), Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
@@ -1443,12 +1485,43 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_WithVolumes_TestCase_004, TestSiz
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), Unmount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskDestroyed(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    int32_t ret = UeventBootstrap::HandleDiskRemove(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, HandleDiskRemove_FuseVolume_TestCase_005, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("remove", 8, 1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", UNMOUNTED);
+            VolumeExternal vol(vc);
+            vol.SetPath("/mnt/data/external_fuse/test-uuid");
+            out.push_back(vol);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishVolumeChangeImpl(FUSE_REMOVED, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
@@ -1471,7 +1544,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_BadRemoval_TestCase_005, TestSize
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), Unmount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
@@ -1508,5 +1581,177 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_VolumeZeroId_TestCase_006, TestSi
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
         .Times(1);
     int32_t ret = UeventBootstrap::HandleDiskRemove(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, PartitionDiff_FirstAddSinglePart_TestCase_001, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK 8 1 gpt\n8-1 0 1024 0700 userdata\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, PartitionDiff_ChangeAddPartition_TestCase_002, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string firstDump = "DISK gpt\nPART 1\n";
+    std::string secondDump = "DISK gpt\nPART 1\nPART 2\n";
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(firstDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    ASSERT_EQ(UeventBootstrap::DiscoverPartitionsAndVolumes(env, false), DiskManagerErrNo::E_OK);
+    testing::Mock::VerifyAndClearExpectations(&DiskManager::GetInstance());
+    testing::Mock::VerifyAndClearExpectations(&MockStorageDaemonAdapter::GetInstance());
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(secondDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(),
+                OnVolumeCreated(Property(&VolumeExternal::GetId, Eq("vol-8-3"))))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, PartitionDiff_ChangeRemovePartition_TestCase_003, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string firstDump = "DISK gpt\nPART 1\n";
+    std::string secondDump = "DISK gpt\n";
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(firstDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    ASSERT_EQ(UeventBootstrap::DiscoverPartitionsAndVolumes(env, false), DiskManagerErrNo::E_OK);
+    testing::Mock::VerifyAndClearExpectations(&DiskManager::GetInstance());
+    testing::Mock::VerifyAndClearExpectations(&MockStorageDaemonAdapter::GetInstance());
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(secondDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(Eq("disk-8-1"), Eq(1)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(),
+                OnVolumeCreated(Property(&VolumeExternal::GetId, Eq("vol-8-1"))))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, PartitionDiff_ChangeTypeCode_TestCase_004, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string gptDump = "DISK gpt\nPART 1\n";
+    std::string mbrDump = "DISK mbr\nPART 1 0x0c\n";
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(gptDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    ASSERT_EQ(UeventBootstrap::DiscoverPartitionsAndVolumes(env, false), DiskManagerErrNo::E_OK);
+    testing::Mock::VerifyAndClearExpectations(&DiskManager::GetInstance());
+    testing::Mock::VerifyAndClearExpectations(&MockStorageDaemonAdapter::GetInstance());
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mbrDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(Eq("disk-8-1"), Eq(1)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(),
+                OnVolumeCreated(Property(&VolumeExternal::GetId, Eq("vol-8-2"))))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(false));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }

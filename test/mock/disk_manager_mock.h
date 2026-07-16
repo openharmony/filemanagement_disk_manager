@@ -36,6 +36,7 @@ public:
 
     MOCK_METHOD(int32_t, Mount, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Unmount, (const std::string &volumeId));
+    MOCK_METHOD(int32_t, ForceUnmount, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Format, (const std::string &volumeId, const std::string &fsType));
     MOCK_METHOD(int32_t, TryToFix, (const std::string &volumeId));
     MOCK_METHOD(int32_t, SetVolumeDescription, (const std::string &fsUuid, const std::string &description));
@@ -62,6 +63,7 @@ public:
     MOCK_METHOD(void, NotifyPartitionDone, (const std::string &diskId));
     MOCK_METHOD(std::string, GetDiscType, (const std::string &extraInfo));
     MOCK_METHOD(std::string, GetDriverType, (const std::string &extraInfo));
+    MOCK_METHOD(bool, DestroyVolumeByDiskIdAndPartNum, (const std::string &diskId, int32_t partNum));
 
     static DiskManager *mockInstance_;
 };
