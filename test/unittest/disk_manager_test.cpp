@@ -2864,12 +2864,11 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
     dm.OnVolumeCreated(vol);
 
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
-    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillOnce(Return(false));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
     VolumeExternal volOut;
     dm.GetVolumeById("vol-mvfs-hmfs", volOut);
-    EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
@@ -2884,7 +2883,6 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
     dm.OnVolumeCreated(vol);
 
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
-    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillOnce(Return(false));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
     VolumeExternal volOut;

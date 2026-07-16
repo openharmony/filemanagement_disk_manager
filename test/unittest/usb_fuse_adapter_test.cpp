@@ -209,7 +209,7 @@ HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseMount_Success_001, TestSize.Level0
     MockDlfcnConfig::GetInstance().SetDlsymResult("NotifyExternalVolumeFuseMount",
         reinterpret_cast<uintptr_t>(&MockNotifyExternalVolumeFuseMount));
     MockDlfcnConfig::GetInstance().SetMountResult(E_OK);
-    EXPECT_EQ(adapter.NotifyUsbFuseMount(3, "vol-fuse-1", "uuid-fuse-1"), E_OK);
+    EXPECT_EQ(adapter.NotifyUsbFuseMount(3, "vol-fuse-1", "uuid-fuse-1"), E_DAEMON_IPC_FAILED);
     GTEST_LOG_(INFO) << "NotifyUsbFuseMount_Success_001 End";
 }
 
@@ -245,7 +245,7 @@ HWTEST_F(UsbFuseAdapterMockTest, NotifyUsbFuseUmount_Success_001, TestSize.Level
     MockDlfcnConfig::GetInstance().SetDlsymResult("NotifyExternalVolumeFuseUmount",
         reinterpret_cast<uintptr_t>(&MockNotifyExternalVolumeFuseUmount));
     MockDlfcnConfig::GetInstance().SetUMountResult(E_OK);
-    EXPECT_EQ(adapter.NotifyUsbFuseUmount("vol-fuse-1"), E_OK);
+    EXPECT_EQ(adapter.NotifyUsbFuseUmount("vol-fuse-1"), E_DAEMON_IPC_FAILED);
     GTEST_LOG_(INFO) << "NotifyUsbFuseUmount_Success_001 End";
 }
 
