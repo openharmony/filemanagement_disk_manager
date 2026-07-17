@@ -33,8 +33,11 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <algorithm>
 #include <dirent.h>
 #include <fstream>
+#include <map>
+#include <mutex>
 #include <string_view>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -43,6 +46,8 @@ namespace OHOS {
 namespace DiskManager {
 std::list<DiskConfig> UeventBootstrap::diskConfigList_;
 std::mutex UeventBootstrap::diskConfigListMutex_;
+std::map<std::string, std::vector<PartitionRecord>> UeventBootstrap::diskPartsSnapshot_;
+std::mutex UeventBootstrap::diskPartsSnapshotMutex_;
 
 namespace {
 
@@ -61,6 +66,7 @@ constexpr int32_t MAX_PARTITION = 16;
 constexpr int32_t MAX_INTERVAL_PARTITION = 15;
 constexpr int32_t MAX_SCSI_VOLUMES = 15;
 constexpr int32_t VOL_LENGTH = 3;
+constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 const int32_t CONFIG_PARAM_NUM = 6;
 #ifdef CDC_STORAGE
 // it will be decoupled to the car odm
@@ -167,16 +173,23 @@ void DestroyALLVolume(const std::string &diskId)
         if (vol.GetDiskId() != diskId || vol.GetId() == "0") {
             continue;
         }
-        int32_t unmountRet = DiskManager::GetInstance().Unmount(vol.GetId());
+        int32_t unmountRet = DiskManager::GetInstance().ForceUnmount(vol.GetId());
         if (unmountRet != E_OK) {
-            LOGE("Unmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
+            LOGE("ForceUnmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
         }
         int32_t ret = StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(BlockPathForId(vol.GetId()));
         if (ret != E_OK) {
             LOGI("Destroy volume failed vol:%{public}s, ret:%{public}d", vol.GetId().c_str(), ret);
             continue;
         }
-        CommonEventPublisher::PublishVolumeChange((vol.GetState() == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
+        const std::string &mountedPath = vol.GetPath();
+        const bool isFuseVolume = !mountedPath.empty() &&
+            mountedPath.rfind(EXTERNAL_FUSE_DATA_ROOT, 0) == 0;
+        if (isFuseVolume) {
+            CommonEventPublisher::PublishVolumeChange(FUSE_REMOVED, vol);
+        } else {
+            CommonEventPublisher::PublishVolumeChange((vol.GetState() == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
+        }
         (void)DiskManager::GetInstance().OnVolumeDestroyed(vol.GetId());
     }
 }
@@ -252,7 +265,9 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
     int32_t maxVolume = 0;
     err = StorageDaemonAdapter::GetInstance().ReadPartitionTable(diskDevPath, rawDump, maxVolume);
     if (err != ERR_OK) {
-        LOGE("ReadPartitionTable failed err=%{public}d", err);
+        LOGE("ReadPartitionTable failed err=%{public}d, abandon disk=%{public}s", err, diskId.c_str());
+        (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
+        return err;
     }
 
     std::vector<std::string> lines = SplitRawDumpToLines(rawDump);
@@ -272,9 +287,15 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
             rawDump += *userdataIt;
         }
     }
+    std::string tableType;
+    bool hasDiskLine = false;
     if (!rawDump.empty()) {
-        std::string tableType;
-        (void)PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
+        hasDiskLine = PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
+    }
+    if (!hasDiskLine && env.major != DISK_CD_MAJOR) {
+        LOGE("ReadPartitionTable output has no DISK line, abandon disk=%{public}s", diskId.c_str());
+        (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
+        return DiskManagerErrNo::DISK_MGR_ERR;
     }
     (void)DiskManager::GetInstance().ReplacePartitionsForDisk(diskId, parts);
     return DiskManagerErrNo::E_OK;
@@ -455,17 +476,26 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
 
     const dev_t wholeDev = makedev(env.major, env.minor);
     const std::string volId = VolIdFromDev(wholeDev);
-    if (CreateAndSetupVolume(diskId, wholeDev, false, 0) != ERR_OK) {
-        return;
-    }
+    const std::string diskDevPath = BlockPathForId(diskId);
+    const bool isPartitioning = DiskManager::GetInstance().IsPartitioning(diskId);
 
     std::string uuid;
     std::string type;
     std::string label;
-    const std::string volDevPath = BlockPathForId(volId);
-    ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
+    if (!isPartitioning) {
+        int32_t metaRet = StorageDaemonAdapter::GetInstance().ReadMetadata(diskDevPath, uuid, type, label);
+        if (metaRet != ERR_OK) {
+            LOGI("DiscoverWholeDiskVolume ReadMetadata ret=%{public}d, no FS on whole-disk, skip creating volume",
+                 metaRet);
+            return;
+        }
+    }
 
-    if (DiskManager::GetInstance().IsPartitioning(diskId)) {
+    if (CreateAndSetupVolume(diskId, wholeDev, false, 0) != ERR_OK) {
+        return;
+    }
+
+    if (isPartitioning) {
         const int32_t formatRet = DiskManager::GetInstance().Format(volId, PARTITION_TARGET_FS_TYPE);
         if (formatRet != ERR_OK) {
             LOGE("DiscoverWholeDiskVolume Format failed volId=%{public}s ret=%{public}d", volId.c_str(),
@@ -473,6 +503,8 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
         }
         return;
     }
+
+    (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
 
     LOGI("DiscoverWholeDiskVolume AUTO_MOUNT=%{public}d type.empty=%{public}d uuid.empty=%{public}d",
          AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
@@ -560,7 +592,52 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
     }
     HandleAddCD(env, diskId, state);
 }
+
+inline bool PartitionKeyEqual(const PartitionRecord &a, const PartitionRecord &b)
+{
+    return a.partitionNumber == b.partitionNumber &&
+           a.partitionType == b.partitionType &&
+           a.fsTypeRaw == b.fsTypeRaw;
+}
+
+bool ContainsPartition(const std::vector<PartitionRecord> &list, const PartitionRecord &target)
+{
+    return std::any_of(list.begin(), list.end(),
+                       [&](const PartitionRecord &r) { return PartitionKeyEqual(r, target); });
+}
 } // namespace
+
+void UeventBootstrap::ComputePartitionDiff(const std::string &diskId,
+                                           const std::vector<PartitionRecord> &newParts,
+                                           std::vector<PartitionRecord> &added,
+                                           std::vector<PartitionRecord> &removed)
+{
+    std::lock_guard<std::mutex> lock(diskPartsSnapshotMutex_);
+    auto it = diskPartsSnapshot_.find(diskId);
+    if (it == diskPartsSnapshot_.end()) {
+        added = newParts;
+        diskPartsSnapshot_[diskId] = newParts;
+        return;
+    }
+    const auto &old = it->second;
+    for (const auto &np : newParts) {
+        if (!ContainsPartition(old, np)) {
+            added.push_back(np);
+        }
+    }
+    for (const auto &op : old) {
+        if (!ContainsPartition(newParts, op)) {
+            removed.push_back(op);
+        }
+    }
+    diskPartsSnapshot_[diskId] = newParts;
+}
+
+void UeventBootstrap::ClearPartitionSnapshot(const std::string &diskId)
+{
+    std::lock_guard<std::mutex> lock(diskPartsSnapshotMutex_);
+    diskPartsSnapshot_.erase(diskId);
+}
 
 int32_t UeventBootstrap::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
@@ -603,6 +680,7 @@ int32_t UeventBootstrap::HandleDiskRemove(const UeventEnv &env)
         LOGE("HandleDiskRemove: DestroyALLDisk failed, err=%{public}d", ret);
         return ret;
     }
+    ClearPartitionSnapshot(diskId);
     return DiskManagerErrNo::E_OK;
 }
 
@@ -622,6 +700,10 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts, isUserData);
     if (err != ERR_OK) {
         LOGE("BuildAndSyncPartitions failed with error: %{public}d", err);
+        if (!publishNewDiskEvent) {
+            DestroyALLVolume(diskId);
+            ClearPartitionSnapshot(diskId);
+        }
         return err;
     }
     LOGI("BuildAndSyncPartitions completed successfully");
@@ -632,16 +714,24 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
         DiscoverSinglePartitionVolume4CD(env, diskId);
         return DiskManagerErrNo::E_OK;
     }
-    if (parts.empty() && !publishNewDiskEvent) {
-        LOGI("publishNewDiskEvent is %{public}d, and no partion for disk ID: %{public}s", publishNewDiskEvent,
+
+    std::vector<PartitionRecord> addedParts;
+    std::vector<PartitionRecord> removedParts;
+    ComputePartitionDiff(diskId, parts, addedParts, removedParts);
+
+    for (const auto &rp : removedParts) {
+        LOGI("Cleanup volume for removed partition %{public}u on disk %{public}s", rp.partitionNumber,
              diskId.c_str());
-        DestroyALLVolume(diskId);
+        (void)DiskManager::GetInstance().DestroyVolumeByDiskIdAndPartNum(
+            diskId, static_cast<int32_t>(rp.partitionNumber));
     }
-    for (const auto &p : parts) {
-        LOGI("Discovering volume for partition number: %{public}d", p.partitionNumber);
+
+    for (const auto &p : addedParts) {
+        LOGI("Discovering volume for added partition number: %{public}u", p.partitionNumber);
         DiscoverSinglePartitionVolume(env, diskId, p, isUserData);
     }
-    if (parts.empty()) {
+
+    if (parts.empty() && (publishNewDiskEvent || !removedParts.empty())) {
         DiscoverWholeDiskVolume(env, diskId);
     }
 
@@ -685,6 +775,12 @@ int32_t UeventBootstrap::RediscoverDiskVolumes(const std::string &diskId)
     env.minor = min;
     LOGI("RediscoverDiskVolumes diskId=%{public}s maj=%{public}u min=%{public}u", diskId.c_str(), maj, min);
     return DiscoverPartitionsAndVolumes(env, false);
+}
+
+void UeventBootstrap::ResetPartitionSnapshotForTest()
+{
+    std::lock_guard<std::mutex> lock(diskPartsSnapshotMutex_);
+    diskPartsSnapshot_.clear();
 }
 
 void UeventBootstrap::Init()
