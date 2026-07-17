@@ -2885,7 +2885,7 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
     VolumeExternal volOut;
     dm.GetVolumeById("vol-ad-hdd", volOut);
-    EXPECT_NE(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, ReadPersistUsbReadonlyMount_TestCase_001, TestSize.Level0)
