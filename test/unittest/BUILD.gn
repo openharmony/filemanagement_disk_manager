@@ -376,6 +376,38 @@ ohos_unittest("usb_fuse_adapter_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("pc_encryption_adapter_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "pc_encryption_adapter_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  defines = [
+    "private = public",
+    "dlopen=MockDlopen",
+    "dlsym=MockDlsym",
+    "dlclose=MockDlclose",
+    "dlerror=MockDlerror",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 ohos_unittest("voldata_uuid_store_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
@@ -618,6 +650,7 @@ group("disk_manager_ut") {
     ":partition_types_test",
     ":storage_daemon_adapter_test",
     ":usb_fuse_adapter_test",
+    ":pc_encryption_adapter_test",
     ":voldata_uuid_store_test",
     ":disk_config_test",
     ":partition_table_parser_test",
