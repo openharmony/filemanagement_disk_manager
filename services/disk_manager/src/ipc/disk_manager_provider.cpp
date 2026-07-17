@@ -654,6 +654,7 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("GetPartitionTable: permission denied");
         return E_PERMISSION_DENIED;
     }
     if (diskId.empty()) {
@@ -677,6 +678,7 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("CreatePartition: permission denied");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {
@@ -709,6 +711,7 @@ int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t 
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("DeletePartition: permission denied");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {
@@ -734,6 +737,7 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("FormatPartition: permission denied");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {

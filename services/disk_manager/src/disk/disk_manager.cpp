@@ -1433,6 +1433,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     }
     struct statvfs diskInfo {};
     const int ret = statvfs(path.c_str(), &diskInfo);
+    LOGI("GetFreeSizeOfVolume statvfs ret=%{public}d", ret);
     if (ret != 0) {
         return DiskManagerErrNo::E_STATVFS;
     }
@@ -1477,6 +1478,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     }
     struct statvfs diskInfo {};
     const int ret = statvfs(path.c_str(), &diskInfo);
+    LOGI("GetTotalSizeOfVolume statvfs ret=%{public}d", ret);
     if (ret != 0) {
         return DiskManagerErrNo::E_STATVFS;
     }
