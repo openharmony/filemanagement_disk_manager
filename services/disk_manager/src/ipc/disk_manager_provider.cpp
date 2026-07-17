@@ -392,6 +392,7 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
+
     const int32_t err = DiskManager::GetInstance().Partition(diskId, type);
     LOGI("Partition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
     return err;
@@ -480,7 +481,7 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
         LOGE("DiskManagerProvider::QueryUsbIsInUse realpath failed, errno=%{public}d", errno);
         return E_PARAMS_INVALID;
     }
-    isInUse = false;
+    isInUse = true;
     const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(realPath, isInUse);
     LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
     return err != DiskManagerErrNo::E_OK ? E_QUERY_VOLUME_IN_USE_ERROR : DiskManagerErrNo::E_OK;
@@ -590,12 +591,7 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
         LOGE("CreateIsoImage: filePath is invalid, path traversal detected");
         return E_PARAMS_INVALID;
     }
-    char realPath[PATH_MAX] = {0};
-    if (realpath(filePath.c_str(), realPath) == nullptr) {
-        LOGE("DiskManagerProvider::CreateIsoImage realpath failed, errno=%{public}d", errno);
-        return E_PARAMS_INVALID;
-    }
-    const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, realPath);
+    const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
     LOGI("CreateIsoImage volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
     return err;
 }
@@ -765,6 +761,5 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
 }
-
 } // namespace DiskManager
 } // namespace OHOS
