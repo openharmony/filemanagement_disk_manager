@@ -2863,7 +2863,6 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
     vol.SetFsType(static_cast<int32_t>(HMFS));
     dm.OnVolumeCreated(vol);
 
-    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
     VolumeExternal volOut;
@@ -2882,7 +2881,6 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
     vol.SetFsType(static_cast<int32_t>(HMFS));
     dm.OnVolumeCreated(vol);
 
-    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
     VolumeExternal volOut;
