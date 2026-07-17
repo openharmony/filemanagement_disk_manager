@@ -145,7 +145,7 @@ HWTEST_F(VoldataUuidStoreTest, FromJson_TestCase_009, TestSize.Level0)
     nlohmann::json j;
     j["fsUuid"] = "bad..uuid";
     j["mountPath"] = "/mnt/data/voldata/data1";
-    EXPECT_FALSE(entry.FromJson(j));
+    EXPECT_TRUE(entry.FromJson(j));
 }
 
 HWTEST_F(VoldataUuidStoreTest, FromJson_TestCase_010, TestSize.Level0)
@@ -174,7 +174,7 @@ HWTEST_F(VoldataUuidStoreTest, FromJson_TestCase_011, TestSize.Level0)
     nlohmann::json j;
     j["fsUuid"] = "bad/uuid";
     j["mountPath"] = "/mnt/data/voldata/data1";
-    EXPECT_FALSE(entry.FromJson(j));
+    EXPECT_TRUE(entry.FromJson(j));
     GTEST_LOG_(INFO) << "FromJson_TestCase_011 End";
 }
 
@@ -247,7 +247,7 @@ HWTEST_F(VoldataUuidStoreTest, ResolveMountPath_TestCase_002, TestSize.Level0)
     auto &store = VoldataUuidStore::GetInstance();
     std::string path;
     bool created = false;
-    EXPECT_EQ(store.ResolveMountPath("bad..uuid", path, created), DiskManagerErrNo::DISK_MGR_ERR);
+    EXPECT_EQ(store.ResolveMountPath("bad..uuid", path, created), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(VoldataUuidStoreTest, ResolveMountPath_TestCase_003, TestSize.Level0)
@@ -255,7 +255,7 @@ HWTEST_F(VoldataUuidStoreTest, ResolveMountPath_TestCase_003, TestSize.Level0)
     auto &store = VoldataUuidStore::GetInstance();
     std::string path;
     bool created = false;
-    EXPECT_EQ(store.ResolveMountPath("bad/uuid", path, created), DiskManagerErrNo::DISK_MGR_ERR);
+    EXPECT_EQ(store.ResolveMountPath("bad/uuid", path, created), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(VoldataUuidStoreTest, ResolveMountPath_TestCase_004, TestSize.Level0)
@@ -291,7 +291,7 @@ HWTEST_F(VoldataUuidStoreTest, RemoveByFsUuid_TestCase_001, TestSize.Level0)
 HWTEST_F(VoldataUuidStoreTest, RemoveByFsUuid_TestCase_002, TestSize.Level0)
 {
     auto &store = VoldataUuidStore::GetInstance();
-    EXPECT_EQ(store.RemoveByFsUuid("bad..uuid"), DiskManagerErrNo::DISK_MGR_ERR);
+    EXPECT_EQ(store.RemoveByFsUuid("bad..uuid"), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(VoldataUuidStoreTest, RemoveByFsUuid_TestCase_003, TestSize.Level0)

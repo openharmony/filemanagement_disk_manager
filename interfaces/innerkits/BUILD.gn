@@ -25,6 +25,7 @@ config("disk_manager_idl_public_config") {
   include_dirs = [
     "include",
     "${target_gen_dir}",
+    "//foundation/filemanagement/disk_manager/utils:disk_manager_utils_include",
   ]
 }
 
@@ -79,6 +80,7 @@ ohos_shared_library("disk_manager_innerkits") {
   }
 
   sources = [
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "src/disk.cpp",
     "src/disk_manager_client.cpp",
     "src/partition_types.cpp",

@@ -26,6 +26,7 @@
 #include "uevent_env_parser.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
 #include "errors.h"
 #include "notification/common_event_publisher.h"
 #include "volume_core.h"
@@ -383,7 +384,7 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
         LOGE("Disk with id %{public}s not found", diskId.c_str());
         return E_NON_EXIST;
     }
-    
+
     BlockInfo blockInfo {};
     blockInfo.diskId = diskId;
     int32_t ret = BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(disk.GetDevName(), blockInfo);
@@ -405,8 +406,14 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
                            std::string &uuid, std::string &type, std::string &label)
 {
     int32_t err = StorageDaemonAdapter::GetInstance().ReadMetadata(volDevPath, uuid, type, label);
-    LOGI("UUID: %{public}s, Type: %{public}s, Label: %{public}s", uuid.c_str(), type.c_str(), label.c_str());
+    LOGI("UUID: %{public}s, Type: %{public}s, Label: %{public}s",
+         GetAnonyString(uuid).c_str(), type.c_str(), GetAnonyString(label).c_str());
     if (err == ERR_OK) {
+        if (!IsUuidValid(uuid)) {
+            LOGE("ReadAndUpdateMetadata: uuid is invalid volId=%{public}s uuid=%{public}s",
+                 volId.c_str(), GetAnonyString(uuid).c_str());
+            return;
+        }
         (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
     }
 }

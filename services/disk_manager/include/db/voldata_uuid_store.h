@@ -66,13 +66,10 @@ private:
     VoldataUuidStore(const VoldataUuidStore &) = delete;
     VoldataUuidStore &operator=(const VoldataUuidStore &) = delete;
 
-    static bool IsSafeFsUuid(const std::string &fsUuid);
     static std::string BuildMountPathForSlot(uint32_t slotIndex);
-
     int32_t LoadFromFile();
     int32_t SaveToFile();
     int32_t SaveJsonToFile(const std::string &filePath, const nlohmann::json &jsonData);
-
     void EvictSlotOneIfFullLocked();
     uint32_t FindMinimumFreeSlotLocked() const;
     uint32_t AllocateNextSlotLocked();

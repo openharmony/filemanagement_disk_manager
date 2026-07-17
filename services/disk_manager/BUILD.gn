@@ -45,6 +45,7 @@ ohos_shared_library("disk_manager_server") {
 
   sources = [
     "../../utils/src/ipc_caller_auth.cpp",
+    "../../utils/src/disk_manager_utils.cpp",
     "src/disk/uevent_bootstrap.cpp",
     "src/disk/uevent_env_parser.cpp",
     "src/disk/disk_config.cpp",

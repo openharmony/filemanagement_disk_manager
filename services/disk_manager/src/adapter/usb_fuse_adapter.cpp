@@ -109,7 +109,7 @@ int32_t UsbFuseAdapter::NotifyUsbFuseUmount(const std::string &volumeId)
 bool UsbFuseAdapter::IsUsbFuseByType(const std::string &fsType)
 {
     LOGI("IsUsbFuseByType enter fsType=%{public}s", fsType.c_str());
-    bool enabled = true;
+    bool enabled = false;
     if (handler_ == nullptr) {
         LOGE("IsUsbFuseByType: handler is nullptr, default enabled=%{public}d", static_cast<int>(enabled));
         return enabled;
@@ -130,7 +130,7 @@ bool UsbFuseAdapter::IsUsbFuseEnabledForFsType(const std::string &fsType)
 {
     LOGI("IsUsbFuseEnabledForFsType enter fsType=%{public}s", fsType.c_str());
     const bool enabledByCcm = OHOS::system::GetBoolParameter(FUSE_PARAM_SERVICE_ENTERPRISE_ENABLE, false);
-    bool enabledByType = true;
+    bool enabledByType = false;
     if (enabledByCcm) {
         enabledByType = IsUsbFuseByType(fsType);
     }

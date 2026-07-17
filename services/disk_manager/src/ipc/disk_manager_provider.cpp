@@ -16,6 +16,8 @@
 #include "disk_manager_provider.h"
 
 #include <cinttypes>
+#include <climits>
+#include <sstream>
 
 #include <iservice_registry.h>
 
@@ -23,6 +25,7 @@
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
 #include "errors.h"
 #include "ipc_caller_auth.h"
 #include "ipc_skeleton.h"
@@ -38,10 +41,7 @@ using namespace OHOS::DiskManager;
 namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
-constexpr const char *PATH_INVALID_FLAG1 = "../";
-constexpr const char *PATH_INVALID_FLAG2 = "/..";
-constexpr int32_t PATH_INVALID_FLAG_LEN = 3;
-constexpr char FILE_SEPARATOR_CHAR = '/';
+constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
 } // namespace
 
@@ -149,52 +149,54 @@ void DiskManagerProvider::CheckAndUnloadIfIdle()
     LOGI("CheckAndUnloadIfIdle: UnloadSystemAbility success");
 }
 
-static bool IsFilePathInvalid(const std::string &filePath)
+bool DiskManagerProvider::ValidateBurnOptionsSubfields(const std::string &burnOptions)
 {
-    size_t pos = filePath.find(PATH_INVALID_FLAG1);
-    while (pos != std::string::npos) {
-        if (pos == 0 || filePath[pos - 1] == FILE_SEPARATOR_CHAR) {
-            LOGE("Relative path is not allowed, path contain ../");
-            return true;
+    if (IsFilePathInvalid(burnOptions)) {
+        return false;
+    }
+    std::istringstream ss(burnOptions);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
         }
-        pos = filePath.find(PATH_INVALID_FLAG1, pos + PATH_INVALID_FLAG_LEN);
+        std::string key = line.substr(0, pos);
+        std::string val = line.substr(pos + 1);
+        if (key == "burnPath" || key == "diskName") {
+            if (IsFilePathInvalid(val)) {
+                LOGE("ValidateBurnOptionsSubfields: %{public}s value invalid", key.c_str());
+                return false;
+            }
+        }
     }
-    pos = filePath.rfind(PATH_INVALID_FLAG2);
-    if ((pos != std::string::npos) && (filePath.size() - pos == PATH_INVALID_FLAG_LEN)) {
-        LOGE("Relative path is not allowed, path tail is /..");
-        return true;
-    }
-    return false;
+    return true;
 }
 
-bool DiskManagerProvider::CheckClientPermission()
+bool DiskManagerProvider::CheckStorageDaemonPermission()
 {
-    auto uid = IPCSkeleton::GetCallingUid();
-    if (uid == STORAGEDAEMON_UID) {
-        return true;
-    }
-    LOGE("DiskManagerProvider CheckClientPermission error");
-    return false;
+    return IpcCallerAuth::VerifyNativeCallerMatches("storage_daemon", STORAGEDAEMON_UID);
 }
 
 bool DiskManagerProvider::IsStorageManagerCaller() const
 {
-    return IpcCallerAuth::IsCallingUid(STORAGE_MANAGER_UID) ||
-           IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
+    return IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
 }
 
 int32_t DiskManagerProvider::Mount(const std::string &volumeId)
 {
     LOGI("Mount volumeId=%{public}s", volumeId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Mount: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("Mount: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Mount: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("Mount: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Mount: volumeId is invalid");
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().Mount(volumeId);
     LOGI("Mount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -204,15 +206,17 @@ int32_t DiskManagerProvider::Mount(const std::string &volumeId)
 int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
 {
     LOGI("Unmount volumeId=%{public}s", volumeId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Unmount: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("Unmount: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Unmount: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("Unmount: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Unmount: volumeId is invalid");
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().Unmount(volumeId);
     LOGI("Unmount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -222,15 +226,17 @@ int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
 int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::string &fsType)
 {
     LOGI("Format volumeId=%{public}s fsType=%{public}s", volumeId.c_str(), fsType.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Format: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
-            LOGE("Format: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Format: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("Format: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Format: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().Format(volumeId, fsType);
     LOGI("Format volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -240,15 +246,17 @@ int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::stri
 int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
 {
     LOGI("TryToFix volumeId=%{public}s", volumeId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("TryToFix: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("TryToFix: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("TryToFix: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("TryToFix: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("TryToFix: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().TryToFix(volumeId);
     LOGI("TryToFix volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -257,34 +265,34 @@ int32_t DiskManagerProvider::TryToFix(const std::string &volumeId)
 
 int32_t DiskManagerProvider::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
 {
-    LOGI("SetVolumeDescription fsUuid=%{public}s", fsUuid.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("SetVolumeDescription: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("SetVolumeDescription: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    LOGI("SetVolumeDescription fsUuid=%{public}s", GetAnonyString(fsUuid).c_str());
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("SetVolumeDescription: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("SetVolumeDescription: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsUuidValid(fsUuid)) {
+        LOGE("SetVolumeDescription: fsUuid is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().SetVolumeDescription(fsUuid, description);
-    LOGI("SetVolumeDescription fsUuid=%{public}s err=%{public}d", fsUuid.c_str(), err);
+    LOGI("SetVolumeDescription fsUuid=%{public}s err=%{public}d", GetAnonyString(fsUuid).c_str(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol)
 {
     LOGI("GetAllVolumes");
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("GetAllVolumes: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
-            LOGE("GetAllVolumes: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetAllVolumes: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
+        LOGE("GetAllVolumes: permission denied");
+        return E_PERMISSION_DENIED;
     }
     int32_t err = DiskManager::GetInstance().GetAllVolumes(vecOfVol);
     LOGI("GetAllVolumes count=%{public}zu err=%{public}d", vecOfVol.size(), err);
@@ -293,34 +301,38 @@ int32_t DiskManagerProvider::GetAllVolumes(std::vector<VolumeExternal> &vecOfVol
 
 int32_t DiskManagerProvider::GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &vc)
 {
-    LOGI("GetVolumeByUuid fsUuid=%{public}s", fsUuid.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("GetVolumeByUuid: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
-            LOGE("GetVolumeByUuid: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    LOGI("GetVolumeByUuid fsUuid=%{public}s", GetAnonyString(fsUuid).c_str());
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetVolumeByUuid: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
+        LOGE("GetVolumeByUuid: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsUuidValid(fsUuid)) {
+        LOGE("GetVolumeByUuid: fsUuid is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().GetVolumeByUuid(fsUuid, vc);
-    LOGI("GetVolumeByUuid fsUuid=%{public}s err=%{public}d", fsUuid.c_str(), err);
+    LOGI("GetVolumeByUuid fsUuid=%{public}s err=%{public}d", GetAnonyString(fsUuid).c_str(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeExternal &vc)
 {
     LOGI("GetVolumeById volumeId=%{public}s", volumeId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("GetVolumeById: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
-            LOGE("GetVolumeById: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetVolumeById: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
+        LOGE("GetVolumeById: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("GetVolumeById: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().GetVolumeById(volumeId, vc);
     LOGI("GetVolumeById volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -329,53 +341,58 @@ int32_t DiskManagerProvider::GetVolumeById(const std::string &volumeId, VolumeEx
 
 int32_t DiskManagerProvider::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("GetFreeSizeOfVolume: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
-            LOGE("GetFreeSizeOfVolume: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetFreeSizeOfVolume: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
     }
-    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
+        LOGE("GetFreeSizeOfVolume: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsUuidValid(volumeUuid)) {
+        LOGE("GetFreeSizeOfVolume: volumeUuid is invalid");
+        return E_PARAMS_INVALID;
+    }
     const int32_t err = DiskManager::GetInstance().GetFreeSizeOfVolume(volumeUuid, freeSize);
-    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s err=%{public}d", volumeUuid.c_str(), err);
+    LOGI("GetFreeSizeOfVolume volumeUuid=%{public}s, err=%{public}d", GetAnonyString(volumeUuid).c_str(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
 {
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("GetTotalSizeOfVolume: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
-            LOGE("GetTotalSizeOfVolume: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetTotalSizeOfVolume: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
     }
-    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s", volumeUuid.c_str());
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_STORAGE_MANAGER)) {
+        LOGE("GetTotalSizeOfVolume: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsUuidValid(volumeUuid)) {
+        LOGE("GetTotalSizeOfVolume: volumeUuid is invalid");
+        return E_PARAMS_INVALID;
+    }
     const int32_t err = DiskManager::GetInstance().GetTotalSizeOfVolume(volumeUuid, totalSize);
-    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s err=%{public}d", volumeUuid.c_str(), err);
+    LOGI("GetTotalSizeOfVolume volumeUuid=%{public}s err=%{public}d", GetAnonyString(volumeUuid).c_str(), err);
     return err;
 }
 
 int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
 {
     LOGI("Partition diskId=%{public}s type=%{public}d", diskId.c_str(), type);
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Partition: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
-            LOGE("Partition: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Partition: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
     }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("Partition: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("Partition: diskId is invalid");
+        return E_PARAMS_INVALID;
+    }
+
     const int32_t err = DiskManager::GetInstance().Partition(diskId, type);
     LOGI("Partition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
     return err;
@@ -385,9 +402,19 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
     BeginPendingStorageDaemonCallback();
-    if (!CheckClientPermission()) {
+    if (!CheckStorageDaemonPermission()) {
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
+    }
+    if (rawUeventMsg.size() > UEVENT_RAW_MAX_LEN) {
+        LOGE("OnBlockDiskUevent: rawUeventMsg msg too long, size=%{public}zu", rawUeventMsg.size());
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(rawUeventMsg)) {
+        LOGE("rawUeventMsg is invalid.");
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
     }
     const int32_t ret = UeventBootstrap::OnBlockDiskUevent(rawUeventMsg);
     EndPendingStorageDaemonCallback();
@@ -398,15 +425,13 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 {
     LOGI("GetAllDisks");
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("the caller is not sysapp");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("GetAllDisks: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetAllDisks: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("GetAllDisks: permission denied");
+        return E_PERMISSION_DENIED;
     }
     const int32_t err = DiskManager::GetInstance().GetAllDisks(vecOfDisk);
     LOGI("GetAllDisks count=%{public}zu err=%{public}d", vecOfDisk.size(), err);
@@ -415,20 +440,22 @@ int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)
 
 int32_t DiskManagerProvider::GetDiskById(const std::string &diskId, Disk &disk)
 {
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("the caller is not sysapp");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("GetDiskById: permission denied");
-            return E_PERMISSION_DENIED;
-        }
-    }
     LOGI("GetDiskById diskId=%{public}s.", diskId.c_str());
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetDiskById: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("GetDiskById: permission denied");
+        return E_PERMISSION_DENIED;
+    }
     if (diskId.empty()) {
         LOGI("diskId is empty.");
         return E_PARAMS_INVALID;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("GetDiskById: diskId is invalid");
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().GetDiskById(diskId, disk);
     LOGI("GetDiskById diskId=%{public}s err=%{public}d", diskId.c_str(), err);
@@ -445,16 +472,17 @@ int32_t DiskManagerProvider::QueryUsbIsInUse(const std::string &diskPath, bool &
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         return E_PERMISSION_DENIED;
     }
-    if (diskPath.empty()) {
-        LOGI("diskPath is empty.");
+    if (!IsMountPathValid(diskPath)) {
+        LOGE("mountPath is invalid.");
         return E_PARAMS_INVALID;
     }
-    if (IsFilePathInvalid(diskPath)) {
-        LOGI("diskPath is invalid.");
+    char realPath[PATH_MAX] = {0};
+    if (realpath(diskPath.c_str(), realPath) == nullptr) {
+        LOGE("DiskManagerProvider::QueryUsbIsInUse realpath failed, errno=%{public}d", errno);
         return E_PARAMS_INVALID;
     }
     isInUse = true;
-    const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(diskPath, isInUse);
+    const int32_t err = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(realPath, isInUse);
     LOGI("QueryUsbIsInUse done err=%{public}d isInUse=%{public}d", err, static_cast<int32_t>(isInUse));
     return err != DiskManagerErrNo::E_OK ? E_QUERY_VOLUME_IN_USE_ERROR : DiskManagerErrNo::E_OK;
 }
@@ -467,12 +495,23 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
 {
     LOGI("NotifyMtpMounted id=%{public}s fsType=%{public}s", id.c_str(), fsType.c_str());
     BeginPendingStorageDaemonCallback();
-    if (!CheckClientPermission()) {
-        LOGE("DiskManagerProvider CheckClientPermission error");
+    if (!CheckStorageDaemonPermission()) {
+        LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
-    DiskManager::GetInstance().NotifyMtpMounted(id, path, desc, uuid, fsType);
+    if (!IsMountPathValid(path)) {
+        LOGE("mountPath is invalid.");
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
+    }
+    char realPath[PATH_MAX] = {0};
+    if (realpath(path.c_str(), realPath) == nullptr) {
+        LOGE("DiskManagerProvider::NotifyMtpMounted realpath failed, errno=%{public}d", errno);
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
+    }
+    DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
     EndPendingStorageDaemonCallback();
     LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
     return DiskManagerErrNo::E_OK;
@@ -482,8 +521,8 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
 {
     LOGI("NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(), static_cast<int>(isBadRemove));
     BeginPendingStorageDaemonCallback();
-    if (!CheckClientPermission()) {
-        LOGE("DiskManagerProvider CheckClientPermission error");
+    if (!CheckStorageDaemonPermission()) {
+        LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
@@ -496,15 +535,17 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
 int32_t DiskManagerProvider::Erase(const std::string &volumeId)
 {
     LOGI("Erase volumeId=%{public}s", volumeId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Erase: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("Erase: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Erase: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("Erase: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Erase: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().Erase(volumeId);
     LOGI("Erase volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -514,15 +555,17 @@ int32_t DiskManagerProvider::Erase(const std::string &volumeId)
 int32_t DiskManagerProvider::Eject(const std::string &diskId)
 {
     LOGI("Eject diskId=%{public}s", diskId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Eject: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("Eject: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Eject: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("Eject: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("Eject: diskId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().Eject(diskId);
     LOGI("Eject diskId=%{public}s err=%{public}d", diskId.c_str(), err);
@@ -532,15 +575,21 @@ int32_t DiskManagerProvider::Eject(const std::string &diskId)
 int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const std::string &filePath)
 {
     LOGI("CreateIsoImage volumeId=%{public}s pathLen=%{public}zu", volumeId.c_str(), filePath.size());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("CreateIsoImage: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("CreateIsoImage: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("CreateIsoImage: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("CreateIsoImage: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("CreateIsoImage: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(filePath)) {
+        LOGE("CreateIsoImage: filePath is invalid, path traversal detected");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
     LOGI("CreateIsoImage volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -550,15 +599,21 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
 int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string &burnOptions)
 {
     LOGI("Burn volumeId=%{public}s optsLen=%{public}zu", volumeId.c_str(), burnOptions.size());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("Burn: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("Burn: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("Burn: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("Burn: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("Burn: volumeId is invalid");
+        return E_PARAMS_INVALID;
+    }
+    if (!ValidateBurnOptionsSubfields(burnOptions)) {
+        LOGE("Burn: burnOptions subfield validation failed");
+        return E_PARAMS_INVALID;
     }
     std::string callerBundle = IpcCallerAuth::GetCallingBundleOrNativeProcessName();
     int32_t callerUserId = IpcCallerAuth::GetCallingUserId();
@@ -570,15 +625,17 @@ int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string
 int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
 {
     LOGI("GetVolumeOpProcess volumeId=%{public}s", volumeId.c_str());
-    if (!IsStorageManagerCaller()) {
-        if (!IpcCallerAuth::IsCallingSystemApp()) {
-            LOGE("GetVolumeOpProcess: caller is not system app");
-            return E_SYS_APP_PERMISSION_DENIED;
-        }
-        if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-            LOGE("GetVolumeOpProcess: permission denied");
-            return E_PERMISSION_DENIED;
-        }
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetVolumeOpProcess: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("GetVolumeOpProcess: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(volumeId)) {
+        LOGE("GetVolumeOpProcess: volumeId is invalid");
+        return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().GetVolumeOpProcess(volumeId, progressPct);
     LOGI("GetVolumeOpProcess volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
@@ -587,17 +644,22 @@ int32_t DiskManagerProvider::GetVolumeOpProcess(const std::string &volumeId, int
 
 int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, PartitionTableInfo &out)
 {
+    LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
-    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("GetPartitionTable: permission denied");
         return E_PERMISSION_DENIED;
     }
-    LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
     if (diskId.empty()) {
         LOGI("diskId is empty.");
         return E_PARAMS_INVALID;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("GetPartitionTable: diskId is invalid");
+        return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().GetPartitionTable(diskId, out);
     LOGI("GetPartitionTable diskId=%{public}s err=%{public}d", diskId.c_str(), err);
@@ -606,16 +668,17 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
 
 int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const PartitionParams &params)
 {
+    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
-    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("CreatePartition: permission denied");
         return E_PERMISSION_DENIED;
     }
-    LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
-    if (diskId.empty()) {
-        LOGE("CreatePartition: diskId is empty");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("CreatePartition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     if (params.GetPartitionNum() <= 0) {
@@ -638,16 +701,17 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
 
 int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t partitionNum)
 {
+    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
-    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("DeletePartition: permission denied");
         return E_PERMISSION_DENIED;
     }
-    LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
-    if (diskId.empty()) {
-        LOGE("DeletePartition: diskId is empty");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("DeletePartition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     if (partitionNum <= 0) {
@@ -662,17 +726,18 @@ int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t 
 int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t partitionNum,
                                              const FormatParams &params)
 {
+    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s", diskId.c_str(),
+         partitionNum, params.GetFsType().c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
-    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("FormatPartition: permission denied");
         return E_PERMISSION_DENIED;
     }
-    LOGI("FormatPartition diskId=%{public}s partitionNum=%{public}d fsType=%{public}s", diskId.c_str(),
-         partitionNum, params.GetFsType().c_str());
-    if (diskId.empty()) {
-        LOGE("FormatPartition: diskId is empty");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("FormatPartition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
     if (partitionNum <= 0) {
@@ -687,11 +752,14 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
         LOGE("FormatPartition: quickFormat is invalid");
         return E_PARAMS_INVALID;
     }
+    if (params.GetVolumeName().empty() || params.GetVolumeName().size() > VOLUME_NAME_MAX_LEN) {
+        LOGE("FormatPartition: volumeName is empty or length exceeds %{public}zu limit",
+             static_cast<size_t>(VOLUME_NAME_MAX_LEN));
+        return E_NON_EXIST;
+    }
     int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
 }
-
-
 } // namespace DiskManager
 } // namespace OHOS

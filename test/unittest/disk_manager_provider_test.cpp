@@ -52,13 +52,13 @@ using namespace testing::ext;
 namespace {
 const int64_t SIZE = 4096;
 
-Disk MakeUsbDisk(const std::string &diskId = "disk-ut-1")
+Disk MakeUsbDisk(const std::string &diskId = "disk-8-1")
 {
     return Disk(diskId, SIZE, "/dev/block/" + diskId, USB_FLAG);
 }
 
-VolumeExternal MakeUsbVolume(const std::string &volId = "vol-ut-1",
-                             const std::string &diskId = "disk-ut-1",
+VolumeExternal MakeUsbVolume(const std::string &volId = "vol-8-1",
+                             const std::string &diskId = "disk-8-1",
                              const std::string &fsUuid = "uuid-ut-1",
                              int32_t state = UNMOUNTED,
                              int32_t fsType = VFAT)
@@ -203,7 +203,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(0, 2048, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_002 End";
 }
 
@@ -218,7 +218,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(-1, 2048, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_003 End";
 }
 
@@ -233,7 +233,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_004 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 0, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_004 End";
 }
 
@@ -248,7 +248,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_005 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 2048, 0, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_005 End";
 }
 
@@ -263,7 +263,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_006, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_006 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 500000, 2048, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_006 End";
 }
 
@@ -278,7 +278,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_007, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_007 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 2048, 2048, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_007 End";
 }
 
@@ -293,7 +293,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_008, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_008 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 2048, 500000, "");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_008 End";
 }
 
@@ -321,7 +321,7 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_TestCase_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "DeletePartition_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.DeletePartition("disk-1", 0), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.DeletePartition("disk-8-0", 0), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "DeletePartition_TestCase_002 End";
 }
 
@@ -335,7 +335,7 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_TestCase_003, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "DeletePartition_TestCase_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.DeletePartition("disk-1", -1), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.DeletePartition("disk-8-0", -1), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "DeletePartition_TestCase_003 End";
 }
 
@@ -365,7 +365,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(provider.FormatPartition("disk-1", 0, params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", 0, params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 End";
 }
 
@@ -380,7 +380,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(provider.FormatPartition("disk-1", -1, params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", -1, params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_003 End";
 }
 
@@ -395,7 +395,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_004 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     FormatParams params("", true, "volume");
-    EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", 1, params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_004 End";
 }
 
@@ -412,7 +412,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_001, TestSize.Level0)
     bool isInUse = false;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(true), Return(ERR_OK)));
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/mnt/data/external", isInUse);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_TRUE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_001 End";
@@ -431,7 +431,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_002, TestSize.Level0)
     bool isInUse = false;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(false), Return(E_DAEMON_IPC_FAILED)));
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-2", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/mnt/data/external", isInUse);
     EXPECT_EQ(ret, E_QUERY_VOLUME_IN_USE_ERROR);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_002 End";
@@ -450,7 +450,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_TestCase_003, TestSize.Level0)
     bool isInUse = false;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
         .WillOnce(DoAll(SetArgReferee<1>(false), Return(ERR_OK)));
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-3", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/mnt/data/external", isInUse);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_TestCase_003 End";
@@ -469,7 +469,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_NotSysApp_001, TestSize.Level0
     g_accessTokenType = 0;
     g_isSystemApp = false;
     bool isInUse = false;
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-8-0", isInUse);
     EXPECT_EQ(ret, E_SYS_APP_PERMISSION_DENIED);
     EXPECT_FALSE(isInUse);
     g_accessTokenType = 1;
@@ -489,7 +489,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_PermissionDenied_001, TestSize
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     bool isInUse = false;
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-8-0", isInUse);
     EXPECT_EQ(ret, E_PERMISSION_DENIED);
     EXPECT_FALSE(isInUse);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
@@ -524,7 +524,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_InvalidPath_001, TestSize.Leve
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     bool isInUse = false;
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/../disk-1", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/../disk-8-0", isInUse);
     EXPECT_EQ(ret, E_PARAMS_INVALID);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_001 End";
@@ -541,7 +541,7 @@ HWTEST_F(DiskManagerProviderTest, QueryUsbIsInUse_InvalidPath_002, TestSize.Leve
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     bool isInUse = false;
-    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-1/..", isInUse);
+    int32_t ret = provider.QueryUsbIsInUse("/dev/block/disk-8-0/..", isInUse);
     EXPECT_EQ(ret, E_PARAMS_INVALID);
     EXPECT_FALSE(isInUse);
     GTEST_LOG_(INFO) << "QueryUsbIsInUse_InvalidPath_002 End";
@@ -557,9 +557,12 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_TestCase_001, TestSize.Level
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
         .WillOnce(Return(E_OK));
     EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_001 End";
 }
 
@@ -573,9 +576,12 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_TestCase_002, TestSize.Level
 {
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
     EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
         .WillOnce(Return(E_UEVENT_PARSE_FAILED));
     EXPECT_EQ(provider.OnBlockDiskUevent("invalid-msg"), E_UEVENT_PARSE_FAILED);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_TestCase_002 End";
 }
 
@@ -589,8 +595,62 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_TestCase_001, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "NotifyMtpMounted_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "mtpfs"), E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("vol-61-1", "/mnt/data/external", "desc", "uuid", "mtpfs"), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpMounted_TestCase_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_EmptyPath_001
+ * @tc.desc: NotifyMtpMounted returns E_PARAMS_INVALID when path is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_EmptyPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_EmptyPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("vol-61-1", "", "desc", "uuid", "mtpfs"), E_PARAMS_INVALID);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_EmptyPath_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_InvalidPath_001
+ * @tc.desc: NotifyMtpMounted returns E_PARAMS_INVALID when path contains ../ path traversal.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("vol-61-1", "/mnt/../path", "desc", "uuid", "mtpfs"), E_PARAMS_INVALID);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: NotifyMtpMounted_InvalidPath_002
+ * @tc.desc: NotifyMtpMounted returns E_PARAMS_INVALID when path ends with /..
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_InvalidPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("vol-61-1", "/mnt/..", "desc", "uuid", "mtpfs"), E_PARAMS_INVALID);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_InvalidPath_002 End";
 }
 
 /**
@@ -603,7 +663,10 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_001, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.NotifyMtpUnmounted("mtp-id", false), E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpUnmounted("vol-61-1", false), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_001 End";
 }
 
@@ -617,7 +680,10 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_002, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.NotifyMtpUnmounted("mtp-id", true), E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpUnmounted("vol-61-1", true), E_OK);
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_002 End";
 }
 
@@ -632,14 +698,14 @@ HWTEST_F(DiskManagerProviderTest, Mount_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "Mount_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-mt-p1"));
-    VolumeExternal vol = MakeUsbVolume("vol-mt-p1", "disk-mt-p1", "uuid-mt-p1", UNMOUNTED);
+    dm.OnDiskCreated(MakeUsbDisk("disk-14-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-14-1", "disk-14-1", "uuid-mt-p1", UNMOUNTED);
     dm.OnVolumeCreated(vol);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Mount(_, _, _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(MockUsbFuseAdapter::GetInstance(), IsUsbFuseEnabledForFsType(_))
         .WillRepeatedly(Return(false));
-    EXPECT_EQ(provider.Mount("vol-mt-p1"), E_OK);
+    EXPECT_EQ(provider.Mount("vol-14-1"), E_OK);
     GTEST_LOG_(INFO) << "Mount_TestCase_001 End";
 }
 
@@ -654,12 +720,12 @@ HWTEST_F(DiskManagerProviderTest, Unmount_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "Unmount_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-um-p1"));
-    VolumeExternal vol = MakeUsbVolume("vol-um-p1", "disk-um-p1", "uuid-um-p1", MOUNTED);
+    dm.OnDiskCreated(MakeUsbDisk("disk-15-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-15-1", "disk-15-1", "uuid-um-p1", MOUNTED);
     dm.OnVolumeCreated(vol);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Unmount(_, _, _))
         .WillOnce(Return(ERR_OK));
-    EXPECT_EQ(provider.Unmount("vol-um-p1"), E_OK);
+    EXPECT_EQ(provider.Unmount("vol-15-1"), E_OK);
     GTEST_LOG_(INFO) << "Unmount_TestCase_001 End";
 }
 
@@ -706,8 +772,8 @@ HWTEST_F(DiskManagerProviderTest, GetAllDisks_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetAllDisks_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-ad-p1"));
-    dm.OnDiskCreated(MakeUsbDisk("disk-ad-p2"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-16-1"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-16-2"));
     std::vector<Disk> disks;
     EXPECT_EQ(provider.GetAllDisks(disks), E_OK);
     EXPECT_EQ(disks.size(), static_cast<size_t>(2));
@@ -725,7 +791,7 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_TestCase_001, TestSize.Leve
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     int32_t progress = -1;
-    EXPECT_EQ(provider.GetVolumeOpProcess("nonexistent-vol", progress), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.GetVolumeOpProcess("vol-99-99", progress), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_001 End";
 }
 
@@ -739,7 +805,7 @@ HWTEST_F(DiskManagerProviderTest, Format_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Format_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Format("nonexistent-vol", "vfat"), E_NON_EXIST);
+    EXPECT_EQ(provider.Format("vol-99-99", "vfat"), E_NON_EXIST);
     GTEST_LOG_(INFO) << "Format_TestCase_001 End";
 }
 
@@ -753,7 +819,7 @@ HWTEST_F(DiskManagerProviderTest, TryToFix_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "TryToFix_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.TryToFix("nonexistent-vol"), E_NON_EXIST);
+    EXPECT_EQ(provider.TryToFix("vol-99-99"), E_NON_EXIST);
     GTEST_LOG_(INFO) << "TryToFix_TestCase_001 End";
 }
 
@@ -797,7 +863,7 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeById_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetVolumeById_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     VolumeExternal vc;
-    EXPECT_EQ(provider.GetVolumeById("nonexistent-vol", vc), E_NON_EXIST);
+    EXPECT_EQ(provider.GetVolumeById("vol-99-99", vc), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetVolumeById_TestCase_001 End";
 }
 
@@ -841,7 +907,7 @@ HWTEST_F(DiskManagerProviderTest, Partition_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Partition_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Partition("nonexistent-disk", 0), E_NOT_SUPPORT);
+    EXPECT_EQ(provider.Partition("disk-99-99", 0), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "Partition_TestCase_001 End";
 }
 
@@ -871,7 +937,7 @@ HWTEST_F(DiskManagerProviderTest, GetDiskById_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     Disk disk;
-    EXPECT_EQ(provider.GetDiskById("nonexistent-disk", disk), E_NON_EXIST);
+    EXPECT_EQ(provider.GetDiskById("disk-99-99", disk), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetDiskById_TestCase_002 End";
 }
 
@@ -885,7 +951,7 @@ HWTEST_F(DiskManagerProviderTest, Erase_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Erase_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Erase("nonexistent-vol"), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.Erase("vol-99-99"), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "Erase_TestCase_001 End";
 }
 
@@ -899,7 +965,7 @@ HWTEST_F(DiskManagerProviderTest, Eject_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Eject_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Eject("nonexistent-disk"), E_NOT_SUPPORT);
+    EXPECT_EQ(provider.Eject("disk-99-99"), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "Eject_TestCase_001 End";
 }
 
@@ -913,8 +979,50 @@ HWTEST_F(DiskManagerProviderTest, CreateIsoImage_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.CreateIsoImage("nonexistent-vol", "/tmp/image.iso"), E_NOT_SUPPORT);
+    EXPECT_EQ(provider.CreateIsoImage("vol-99-99", "/data/local/tmp"), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "CreateIsoImage_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_EmptyFilePath_001
+ * @tc.desc: CreateIsoImage returns E_PARAMS_INVALID when filePath is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_EmptyFilePath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_EmptyFilePath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.CreateIsoImage("vol-8-0", ""), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "CreateIsoImage_EmptyFilePath_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_InvalidPath_001
+ * @tc.desc: CreateIsoImage returns E_PARAMS_INVALID when filePath contains ../ path traversal.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.CreateIsoImage("vol-8-0", "/tmp/../etc/image.iso"), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: CreateIsoImage_InvalidPath_002
+ * @tc.desc: CreateIsoImage returns E_PARAMS_INVALID when filePath ends with /..
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateIsoImage_InvalidPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.CreateIsoImage("vol-8-0", "/tmp/.."), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "CreateIsoImage_InvalidPath_002 End";
 }
 
 /**
@@ -927,29 +1035,29 @@ HWTEST_F(DiskManagerProviderTest, Burn_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Burn_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.Burn("nonexistent-vol", "--write"), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.Burn("vol-99-99", "--write"), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "Burn_TestCase_001 End";
 }
 
 /**
  * @tc.name: CheckClientPermission_TestCase_001
- * @tc.desc: CheckClientPermission returns false when uid != STORAGEDAEMON_UID.
+ * @tc.desc: CheckStorageDaemonPermission returns false when uid != STORAGEDAEMON_UID.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, CheckClientPermission_TestCase_001, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, CheckStorageDaemonPermission_TestCase_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_001 Start";
+    GTEST_LOG_(INFO) << "CheckStorageDaemonPermission_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = 1000;
-    EXPECT_FALSE(provider.CheckClientPermission());
+    EXPECT_FALSE(provider.CheckStorageDaemonPermission());
     MockIPCSkeleton::mockCallingUid_ = 0;
-    GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_001 End";
+    GTEST_LOG_(INFO) << "CheckStorageDaemonPermission_TestCase_001 End";
 }
 
 /**
  * @tc.name: OnBlockDiskUevent_TestCase_003
- * @tc.desc: OnBlockDiskUevent returns E_PERMISSION_DENIED when CheckClientPermission fails.
+ * @tc.desc: OnBlockDiskUevent returns E_PERMISSION_DENIED when CheckStorageDaemonPermission fails.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -975,12 +1083,7 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_PendingCount_TestCase_001, T
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_PendingCount_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
-    EXPECT_CALL(MockUeventBootstrap::GetInstance(), OnBlockDiskUeventImpl(_))
-        .WillOnce(Invoke([&provider](const std::string &) {
-            EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 1);
-            return E_OK;
-        }));
-    EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_OK);
+    EXPECT_EQ(provider.OnBlockDiskUevent("ACTION=add;DEVNAME=sda;MAJOR=8;MINOR=0"), E_PERMISSION_DENIED);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
     GTEST_LOG_(INFO) << "OnBlockDiskUevent_PendingCount_TestCase_001 End";
 }
@@ -1029,7 +1132,7 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_PendingCount_TestCase_001, Te
     GTEST_LOG_(INFO) << "NotifyMtpMounted_PendingCount_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
-    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "vfat"), E_OK);
+    EXPECT_EQ(provider.NotifyMtpMounted("mtp-id", "/mnt/path", "desc", "uuid", "vfat"), E_PERMISSION_DENIED);
     EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
     GTEST_LOG_(INFO) << "NotifyMtpMounted_PendingCount_TestCase_001 End";
 }
@@ -1053,7 +1156,7 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_PendingCount_TestCase_001, 
 
 /**
  * @tc.name: NotifyMtpMounted_TestCase_002
- * @tc.desc: NotifyMtpMounted returns E_PERMISSION_DENIED when CheckClientPermission fails.
+ * @tc.desc: NotifyMtpMounted returns E_PERMISSION_DENIED when CheckStorageDaemonPermission fails.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -1069,7 +1172,7 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_TestCase_002, TestSize.Level0
 
 /**
  * @tc.name: NotifyMtpUnmounted_TestCase_003
- * @tc.desc: NotifyMtpUnmounted returns E_PERMISSION_DENIED when CheckClientPermission fails.
+ * @tc.desc: NotifyMtpUnmounted returns E_PERMISSION_DENIED when CheckStorageDaemonPermission fails.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -1094,7 +1197,7 @@ HWTEST_F(DiskManagerProviderTest, GetPartitionTable_TestCase_002, TestSize.Level
     GTEST_LOG_(INFO) << "GetPartitionTable_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionTableInfo out;
-    EXPECT_EQ(provider.GetPartitionTable("nonexistent-disk", out), E_NON_EXIST);
+    EXPECT_EQ(provider.GetPartitionTable("disk-99-99", out), E_NON_EXIST);
     GTEST_LOG_(INFO) << "GetPartitionTable_TestCase_002 End";
 }
 
@@ -1109,7 +1212,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_TestCase_009, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_009 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 2048, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("nonexistent-disk", params), E_NON_EXIST);
+    EXPECT_EQ(provider.CreatePartition("disk-99-99", params), E_NON_EXIST);
     GTEST_LOG_(INFO) << "CreatePartition_TestCase_009 End";
 }
 
@@ -1123,7 +1226,7 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_TestCase_004, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "DeletePartition_TestCase_004 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.DeletePartition("nonexistent-disk", 1), E_NON_EXIST);
+    EXPECT_EQ(provider.DeletePartition("disk-99-99", 1), E_NON_EXIST);
     GTEST_LOG_(INFO) << "DeletePartition_TestCase_004 End";
 }
 
@@ -1138,7 +1241,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_005 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     FormatParams params("vfat", false, "volume");
-    EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", 1, params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_005 End";
 }
 
@@ -1153,7 +1256,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_TestCase_006, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_006 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(provider.FormatPartition("nonexistent-disk", 1, params), E_NON_EXIST);
+    EXPECT_EQ(provider.FormatPartition("disk-99-99", 1, params), E_NON_EXIST);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_006 End";
 }
 
@@ -1206,7 +1309,7 @@ HWTEST_F(DiskManagerProviderTest, GetDiskById_PermissionDenied_001, TestSize.Lev
     g_accessTokenType = 0;
     g_isSystemApp = false;
     Disk disk;
-    EXPECT_EQ(provider.GetDiskById("disk-1", disk), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetDiskById("disk-8-0", disk), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
     GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_001 End";
@@ -1224,7 +1327,7 @@ HWTEST_F(DiskManagerProviderTest, GetDiskById_PermissionDenied_002, TestSize.Lev
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     Disk disk;
-    EXPECT_EQ(provider.GetDiskById("disk-1", disk), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetDiskById("disk-8-0", disk), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "GetDiskById_PermissionDenied_002 End";
 }
@@ -1242,7 +1345,7 @@ HWTEST_F(DiskManagerProviderTest, GetPartitionTable_PermissionDenied_001, TestSi
     g_accessTokenType = 0;
     g_isSystemApp = false;
     PartitionTableInfo out;
-    EXPECT_EQ(provider.GetPartitionTable("disk-1", out), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetPartitionTable("disk-8-0", out), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
     GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_001 End";
@@ -1260,7 +1363,7 @@ HWTEST_F(DiskManagerProviderTest, GetPartitionTable_PermissionDenied_002, TestSi
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     PartitionTableInfo out;
-    EXPECT_EQ(provider.GetPartitionTable("disk-1", out), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetPartitionTable("disk-8-0", out), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDenied_002 End";
 }
@@ -1278,7 +1381,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_PermissionDenied_001, TestSize
     g_accessTokenType = 0;
     g_isSystemApp = false;
     PartitionParams params(1, 2048, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
     GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_001 End";
@@ -1296,7 +1399,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_PermissionDenied_002, TestSize
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     PartitionParams params(1, 2048, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "CreatePartition_PermissionDenied_002 End";
 }
@@ -1313,7 +1416,7 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_PermissionDenied_001, TestSize
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.DeletePartition("disk-1", 1), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.DeletePartition("disk-8-0", 1), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
     GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_001 End";
@@ -1330,7 +1433,7 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_PermissionDenied_002, TestSize
     GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.DeletePartition("disk-1", 1), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.DeletePartition("disk-8-0", 1), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "DeletePartition_PermissionDenied_002 End";
 }
@@ -1348,7 +1451,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_PermissionDenied_001, TestSize
     g_accessTokenType = 0;
     g_isSystemApp = false;
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", 1, params), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
     GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_001 End";
@@ -1366,7 +1469,7 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_PermissionDenied_002, TestSize
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(provider.FormatPartition("disk-1", 1, params), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", 1, params), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     GTEST_LOG_(INFO) << "FormatPartition_PermissionDenied_002 End";
 }
@@ -1384,7 +1487,7 @@ HWTEST_F(DiskManagerProviderTest, Mount_PermissionDenied_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Mount("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Mount("vol-8-0"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1403,7 +1506,7 @@ HWTEST_F(DiskManagerProviderTest, Mount_PermissionDenied_002, TestSize.Level0)
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Mount("vol-1"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Mount("vol-8-0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Mount_PermissionDenied_002 End";
@@ -1422,7 +1525,7 @@ HWTEST_F(DiskManagerProviderTest, Unmount_PermissionDenied_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Unmount("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Unmount("vol-8-0"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1441,7 +1544,7 @@ HWTEST_F(DiskManagerProviderTest, Unmount_PermissionDenied_002, TestSize.Level0)
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Unmount("vol-1"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Unmount("vol-8-0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Unmount_PermissionDenied_002 End";
@@ -1460,7 +1563,7 @@ HWTEST_F(DiskManagerProviderTest, Format_PermissionDenied_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Format("vol-1", "vfat"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Format("vol-8-0", "vfat"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1479,7 +1582,7 @@ HWTEST_F(DiskManagerProviderTest, Format_PermissionDenied_002, TestSize.Level0)
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Format("vol-1", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Format("vol-8-0", "vfat"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Format_PermissionDenied_002 End";
@@ -1498,7 +1601,7 @@ HWTEST_F(DiskManagerProviderTest, TryToFix_PermissionDenied_001, TestSize.Level0
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.TryToFix("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.TryToFix("vol-8-0"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1517,7 +1620,7 @@ HWTEST_F(DiskManagerProviderTest, TryToFix_PermissionDenied_002, TestSize.Level0
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.TryToFix("vol-1"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.TryToFix("vol-8-0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "TryToFix_PermissionDenied_002 End";
@@ -1655,7 +1758,7 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeById_PermissionDenied_001, TestSize.L
     g_accessTokenType = 0;
     g_isSystemApp = false;
     VolumeExternal vc;
-    EXPECT_EQ(provider.GetVolumeById("vol-1", vc), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetVolumeById("vol-8-0", vc), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1675,7 +1778,7 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeById_PermissionDenied_002, TestSize.L
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     VolumeExternal vc;
-    EXPECT_EQ(provider.GetVolumeById("vol-1", vc), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetVolumeById("vol-8-0", vc), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "GetVolumeById_PermissionDenied_002 End";
@@ -1774,7 +1877,7 @@ HWTEST_F(DiskManagerProviderTest, Partition_PermissionDenied_001, TestSize.Level
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Partition("disk-1", 1), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Partition("disk-8-0", 1), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1793,7 +1896,7 @@ HWTEST_F(DiskManagerProviderTest, Partition_PermissionDenied_002, TestSize.Level
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Partition("disk-1", 1), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Partition("disk-8-0", 1), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Partition_PermissionDenied_002 End";
@@ -1812,7 +1915,7 @@ HWTEST_F(DiskManagerProviderTest, Erase_PermissionDenied_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Erase("vol-1"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Erase("vol-8-0"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1831,7 +1934,7 @@ HWTEST_F(DiskManagerProviderTest, Erase_PermissionDenied_002, TestSize.Level0)
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Erase("vol-1"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Erase("vol-8-0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Erase_PermissionDenied_002 End";
@@ -1850,7 +1953,7 @@ HWTEST_F(DiskManagerProviderTest, Eject_PermissionDenied_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Eject("disk-1"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Eject("disk-8-0"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1869,7 +1972,7 @@ HWTEST_F(DiskManagerProviderTest, Eject_PermissionDenied_002, TestSize.Level0)
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Eject("disk-1"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Eject("disk-8-0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Eject_PermissionDenied_002 End";
@@ -1888,7 +1991,7 @@ HWTEST_F(DiskManagerProviderTest, Burn_PermissionDenied_001, TestSize.Level0)
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.Burn("vol-1", "{}"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Burn("vol-8-0", "{}"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1907,7 +2010,7 @@ HWTEST_F(DiskManagerProviderTest, Burn_PermissionDenied_002, TestSize.Level0)
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Burn("vol-1", "{}"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.Burn("vol-8-0", "{}"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "Burn_PermissionDenied_002 End";
@@ -1926,7 +2029,7 @@ HWTEST_F(DiskManagerProviderTest, CreateIsoImage_PermissionDenied_001, TestSize.
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_accessTokenType = 0;
     g_isSystemApp = false;
-    EXPECT_EQ(provider.CreateIsoImage("vol-1", "/data/test.iso"), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.CreateIsoImage("vol-8-0", "/data/test.iso"), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1945,7 +2048,7 @@ HWTEST_F(DiskManagerProviderTest, CreateIsoImage_PermissionDenied_002, TestSize.
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.CreateIsoImage("vol-1", "/data/test.iso"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.CreateIsoImage("vol-8-0", "/data/test.iso"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "CreateIsoImage_PermissionDenied_002 End";
@@ -1965,7 +2068,7 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_PermissionDenied_001, TestS
     g_accessTokenType = 0;
     g_isSystemApp = false;
     int32_t progress = 0;
-    EXPECT_EQ(provider.GetVolumeOpProcess("vol-1", progress), E_SYS_APP_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetVolumeOpProcess("vol-8-0", progress), E_SYS_APP_PERMISSION_DENIED);
     g_accessTokenType = 1;
     g_isSystemApp = true;
 
@@ -1985,7 +2088,7 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_PermissionDenied_002, TestS
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     int32_t progress = 0;
-    EXPECT_EQ(provider.GetVolumeOpProcess("vol-1", progress), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.GetVolumeOpProcess("vol-8-0", progress), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
 
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_PermissionDenied_002 End";
@@ -2021,34 +2124,38 @@ HWTEST_F(DiskManagerProviderTest, Mount_StorageManagerCaller_TestCase_001, TestS
     GTEST_LOG_(INFO) << "Mount_StorageManagerCaller_TestCase_001 Start";
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "storage_manager";
     MockIPCSkeleton::mockCallingUid_ = 1090;
     g_accessTokenType = 0;
-    g_isSystemApp = false;
+    g_isSystemApp = true;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Mount("nonexistent-vol"), E_NON_EXIST);
+    EXPECT_EQ(provider.Mount("vol-99-99"), E_NON_EXIST);
     MockIPCSkeleton::mockCallingUid_ = 0;
     g_accessTokenType = 1;
     g_isSystemApp = true;
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    g_nativeProcessName = "foundation";
 
     GTEST_LOG_(INFO) << "Mount_StorageManagerCaller_TestCase_001 End";
 }
 
 /**
  * @tc.name: CheckClientPermission_TestCase_002
- * @tc.desc: uid=0 的调用方 CheckClientPermission 返回 true
+ * @tc.desc: uid=0 的调用方 CheckStorageDaemonPermission 返回 true
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, CheckClientPermission_TestCase_002, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, CheckStorageDaemonPermission_TestCase_002, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_002 Start";
+    GTEST_LOG_(INFO) << "CheckStorageDaemonPermission_TestCase_002 Start";
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = 0;
-    EXPECT_TRUE(provider.CheckClientPermission());
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_TRUE(provider.CheckStorageDaemonPermission());
+    g_nativeProcessName = "foundation";
 
-    GTEST_LOG_(INFO) << "CheckClientPermission_TestCase_002 End";
+    GTEST_LOG_(INFO) << "CheckStorageDaemonPermission_TestCase_002 End";
 }
 
 /**
@@ -2065,9 +2172,9 @@ HWTEST_F(DiskManagerProviderTest, Mount_StorageManagerCaller_TestCase_002, TestS
     MockIPCSkeleton::mockCallingUid_ = 1090;
     g_accessTokenType = 1;
     g_nativeProcessName = "storage_manager";
-    g_isSystemApp = false;
+    g_isSystemApp = true;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    EXPECT_EQ(provider.Mount("nonexistent-vol"), E_NON_EXIST);
+    EXPECT_EQ(provider.Mount("vol-99-99"), E_NON_EXIST);
     MockIPCSkeleton::mockCallingUid_ = 0;
     g_nativeProcessName = "foundation";
     g_isSystemApp = true;
@@ -2122,7 +2229,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_002, TestSize.Le
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(0, 2048, 500000, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
 
     GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_002 End";
 }
@@ -2139,7 +2246,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_003, TestSize.Le
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 500000, 2048, "vfat");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
 
     GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_003 End";
 }
@@ -2156,7 +2263,7 @@ HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalid_004, TestSize.Le
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     PartitionParams params(1, 2048, 500000, "");
-    EXPECT_EQ(provider.CreatePartition("disk-1", params), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
 
     GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalid_004 End";
 }
@@ -2172,7 +2279,7 @@ HWTEST_F(DiskManagerProviderTest, DeletePartition_ParamsInvalid_001, TestSize.Le
     GTEST_LOG_(INFO) << "DeletePartition_ParamsInvalid_001 Start";
 
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    EXPECT_EQ(provider.DeletePartition("disk-1", 0), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.DeletePartition("disk-8-0", 0), E_PARAMS_INVALID);
 
     GTEST_LOG_(INFO) << "DeletePartition_ParamsInvalid_001 End";
 }
@@ -2192,6 +2299,119 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_ParamsInvalid_001, TestSize.Le
     EXPECT_EQ(provider.FormatPartition("", 1, params), E_PARAMS_INVALID);
 
     GTEST_LOG_(INFO) << "FormatPartition_ParamsInvalid_001 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_001
+ * @tc.desc: 合法 burnOptions（无子字段）通过校验。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_TRUE(provider.ValidateBurnOptionsSubfields("--write"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_001 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_002
+ * @tc.desc: 合法 burnPath 和 diskName 子字段通过校验。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_TRUE(provider.ValidateBurnOptionsSubfields("burnPath=/data/tmp\ndiskName=usb1"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_002 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_003
+ * @tc.desc: burnPath 含路径穿越 ../ 时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("burnPath=../etc/passwd"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_003 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_004
+ * @tc.desc: diskName 含路径穿越 ../ 时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_004 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("diskName=../../../tmp"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_004 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_005
+ * @tc.desc: burnPath 含 %00 URL 编码 null byte 时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_005, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_005 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("burnPath=/tmp%00/etc"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_005 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_006
+ * @tc.desc: 非 burnPath/diskName 的键被忽略，校验通过。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_006, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_006 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_TRUE(provider.ValidateBurnOptionsSubfields("speed=4x\nmode=dao"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_006 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_007
+ * @tc.desc: burnOptions 整体含路径穿越时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_007, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_007 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields("../etc/passwd"));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_007 End";
+}
+
+/**
+ * @tc.name: ValidateBurnOptionsSubfields_TestCase_008
+ * @tc.desc: burnPath 含内嵌真实 \0 字符时校验失败。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_008, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_008 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string opts = "burnPath=" + std::string("/tmp\0/etc", 8) + "\ndiskName=usb1";
+    EXPECT_FALSE(provider.ValidateBurnOptionsSubfields(opts));
+    GTEST_LOG_(INFO) << "ValidateBurnOptionsSubfields_TestCase_008 End";
 }
 
 } // namespace DiskManager

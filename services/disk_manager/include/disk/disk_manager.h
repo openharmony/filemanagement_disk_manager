@@ -125,7 +125,6 @@ private:
         int32_t diskFlag = 0;
     };
 
-    bool IsSafeFsUuid(const std::string &fsUuid);
     /** 调用方已持 volumeMapMutex_（读锁）。 */
     int32_t LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const;
     std::string GetVolumePath(const std::string &volumeUuid);
