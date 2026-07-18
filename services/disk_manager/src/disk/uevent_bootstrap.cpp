@@ -593,6 +593,25 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
     HandleAddCD(env, diskId, state);
 }
 
+int32_t DiscoverCdromVolumes(const UeventEnv &env, const std::string &diskId, bool publishNewDiskEvent)
+{
+    LOGI("DiscoverCdromVolumes enter diskId=%{public}s publishNew=%{public}d",
+         diskId.c_str(), static_cast<int>(publishNewDiskEvent));
+
+    const std::string diskDevPath = BlockPathForId(diskId);
+    int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
+        diskDevPath, K_DISK_BLOCK_DEVICE_NODE_MODE, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
+    if (err != ERR_OK) {
+        LOGE("DiscoverCdromVolumes CreateBlockDeviceNode failed err=%{public}d", err);
+        return err;
+    }
+
+    const bool publishNew = publishNewDiskEvent || !DiskManager::GetInstance().HasDisk(diskId);
+    UpsertDiskAndPublishEvent(env, diskId, publishNew);
+    DiscoverSinglePartitionVolume4CD(env, diskId);
+    return DiskManagerErrNo::E_OK;
+}
+
 inline bool PartitionKeyEqual(const PartitionRecord &a, const PartitionRecord &b)
 {
     return a.partitionNumber == b.partitionNumber &&
@@ -695,6 +714,10 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
 
     LOGI("ID:%{public}s, Path:%{public}s, action:%{public}s", diskId.c_str(), diskDevPath.c_str(), env.action.c_str());
 
+    if (env.major == DISK_CD_MAJOR) {
+        return DiscoverCdromVolumes(env, diskId, publishNewDiskEvent);
+    }
+
     std::vector<PartitionRecord> parts;
     bool isUserData = false;
     int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts, isUserData);
@@ -710,10 +733,6 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
 
     UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent);
     LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s", diskId.c_str());
-    if (env.major == DISK_CD_MAJOR) {
-        DiscoverSinglePartitionVolume4CD(env, diskId);
-        return DiskManagerErrNo::E_OK;
-    }
 
     std::vector<PartitionRecord> addedParts;
     std::vector<PartitionRecord> removedParts;
