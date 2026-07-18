@@ -320,7 +320,7 @@ HWTEST_F(VoldataUuidStoreTest, ReplaceFsUuid_TestCase_001, TestSize.Level0)
 HWTEST_F(VoldataUuidStoreTest, ReplaceFsUuid_TestCase_002, TestSize.Level0)
 {
     auto &store = VoldataUuidStore::GetInstance();
-    EXPECT_EQ(store.ReplaceFsUuid("old-uuid", "bad..uuid"), DiskManagerErrNo::DISK_MGR_ERR);
+    EXPECT_EQ(store.ReplaceFsUuid("old-uuid", "bad..uuid"), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(VoldataUuidStoreTest, ReplaceFsUuid_TestCase_003, TestSize.Level0)

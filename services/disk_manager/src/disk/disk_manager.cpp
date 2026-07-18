@@ -336,7 +336,6 @@ std::string BuildSafeExternalMountPath(const std::string &suffix)
     return mountPath;
 }
 
-
 /** QueryUsbIsInUse 入参：已挂载用实际 path，否则按策略推导 voldata/external 路径。 */
 std::string ResolveQueryUsbIsInUseMountPath(const VolumeExternal &volExternal, bool isInternalDataDisk)
 {
@@ -550,11 +549,11 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
     }
     err = UsbFuseAdapter::GetInstance().NotifyUsbFuseMount(fuseFd, volumeId, fsUuid);
     if (err != DiskManagerErrNo::E_OK) {
-        LOGE("MountUsbFuseIfNeeded: NotifyUsbFuseMount failed err=%{public}d, rollback fuse mount", err);
-        (void)StorageDaemonAdapter::GetInstance().Unmount(mountPath, FUSE_UMOUNT_FS_TYPE, true);
         if (fuseFd >= 0) {
             close(fuseFd);
         }
+        LOGE("MountUsbFuseIfNeeded: NotifyUsbFuseMount failed err=%{public}d, rollback fuse mount", err);
+        (void)StorageDaemonAdapter::GetInstance().Unmount(mountPath, FUSE_UMOUNT_FS_TYPE, true);
         return err;
     }
     if (fuseMountedOut != nullptr) {
@@ -863,6 +862,13 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     // 企业空间使能时，不支持挂载数据盘
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
         return DiskManagerErrNo::E_OK;
+    }
+
+    if ((fsType == "hmfs" || fsType == "f2fs") && !volExternal.GetUserData() && !policy.useVoldataPath) {
+        LOGE("Reject %{public}s mount: not migration userdata scenario, vol=%{public}s",
+             fsType.c_str(), volExternal.GetId().c_str());
+        volExternal.SetState(VolumeState::UNMOUNTED);
+        return E_OTHER_MOUNT;
     }
 
     return ExecuteVolumeDataMount(volExternal, fsType, params);
@@ -1248,7 +1254,8 @@ bool DiskManager::HasManagedResources() const
         LOGI("HasManagedResources: diskId=%{public}s", item.first.c_str());
     }
     for (const auto &item : volumeMap_) {
-        LOGI("HasManagedResources: volumeId=%{public}s", item.first.c_str());
+        LOGI("HasManagedResources: volumeId=%{public}s state=%{public}d",
+             item.first.c_str(), item.second.GetState());
     }
     return !diskMap_.empty() || !volumeMap_.empty();
 }

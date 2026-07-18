@@ -257,6 +257,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_DvrOnlyU0_TestCase_003, T
         static_cast<int32_t>(CD_FLAG),
         0,
     };
+
     for (int32_t f : nonDvrFlags) {
         VolumeExternal v = MakeDvrVolume();
         v.SetFlags(f);

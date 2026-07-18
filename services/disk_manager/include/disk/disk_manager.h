@@ -186,8 +186,8 @@ private:
     void SetVolumeStateLocked(const std::string &volumeId, VolumeState state);
     void PublishFormatFailEvent(const std::string &volumeId);
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
-                                    const std::string &diskId, const std::string &oldFsUuid,
-                                    const std::string &blockVolId);
+                                 const std::string &diskId, const std::string &oldFsUuid,
+                                 const std::string &blockVolId);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
     bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
