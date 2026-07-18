@@ -197,6 +197,7 @@ int32_t BlockInfoTable::ReloadFromDaemon()
     std::string blockInfosJsonString;
     const int32_t errCode = StorageDaemonAdapter::GetInstance().GetBlockInfoByType(
         std::string(BLOCK_INFO_SCAN_PAYLOAD_TYPE), blockInfosJsonString);
+
     if (errCode != ERR_OK) {
         LOGW("BlockInfoTable ReloadFromDaemon RPC err=%{public}d", errCode);
         return errCode;
@@ -264,7 +265,10 @@ int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, Bl
         UpsertObjectsIntoMap(nextBlockInfoMap, rootJson);
     }
     if (!nextBlockInfoMap.empty()) {
-        info = nextBlockInfoMap[info.diskId];
+        const auto iter = nextBlockInfoMap.find(info.diskId);
+        if (iter != nextBlockInfoMap.end()) {
+            info = iter->second;
+        }
     }
     LOGI("BlockInfoTable ReadExtDiskInfoFromDaemon success.");
     return ERR_OK;

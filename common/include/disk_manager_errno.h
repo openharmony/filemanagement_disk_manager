@@ -73,6 +73,7 @@ enum DiskManagerErrNo : int32_t {
     E_ERASE_FAILED = 13600000 + 1803,
     E_EJECT_FAILED = 13600000 + 1804,
     E_BURN_FAILED = 13600000 + 1805,
+
 };
 
 } // namespace DiskManager

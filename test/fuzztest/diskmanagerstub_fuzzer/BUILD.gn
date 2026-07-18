@@ -62,6 +62,7 @@ ohos_fuzztest("DiskmanagerStubFuzzTest") {
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "security_guard:libsg_collect_sdk",
   ]
 
   cflags = [
