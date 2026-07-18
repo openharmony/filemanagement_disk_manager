@@ -498,7 +498,7 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
-    "//foundation/filemanagement/disk_manager/test/mock/adapter/pc_encryption_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
