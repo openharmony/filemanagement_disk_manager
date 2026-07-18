@@ -493,10 +493,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_QueryCDStatusFail_TestCase_003, TestSiz
     UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
-        .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
@@ -518,10 +514,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_TestCase_004, TestSize.Lev
     UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
@@ -559,10 +551,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_EmptyDisc_TestCase_005, TestSize.Level0
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
-        .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
@@ -593,10 +581,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_CreateVolumeFail_TestCase_
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(-1));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
-        .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
@@ -616,10 +600,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_TypeEmpty_TestCase_007, Te
     UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
@@ -655,10 +635,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_MountFail_TestCase_008, Te
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
-        .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
@@ -693,10 +669,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_EjectFail_TestCase_003, TestSize.Level0
 {
     UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
@@ -1305,10 +1277,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_CD_TestCase_001, Test
     UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
-        .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
@@ -1329,10 +1297,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_CD_Eject_TestCase_002
 {
     UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
-        .WillOnce(Return(E_OK));
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")), SetArgReferee<2>(0), Return(E_OK)));
-    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
