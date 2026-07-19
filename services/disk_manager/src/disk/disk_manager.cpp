@@ -2445,9 +2445,6 @@ void DiskManager::QueryAndAppendEncryptionStatus(Disk &disk)
 
 void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
 {
-    LOGI("QueryAndAppendEncryptionStatusUnlocked enter diskId=%{public}s diskType=%{public}d",
-         disk.GetDiskId().c_str(), disk.GetDiskType());
-    
     const std::vector<std::string> &volumeIds = disk.GetVolumeIds();
     if (volumeIds.empty()) {
         LOGW("QueryAndAppendEncryptionStatusUnlocked: no volumes for disk %{public}s",
@@ -2464,8 +2461,6 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
         const std::string &path = it->second.GetPath();
         if (!path.empty() && path.find("/mnt/data/voldata/data") == 0) {
             volPath = path;
-            LOGI("QueryAndAppendEncryptionStatusUnlocked: found voldata path=%{public}s for disk %{public}s",
-                 volPath.c_str(), disk.GetDiskId().c_str());
             break;
         }
     }
@@ -2478,26 +2473,21 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
     
     int32_t encStatus = 0;
     if (!PcEncryptionAdapter::GetInstance().QueryEncryptionStatus(volPath, encStatus)) {
-        LOGW("Query encryption status failed for disk %{public}s, skip appending",
-             disk.GetDiskId().c_str());
+        LOGW("Query encryption status failed for disk %{public}s", disk.GetDiskId().c_str());
         return;
     }
+    
     LOGI("QueryAndAppendEncryptionStatusUnlocked encStatus=%{public}d for disk %{public}s",
          encStatus, disk.GetDiskId().c_str());
     std::unordered_map<std::string, std::string> extraKV;
     extraKV["encryptionStatus"] = std::to_string(encStatus);
     BlockInfo blockInfo;
     if (BlockInfoTable::GetInstance().TryCopyByDiskId(disk.GetDiskId(), blockInfo)) {
-        std::string updatedExtraInfo = BlockInfoTable::ToJsonStringWithExtras(blockInfo, extraKV);
-        disk.SetExtraInfo(updatedExtraInfo);
-        LOGI("QueryAndAppendEncryptionStatusUnlocked updated extraInfo with BlockInfo for disk %{public}s",
-             disk.GetDiskId().c_str());
+        disk.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo, extraKV));
     } else {
         json j;
         j["encryptionStatus"] = encStatus;
         disk.SetExtraInfo(j.dump());
-        LOGI("QueryAndAppendEncryptionStatusUnlocked set simplified extraInfo for disk %{public}s",
-             disk.GetDiskId().c_str());
     }
 }
 } // namespace DiskManager
