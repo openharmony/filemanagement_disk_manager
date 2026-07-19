@@ -532,7 +532,7 @@ ohos_unittest("disk_manager_provider_test") {
 
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
-    "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager_service",
+    "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager_server",
   ]
 
   external_deps = [
