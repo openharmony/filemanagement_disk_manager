@@ -54,10 +54,11 @@ const VolumeStateInfo STATE_INFOS[] = {
     {ENCRYPTED_AND_LOCKED, "DeskEncryptedAndLocked", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
     {ENCRYPTED_AND_UNLOCKED, "DeskEncryptedAndUnLocked", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
     {DECRYPTING, "DeskDecrypting", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_BAD_REMOVAL},
-    {CHECKING, "CHECKING", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
-    {REPAIR_FINISH_FAIL, "REPAIR_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
-    {REPAIR_FINISH_SUCCESS, "REPAIR_FINISH_SUCCESS", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
-    {FORMAT_FINISH_FAIL, "FORMAT_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE},
+    {CHECKING, "CHECKING", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
+    {REPAIR_FINISH_FAIL, "REPAIR_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
+    {REPAIR_FINISH_SUCCESS, "REPAIR_FINISH_SUCCESS",
+        EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
+    {FORMAT_FINISH_FAIL, "FORMAT_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
 };
 
 void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
