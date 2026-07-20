@@ -4044,7 +4044,10 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_001, TestSize.
     volumeIds.push_back("vol-qaes-1");
     ssdDisk.SetVolumeIds(volumeIds);
     
-    dm.QueryAndAppendEncryptionStatus(ssdDisk);
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
+    }
     EXPECT_TRUE(ssdDisk.GetExtraInfo().empty() || ssdDisk.GetExtraInfo().find("encryptionStatus") != std::string::npos);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_001 End";
@@ -4072,7 +4075,10 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_002, TestSize.
     volumeIds.push_back("vol-qaes-2");
     hddDisk.SetVolumeIds(volumeIds);
     
-    dm.QueryAndAppendEncryptionStatus(hddDisk);
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(hddDisk);
+    }
     EXPECT_TRUE(hddDisk.GetExtraInfo().empty() || hddDisk.GetExtraInfo().find("encryptionStatus") != std::string::npos);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_002 End";
@@ -4101,7 +4107,10 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_003, TestSize.
     ssdDisk.SetVolumeIds(volumeIds);
     
     std::string extraInfoBefore = ssdDisk.GetExtraInfo();
-    dm.QueryAndAppendEncryptionStatus(ssdDisk);
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
+    }
     EXPECT_EQ(ssdDisk.GetExtraInfo(), extraInfoBefore);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_003 End";
@@ -4130,7 +4139,10 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_004, TestSize.
     usbDisk.SetVolumeIds(volumeIds);
     
     std::string extraInfoBefore = usbDisk.GetExtraInfo();
-    dm.QueryAndAppendEncryptionStatus(usbDisk);
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(usbDisk);
+    }
     EXPECT_EQ(usbDisk.GetExtraInfo(), extraInfoBefore);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_004 End";
@@ -4151,7 +4163,10 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.
     dm.OnDiskCreated(ssdDisk);
     
     std::string extraInfoBefore = ssdDisk.GetExtraInfo();
-    dm.QueryAndAppendEncryptionStatus(ssdDisk);
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
+    }
     EXPECT_EQ(ssdDisk.GetExtraInfo(), extraInfoBefore);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_005 End";

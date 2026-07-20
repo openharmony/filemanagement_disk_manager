@@ -203,11 +203,6 @@ private:
     void QueryAndAppendEncryptionStatusUnlocked(Disk &disk);
 
     /**
-     * 查询并追加加密状态（自动加锁版本）。
-     */
-    void QueryAndAppendEncryptionStatus(Disk &disk);
-
-    /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
      * 若同一流程需两把锁，必须按此顺序一次性加锁：先 disk，后 volume。
      */

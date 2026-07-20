@@ -175,6 +175,13 @@ ohos_unittest("disk_manager_server_test") {
 
   sources = [
     "disk_manager_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/block_info_table.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
@@ -206,7 +213,6 @@ ohos_unittest("disk_manager_server_test") {
 
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
-    "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager_server",
   ]
 
   external_deps = [
@@ -500,6 +506,15 @@ ohos_unittest("disk_manager_provider_test") {
 
   sources = [
     "disk_manager_provider_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/ipc/disk_manager_provider.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/ipc_caller_auth.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
@@ -532,7 +547,6 @@ ohos_unittest("disk_manager_provider_test") {
 
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
-    "//foundation/filemanagement/disk_manager/services/disk_manager:disk_manager_server",
   ]
 
   external_deps = [

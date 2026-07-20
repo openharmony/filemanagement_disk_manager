@@ -27,8 +27,8 @@ namespace {
 using FuncQueryEncStatus = int32_t (*)(const std::string &, int32_t &);
 using FuncNotifyMounted = int32_t (*)(const std::string &, const std::string &, const std::string &);
 constexpr const char *PC_ENCRYPTION_LIB_PATH = "/system/lib64/libpc_encryption_ext_volume_user_api.z.so";
-constexpr const char *PC_ENC_QUERY_FUNC_NAME = "PC_ENC_EXT_QueryVolEncryptinStatus";
-constexpr const char *PC_ENC_NOTIFY_MOUNTED_FUNC_NAME = "PC_ENC_EXT_ConfigureVolEncryptionPolicyOnmounted";
+constexpr const char *PC_ENC_QUERY_FUNC_NAME = "PC_ENC_EXT_QueryVolEncryptionStatus";
+constexpr const char *PC_ENC_NOTIFY_MOUNTED_FUNC_NAME = "PC_ENC_EXT_ConfigureVolEncryptionPolicyOnMounted";
 } // namespace
 
 PcEncryptionAdapter &PcEncryptionAdapter::GetInstance()
@@ -53,7 +53,7 @@ void PcEncryptionAdapter::Init()
 {
     handler_ = dlopen(PC_ENCRYPTION_LIB_PATH, RTLD_LAZY);
     if (handler_ == nullptr) {
-        LOGW("PC encryption extension library not loaded: %{public}s", dlerror());
+        LOGE("PC encryption extension library not loaded: %{public}s", dlerror());
     }
 }
 
@@ -69,7 +69,7 @@ bool PcEncryptionAdapter::QueryEncryptionStatus(const std::string &volPath, int3
 {
     LOGI("QueryEncryptionStatus enter volPath=%{public}s", volPath.c_str());
     if (handler_ == nullptr) {
-        LOGW("QueryEncryptionStatus: handler is nullptr");
+        LOGE("QueryEncryptionStatus: handler is nullptr");
         return false;
     }
     FuncQueryEncStatus func = reinterpret_cast<FuncQueryEncStatus>(
@@ -81,7 +81,7 @@ bool PcEncryptionAdapter::QueryEncryptionStatus(const std::string &volPath, int3
     }
     int32_t ret = func(volPath, encStatus);
     if (ret != 0) {
-        LOGW("QueryEncryptionStatus: %{public}s returned %{public}d for path %{public}s",
+        LOGE("QueryEncryptionStatus: %{public}s returned %{public}d for path %{public}s",
              PC_ENC_QUERY_FUNC_NAME, ret, volPath.c_str());
         return false;
     }
@@ -97,7 +97,7 @@ void PcEncryptionAdapter::NotifyVolumeMounted(const std::string &diskId,
          diskId.c_str(), volumeId.c_str(), volPath.c_str());
     std::thread([this, diskId, volumeId, volPath]() {
         if (handler_ == nullptr) {
-            LOGW("NotifyVolumeMounted: handler is nullptr");
+            LOGE("NotifyVolumeMounted: handler is nullptr");
             return;
         }
         FuncNotifyMounted func = reinterpret_cast<FuncNotifyMounted>(

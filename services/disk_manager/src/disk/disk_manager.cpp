@@ -2437,17 +2437,11 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
     return true;
 }
 
-void DiskManager::QueryAndAppendEncryptionStatus(Disk &disk)
-{
-    std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
-    QueryAndAppendEncryptionStatusUnlocked(disk);
-}
-
 void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
 {
     const std::vector<std::string> &volumeIds = disk.GetVolumeIds();
     if (volumeIds.empty()) {
-        LOGW("QueryAndAppendEncryptionStatusUnlocked: no volumes for disk %{public}s",
+        LOGE("QueryAndAppendEncryptionStatusUnlocked: no volumes for disk %{public}s",
              disk.GetDiskId().c_str());
         return;
     }
@@ -2466,14 +2460,14 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
     }
     
     if (volPath.empty()) {
-        LOGW("QueryAndAppendEncryptionStatusUnlocked: no voldata mount path for disk %{public}s",
+        LOGE("QueryAndAppendEncryptionStatusUnlocked: no voldata mount path for disk %{public}s",
              disk.GetDiskId().c_str());
         return;
     }
     
     int32_t encStatus = 0;
     if (!PcEncryptionAdapter::GetInstance().QueryEncryptionStatus(volPath, encStatus)) {
-        LOGW("Query encryption status failed for disk %{public}s", disk.GetDiskId().c_str());
+        LOGE("Query encryption status failed for disk %{public}s", disk.GetDiskId().c_str());
         return;
     }
     
@@ -2484,10 +2478,6 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
     BlockInfo blockInfo;
     if (BlockInfoTable::GetInstance().TryCopyByDiskId(disk.GetDiskId(), blockInfo)) {
         disk.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo, extraKV));
-    } else {
-        json j;
-        j["encryptionStatus"] = encStatus;
-        disk.SetExtraInfo(j.dump());
     }
 }
 } // namespace DiskManager
