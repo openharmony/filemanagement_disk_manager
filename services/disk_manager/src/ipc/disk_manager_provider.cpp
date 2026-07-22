@@ -500,6 +500,16 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
+    if (!IsVolumeIdValid(id)) {
+        LOGE("id is invalid");
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
+    }
+    if (!IsUuidValid(uuid)) {
+        LOGE("uuid is invalid");
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
+    }
     if (!IsMountPathValid(path)) {
         LOGE("mountPath is invalid.");
         EndPendingStorageDaemonCallback();
@@ -525,6 +535,11 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
         LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
+    }
+    if (!IsVolumeIdValid(id)) {
+        LOGE("id is invalid");
+        EndPendingStorageDaemonCallback();
+        return E_PARAMS_INVALID;
     }
     DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
     EndPendingStorageDaemonCallback();
