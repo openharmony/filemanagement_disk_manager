@@ -749,7 +749,7 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s", diskId.c_str());
 
     // 内置数据盘 Partition() 仅恢复为单一 f2fs，无增删分区场景，直接 discover + Format。
-    if (IsInternalDataDiskById(diskId) && DiskManager::GetInstance().IsPartitioning(diskId)) {
+    if (DiskManager::GetInstance().IsPartitioning(diskId) && IsInternalDataDiskById(diskId)) {
         for (const auto &p : parts) {
             DiscoverSinglePartitionVolume(env, diskId, p, isUserData);
         }

@@ -232,13 +232,12 @@ HWTEST_F(UeventBootstrapTest, HandleDiskChange_RemovablePartitioning_NotSkip_Tes
 {
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
-        .WillOnce(Return(true));
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
-        .WillOnce(Invoke([](const std::string &diskId, Disk &out) {
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
             FillUsbDisk(diskId, out);
             return E_OK;
-        }))
-        .WillOnce(Return(E_OK));
+        }));
     EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
         .WillOnce(Return(true));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -892,7 +891,7 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_IsPartitioning_FormatFail_T
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
-        .WillOnce(Return(true));
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _))
         .WillOnce(Return(-1));
     int32_t ret = UeventBootstrap::HandleDiskAdd(env);
@@ -934,7 +933,7 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_IsPartitioning_FormatSucces
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
-        .WillOnce(Return(true));
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _))
         .WillOnce(Return(E_OK));
     int32_t ret = UeventBootstrap::HandleDiskAdd(env);
@@ -1336,6 +1335,13 @@ HWTEST_F(UeventBootstrapTest, OnBlockDiskUevent_Change_TestCase_006, TestSize.Le
     std::string msg = "ACTION=change\nSUBSYSTEM=block\nDEVPATH=/devices/sda\nDEVTYPE=disk\nMAJOR=8\nMINOR=1\n";
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
         .WillOnce(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), NotifyPartitionDone(_)).Times(0);
     EXPECT_EQ(UeventBootstrap::OnBlockDiskUevent(msg), DiskManagerErrNo::E_OK);
 }
 
@@ -1447,7 +1453,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_WholeDiskPartitioning
         }))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
@@ -1481,7 +1487,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_InternalDataDiskParti
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _)).Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _)).Times(0);
-    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillOnce(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
