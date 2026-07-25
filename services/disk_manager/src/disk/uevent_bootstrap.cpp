@@ -301,6 +301,14 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
     return DiskManagerErrNo::E_OK;
 }
 
+std::string BlockInfoToVolumeExtraInfo(const BlockInfo &blockInfo)
+{
+    return BlockInfoTable::ToJsonStringWithExtras(blockInfo,
+        {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}, {"devnum", blockInfo.devnum},
+         {"busnum", blockInfo.busnum}, {"devNode", blockInfo.devNode}, {"scsiBusNum", blockInfo.scsiBusNum},
+         {"fwVersion", blockInfo.fwVersion}});
+}
+
 void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, bool publishNewDiskEvent)
 {
     if (!publishNewDiskEvent) {
@@ -318,10 +326,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
         if (ret == ERR_OK) {
             diskForEvent.SetSizeBytes(static_cast<int64_t>(blockInfo.sizeBytes));
 
-            diskForEvent.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo,
-                {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}, {"devnum", blockInfo.devnum},
-                {"busnum", blockInfo.busnum}, {"devNode", blockInfo.devNode}, {"scsiBusNum", blockInfo.scsiBusNum},
-                {"fwVersion", blockInfo.fwVersion}}));
+            diskForEvent.SetExtraInfo(BlockInfoToVolumeExtraInfo(blockInfo));
         }
     }
     diskForEvent.SetVendor(blockInfo.vendor);
@@ -361,6 +366,22 @@ int32_t GetMaxMinor(int32_t major)
     return maxMinor;
 }
 
+bool IsInternalDataDiskById(const std::string &diskId)
+{
+    Disk disk;
+    return DiskManager::GetInstance().GetDiskById(diskId, disk) == DiskManagerErrNo::E_OK &&
+           disk.IsInternalDataDisk();
+}
+
+bool TryLoadBlockInfoForVolume(const Disk &disk, BlockInfo &blockInfo)
+{
+    if (disk.IsInternalDataDisk()) {
+        return BlockInfoTable::GetInstance().TryCopyByDiskId(disk.GetDiskId(), blockInfo);
+    }
+    blockInfo.diskId = disk.GetDiskId();
+    return BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(disk.GetDevName(), blockInfo) == ERR_OK;
+}
+
 int32_t CreateAndSetupVolume(const std::string &diskId,
                              dev_t pDev,
                              const bool &isUserData,
@@ -386,17 +407,10 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     }
 
     BlockInfo blockInfo {};
-    blockInfo.diskId = diskId;
-    int32_t ret = BlockInfoTable::GetInstance().ReadExtDiskInfoFromDaemon(disk.GetDevName(), blockInfo);
-    if (ret == ERR_OK) {
-        LOGE("[L2:CreateAndSetupVolume] ReadExtDiskInfoFromDaemon: info.devnum=%{public}s, info.busnum=%{public}s,"
-            "info.devNode=%{public}s, info.scsiBusNum=%{public}s, info.fwVersion=%{public}s",
-            blockInfo.devnum.c_str(), blockInfo.busnum.c_str(), blockInfo.devNode.c_str(),
-            blockInfo.scsiBusNum.c_str(), blockInfo.fwVersion.c_str());
-        volExternal.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo,
-            {{"vendor", blockInfo.vendor}, {"model", blockInfo.model}, {"devnum", blockInfo.devnum},
-            {"busnum", blockInfo.busnum}, {"devNode", blockInfo.devNode}, {"scsiBusNum", blockInfo.scsiBusNum},
-            {"fwVersion", blockInfo.fwVersion}}));
+    if (TryLoadBlockInfoForVolume(disk, blockInfo)) {
+        volExternal.SetExtraInfo(BlockInfoToVolumeExtraInfo(blockInfo));
+    } else if (disk.IsInternalDataDisk()) {
+        LOGW("CreateAndSetupVolume: internal data disk block info cache miss diskId=%{public}s", diskId.c_str());
     }
     (void)DiskManager::GetInstance().OnVolumeCreated(volExternal);
     return ERR_OK;
@@ -734,6 +748,14 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent);
     LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s", diskId.c_str());
 
+    // 内置数据盘 Partition() 仅恢复为单一 f2fs，无增删分区场景，直接 discover + Format。
+    if (DiskManager::GetInstance().IsPartitioning(diskId) && IsInternalDataDiskById(diskId)) {
+        for (const auto &p : parts) {
+            DiscoverSinglePartitionVolume(env, diskId, p, isUserData);
+        }
+        return DiskManagerErrNo::E_OK;
+    }
+
     std::vector<PartitionRecord> addedParts;
     std::vector<PartitionRecord> removedParts;
     ComputePartitionDiff(diskId, parts, addedParts, removedParts);
@@ -771,8 +793,8 @@ int32_t UeventBootstrap::HandleDiskChange(const UeventEnv &env)
     LOGI("UeventBootstrap::HandleDiskChange enter external=IDiskManager::OnBlockDiskUevent branch=change");
 
     const std::string diskId = DiskIdFrom(env.major, env.minor);
-    if (DiskManager::GetInstance().IsPartitioning(diskId)) {
-        LOGI("HandleDiskChange skipped, disk partitioning diskId=%{public}s", diskId.c_str());
+    if (DiskManager::GetInstance().IsPartitioning(diskId) && IsInternalDataDiskById(diskId)) {
+        LOGI("HandleDiskChange skipped diskId=%{public}s", diskId.c_str());
         return DiskManagerErrNo::E_OK;
     }
 

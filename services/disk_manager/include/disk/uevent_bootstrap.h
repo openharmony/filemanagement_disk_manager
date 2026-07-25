@@ -48,7 +48,7 @@ private:
     static int32_t HandleDiskRemove(const UeventEnv &env);
     /** 首次出现 / 重新枚举：发布磁盘事件（若本事件首次见到该 diskId）。 */
     static int32_t HandleDiskAdd(const UeventEnv &env);
-    /** DISK_EJECT_REQUEST 走 Eject；否则刷新分区与卷状态，不重复发布「新盘」事件。 */
+    /** change 刷新分区与卷；内置数据盘 Partition 中跳过（由 RediscoverDiskVolumes 处理）。 */
     static int32_t HandleDiskChange(const UeventEnv &env);
     static int32_t DiscoverPartitionsAndVolumes(const UeventEnv &env, bool publishNewDiskEvent);
     static std::vector<std::string> SplitLine(std::string &line, std::string &token);

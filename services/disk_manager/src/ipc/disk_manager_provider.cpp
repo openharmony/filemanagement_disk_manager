@@ -57,15 +57,15 @@ DiskManagerProvider::~DiskManagerProvider()
 void DiskManagerProvider::OnStart()
 {
     LOGI("OnStart begin");
-    const bool published = SystemAbility::Publish(this);
-    if (!published) {
-        LOGE("Publish failed");
-    }
     UeventBootstrap::Init();
     const int32_t reloadErr = BlockInfoTable::GetInstance().ReloadFromDaemon();
     LOGI("OnStart BlockInfoTable::ReloadFromDaemon ret=%{public}d", reloadErr);
     const int32_t voldataMapErr = VoldataUuidStore::GetInstance().Init();
     LOGI("OnStart VoldataUuidStore::Init ret=%{public}d", voldataMapErr);
+    const bool published = SystemAbility::Publish(this);
+    if (!published) {
+        LOGE("Publish failed");
+    }
     StartIdleMonitor();
     LOGI("OnStart end");
 }
