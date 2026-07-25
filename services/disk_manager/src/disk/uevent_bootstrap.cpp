@@ -83,7 +83,7 @@ CdromState QueryCdromState(const std::string &devPath)
     int32_t ret = StorageDaemonAdapter::GetInstance().QueryCDStatus(devPath, status);
     if (ret != ERR_OK) {
         LOGE("QueryCdromState QueryCDStatus failed ret=%{public}d", ret);
-        return CdromState::NO_DISC;
+        return CdromState::QUERY_FAILED;
     }
     if ((static_cast<uint32_t>(status) & 0x01) == 0) {
         return CdromState::NO_DISC;
@@ -599,6 +599,25 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
         LOGI("CD not exist, cleared");
         return;
     }
+
+    if (state == CdromState::QUERY_FAILED) {
+        // SCSI 查询失败，用 ReadMetadata 兜底判断是否有数据
+        // 使用 diskDevPath（/dev/block/disk-11-0），该节点已在 DiscoverCdromVolumes 中创建
+        std::string uuid;
+        std::string type;
+        std::string label;
+        const std::string diskDevPath = BlockPathForId(diskId);
+        int32_t metaRet = StorageDaemonAdapter::GetInstance().ReadMetadata(diskDevPath, uuid, type, label);
+        if (metaRet == ERR_OK && !type.empty()) {
+            LOGI("SCSI query failed but ReadMetadata succeeded, treat as NON_EMPTY_DISC");
+            state = CdromState::NON_EMPTY_DISC;
+        } else {
+            LOGE("SCSI query and ReadMetadata both failed, treat as NO_DISC");
+            DestroyALLVolume(diskId);
+            return;
+        }
+    }
+
     Disk disk;
     if (DiskManager::GetInstance().GetDiskById(diskId, disk) == DiskManagerErrNo::E_OK) {
         disk.SetCdromState(state);
