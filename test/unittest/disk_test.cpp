@@ -428,5 +428,45 @@ HWTEST_F(DiskTest, Unmarshalling_OverMaxVolumeIds_TestCase_001, TestSize.Level0)
     EXPECT_EQ(result, nullptr);
 }
 
+HWTEST_F(DiskTest, Unmarshalling_OversizedDiskId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteInt64(0);
+    parcel.WriteInt32(USB_FLAG);
+    parcel.WriteBool(true);
+    parcel.WriteUint32(0u);
+    parcel.WriteString("");
+    Disk *result = Disk::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(DiskTest, Unmarshalling_OversizedVolumeId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("disk-1");
+    parcel.WriteInt64(0);
+    parcel.WriteInt32(USB_FLAG);
+    parcel.WriteBool(true);
+    parcel.WriteUint32(1u);
+    parcel.WriteString(std::string(4097, 'b'));
+    parcel.WriteString("");
+    Disk *result = Disk::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(DiskTest, Unmarshalling_OversizedExtraInfo_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("disk-1");
+    parcel.WriteInt64(0);
+    parcel.WriteInt32(USB_FLAG);
+    parcel.WriteBool(true);
+    parcel.WriteUint32(0u);
+    parcel.WriteString(std::string(4097, 'c'));
+    Disk *result = Disk::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

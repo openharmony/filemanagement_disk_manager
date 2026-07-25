@@ -1751,6 +1751,30 @@ HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_005, TestSize.Level0)
 }
 
 /**
+ * @tc.name: MountFuseDevice_TestCase_006
+ * @tc.desc: MountFuseDevice: ReadFileDescriptor returns negative FD, returns ERR_INVALID_DATA.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, MountFuseDevice_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(
+        *remote_,
+        SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_MOUNT_FUSE_DEVICE), _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadFileDescriptor()).WillOnce(Return(-1));
+    int32_t fuseFd = -1;
+    int32_t ret = proxy_->MountFuseDevice("/mnt/fuse", fuseFd);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "MountFuseDevice_TestCase_006 End";
+}
+
+/**
  * @tc.name: Partition_TestCase_001
  * @tc.desc: Partition: WriteInterfaceToken returns false.
  * @tc.type: FUNC

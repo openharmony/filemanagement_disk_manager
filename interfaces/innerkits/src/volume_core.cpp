@@ -17,6 +17,9 @@
 
 namespace OHOS {
 namespace DiskManager {
+namespace {
+constexpr size_t PARCEL_STRING_MAX_LEN = 4096;
+}
 VolumeCore::VolumeCore() {}
 
 VolumeCore::VolumeCore(const std::string &id, int32_t type, const std::string &diskId)
@@ -157,12 +160,28 @@ VolumeCore *VolumeCore::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->id_ = parcel.ReadString();
+    if (obj->id_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->type_ = parcel.ReadInt32();
     obj->diskId_ = parcel.ReadString();
+    if (obj->diskId_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->state_ = parcel.ReadInt32();
     obj->errorFlag_ = parcel.ReadBool();
     obj->fsType_ = parcel.ReadString();
+    if (obj->fsType_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->extraInfo_ = parcel.ReadString();
+    if (obj->extraInfo_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     return obj;
 }
 
@@ -173,10 +192,30 @@ VolumeInfoStr *VolumeInfoStr::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->volumeId = parcel.ReadString();
+    if (obj->volumeId.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->fsTypeStr = parcel.ReadString();
+    if (obj->fsTypeStr.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->fsUuid = parcel.ReadString();
+    if (obj->fsUuid.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->path = parcel.ReadString();
+    if (obj->path.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->description = parcel.ReadString();
+    if (obj->description.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->isDamaged = parcel.ReadBool();
     return obj;
 }

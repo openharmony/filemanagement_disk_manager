@@ -1103,6 +1103,65 @@ HWTEST_F(DiskManagerTest, SetVolumeDescription_TestCase_005, TestSize.Level0)
 }
 
 /**
+ * @tc.name: SetVolumeDescription_TestCase_009
+ * @tc.desc: SetVolumeDescription with empty description returns E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDescription_TestCase_009, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_009 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-29-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-29-5", "disk-29-4", "uuid-svd-6", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(NTFS));
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.SetVolumeDescription("uuid-svd-6", ""), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_009 End";
+}
+
+/**
+ * @tc.name: SetVolumeDescription_TestCase_010
+ * @tc.desc: SetVolumeDescription with oversized description (513 bytes) returns E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDescription_TestCase_010, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_010 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-29-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-29-6", "disk-29-5", "uuid-svd-7", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(NTFS));
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.SetVolumeDescription("uuid-svd-7", std::string(513, 'x')), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_010 End";
+}
+
+/**
+ * @tc.name: SetVolumeDescription_TestCase_011
+ * @tc.desc: SetVolumeDescription with 512-byte description passes validation.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDescription_TestCase_011, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_011 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-29-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-29-7", "disk-29-6", "uuid-svd-8", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(NTFS));
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, SetLabel(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.SetVolumeDescription("uuid-svd-8", std::string(512, 'y')), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-29-7", out);
+    EXPECT_EQ(out.GetDescription().size(), static_cast<size_t>(512));
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_011 End";
+}
+
+/**
  * @tc.name: PurgeVolumesForDisk_TestCase_001
  * @tc.desc: PurgeVolumesForDisk non-existent disk returns E_DISK_NOT_FOUND.
  * @tc.type: FUNC

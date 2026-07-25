@@ -116,6 +116,7 @@ constexpr int64_t NTFS_TYPECODE_MIN_SIZE = 4 * 1024 * 1024;
 constexpr int64_t EXT4_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int64_t F2FS_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int32_t WAIT_UEVENT_TIMEOUT = 1 * 60 * 1000;
+constexpr size_t VOLUME_DESCRIPTION_MAX_LEN = 512;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 const std::map<std::string, std::string> typeCodeMap_ = {
     {"vfat", "0x0700"},
@@ -1067,6 +1068,12 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
         blockVolId = volExternal.GetId();
         fsTypeStr = volExternal.GetFsTypeString();
         diskId = volExternal.GetDiskId();
+    }
+
+    if (description.empty() || description.size() > VOLUME_DESCRIPTION_MAX_LEN) {
+        LOGE("SetVolumeDescription: description is empty or exceeds %{public}zu limit",
+             static_cast<size_t>(VOLUME_DESCRIPTION_MAX_LEN));
+        return E_PARAMS_INVALID;
     }
 
     if (IsDiskSupported(diskId) != E_OK) {
