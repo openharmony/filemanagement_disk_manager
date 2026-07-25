@@ -39,7 +39,7 @@ enum class CdromState {
     NO_DISC,
     NON_EMPTY_DISC,
     EMPTY_DISC,
-    UNKNOWN,
+    QUERY_FAILED,
 };
 
 class Disk : public Parcelable {
