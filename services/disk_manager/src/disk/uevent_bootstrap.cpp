@@ -83,7 +83,7 @@ CdromState QueryCdromState(const std::string &devPath)
     int32_t ret = StorageDaemonAdapter::GetInstance().QueryCDStatus(devPath, status);
     if (ret != ERR_OK) {
         LOGE("QueryCdromState QueryCDStatus failed ret=%{public}d", ret);
-        return CdromState::UNKNOWN;
+        return CdromState::QUERY_FAILED;
     }
     if ((static_cast<uint32_t>(status) & 0x01) == 0) {
         return CdromState::NO_DISC;
@@ -520,22 +520,6 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
     LOGI("DiscoverWholeDiskVolume EXIT SUCCESS");
 }
 
-void FillEmptyDiscMetadata(const std::string &volId, std::string &uuid, std::string &type, std::string &label)
-{
-    uuid = " ";
-    type = "udf";
-    VolumeExternal volume;
-    if (DiskManager::GetInstance().GetVolumeById(volId, volume) == DiskManagerErrNo::E_OK) {
-        const std::string extraInfo = volume.GetExtraInfo();
-        label = DiskManager::GetInstance().GetDriverType(extraInfo);
-        if (label.empty()) {
-            label = "DVD RW";
-        }
-    } else {
-        label = "DVD RW";
-    }
-}
-
 void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState state)
 {
     LOGI("HandleAddCD CD exists");
@@ -551,13 +535,20 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     std::string type;
     std::string label;
     if (state == CdromState::EMPTY_DISC) {
-        FillEmptyDiscMetadata(volId, uuid, type, label);
+        uuid = " ";
+        type = "udf";
+        VolumeExternal volume;
+        if (DiskManager::GetInstance().GetVolumeById(volId, volume) == DiskManagerErrNo::E_OK) {
+            const std::string extraInfo = volume.GetExtraInfo();
+            label = DiskManager::GetInstance().GetDriverType(extraInfo);
+            if (label.empty()) {
+                label = "DVD RW";
+            }
+        } else {
+            label = "DVD RW";
+        }
     } else {
         ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
-        if (type.empty()) {
-            LOGI("HandleAddCD metadata empty, fallback to EMPTY_DISC");
-            FillEmptyDiscMetadata(volId, uuid, type, label);
-        }
     }
     (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
 
@@ -594,10 +585,25 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
         LOGI("CD not exist, cleared");
         return;
     }
-    if (state == CdromState::UNKNOWN) {
-        LOGI("CD state unknown, treat as NON_EMPTY_DISC and try mount");
-        state = CdromState::NON_EMPTY_DISC;
+
+    if (state == CdromState::QUERY_FAILED) {
+        // SCSI 查询失败，用 ReadMetadata 兜底判断是否有数据
+        // 使用 diskDevPath（/dev/block/disk-11-0），该节点已在 DiscoverCdromVolumes 中创建
+        std::string uuid;
+        std::string type;
+        std::string label;
+        const std::string diskDevPath = BlockPathForId(diskId);
+        int32_t metaRet = StorageDaemonAdapter::GetInstance().ReadMetadata(diskDevPath, uuid, type, label);
+        if (metaRet == ERR_OK && !type.empty()) {
+            LOGI("SCSI query failed but ReadMetadata succeeded, treat as NON_EMPTY_DISC");
+            state = CdromState::NON_EMPTY_DISC;
+        } else {
+            LOGE("SCSI query and ReadMetadata both failed, treat as NO_DISC");
+            DestroyALLVolume(diskId);
+            return;
+        }
     }
+
     Disk disk;
     if (DiskManager::GetInstance().GetDiskById(diskId, disk) == DiskManagerErrNo::E_OK) {
         disk.SetCdromState(state);
