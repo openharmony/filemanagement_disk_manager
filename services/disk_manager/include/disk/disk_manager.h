@@ -21,6 +21,7 @@
 #include "disk.h"
 #include "partition_types.h"
 #include "volume_external.h"
+#include "adapter/pc_encryption_adapter.h"
 
 #include <cstdint>
 #include <condition_variable>
@@ -192,6 +193,14 @@ private:
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
     bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
     int32_t MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath);
+
+    /**
+     * 查询并追加加密状态到 Disk 的 extraInfo 字段。
+     * 仅在数据盘（DATA_DISK_SSD/DATA_DISK_HDD）时调用。
+     * 失败时静默处理，不影响 Disk 对象的其他字段。
+     * 注意：调用此函数前必须已持有 volumeMapMutex_ 读锁。
+     */
+    void QueryAndAppendEncryptionStatusUnlocked(Disk &disk);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。

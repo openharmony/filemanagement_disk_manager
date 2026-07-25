@@ -25,6 +25,7 @@
 
 #include "storage_daemon_adapter.h"
 #include "usb_fuse_adapter.h"
+#include "adapter/pc_encryption_adapter.h"
 
 #include "errors.h"
 #include "disk_manager_errno.h"
@@ -34,6 +35,7 @@
 #include "notification/common_event_publisher.h"
 
 #include <nlohmann/json.hpp>
+#include <unordered_map>
 #include <chrono>
 #include <cctype>
 #include <cerrno>
@@ -823,6 +825,10 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
         return err;
     }
 
+    if (params.diskFlag == DATA_DISK_SSD || params.diskFlag == DATA_DISK_HDD) {
+        PcEncryptionAdapter::GetInstance().NotifyVolumeMounted(
+            volExternal.GetDiskId(), volExternal.GetId(), params.dataMountPath);
+    }
     volExternal.SetFlags(params.diskFlag);
     ApplyDefaultVolumeDescriptionIfUnset(volExternal, params.diskFlag);
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
@@ -859,7 +865,6 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
         params.diskFlag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
     }
 
-    // 企业空间使能时，不支持挂载数据盘
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
         return DiskManagerErrNo::E_OK;
     }
@@ -1312,6 +1317,9 @@ int32_t DiskManager::GetAllDisks(std::vector<Disk> &out)
         }
         for (auto &disk : snaps) {
             AttachVolumeIdsToDisk(volumeMap_, disk);
+            if (disk.GetDiskType() == DATA_DISK_SSD || disk.GetDiskType() == DATA_DISK_HDD) {
+                QueryAndAppendEncryptionStatusUnlocked(disk);
+            }
         }
     }
     out = std::move(snaps);
@@ -1328,6 +1336,11 @@ int32_t DiskManager::GetDiskById(const std::string &diskId, Disk &out)
     }
     out = diskMap_[diskId];
     AttachVolumeIdsToDisk(volumeMap_, out);
+    
+    if (out.GetDiskType() == DATA_DISK_SSD || out.GetDiskType() == DATA_DISK_HDD) {
+        QueryAndAppendEncryptionStatusUnlocked(out);
+    }
+    
     return DiskManagerErrNo::E_OK;
 }
 
@@ -2422,6 +2435,50 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
     (void)OnVolumeDestroyed(vol.GetId());
     LOGI("DestroyVolume end.");
     return true;
+}
+
+void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
+{
+    const std::vector<std::string> &volumeIds = disk.GetVolumeIds();
+    if (volumeIds.empty()) {
+        LOGE("QueryAndAppendEncryptionStatusUnlocked: no volumes for disk %{public}s",
+             disk.GetDiskId().c_str());
+        return;
+    }
+    
+    std::string volPath;
+    for (const auto &volumeId : volumeIds) {
+        auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            continue;
+        }
+        const std::string &path = it->second.GetPath();
+        if (!path.empty() && path.find("/mnt/data/voldata/data") == 0) {
+            volPath = path;
+            break;
+        }
+    }
+    
+    if (volPath.empty()) {
+        LOGE("QueryAndAppendEncryptionStatusUnlocked: no voldata mount path for disk %{public}s",
+             disk.GetDiskId().c_str());
+        return;
+    }
+    
+    int32_t encStatus = 0;
+    if (!PcEncryptionAdapter::GetInstance().QueryEncryptionStatus(volPath, encStatus)) {
+        LOGE("Query encryption status failed for disk %{public}s", disk.GetDiskId().c_str());
+        return;
+    }
+    
+    LOGI("QueryAndAppendEncryptionStatusUnlocked encStatus=%{public}d for disk %{public}s",
+         encStatus, disk.GetDiskId().c_str());
+    std::unordered_map<std::string, std::string> extraKV;
+    extraKV["encryptionStatus"] = std::to_string(encStatus);
+    BlockInfo blockInfo;
+    if (BlockInfoTable::GetInstance().TryCopyByDiskId(disk.GetDiskId(), blockInfo)) {
+        disk.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo, extraKV));
+    }
 }
 } // namespace DiskManager
 } // namespace OHOS

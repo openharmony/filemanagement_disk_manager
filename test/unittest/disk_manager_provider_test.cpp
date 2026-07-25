@@ -2431,5 +2431,21 @@ int32_t BlockInfoTable::ReloadFromDaemon()
     return E_OK;
 }
 
+bool BlockInfoTable::TryCopyByDiskId(const std::string &diskId, BlockInfo &outBlockInfo) const
+{
+    (void)diskId;
+    (void)outBlockInfo;
+    return false;
+}
+
+std::string BlockInfoTable::ToJsonStringWithExtras(
+    const BlockInfo &blockInfo,
+    const std::unordered_map<std::string, std::string> &extraKeyValues)
+{
+    (void)blockInfo;
+    (void)extraKeyValues;
+    return "";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

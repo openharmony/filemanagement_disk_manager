@@ -44,12 +44,21 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/usb_fuse_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
 
+  defines = [
+    "dlopen=MockDlopen",
+    "dlsym=MockDlsym",
+    "dlclose=MockDlclose",
+    "dlerror=MockDlerror",
+  ]
+
   if (car_device_enable) {
-    defines = [ "CDC_STORAGE" ]
+    defines += [ "CDC_STORAGE" ]
   }
 
   deps = [
@@ -169,12 +178,15 @@ ohos_unittest("disk_manager_server_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/block_info_table.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_parameter_find.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
@@ -189,6 +201,10 @@ ohos_unittest("disk_manager_server_test") {
     "UeventBootstrap=MockUeventBootstrap",
     "FindParameter=MockFindParameter",
     "GetParameterValue=MockGetParameterValue",
+    "dlopen=MockDlopen",
+    "dlsym=MockDlsym",
+    "dlclose=MockDlclose",
+    "dlerror=MockDlerror",
   ]
 
   if (car_device_enable) {
@@ -376,6 +392,38 @@ ohos_unittest("usb_fuse_adapter_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("pc_encryption_adapter_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "pc_encryption_adapter_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  defines = [
+    "private = public",
+    "dlopen=MockDlopen",
+    "dlsym=MockDlsym",
+    "dlclose=MockDlclose",
+    "dlerror=MockDlerror",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 ohos_unittest("voldata_uuid_store_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
@@ -466,11 +514,13 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_ipc_skeleton.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_accesstoken_kit.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
@@ -485,6 +535,10 @@ ohos_unittest("disk_manager_provider_test") {
     "UeventBootstrap=MockUeventBootstrap",
     "IPCSkeleton=MockIPCSkeleton",
     "private = public",
+    "dlopen=MockDlopen",
+    "dlsym=MockDlsym",
+    "dlclose=MockDlclose",
+    "dlerror=MockDlerror",
   ]
 
   if (car_device_enable) {
@@ -618,6 +672,7 @@ group("disk_manager_ut") {
     ":partition_types_test",
     ":storage_daemon_adapter_test",
     ":usb_fuse_adapter_test",
+    ":pc_encryption_adapter_test",
     ":voldata_uuid_store_test",
     ":disk_config_test",
     ":partition_table_parser_test",

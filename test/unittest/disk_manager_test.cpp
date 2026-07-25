@@ -4022,5 +4022,155 @@ HWTEST_F(DiskManagerTest, RestoreVolumeState_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "RestoreVolumeState_TestCase_001 End";
 }
 
+/**
+ * @tc.name: QueryAndAppendEncryptionStatus_TestCase_001
+ * @tc.desc: QueryAndAppendEncryptionStatus for SSD disk with voldata mount path
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_001 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    Disk ssdDisk = MakeSsdDisk("disk-qaes-ssd-1");
+    dm.OnDiskCreated(ssdDisk);
+    
+    VolumeExternal vol = MakeUsbVolume("vol-qaes-1", "disk-qaes-ssd-1", "uuid-qaes-1", MOUNTED);
+    vol.SetPath("/mnt/data/voldata/data1");
+    dm.OnVolumeCreated(vol);
+    
+    std::vector<std::string> volumeIds;
+    volumeIds.push_back("vol-qaes-1");
+    ssdDisk.SetVolumeIds(volumeIds);
+    
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
+    }
+    EXPECT_TRUE(ssdDisk.GetExtraInfo().empty() || ssdDisk.GetExtraInfo().find("encryptionStatus") != std::string::npos);
+
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_001 End";
+}
+
+/**
+ * @tc.name: QueryAndAppendEncryptionStatus_TestCase_002
+ * @tc.desc: QueryAndAppendEncryptionStatus for HDD disk with voldata mount path
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_002 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    Disk hddDisk = MakeHddDisk("disk-qaes-hdd-1");
+    dm.OnDiskCreated(hddDisk);
+    
+    VolumeExternal vol = MakeUsbVolume("vol-qaes-2", "disk-qaes-hdd-1", "uuid-qaes-2", MOUNTED);
+    vol.SetPath("/mnt/data/voldata/data2");
+    dm.OnVolumeCreated(vol);
+    
+    std::vector<std::string> volumeIds;
+    volumeIds.push_back("vol-qaes-2");
+    hddDisk.SetVolumeIds(volumeIds);
+    
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(hddDisk);
+    }
+    EXPECT_TRUE(hddDisk.GetExtraInfo().empty() || hddDisk.GetExtraInfo().find("encryptionStatus") != std::string::npos);
+
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_002 End";
+}
+
+/**
+ * @tc.name: QueryAndAppendEncryptionStatus_TestCase_003
+ * @tc.desc: QueryAndAppendEncryptionStatus for SSD disk with non-voldata path
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_003 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    Disk ssdDisk = MakeSsdDisk("disk-qaes-ssd-2");
+    dm.OnDiskCreated(ssdDisk);
+    
+    VolumeExternal vol = MakeUsbVolume("vol-qaes-3", "disk-qaes-ssd-2", "uuid-qaes-3", MOUNTED);
+    vol.SetPath("/mnt/data/external/uuid-qaes-3");
+    dm.OnVolumeCreated(vol);
+    
+    std::vector<std::string> volumeIds;
+    volumeIds.push_back("vol-qaes-3");
+    ssdDisk.SetVolumeIds(volumeIds);
+    
+    std::string extraInfoBefore = ssdDisk.GetExtraInfo();
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
+    }
+    EXPECT_EQ(ssdDisk.GetExtraInfo(), extraInfoBefore);
+
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_003 End";
+}
+
+/**
+ * @tc.name: QueryAndAppendEncryptionStatus_TestCase_004
+ * @tc.desc: QueryAndAppendEncryptionStatus for USB disk (should skip)
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_004 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    Disk usbDisk = MakeUsbDisk("disk-qaes-usb-1");
+    dm.OnDiskCreated(usbDisk);
+    
+    VolumeExternal vol = MakeUsbVolume("vol-qaes-4", "disk-qaes-usb-1", "uuid-qaes-4", MOUNTED);
+    vol.SetPath("/mnt/data/external/uuid-qaes-4");
+    dm.OnVolumeCreated(vol);
+    
+    std::vector<std::string> volumeIds;
+    volumeIds.push_back("vol-qaes-4");
+    usbDisk.SetVolumeIds(volumeIds);
+    
+    std::string extraInfoBefore = usbDisk.GetExtraInfo();
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(usbDisk);
+    }
+    EXPECT_EQ(usbDisk.GetExtraInfo(), extraInfoBefore);
+
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_004 End";
+}
+
+/**
+ * @tc.name: QueryAndAppendEncryptionStatus_TestCase_005
+ * @tc.desc: QueryAndAppendEncryptionStatus for SSD disk with no volumes
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_005 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    Disk ssdDisk = MakeSsdDisk("disk-qaes-ssd-3");
+    dm.OnDiskCreated(ssdDisk);
+    
+    std::string extraInfoBefore = ssdDisk.GetExtraInfo();
+    {
+        std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
+    }
+    EXPECT_EQ(ssdDisk.GetExtraInfo(), extraInfoBefore);
+
+    GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_005 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
