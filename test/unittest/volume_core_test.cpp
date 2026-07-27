@@ -130,6 +130,62 @@ HWTEST_F(VolumeCoreTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     delete result;
 }
 
+HWTEST_F(VolumeCoreTest, Unmarshalling_OversizedId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteInt32(0);
+    parcel.WriteString("disk");
+    parcel.WriteInt32(0);
+    parcel.WriteBool(false);
+    parcel.WriteString("ext4");
+    parcel.WriteString("");
+    VolumeCore *result = VolumeCore::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeCoreTest, Unmarshalling_OversizedDiskId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol");
+    parcel.WriteInt32(0);
+    parcel.WriteString(std::string(4097, 'b'));
+    parcel.WriteInt32(0);
+    parcel.WriteBool(false);
+    parcel.WriteString("ext4");
+    parcel.WriteString("");
+    VolumeCore *result = VolumeCore::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeCoreTest, Unmarshalling_OversizedFsType_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol");
+    parcel.WriteInt32(0);
+    parcel.WriteString("disk");
+    parcel.WriteInt32(0);
+    parcel.WriteBool(false);
+    parcel.WriteString(std::string(4097, 'c'));
+    parcel.WriteString("");
+    VolumeCore *result = VolumeCore::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeCoreTest, Unmarshalling_OversizedExtraInfo_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol");
+    parcel.WriteInt32(0);
+    parcel.WriteString("disk");
+    parcel.WriteInt32(0);
+    parcel.WriteBool(false);
+    parcel.WriteString("ext4");
+    parcel.WriteString(std::string(4097, 'd'));
+    VolumeCore *result = VolumeCore::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
 class VolumeInfoStrTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -181,6 +237,71 @@ HWTEST_F(VolumeInfoStrTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     EXPECT_EQ(result->description, "data");
     EXPECT_TRUE(result->isDamaged);
     delete result;
+}
+
+HWTEST_F(VolumeInfoStrTest, Unmarshalling_OversizedVolumeId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteString("ext4");
+    parcel.WriteString("uuid");
+    parcel.WriteString("/data");
+    parcel.WriteString("desc");
+    parcel.WriteBool(false);
+    VolumeInfoStr *result = VolumeInfoStr::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeInfoStrTest, Unmarshalling_OversizedFsTypeStr_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-1");
+    parcel.WriteString(std::string(4097, 'b'));
+    parcel.WriteString("uuid");
+    parcel.WriteString("/data");
+    parcel.WriteString("desc");
+    parcel.WriteBool(false);
+    VolumeInfoStr *result = VolumeInfoStr::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeInfoStrTest, Unmarshalling_OversizedFsUuid_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-1");
+    parcel.WriteString("ext4");
+    parcel.WriteString(std::string(4097, 'c'));
+    parcel.WriteString("/data");
+    parcel.WriteString("desc");
+    parcel.WriteBool(false);
+    VolumeInfoStr *result = VolumeInfoStr::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeInfoStrTest, Unmarshalling_OversizedPath_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-1");
+    parcel.WriteString("ext4");
+    parcel.WriteString("uuid");
+    parcel.WriteString(std::string(4097, 'd'));
+    parcel.WriteString("desc");
+    parcel.WriteBool(false);
+    VolumeInfoStr *result = VolumeInfoStr::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(VolumeInfoStrTest, Unmarshalling_OversizedDescription_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-1");
+    parcel.WriteString("ext4");
+    parcel.WriteString("uuid");
+    parcel.WriteString("/data");
+    parcel.WriteString(std::string(4097, 'e'));
+    parcel.WriteBool(false);
+    VolumeInfoStr *result = VolumeInfoStr::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
 }
 
 } // namespace DiskManager

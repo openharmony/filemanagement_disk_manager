@@ -17,6 +17,9 @@
 
 namespace OHOS {
 namespace DiskManager {
+namespace {
+constexpr size_t PARCEL_STRING_MAX_LEN = 4096;
+}
 
 // ---------- PartitionInfo ----------
 
@@ -126,10 +129,18 @@ PartitionInfo *PartitionInfo::Unmarshalling(Parcel &parcel)
     }
     obj->partitionNum_ = parcel.ReadInt32();
     obj->diskId_ = parcel.ReadString();
+    if (obj->diskId_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->startSector_ = parcel.ReadInt64();
     obj->endSector_ = parcel.ReadInt64();
     obj->sizeBytes_ = parcel.ReadInt64();
     obj->fsType_ = parcel.ReadString();
+    if (obj->fsType_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     return obj;
 }
 
@@ -262,7 +273,15 @@ PartitionTableInfo *PartitionTableInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->diskId_ = parcel.ReadString();
+    if (obj->diskId_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->tableType_ = parcel.ReadString();
+    if (obj->tableType_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->partitionCount_ = parcel.ReadInt32();
     obj->totalSector_ = parcel.ReadInt64();
     obj->sectorSize_ = parcel.ReadInt32();
@@ -359,6 +378,10 @@ PartitionParams *PartitionParams::Unmarshalling(Parcel &parcel)
     obj->startSector_ = parcel.ReadInt64();
     obj->endSector_ = parcel.ReadInt64();
     obj->typeCode_ = parcel.ReadString();
+    if (obj->typeCode_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     return obj;
 }
 
@@ -418,8 +441,16 @@ FormatParams *FormatParams::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->fsType_ = parcel.ReadString();
+    if (obj->fsType_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->quickFormat_ = parcel.ReadBool();
     obj->volumeName_ = parcel.ReadString();
+    if (obj->volumeName_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     return obj;
 }
 

@@ -118,6 +118,32 @@ HWTEST_F(PartitionInfoTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     delete result;
 }
 
+HWTEST_F(PartitionInfoTest, Unmarshalling_OversizedDiskId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteInt32(1);
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteString("ext4");
+    PartitionInfo *result = PartitionInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(PartitionInfoTest, Unmarshalling_OversizedFsType_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteInt32(1);
+    parcel.WriteString("disk-1");
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteString(std::string(4097, 'b'));
+    PartitionInfo *result = PartitionInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
 class PartitionTableInfoTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -282,6 +308,34 @@ HWTEST_F(PartitionTableInfoTest, Unmarshalling_OverMaxPartition_TestCase_001, Te
     EXPECT_EQ(result, nullptr);
 }
 
+HWTEST_F(PartitionTableInfoTest, Unmarshalling_OversizedDiskId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteString("gpt");
+    parcel.WriteInt32(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt32(512);
+    parcel.WriteInt32(2048);
+    parcel.WriteUint32(0u);
+    PartitionTableInfo *result = PartitionTableInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(PartitionTableInfoTest, Unmarshalling_OversizedTableType_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("disk-1");
+    parcel.WriteString(std::string(4097, 'b'));
+    parcel.WriteInt32(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt32(512);
+    parcel.WriteInt32(2048);
+    parcel.WriteUint32(0u);
+    PartitionTableInfo *result = PartitionTableInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
 class PartitionParamsTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -357,6 +411,17 @@ HWTEST_F(PartitionParamsTest, Unmarshalling_Success_TestCase_001, TestSize.Level
     delete result;
 }
 
+HWTEST_F(PartitionParamsTest, Unmarshalling_OversizedTypeCode_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteInt32(1);
+    parcel.WriteInt64(2048);
+    parcel.WriteInt64(4096);
+    parcel.WriteString(std::string(4097, 'a'));
+    PartitionParams *result = PartitionParams::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
 class FormatParamsTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -420,6 +485,26 @@ HWTEST_F(FormatParamsTest, Unmarshalling_Success_TestCase_001, TestSize.Level0)
     EXPECT_FALSE(result->GetQuickFormat());
     EXPECT_EQ(result->GetVolumeName(), "usb-vol");
     delete result;
+}
+
+HWTEST_F(FormatParamsTest, Unmarshalling_OversizedFsType_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteBool(false);
+    parcel.WriteString("vol");
+    FormatParams *result = FormatParams::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(FormatParamsTest, Unmarshalling_OversizedVolumeName_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vfat");
+    parcel.WriteBool(false);
+    parcel.WriteString(std::string(4097, 'b'));
+    FormatParams *result = FormatParams::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
 }
 
 } // namespace DiskManager

@@ -19,6 +19,7 @@ namespace OHOS {
 namespace DiskManager {
 namespace {
 constexpr uint32_t DISK_VOLUME_IDS_PARCEL_MAX = 256U;
+constexpr size_t PARCEL_STRING_MAX_LEN = 4096;
 
 bool IsInternalDataDiskType(int32_t diskType)
 {
@@ -259,6 +260,10 @@ Disk *Disk::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->diskId_ = parcel.ReadString();
+    if (obj->diskId_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     obj->sizeBytes_ = parcel.ReadInt64();
     obj->diskType_ = parcel.ReadInt32();
     obj->removable_ = parcel.ReadBool();
@@ -270,9 +275,18 @@ Disk *Disk::Unmarshalling(Parcel &parcel)
     obj->volumeIds_.clear();
     obj->volumeIds_.reserve(nVolumes);
     for (uint32_t i = 0; i < nVolumes; ++i) {
-        obj->volumeIds_.push_back(parcel.ReadString());
+        std::string vid = parcel.ReadString();
+        if (vid.size() > PARCEL_STRING_MAX_LEN) {
+            delete obj;
+            return nullptr;
+        }
+        obj->volumeIds_.push_back(std::move(vid));
     }
     obj->extraInfo_ = parcel.ReadString();
+    if (obj->extraInfo_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
     return obj;
 }
 } // namespace DiskManager

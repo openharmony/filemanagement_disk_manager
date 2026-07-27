@@ -354,7 +354,11 @@ ErrCode StorageDaemonProxy::MountFuseDevice(const std::string &mountPath, int32_
     if (res != ERR_OK) {
         return res;
     }
-    fuseFd = static_cast<int32_t>(reply.ReadFileDescriptor());
+    int fd = reply.ReadFileDescriptor();
+    if (fd < 0) {
+        return ERR_INVALID_DATA;
+    }
+    fuseFd = static_cast<int32_t>(fd);
     return ERR_OK;
 }
 
