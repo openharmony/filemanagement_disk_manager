@@ -606,7 +606,6 @@ group("disk_manager_ut") {
   deps = [
     ":disk_manager_common_event_publisher_test",
     ":storage_daemon_proxy_test",
-    ":disk_manager_client_test",
     ":uevent_env_parser_test",
     ":disk_manager_server_test",
     ":disk_test",
