@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fuzz_config>
+  <fuzztest>
+    <name>BlockInfoFuzzTest</name>
+    <type>model</type>
+    <target>blockinfo_fuzzer</target>
+  </fuzztest>
+</fuzz_config>

@@ -26,7 +26,23 @@ using namespace DiskManager;
 namespace {
 constexpr int32_t DEFAULT_DISK_SIZE = 1024;
 constexpr int32_t DEFAULT_REMOVABLE = 2;
+constexpr int32_t CDROM_STATE_COUNT = 4;
 } // namespace
+
+void FuzzDiskSetters(const int32_t flag, Disk &disk)
+{
+    disk.SetDiskType(flag);
+    disk.SetSizeBytes(static_cast<int64_t>(flag));
+    std::vector<std::string> volIds = {"vol-1-1", "vol-1-2"};
+    disk.SetVolumeIds(volIds);
+    std::vector<std::string> movedIds = {"vol-2-1"};
+    disk.SetVolumeIds(std::move(movedIds));
+    disk.GetVolumeIds();
+    disk.SetExtraInfo("extraInfo");
+    disk.SetVendor("vendor");
+    disk.SetCdromState(static_cast<CdromState>(flag % CDROM_STATE_COUNT));
+    disk.RefreshClassificationFromSysfs("/sys/block/sda");
+}
 
 bool DiskFuzzTest(const uint8_t *data, size_t size)
 {
@@ -38,8 +54,8 @@ bool DiskFuzzTest(const uint8_t *data, size_t size)
     Disk disk("disk-1-1", DEFAULT_DISK_SIZE, "sda", DEFAULT_REMOVABLE);
 
     int32_t flag = *(reinterpret_cast<const int32_t *>(data));
-    disk.SetDiskType(flag);
-    disk.SetSizeBytes(static_cast<int64_t>(flag));
+    FuzzDiskSetters(flag, disk);
+
     disk.GetDiskId();
     disk.GetSizeBytes();
     disk.GetDiskType();

@@ -52,6 +52,7 @@ bool VolumeExternalFuzzTest(const uint8_t *data, size_t size)
     vol.GetFreeSize();
     vol.GetPartitionNum();
     vol.GetFsTypeByStr("ext4");
+    vol.Reset();
 
     vol.Marshalling(parcel);
     auto unmarshallingVol = std::unique_ptr<VolumeExternal>(VolumeExternal::Unmarshalling(parcel));

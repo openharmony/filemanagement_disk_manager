@@ -60,6 +60,12 @@ void FuzzPartitionTableInfo(const int32_t flag, Parcel &parcel)
     tableInfo.SetSectorSize(flag);
     tableInfo.SetAlignSector(flag);
     tableInfo.SetLastUsableSector(static_cast<int64_t>(flag) * LAST_USABLE_SECTOR_OFFSET);
+    std::vector<PartitionInfo> parts;
+    parts.emplace_back(flag, "disk-1-1", flag, flag * SECTOR_MULTIPLIER, flag * SIZE_MULTIPLIER, "ext4");
+    tableInfo.SetPartitions(parts);
+    std::vector<PartitionInfo> movedParts;
+    movedParts.emplace_back(flag, "disk-1-2", flag, flag * SECTOR_MULTIPLIER, flag * SIZE_MULTIPLIER, "ntfs");
+    tableInfo.SetPartitions(std::move(movedParts));
     tableInfo.GetDiskId();
     tableInfo.GetTableType();
     tableInfo.GetPartitionCount();
