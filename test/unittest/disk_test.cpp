@@ -468,5 +468,32 @@ HWTEST_F(DiskTest, Unmarshalling_OversizedExtraInfo_TestCase_001, TestSize.Level
     EXPECT_EQ(result, nullptr);
 }
 
+HWTEST_F(DiskTest, SetVendor_GetVendor_TestCase_001, TestSize.Level0)
+{
+    Disk disk;
+    EXPECT_EQ(disk.GetVendor(), "");
+    disk.SetVendor("VendorA");
+    EXPECT_EQ(disk.GetVendor(), "VendorA");
+}
+
+HWTEST_F(DiskTest, SetVendor_GetVendor_TestCase_002, TestSize.Level0)
+{
+    Disk disk("disk-1", 4096, "sda1", USB_FLAG);
+    disk.SetVendor("Samsung");
+    EXPECT_EQ(disk.GetVendor(), "Samsung");
+}
+
+HWTEST_F(DiskTest, GetCdromState_SetCdromState_TestCase_001, TestSize.Level0)
+{
+    Disk disk;
+    EXPECT_EQ(disk.GetCdromState(), CdromState::NO_DISC);
+    disk.SetCdromState(CdromState::EMPTY_DISC);
+    EXPECT_EQ(disk.GetCdromState(), CdromState::EMPTY_DISC);
+    disk.SetCdromState(CdromState::NON_EMPTY_DISC);
+    EXPECT_EQ(disk.GetCdromState(), CdromState::NON_EMPTY_DISC);
+    disk.SetCdromState(CdromState::QUERY_FAILED);
+    EXPECT_EQ(disk.GetCdromState(), CdromState::QUERY_FAILED);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

@@ -235,6 +235,27 @@ ohos_unittest("disk_manager_server_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("block_info_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "block_info_test.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 ohos_unittest("disk_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
@@ -661,6 +682,7 @@ ohos_unittest("uevent_bootstrap_test") {
 group("disk_manager_ut") {
   testonly = true
   deps = [
+    ":block_info_test",
     ":disk_manager_common_event_publisher_test",
     ":storage_daemon_proxy_test",
     ":disk_manager_client_test",
