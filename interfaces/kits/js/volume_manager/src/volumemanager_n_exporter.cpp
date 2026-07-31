@@ -20,6 +20,9 @@
 
 #include "volumemanager_n_exporter.h"
 
+#ifdef HMDFS_FILE_MANAGER
+#include "napi_module_dfs_service.h"
+#endif
 #include "disk.h"
 #include "disk_manager_client.h"
 #include "disk_manager_napi_errno.h"
@@ -1224,6 +1227,16 @@ static napi_property_descriptor g_properties[] = {
     DECLARE_NAPI_FUNCTION("deletePartition", DeletePartition),
     DECLARE_NAPI_FUNCTION("formatPartition", FormatPartition),
     DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
+#ifdef HMDFS_FILE_MANAGER
+    DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
+    DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),
+    DECLARE_NAPI_FUNCTION("updateDfsSwitchStatus", DfsService::UpdateDfsSwitchStatus),
+    DECLARE_NAPI_FUNCTION("connectDfs", DfsService::ConnectDfs),
+    DECLARE_NAPI_FUNCTION("disconnectDfs", DfsService::DisconnectDfs),
+    DECLARE_NAPI_FUNCTION("getConnectedDeviceList", DfsService::GetConnectedDeviceList),
+    DECLARE_NAPI_FUNCTION("on", DfsService::DeviceOnline),
+    DECLARE_NAPI_FUNCTION("off", DfsService::DeviceOffline),
+#endif
 };
 
 // 辅助函数：导出模块枚举类型
