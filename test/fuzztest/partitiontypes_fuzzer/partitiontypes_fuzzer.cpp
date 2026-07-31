@@ -28,8 +28,6 @@ constexpr int32_t SECTOR_MULTIPLIER = 2;
 constexpr int32_t SIZE_MULTIPLIER = 100;
 constexpr int32_t TOTAL_SECTOR_MULTIPLIER = 1000;
 constexpr int32_t LAST_USABLE_SECTOR_OFFSET = 999;
-const std::string GPT_PARTITION_TYPE_GUID =
-    std::string("0FC63DAF-8483-4772-8E79-3") + "69D8477DE4";
 const std::string DEFAULT_FS_TYPE = "ext4";
 } // namespace
 
@@ -76,7 +74,7 @@ void FuzzPartitionTableInfo(const int32_t flag, Parcel &parcel)
 
 void FuzzPartitionParams(const int32_t flag, Parcel &parcel)
 {
-    PartitionParams params(flag, flag, flag * SECTOR_MULTIPLIER, GPT_PARTITION_TYPE_GUID);
+    PartitionParams params(flag, flag, flag * SECTOR_MULTIPLIER, DEFAULT_FS_TYPE);
     params.SetPartitionNum(flag);
     params.SetStartSector(static_cast<int64_t>(flag));
     params.SetEndSector(static_cast<int64_t>(flag) * SECTOR_MULTIPLIER);
