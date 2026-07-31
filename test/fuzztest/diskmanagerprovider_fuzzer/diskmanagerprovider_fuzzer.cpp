@@ -45,6 +45,8 @@ namespace OHOS {
 #ifdef CONFIG_IPC_SINGLE
 using namespace IPC_SINGLE;
 #endif
+constexpr uint32_t MOCK_TOKEN_ID = 100;
+
 pid_t IPCSkeleton::GetCallingUid()
 {
     return 0;
@@ -52,17 +54,21 @@ pid_t IPCSkeleton::GetCallingUid()
 
 uint32_t IPCSkeleton::GetCallingTokenID()
 {
-    return 100;
+    return MOCK_TOKEN_ID;
 }
 
 uint64_t IPCSkeleton::GetCallingFullTokenID()
 {
-    return 100;
+    return MOCK_TOKEN_ID;
 }
 } // namespace OHOS
 
 namespace OHOS::DiskManager {
 namespace {
+constexpr uint8_t BYTE_SHIFT_8 = 8;
+constexpr uint8_t BYTE_SHIFT_16 = 16;
+constexpr uint8_t BYTE_SHIFT_24 = 24;
+
 constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
     1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
     26, 27, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49,
@@ -70,7 +76,8 @@ constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
 
 uint32_t GetU32Data(const uint8_t *data)
 {
-    return static_cast<uint32_t>((data[0]) | (data[1] << 8) | (data[2] << 16) | (data[3] << 24));
+    return static_cast<uint32_t>((data[0]) | (data[1] << BYTE_SHIFT_8) |
+        (data[2] << BYTE_SHIFT_16) | (data[3] << BYTE_SHIFT_24));
 }
 } // namespace
 

@@ -23,6 +23,11 @@
 namespace OHOS {
 using namespace DiskManager;
 
+namespace {
+constexpr int32_t DEFAULT_DISK_SIZE = 1024;
+constexpr int32_t DEFAULT_REMOVABLE = 2;
+} // namespace
+
 bool DiskFuzzTest(const uint8_t *data, size_t size)
 {
     if ((data == nullptr) || (size < sizeof(int32_t))) {
@@ -30,7 +35,7 @@ bool DiskFuzzTest(const uint8_t *data, size_t size)
     }
 
     Parcel parcel;
-    Disk disk("disk-1-1", 1024, "sda", 2);
+    Disk disk("disk-1-1", DEFAULT_DISK_SIZE, "sda", DEFAULT_REMOVABLE);
 
     int32_t flag = *(reinterpret_cast<const int32_t *>(data));
     disk.SetDiskType(flag);

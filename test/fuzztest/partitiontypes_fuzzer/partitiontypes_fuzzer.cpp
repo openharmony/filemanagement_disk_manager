@@ -23,21 +23,21 @@
 namespace OHOS {
 using namespace DiskManager;
 
-bool PartitionTypesFuzzTest(const uint8_t *data, size_t size)
+namespace {
+constexpr int32_t SECTOR_MULTIPLIER = 2;
+constexpr int32_t SIZE_MULTIPLIER = 100;
+constexpr int32_t TOTAL_SECTOR_MULTIPLIER = 1000;
+constexpr int32_t LAST_USABLE_SECTOR_OFFSET = 999;
+} // namespace
+
+void FuzzPartitionInfo(const int32_t flag, Parcel &parcel)
 {
-    if ((data == nullptr) || (size < sizeof(int32_t))) {
-        return false;
-    }
-
-    Parcel parcel;
-    int32_t flag = *(reinterpret_cast<const int32_t *>(data));
-
-    PartitionInfo partInfo(flag, "disk-1-1", flag, flag * 2, flag * 100, "ext4");
+    PartitionInfo partInfo(flag, "disk-1-1", flag, flag * SECTOR_MULTIPLIER, flag * SIZE_MULTIPLIER, "ext4");
     partInfo.SetPartitionNum(flag);
     partInfo.SetDiskId("disk-1-1");
     partInfo.SetStartSector(static_cast<int64_t>(flag));
-    partInfo.SetEndSector(static_cast<int64_t>(flag) * 2);
-    partInfo.SetSizeBytes(static_cast<int64_t>(flag) * 100);
+    partInfo.SetEndSector(static_cast<int64_t>(flag) * SECTOR_MULTIPLIER);
+    partInfo.SetSizeBytes(static_cast<int64_t>(flag) * SIZE_MULTIPLIER);
     partInfo.SetFsType("ntfs");
     partInfo.GetPartitionNum();
     partInfo.GetDiskId();
@@ -47,16 +47,18 @@ bool PartitionTypesFuzzTest(const uint8_t *data, size_t size)
     partInfo.GetFsType();
     partInfo.Marshalling(parcel);
     auto unmarshallingPartInfo = std::unique_ptr<PartitionInfo>(PartitionInfo::Unmarshalling(parcel));
+}
 
-    Parcel parcel2;
+void FuzzPartitionTableInfo(const int32_t flag, Parcel &parcel)
+{
     PartitionTableInfo tableInfo;
     tableInfo.SetDiskId("disk-1-1");
     tableInfo.SetTableType("gpt");
     tableInfo.SetPartitionCount(flag);
-    tableInfo.SetTotalSector(static_cast<int64_t>(flag) * 1000);
+    tableInfo.SetTotalSector(static_cast<int64_t>(flag) * TOTAL_SECTOR_MULTIPLIER);
     tableInfo.SetSectorSize(flag);
     tableInfo.SetAlignSector(flag);
-    tableInfo.SetLastUsableSector(static_cast<int64_t>(flag) * 999);
+    tableInfo.SetLastUsableSector(static_cast<int64_t>(flag) * LAST_USABLE_SECTOR_OFFSET);
     tableInfo.GetDiskId();
     tableInfo.GetTableType();
     tableInfo.GetPartitionCount();
@@ -65,34 +67,58 @@ bool PartitionTypesFuzzTest(const uint8_t *data, size_t size)
     tableInfo.GetAlignSector();
     tableInfo.GetLastUsableSector();
     tableInfo.GetPartitions();
-    tableInfo.Marshalling(parcel2);
-    auto unmarshallingTableInfo = std::unique_ptr<PartitionTableInfo>(PartitionTableInfo::Unmarshalling(parcel2));
+    tableInfo.Marshalling(parcel);
+    auto unmarshallingTableInfo = std::unique_ptr<PartitionTableInfo>(PartitionTableInfo::Unmarshalling(parcel));
+}
 
-    Parcel parcel3;
-
-    PartitionParams params(flag, flag, flag * 2, "0FC63DAF-8483-4772-8E79-3D69D8477DE4");
+void FuzzPartitionParams(const int32_t flag, Parcel &parcel)
+{
+    PartitionParams params(flag, flag, flag * SECTOR_MULTIPLIER,
+        "0FC63DAF-8483-4772-8E79-3D69D8477DE4");
     params.SetPartitionNum(flag);
     params.SetStartSector(static_cast<int64_t>(flag));
-    params.SetEndSector(static_cast<int64_t>(flag) * 2);
+    params.SetEndSector(static_cast<int64_t>(flag) * SECTOR_MULTIPLIER);
     params.SetTypeCode("EBD0A0A2-B9E5-4433-87C0-68B6B72699C7");
     params.GetPartitionNum();
     params.GetStartSector();
     params.GetEndSector();
     params.GetTypeCode();
-    params.Marshalling(parcel3);
-    auto unmarshallingParams = std::unique_ptr<PartitionParams>(PartitionParams::Unmarshalling(parcel3));
+    params.Marshalling(parcel);
+    auto unmarshallingParams = std::unique_ptr<PartitionParams>(PartitionParams::Unmarshalling(parcel));
+}
 
-    Parcel parcel4;
-
+void FuzzFormatParams(const int32_t flag, Parcel &parcel)
+{
     FormatParams fmtParams("ext4", true, "testVolume");
     fmtParams.SetFsType("ntfs");
-    fmtParams.SetQuickFormat(flag % 2 == 0);
+    fmtParams.SetQuickFormat(flag % SECTOR_MULTIPLIER == 0);
     fmtParams.SetVolumeName("fuzzVolume");
     fmtParams.GetFsType();
     fmtParams.GetQuickFormat();
     fmtParams.GetVolumeName();
-    fmtParams.Marshalling(parcel4);
-    auto unmarshallingFmtParams = std::unique_ptr<FormatParams>(FormatParams::Unmarshalling(parcel4));
+    fmtParams.Marshalling(parcel);
+    auto unmarshallingFmtParams = std::unique_ptr<FormatParams>(FormatParams::Unmarshalling(parcel));
+}
+
+bool PartitionTypesFuzzTest(const uint8_t *data, size_t size)
+{
+    if ((data == nullptr) || (size < sizeof(int32_t))) {
+        return false;
+    }
+
+    int32_t flag = *(reinterpret_cast<const int32_t *>(data));
+
+    Parcel parcel;
+    FuzzPartitionInfo(flag, parcel);
+
+    Parcel parcel2;
+    FuzzPartitionTableInfo(flag, parcel2);
+
+    Parcel parcel3;
+    FuzzPartitionParams(flag, parcel3);
+
+    Parcel parcel4;
+    FuzzFormatParams(flag, parcel4);
 
     return true;
 }

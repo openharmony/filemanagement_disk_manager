@@ -23,6 +23,10 @@
 namespace OHOS {
 using namespace DiskManager;
 
+namespace {
+constexpr int32_t DEFAULT_VOLUME_TYPE = 2;
+} // namespace
+
 bool VolumeCoreFuzzTest(const uint8_t *data, size_t size)
 {
     if ((data == nullptr) || (size < sizeof(int32_t))) {
@@ -32,7 +36,7 @@ bool VolumeCoreFuzzTest(const uint8_t *data, size_t size)
     int32_t flag = *(reinterpret_cast<const int32_t *>(data));
 
     Parcel parcel1;
-    VolumeCore vol("vol-1-1", 2, "disk-1-1", flag, "ext4", "extra");
+    VolumeCore vol("vol-1-1", DEFAULT_VOLUME_TYPE, "disk-1-1", flag, "ext4", "extra");
     vol.SetState(flag);
     vol.SetExtraInfo("extraInfo");
     vol.GetId();
