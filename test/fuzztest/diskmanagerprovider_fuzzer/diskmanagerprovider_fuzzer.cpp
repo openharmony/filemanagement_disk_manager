@@ -68,6 +68,10 @@ namespace {
 constexpr uint8_t BYTE_SHIFT_8 = 8;
 constexpr uint8_t BYTE_SHIFT_16 = 16;
 constexpr uint8_t BYTE_SHIFT_24 = 24;
+constexpr uint8_t BYTE_INDEX_0 = 0;
+constexpr uint8_t BYTE_INDEX_1 = 1;
+constexpr uint8_t BYTE_INDEX_2 = 2;
+constexpr uint8_t BYTE_INDEX_3 = 3;
 
 constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
     1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
@@ -76,8 +80,8 @@ constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
 
 uint32_t GetU32Data(const uint8_t *data)
 {
-    return static_cast<uint32_t>((data[0]) | (data[1] << BYTE_SHIFT_8) |
-        (data[2] << BYTE_SHIFT_16) | (data[3] << BYTE_SHIFT_24));
+    return static_cast<uint32_t>((data[BYTE_INDEX_0]) | (data[BYTE_INDEX_1] << BYTE_SHIFT_8) |
+        (data[BYTE_INDEX_2] << BYTE_SHIFT_16) | (data[BYTE_INDEX_3] << BYTE_SHIFT_24));
 }
 } // namespace
 
