@@ -56,6 +56,7 @@
 #include <sys/xattr.h>
 
 #include "parameter.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -667,6 +668,11 @@ DiskManager &DiskManager::GetInstance()
 
 int32_t DiskManager::Mount(const std::string &volumeId)
 {
+    if (system::GetParameter("persist.edm.external_storage_card_disable", "") == "true") {
+        LOGW("External disk is prohibited!");
+        return E_NON_EXIST;
+    }
+
     VolumeExternal volExternal;
     {
         std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
