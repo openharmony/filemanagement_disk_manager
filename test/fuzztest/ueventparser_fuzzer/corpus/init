@@ -1,0 +1,7 @@
+action=add
+subsystem=block
+devtype=disk
+major=8
+minor=0
+devpath=/devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.0/host0/target0:0:0/0:0:0:0/block/sda
+devname=sda

@@ -1,0 +1,70 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/test.gni")
+
+disk_manager_path = "//foundation/filemanagement/disk_manager"
+
+ohos_fuzztest("VolumeExternalFuzzTest") {
+  module_out_path = "disk_manager/disk_manager"
+  fuzz_config_file = disk_manager_path + "/test/fuzztest/volumeexternal_fuzzer"
+
+  include_dirs = [
+    disk_manager_path + "/interfaces/innerkits/include",
+  ]
+
+  sources = [
+    disk_manager_path + "/test/fuzztest/volumeexternal_fuzzer/volumeexternal_fuzzer.cpp",
+  ]
+
+  configs = [
+    disk_manager_path + "/interfaces/innerkits:disk_manager_idl_public_config",
+    disk_manager_path + "/common:disk_manager_common_include",
+  ]
+
+  defines = [
+    "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
+    "LOG_DOMAIN = 0xD00430F",
+  ]
+
+  deps = [
+    disk_manager_path + "/interfaces/innerkits:disk_manager_innerkits",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  cflags = [
+    "-fno-lto",
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+  ]
+
+  ldflags = [
+    "-fno-lto",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+group("volumeexternal_fuzztest") {
+  testonly = true
+  deps = [ ":VolumeExternalFuzzTest" ]
+}
