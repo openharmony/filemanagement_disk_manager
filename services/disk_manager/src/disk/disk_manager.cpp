@@ -56,6 +56,7 @@
 #include <sys/xattr.h>
 
 #include "parameter.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace DiskManager {
