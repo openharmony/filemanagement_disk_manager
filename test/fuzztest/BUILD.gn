@@ -15,5 +15,15 @@ import("//build/ohos.gni")
 
 group("disk_manager_fuzztest") {
   testonly = true
-  deps = [ "//foundation/filemanagement/disk_manager/test/fuzztest/diskmanagerstub_fuzzer:diskmanagerstub_fuzztest" ]
+  deps = [
+    "//foundation/filemanagement/disk_manager/test/fuzztest/diskmanagerstub_fuzzer:diskmanagerstub_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/diskmanagerutils_fuzzer:diskmanagerutils_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/diskmanagerprovider_fuzzer:diskmanagerprovider_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/ueventparser_fuzzer:ueventparser_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/partitiontableparser_fuzzer:partitiontableparser_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/disk_fuzzer:disk_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/volumeexternal_fuzzer:volumeexternal_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/partitiontypes_fuzzer:partitiontypes_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/volumecore_fuzzer:volumecore_fuzztest",
+  ]
 }
