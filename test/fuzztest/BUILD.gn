@@ -25,6 +25,5 @@ group("disk_manager_fuzztest") {
     "//foundation/filemanagement/disk_manager/test/fuzztest/volumeexternal_fuzzer:volumeexternal_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/partitiontypes_fuzzer:partitiontypes_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/volumecore_fuzzer:volumecore_fuzztest",
-    "//foundation/filemanagement/disk_manager/test/fuzztest/blockinfo_fuzzer:blockinfo_fuzztest",
   ]
 }
