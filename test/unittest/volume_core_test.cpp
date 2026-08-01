@@ -304,5 +304,38 @@ HWTEST_F(VolumeInfoStrTest, Unmarshalling_OversizedDescription_TestCase_001, Tes
     EXPECT_EQ(result, nullptr);
 }
 
+HWTEST_F(VolumeInfoStrTest, DefaultConstructor_Fields_TestCase_001, TestSize.Level0)
+{
+    VolumeInfoStr vis;
+    EXPECT_EQ(vis.volumeId, "");
+    EXPECT_EQ(vis.fsTypeStr, "");
+    EXPECT_EQ(vis.fsUuid, "");
+    EXPECT_EQ(vis.path, "");
+    EXPECT_EQ(vis.description, "");
+    EXPECT_FALSE(vis.isDamaged);
+}
+
+HWTEST_F(VolumeInfoStrTest, ParameterizedConstructor_AllFields_TestCase_001, TestSize.Level0)
+{
+    VolumeInfoStr vis("vol-abc", "ntfs", "uuid-xyz", "/mnt/usb", "USB Drive", true);
+    EXPECT_EQ(vis.volumeId, "vol-abc");
+    EXPECT_EQ(vis.fsTypeStr, "ntfs");
+    EXPECT_EQ(vis.fsUuid, "uuid-xyz");
+    EXPECT_EQ(vis.path, "/mnt/usb");
+    EXPECT_EQ(vis.description, "USB Drive");
+    EXPECT_TRUE(vis.isDamaged);
+}
+
+HWTEST_F(VolumeInfoStrTest, ParameterizedConstructor_NotDamaged_TestCase_001, TestSize.Level0)
+{
+    VolumeInfoStr vis("vol-2", "vfat", "uuid-2", "/mnt/sd", "SD Card", false);
+    EXPECT_EQ(vis.volumeId, "vol-2");
+    EXPECT_EQ(vis.fsTypeStr, "vfat");
+    EXPECT_EQ(vis.fsUuid, "uuid-2");
+    EXPECT_EQ(vis.path, "/mnt/sd");
+    EXPECT_EQ(vis.description, "SD Card");
+    EXPECT_FALSE(vis.isDamaged);
+}
+
 } // namespace DiskManager
 } // namespace OHOS
