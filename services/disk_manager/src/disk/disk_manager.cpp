@@ -1476,13 +1476,15 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
         std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
         const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
-        LOGI("totalSize is %{public}" PRIu64 " freeSize is %{public}" PRIu64 ", ret val is %{public}d",
-             static_cast<uint64_t>(totalSize), static_cast<uint64_t>(freeSize), oddRet);
+        LOGI("GetFreeSizeOfVolume startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
+             ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
+             startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
         if (freeSize != 0) {
             return oddRet;
         }
         if (startFreeSize == 0) {
             freeSize = totalSize - startTotalSize;
+            LOGI("GetFreeSizeOfVolume fallback freeSize=%{public}" PRId64, freeSize);
             return DiskManagerErrNo::E_OK;
         }
     }
