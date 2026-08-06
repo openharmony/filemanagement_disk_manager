@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <cstdint>
+#include <random>
 #include <vector>
 
 #include "disk_manager_utils.h"
@@ -34,6 +36,31 @@ constexpr char FILE_SEPARATOR_CHAR = '/';
 constexpr size_t VOL_PREFIX_LEN = 4;
 constexpr size_t DISK_PREFIX_LEN = 5;
 constexpr size_t UUID_MAX_LEN = 128;
+
+constexpr size_t UUID_BYTES = 16;
+constexpr int BITS_PER_BYTE = 8;
+constexpr size_t BYTES_PER_UINT64 = 8;
+constexpr size_t UUID_VERSION_BYTE_INDEX = 6;
+constexpr uint8_t UUID_VERSION_MASK = 0x0F;
+constexpr uint8_t UUID_VERSION_4 = 0x40;
+constexpr size_t UUID_VARIANT_BYTE_INDEX = 8;
+constexpr uint8_t UUID_VARIANT_MASK = 0x3F;
+constexpr uint8_t UUID_VARIANT_RFC4122 = 0x80;
+constexpr size_t UUID_FORMATTED_LEN = 36;
+
+constexpr size_t UUID_FIELD_COUNT = 5;
+constexpr size_t UUID_FIELD_TIME_LOW_LEN = 4;
+constexpr size_t UUID_FIELD_TIME_MID_LEN = 2;
+constexpr size_t UUID_FIELD_TIME_HI_LEN = 2;
+constexpr size_t UUID_FIELD_CLOCK_SEQ_LEN = 2;
+constexpr size_t UUID_FIELD_NODE_LEN = 6;
+constexpr size_t UUID_FIELD_LENGTHS[UUID_FIELD_COUNT] = {
+    UUID_FIELD_TIME_LOW_LEN, UUID_FIELD_TIME_MID_LEN, UUID_FIELD_TIME_HI_LEN,
+    UUID_FIELD_CLOCK_SEQ_LEN, UUID_FIELD_NODE_LEN
+};
+constexpr int HEX_NIBBLE_SHIFT = 4;
+constexpr uint8_t HEX_NIBBLE_MASK = 0x0F;
+constexpr char HEX_CHARS[] = "0123456789abcdef";
 
 constexpr char BACKSLASH_CHAR = '\\';
 constexpr const char *URL_ENCODED_SLASH_LOW = "%2f";
@@ -227,6 +254,36 @@ bool IsUuidValid(const std::string &uuid)
         return false;
     }
     return true;
+}
+
+std::string GenerateRandomUuid()
+{
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dist;
+    uint64_t a = dist(gen);
+    uint64_t b = dist(gen);
+    uint8_t buf[UUID_BYTES];
+    for (size_t i = 0; i < BYTES_PER_UINT64; ++i) {
+        buf[i] = static_cast<uint8_t>(a >> (i * BITS_PER_BYTE));
+        buf[i + BYTES_PER_UINT64] = static_cast<uint8_t>(b >> (i * BITS_PER_BYTE));
+    }
+    buf[UUID_VERSION_BYTE_INDEX] = (buf[UUID_VERSION_BYTE_INDEX] & UUID_VERSION_MASK) | UUID_VERSION_4;
+    buf[UUID_VARIANT_BYTE_INDEX] = (buf[UUID_VARIANT_BYTE_INDEX] & UUID_VARIANT_MASK) | UUID_VARIANT_RFC4122;
+    char out[UUID_FORMATTED_LEN + 1] = {0};
+    size_t pos = 0;
+    size_t byteIdx = 0;
+    for (size_t field = 0; field < UUID_FIELD_COUNT; ++field) {
+        for (size_t byteInField = 0; byteInField < UUID_FIELD_LENGTHS[field]; ++byteInField) {
+            out[pos++] = HEX_CHARS[buf[byteIdx] >> HEX_NIBBLE_SHIFT];
+            out[pos++] = HEX_CHARS[buf[byteIdx] & HEX_NIBBLE_MASK];
+            ++byteIdx;
+        }
+        if (field < UUID_FIELD_COUNT - 1) {
+            out[pos++] = '-';
+        }
+    }
+    return std::string(out);
 }
 
 } // namespace DiskManager

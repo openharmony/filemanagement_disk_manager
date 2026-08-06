@@ -58,6 +58,7 @@ public:
     MOCK_METHOD(int32_t, UpdateVolumeMetadata,
         (const std::string &volumeId, const std::string &fsUuid,
          const std::string &fsTypeStr, const std::string &description));
+    MOCK_METHOD(int32_t, SetVolumeDiscState, (const std::string &volumeId, CdromState discState));
     MOCK_METHOD(int32_t, Erase, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Eject, (const std::string &diskId));
     MOCK_METHOD(void, NotifyPartitionDone, (const std::string &diskId));

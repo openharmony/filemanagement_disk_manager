@@ -60,6 +60,7 @@ protected:
         ON_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillByDefault(Return(false));
         ON_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillByDefault(Return(E_OK));
+        ON_CALL(DiskManager::GetInstance(), SetVolumeDiscState(_, _)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), GetAllVolumes(_)).WillByDefault(Return(E_OK));
         ON_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
             .WillByDefault(DoAll(SetArgReferee<DISK_METADATA_ARG_UUID>(std::string("test-uuid")),
