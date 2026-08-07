@@ -979,6 +979,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     std::string blockVolId;
     std::string diskId;
     std::string oldFsUuid;
+    std::string partitionType;
+    int32_t partitionNum;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -1003,8 +1005,11 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
         blockVolId = it->second.GetId();
         diskId = it->second.GetDiskId();
         oldFsUuid = it->second.GetUuid();
+        partitionType = it->second.GetPartitionType();
+        partitionNum = it->second.GetPartitionNum();
     }
-    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume("/dev/block/" + blockVolId, fsType);
+    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(
+        "/dev/block/" + blockVolId, fsType, "/dev/block/" + diskId, partitionType, partitionNum);
     if (err != ERR_OK) {
         LOGE("Format vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         PublishFormatFailEvent(volumeId);

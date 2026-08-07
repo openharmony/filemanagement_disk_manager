@@ -193,7 +193,9 @@ ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, const std::str
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::string &fsType)
+ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::string &fsType,
+                                         const std::string &diskPath, const std::string &partitionType,
+                                         const int32_t partitionNum)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -201,7 +203,9 @@ ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(fsType))) {
+    if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(fsType)) ||
+        !data.WriteString16(Str8ToStr16(diskPath)) || !data.WriteString16(Str8ToStr16(partitionType)) ||
+        !data.WriteInt32(partitionNum)) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =

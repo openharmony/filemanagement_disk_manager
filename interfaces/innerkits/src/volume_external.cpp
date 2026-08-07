@@ -132,6 +132,16 @@ void VolumeExternal::SetPartitionNum(int32_t partitionNum)
     partitionNum_ = partitionNum;
 }
 
+void VolumeExternal::SetPartitionType(const std::string &partitionType)
+{
+    partitionType_ = partitionType;
+}
+
+std::string VolumeExternal::GetPartitionType() const
+{
+    return partitionType_;
+}
+
 VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
 {
     std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));

@@ -385,7 +385,8 @@ bool TryLoadBlockInfoForVolume(const Disk &disk, BlockInfo &blockInfo)
 int32_t CreateAndSetupVolume(const std::string &diskId,
                              dev_t pDev,
                              const bool &isUserData,
-                             int32_t partitionNUm)
+                             int32_t partitionNUm,
+                             const std::string partitionType)
 {
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
@@ -400,6 +401,7 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     VolumeExternal volExternal(VolumeCore(volId, EXTERNAL, diskId));
     volExternal.SetUserData(isUserData);
     volExternal.SetPartitionNum(partitionNUm);
+    volExternal.SetPartitionType(partitionType);
     Disk disk;
     if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
         LOGE("Disk with id %{public}s not found", diskId.c_str());
@@ -454,7 +456,8 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     if (DiskManager::GetInstance().GetVolumeById(volId, vol) == E_OK && vol.GetState() == VolumeState::MOUNTED) {
         return;
     }
-    if (CreateAndSetupVolume(diskId, pDev, isUserData, static_cast<int32_t>(p.partitionNumber)) != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, pDev, isUserData, static_cast<int32_t>(p.partitionNumber), p.partitionType) !=
+        ERR_OK) {
         return;
     }
     std::string uuid;
@@ -505,7 +508,7 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
         }
     }
 
-    if (CreateAndSetupVolume(diskId, wholeDev, false, 0) != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, wholeDev, false, 0, "mbr") != ERR_OK) {
         return;
     }
 
@@ -541,7 +544,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
 
-    if (CreateAndSetupVolume(diskId, pDev, false, 0) != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, pDev, false, 0, "cd") != ERR_OK) {
         return;
     }
 

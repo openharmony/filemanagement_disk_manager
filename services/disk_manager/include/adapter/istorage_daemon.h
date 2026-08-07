@@ -76,7 +76,9 @@ public:
                           uint64_t mountFlag,
                           const std::string &mountData = "") = 0;
     virtual ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) = 0;
-    virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) = 0;
+    virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType,
+                                 const std::string &diskPath, const std::string &partitionType,
+                                 const int32_t partitionNum) = 0;
     virtual ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) = 0;
     virtual ErrCode Repair(const std::string &devPath, const std::string &fsType) = 0;
     virtual ErrCode SetLabel(const std::string &devPath,
