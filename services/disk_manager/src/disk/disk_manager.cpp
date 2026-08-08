@@ -1068,6 +1068,44 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
     return mountErr;
 }
 
+int32_t DiskManager::ResolveSetVolumeDescriptionContext(const std::string &fsUuid, const std::string &description,
+                                                         std::string &blockVolId, std::string &fsTypeStr,
+                                                         std::string &diskId)
+{
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        VolumeExternal volExternal;
+        if (LookupVolumeByUuidUnlocked(fsUuid, volExternal) != E_OK) {
+            LOGE("Volume with id %{public}s not found", GetAnonyString(fsUuid).c_str());
+            return E_NON_EXIST;
+        }
+        if (volExternal.GetState() != VolumeState::UNMOUNTED) {
+            LOGE("SetVolumeDescription: fsUuid=%{public}s state=%{public}d not unmounted",
+                 GetAnonyString(fsUuid).c_str(), volExternal.GetState());
+            return E_VOL_STATE;
+        }
+        blockVolId = volExternal.GetId();
+        fsTypeStr = volExternal.GetFsTypeString();
+        diskId = volExternal.GetDiskId();
+    }
+    if (description.empty() || description.size() > VOLUME_DESCRIPTION_MAX_LEN) {
+        LOGE("SetVolumeDescription: description is empty or exceeds %{public}zu limit",
+             static_cast<size_t>(VOLUME_DESCRIPTION_MAX_LEN));
+        return E_PARAMS_INVALID;
+    }
+    if (IsDiskSupported(diskId) != E_OK) {
+        LOGE("SetVolumeDescription: disk not support, fsUuid=%{public}s diskId=%{public}s",
+             GetAnonyString(fsUuid).c_str(), diskId.c_str());
+        return E_NOT_SUPPORT;
+    }
+    if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
+        LOGE("SetVolumeDescription: fsType not support, fsUuid=%{public}s fsType=%{public}s",
+             GetAnonyString(fsUuid).c_str(), fsTypeStr.c_str());
+        return E_NOT_SUPPORT;
+    }
+    return DiskManagerErrNo::E_OK;
+}
+
 int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::string &description)
 {
     VolumeReportInfo info;
@@ -1078,39 +1116,10 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
     std::string blockVolId;
     std::string fsTypeStr;
     std::string diskId;
-    {
-        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
-        VolumeExternal volExternal;
-        if (LookupVolumeByUuidUnlocked(fsUuid, volExternal) != E_OK) {
-            LOGE("Volume with id %{public}s not found", GetAnonyString(fsUuid).c_str());
-            return dfx.Finish(E_NON_EXIST);
-        }
-        if (volExternal.GetState() != VolumeState::UNMOUNTED) {
-        LOGE("SetVolumeDescription: fsUuid=%{public}s state=%{public}d not unmounted",
-             GetAnonyString(fsUuid).c_str(), volExternal.GetState());
-            return dfx.Finish(E_VOL_STATE);
-        }
-        blockVolId = volExternal.GetId();
-        fsTypeStr = volExternal.GetFsTypeString();
-        diskId = volExternal.GetDiskId();
-    }
-
-    if (description.empty() || description.size() > VOLUME_DESCRIPTION_MAX_LEN) {
-        LOGE("SetVolumeDescription: description is empty or exceeds %{public}zu limit",
-             static_cast<size_t>(VOLUME_DESCRIPTION_MAX_LEN));
-        return dfx.Finish(E_PARAMS_INVALID);
-    }
-
-    if (IsDiskSupported(diskId) != E_OK) {
-        LOGE("SetVolumeDescription: disk not support, fsUuid=%{public}s diskId=%{public}s",
-             GetAnonyString(fsUuid).c_str(), diskId.c_str());
-        return dfx.Finish(E_NOT_SUPPORT);
-    }
-
-    if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
-        LOGE("SetVolumeDescription: fsType not support, fsUuid=%{public}s fsType=%{public}s",
-             GetAnonyString(fsUuid).c_str(), fsTypeStr.c_str());
-        return dfx.Finish(E_NOT_SUPPORT);
+    const int32_t prepareRet =
+        ResolveSetVolumeDescriptionContext(fsUuid, description, blockVolId, fsTypeStr, diskId);
+    if (prepareRet != DiskManagerErrNo::E_OK) {
+        return dfx.Finish(prepareRet);
     }
 
     const int32_t err =
