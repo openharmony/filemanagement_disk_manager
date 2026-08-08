@@ -25,6 +25,7 @@
 #include "storage_spec_models.h"
 #include "uevent_env_parser.h"
 #include "disk_manager_errno.h"
+#include "disk_manager_dfx_types.h"
 #include "disk_manager_hilog.h"
 #include "disk_manager_utils.h"
 #include "errors.h"
@@ -698,7 +699,8 @@ int32_t UeventBootstrap::OnBlockDiskUevent(const std::string &rawUeventMsg)
 
     UeventEnv env;
     if (!UeventEnvParser::Parse(rawUeventMsg, env)) {
-        LOGE("OnBlockDiskUevent parse failed");
+        LOGE("OnBlockDiskUevent parse failed rawLen=%{public}zu preview=%{public}s", rawUeventMsg.size(),
+             DfxTruncate(rawUeventMsg).c_str());
         return DiskManagerErrNo::E_UEVENT_PARSE_FAILED;
     }
     if (!env.IsBlockDiskEvent()) {
