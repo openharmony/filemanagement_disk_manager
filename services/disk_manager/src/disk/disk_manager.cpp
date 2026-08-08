@@ -1075,7 +1075,9 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
     info.extra = "descLen=" + std::to_string(description.size());
     IpcDfxScope dfx("DiskManager::SetVolumeDescription", DFX_STAGE_SET_VOLUME_DESCRIPTION,
                     VolumeOpType::SET_VOLUME_DESCRIPTION, info);
-    std::string blockVolId, fsTypeStr, diskId;
+    std::string blockVolId;
+    std::string fsTypeStr;
+    std::string diskId;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         VolumeExternal volExternal;
@@ -1084,32 +1086,36 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
             return dfx.Finish(E_NON_EXIST);
         }
         if (volExternal.GetState() != VolumeState::UNMOUNTED) {
-            LOGE("SetVolumeDescription: fsUuid=%{public}s state=%{public}d not unmounted",
-                 GetAnonyString(fsUuid).c_str(), volExternal.GetState());
+            LOGE("SetVolumeDescription state=%{public}d not unmounted", volExternal.GetState());
             return dfx.Finish(E_VOL_STATE);
         }
         blockVolId = volExternal.GetId();
         fsTypeStr = volExternal.GetFsTypeString();
         diskId = volExternal.GetDiskId();
     }
+
     if (description.empty() || description.size() > VOLUME_DESCRIPTION_MAX_LEN) {
         LOGE("SetVolumeDescription: description empty or exceeds %{public}zu", VOLUME_DESCRIPTION_MAX_LEN);
         return dfx.Finish(E_PARAMS_INVALID);
     }
+
     if (IsDiskSupported(diskId) != E_OK) {
         LOGE("SetVolumeDescription: disk not support, diskId=%{public}s", diskId.c_str());
         return dfx.Finish(E_NOT_SUPPORT);
     }
+
     if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
         LOGE("SetVolumeDescription: fsType not support, fsType=%{public}s", fsTypeStr.c_str());
         return dfx.Finish(E_NOT_SUPPORT);
     }
-    const int32_t err = StorageDaemonAdapter::GetInstance().SetLabel(
-        "/dev/block/" + blockVolId, fsTypeStr, description);
+
+    const int32_t err =
+        StorageDaemonAdapter::GetInstance().SetLabel("/dev/block/" + blockVolId, fsTypeStr, description);
     if (err != ERR_OK) {
         LOGE("SetLabel vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return dfx.Finish(err);
     }
+
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(blockVolId);
     if (it == volumeMap_.end()) {
