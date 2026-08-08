@@ -53,6 +53,7 @@ enum class IStorageDaemonIpcCode {
     ADDON_BURN = 257,
     ADDON_GET_VOLUME_OP_PROCESS = 258,
     ADDON_VERIFY_BURN_DATA = 259,
+    ADDON_GET_DISK_SIZE = 260,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -112,6 +113,7 @@ public:
                                    const std::string &mountPath) = 0;
     virtual ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) = 0;
     virtual ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) = 0;
+    virtual ErrCode GetDiskSize(const std::string &devName, uint64_t &size) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };
