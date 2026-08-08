@@ -189,9 +189,6 @@ private:
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
                                  const std::string &diskId, const std::string &oldFsUuid,
                                  const std::string &blockVolId);
-    /** 解析并校验 SetVolumeDescription 所需的卷上下文与参数。 */
-    int32_t ResolveSetVolumeDescriptionContext(const std::string &fsUuid, const std::string &description,
-                                               std::string &blockVolId, std::string &fsTypeStr, std::string &diskId);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
     bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
