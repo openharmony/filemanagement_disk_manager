@@ -1474,6 +1474,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     std::string path;
     std::string fsType;
     std::string blockVolId;
+    std::string extraInfo;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         VolumeExternal vol;
@@ -1483,6 +1484,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         path = vol.GetPath();
         fsType = vol.GetFsTypeString();
         blockVolId = vol.GetId();
+        extraInfo = vol.GetExtraInfo();
         LOGI("GetFreeSizeOfVolume path is %{public}s", path.c_str());
     }
     if (path.empty()) {
@@ -1495,25 +1497,44 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         return DiskManagerErrNo::E_STATVFS;
     }
     if (IsOddFsType(fsType)) {
-        int64_t totalSize = 0;
-        int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
-        int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
-        std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
-        const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
-        LOGI("GetFreeSizeOfVolume startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
-             ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
-             startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
-        if (freeSize != 0) {
+        int32_t oddRet = DiskManagerErrNo::E_OK;
+        if (GetOddFreeSize(extraInfo, blockVolId, diskInfo, freeSize, oddRet)) {
             return oddRet;
-        }
-        if (startFreeSize == 0) {
-            freeSize = totalSize - startTotalSize;
-            LOGI("GetFreeSizeOfVolume fallback freeSize=%{public}" PRId64, freeSize);
-            return DiskManagerErrNo::E_OK;
         }
     }
     freeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
     return DiskManagerErrNo::E_OK;
+}
+
+bool DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
+                                 const struct statvfs &diskInfo, int64_t &freeSize, int32_t &retCode)
+{
+    std::string discType = GetDiscType(extraInfo);
+    if (discType.find("ROM") != std::string::npos) {
+        LOGI("GetOddFreeSize discType=%{public}s, ROM type, freeSize=0", discType.c_str());
+        freeSize = 0;
+        retCode = DiskManagerErrNo::E_OK;
+        return true;
+    }
+    int64_t totalSize = 0;
+    int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
+    int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
+    const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
+    LOGI("GetOddFreeSize startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
+         ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
+         startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
+    if (freeSize != 0) {
+        retCode = oddRet;
+        return true;
+    }
+    if (startFreeSize == 0) {
+        freeSize = totalSize - startTotalSize;
+        LOGI("GetOddFreeSize fallback freeSize=%{public}" PRId64, freeSize);
+        retCode = DiskManagerErrNo::E_OK;
+        return true;
+    }
+    return false;
 }
 
 int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)

@@ -133,6 +133,8 @@ private:
     std::string GetVolumePath(const std::string &volumeUuid);
     bool IsOddFsType(const std::string &fsType);
     int32_t GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
+    bool GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
+                        const struct statvfs &diskInfo, int64_t &freeSize, int32_t &retCode);
     bool IsPathMounted(std::string path);
     int32_t EnsureFsUuidReady(VolumeExternal &volExternal, std::string &outFsUuid);
     int32_t MountUsbFuseIfNeeded(const std::string &volumeId,
