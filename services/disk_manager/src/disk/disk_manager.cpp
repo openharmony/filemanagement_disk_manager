@@ -1444,6 +1444,30 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
     return DiskManagerErrNo::E_OK;
 }
 
+int32_t DiskManager::SetVolumeDiscState(const std::string &volumeId, CdromState discState)
+{
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    auto it = volumeMap_.find(volumeId);
+    if (it == volumeMap_.end()) {
+        LOGE("SetVolumeDiscState: volume %{public}s not found", volumeId.c_str());
+        return E_NON_EXIST;
+    }
+    VolumeExternal &volExternal = it->second;
+    const std::string &extraInfo = volExternal.GetExtraInfo();
+    json root = extraInfo.empty() ? json::object() : json::parse(extraInfo, nullptr, false);
+    if (root.is_discarded() || !root.is_object()) {
+        root = json::object();
+    }
+    if (!root.contains("ODD_INFO") || !root["ODD_INFO"].is_object()) {
+        root["ODD_INFO"] = json::object();
+    }
+    root["ODD_INFO"]["DISC_STATE"] = static_cast<int32_t>(discState);
+    volExternal.SetExtraInfo(root.dump());
+    LOGI("SetVolumeDiscState: volumeId=%{public}s discState=%{public}d", volumeId.c_str(),
+         static_cast<int32_t>(discState));
+    return DiskManagerErrNo::E_OK;
+}
+
 int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize)
 {
     freeSize = 0;

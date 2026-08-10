@@ -36,10 +36,10 @@ enum DiskType : int32_t {
 };
 
 enum class CdromState {
-    NO_DISC,
-    NON_EMPTY_DISC,
-    EMPTY_DISC,
-    QUERY_FAILED,
+    NO_DISC = 0,
+    EMPTY_DISC = 1,
+    NON_EMPTY_DISC = 2,
+    QUERY_FAILED = 3,
 };
 
 class Disk : public Parcelable {

@@ -549,7 +549,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     std::string type;
     std::string label;
     if (state == CdromState::EMPTY_DISC) {
-        uuid = " ";
+        uuid = GenerateRandomUuid();
         type = "udf";
         VolumeExternal volume;
         if (DiskManager::GetInstance().GetVolumeById(volId, volume) == DiskManagerErrNo::E_OK) {
@@ -565,6 +565,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
         ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
     }
     (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
+    (void)DiskManager::GetInstance().SetVolumeDiscState(volId, state);
 
     if (type.empty()) {
         LOGE("HandleAddCD type.empty()=%{public}d, uuid.empty()=%{public}d", type.empty(), uuid.empty());
