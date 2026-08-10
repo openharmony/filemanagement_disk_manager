@@ -67,7 +67,6 @@ constexpr int32_t MAX_PARTITION = 16;
 constexpr int32_t MAX_INTERVAL_PARTITION = 15;
 constexpr int32_t MAX_SCSI_VOLUMES = 15;
 constexpr int32_t VOL_LENGTH = 3;
-constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 const int32_t CONFIG_PARAM_NUM = 6;
 #ifdef CDC_STORAGE
 // it will be decoupled to the car odm
@@ -174,23 +173,20 @@ void DestroyALLVolume(const std::string &diskId)
         if (vol.GetDiskId() != diskId || vol.GetId() == "0") {
             continue;
         }
-        int32_t unmountRet = DiskManager::GetInstance().ForceUnmount(vol.GetId());
-        if (unmountRet != E_OK) {
-            LOGE("ForceUnmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
+        // Already safely ejected: skip ForceUnmount to avoid duplicate EJECT/UNMOUNTED.
+        if (vol.GetState() != UNMOUNTED) {
+            int32_t unmountRet = DiskManager::GetInstance().ForceUnmount(vol.GetId());
+            if (unmountRet != E_OK) {
+                LOGE("ForceUnmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
+            }
         }
         int32_t ret = StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(BlockPathForId(vol.GetId()));
         if (ret != E_OK) {
             LOGI("Destroy volume failed vol:%{public}s, ret:%{public}d", vol.GetId().c_str(), ret);
             continue;
         }
-        const std::string &mountedPath = vol.GetPath();
-        const bool isFuseVolume = !mountedPath.empty() &&
-            mountedPath.rfind(EXTERNAL_FUSE_DATA_ROOT, 0) == 0;
-        if (isFuseVolume) {
-            CommonEventPublisher::PublishVolumeChange(FUSE_REMOVED, vol);
-        } else {
-            CommonEventPublisher::PublishVolumeChange((vol.GetState() == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
-        }
+        // Fuse and non-Fuse share the same remove events: REMOVED after safe eject, BAD_REMOVAL otherwise.
+        CommonEventPublisher::PublishVolumeChange((vol.GetState() == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
         (void)DiskManager::GetInstance().OnVolumeDestroyed(vol.GetId());
     }
 }

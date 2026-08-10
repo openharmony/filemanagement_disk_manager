@@ -1172,7 +1172,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_UnmountFail_TestCase_007, TestSiz
     UeventEnv env = MakeUenv("remove", 8, 1);
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
         .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
-            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", UNMOUNTED);
+            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", MOUNTED);
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
@@ -1181,7 +1181,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_UnmountFail_TestCase_007, TestSiz
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(REMOVED, _))
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(BAD_REMOVAL, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
@@ -1204,8 +1204,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_DestroyVolumeNodeFail_TestCase_00
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
-        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_)).Times(0);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(-1))
         .WillOnce(Return(E_OK));
@@ -1545,12 +1544,12 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_WithVolumes_TestCase_004, TestSiz
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
-        .WillOnce(Return(E_OK));
+    // Safely ejected volume: skip ForceUnmount, only publish REMOVED.
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_)).Times(0);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(_, _))
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(REMOVED, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
@@ -1575,13 +1574,43 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_FuseVolume_TestCase_005, TestSize
             out.push_back(vol);
             return E_OK;
         }));
+    // Fuse same as non-Fuse: safely ejected -> VOLUME_REMOVED only.
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(REMOVED, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskDestroyed(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    int32_t ret = UeventBootstrap::HandleDiskRemove(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, HandleDiskRemove_FuseBadRemoval_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("remove", 8, 1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", MOUNTED);
+            VolumeExternal vol(vc);
+            vol.SetPath("/mnt/data/external_fuse/test-uuid");
+            out.push_back(vol);
+            return E_OK;
+        }));
+    // Fuse same as non-Fuse: mounted pull -> ForceUnmount then VOLUME_BAD_REMOVAL.
     EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(CommonEventPublisher::GetInstance(),
-                PublishVolumeChangeImpl(FUSE_REMOVED, _))
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(BAD_REMOVAL, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
