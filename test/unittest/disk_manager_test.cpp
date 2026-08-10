@@ -4382,5 +4382,106 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_005 End";
 }
 
+/**
+ * @tc.name: GetOddFreeSize_RomType_TestCase_001
+ * @tc.desc: ROM 光盘类型直接返回 freeSize=0
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_RomType_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_RomType_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    int64_t freeSize = -1;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"DVD-ROM"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-1", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, 0);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_RomType_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_FreeSizeNotZero_TestCase_002
+ * @tc.desc: GetOddCapacity 返回 freeSize 非零时直接返回 oddRet
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_FreeSizeNotZero_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 1024;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-2", diskInfo, freeSize), ERR_OK);
+    EXPECT_EQ(freeSize, mockFree);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_StartFreeSizeZero_TestCase_003
+ * @tc.desc: startFreeSize==0 时 fallback 为 totalSize-startTotalSize
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_StartFreeSizeZero_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 0;
+    const int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
+    const int64_t mockTotal = 819200;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-3", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, mockTotal - startTotalSize);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_Fallthrough_TestCase_004
+ * @tc.desc: freeSize==0 且 startFreeSize!=0 时回退为 startFreeSize
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-4", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, startFreeSize);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

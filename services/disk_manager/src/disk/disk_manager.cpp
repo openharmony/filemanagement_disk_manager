@@ -1497,24 +1497,20 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         return DiskManagerErrNo::E_STATVFS;
     }
     if (IsOddFsType(fsType)) {
-        int32_t oddRet = DiskManagerErrNo::E_OK;
-        if (GetOddFreeSize(extraInfo, blockVolId, diskInfo, freeSize, oddRet)) {
-            return oddRet;
-        }
+        return GetOddFreeSize(extraInfo, blockVolId, diskInfo, freeSize);
     }
     freeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
     return DiskManagerErrNo::E_OK;
 }
 
-bool DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
-                                 const struct statvfs &diskInfo, int64_t &freeSize, int32_t &retCode)
+int32_t DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
+                                    const struct statvfs &diskInfo, int64_t &freeSize)
 {
     std::string discType = GetDiscType(extraInfo);
     if (discType.find("ROM") != std::string::npos) {
         LOGI("GetOddFreeSize discType=%{public}s, ROM type, freeSize=0", discType.c_str());
         freeSize = 0;
-        retCode = DiskManagerErrNo::E_OK;
-        return true;
+        return DiskManagerErrNo::E_OK;
     }
     int64_t totalSize = 0;
     int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
@@ -1525,16 +1521,15 @@ bool DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::string
          ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
          startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
     if (freeSize != 0) {
-        retCode = oddRet;
-        return true;
+        return oddRet;
     }
     if (startFreeSize == 0) {
         freeSize = totalSize - startTotalSize;
         LOGI("GetOddFreeSize fallback freeSize=%{public}" PRId64, freeSize);
-        retCode = DiskManagerErrNo::E_OK;
-        return true;
+        return DiskManagerErrNo::E_OK;
     }
-    return false;
+    freeSize = startFreeSize;
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t &totalSize)
