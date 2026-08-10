@@ -20,6 +20,7 @@ config("disk_manager_config") {
     "include/disk",
     "include/db",
     "include/ipc",
+    "include/dfx",
     "include/notification",
     "include/adapter",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/include",
@@ -46,6 +47,9 @@ ohos_shared_library("disk_manager_server") {
   sources = [
     "../../utils/src/ipc_caller_auth.cpp",
     "../../utils/src/disk_manager_utils.cpp",
+    "src/dfx/disk_manager_dfx_types.cpp",
+    "src/dfx/disk_manager_radar.cpp",
+    "src/dfx/hi_audit.cpp",
     "src/disk/uevent_bootstrap.cpp",
     "src/disk/uevent_env_parser.cpp",
     "src/disk/disk_config.cpp",
@@ -93,6 +97,7 @@ ohos_shared_library("disk_manager_server") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "security_guard:libsg_collect_sdk",
+    "hisysevent:libhisysevent",
   ]
 
   subsystem_name = "filemanagement"

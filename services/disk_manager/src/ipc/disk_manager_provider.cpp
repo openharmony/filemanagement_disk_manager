@@ -23,6 +23,7 @@
 
 #include "block_info_table.h"
 #include "disk_manager.h"
+#include "disk_manager_dfx.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
 #include "disk_manager_utils.h"
@@ -43,6 +44,11 @@ constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
+
+inline int32_t IpcDfxRet(IpcDfxScope &dfx, int32_t ret)
+{
+    return dfx.Finish(ret);
+}
 } // namespace
 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
@@ -400,26 +406,29 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
 
 int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
+    VolumeReportInfo info;
+    info.extra = DfxTruncate(rawUeventMsg);
+    IpcDfxScope dfx("DiskManagerProvider::OnBlockDiskUevent", DFX_STAGE_UEVENT_PARSE, VolumeOpType::OTHER, info);
     LOGI("OnBlockDiskUevent len=%{public}zu", rawUeventMsg.size());
     BeginPendingStorageDaemonCallback();
     if (!CheckStorageDaemonPermission()) {
         EndPendingStorageDaemonCallback();
-        return E_PERMISSION_DENIED;
+        return IpcDfxRet(dfx, E_PERMISSION_DENIED);
     }
     if (rawUeventMsg.size() > UEVENT_RAW_MAX_LEN) {
         LOGE("OnBlockDiskUevent: rawUeventMsg msg too long, size=%{public}zu", rawUeventMsg.size());
         EndPendingStorageDaemonCallback();
-        return E_PARAMS_INVALID;
+        return IpcDfxRet(dfx, E_PARAMS_INVALID);
     }
     if (IsFilePathInvalid(rawUeventMsg)) {
         LOGE("rawUeventMsg is invalid.");
         EndPendingStorageDaemonCallback();
-        return E_PARAMS_INVALID;
+        return IpcDfxRet(dfx, E_PARAMS_INVALID);
     }
     const int32_t ret = UeventBootstrap::OnBlockDiskUevent(rawUeventMsg);
     EndPendingStorageDaemonCallback();
     LOGI("OnBlockDiskUevent err=%{public}d", ret);
-    return ret;
+    return IpcDfxRet(dfx, ret);
 }
 
 int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)

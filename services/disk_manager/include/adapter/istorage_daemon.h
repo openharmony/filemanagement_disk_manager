@@ -74,7 +74,7 @@ public:
                           const std::string &mountPath,
                           const std::string &fsType,
                           uint64_t mountFlag,
-                          const std::string &mountData = "") = 0;
+                          const std::string &mountData) = 0;
     virtual ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) = 0;
     virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) = 0;
     virtual ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) = 0;
