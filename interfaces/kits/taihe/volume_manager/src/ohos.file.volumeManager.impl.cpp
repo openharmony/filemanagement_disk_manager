@@ -403,6 +403,14 @@ int32_t GetOpProcessSync(::taihe::string_view volumeId)
 
 bool IsVolumeInUseSync(::taihe::string_view volumePath)
 {
+    if (!OHOS::DiskManager::IsSystemApp()) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION_SYS);
+        return false;
+    }
+    if (!OHOS::DiskManager::VerifyCallerPermission(OHOS::DiskManager::PERMISSION_MOUNT_MANAGER)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return false;
+    }
     std::string volumePathString = std::string(volumePath);
     if (volumePathString.empty()) {
         LOGE("Invalid parameter, volumePath is empty");
