@@ -71,8 +71,8 @@ public:
     std::string GetSysPath() const;
     std::string GetDevName() const;
     bool IsInternalDataDisk() const;
-    /** 据 uevent 的 /sys{DEVPATH} 刷新 diskType，不持久化 sysfs 路径。 */
-    void RefreshClassificationFromSysfs(const std::string &sysfsPath);
+    /** 据 uevent 的 /sys{DEVPATH} 刷新 diskType，不持久化 sysfs 路径。rotational: 0=SSD, 1=HDD, -1=未知。 */
+    void RefreshClassificationFromSysfs(const std::string &sysfsPath, int32_t rotational = -1);
 
     bool Marshalling(Parcel &parcel) const override;
     static Disk *Unmarshalling(Parcel &parcel);
