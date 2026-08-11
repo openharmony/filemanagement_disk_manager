@@ -33,6 +33,7 @@
 #include "volume_core.h"
 
 #include <cctype>
+#include <cinttypes>
 #include <cstdlib>
 #include <algorithm>
 #include <dirent.h>
@@ -67,6 +68,9 @@ constexpr int32_t MAX_PARTITION = 16;
 constexpr int32_t MAX_INTERVAL_PARTITION = 15;
 constexpr int32_t MAX_SCSI_VOLUMES = 15;
 constexpr int32_t VOL_LENGTH = 3;
+constexpr uint64_t BYTES_PER_MB = 1024 * 1024;
+constexpr uint64_t MIN_DISK_SIZE_MB = 4;
+
 const int32_t CONFIG_PARAM_NUM = 6;
 #ifdef CDC_STORAGE
 // it will be decoupled to the car odm
@@ -262,37 +266,47 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
     int32_t maxVolume = 0;
     err = StorageDaemonAdapter::GetInstance().ReadPartitionTable(diskDevPath, rawDump, maxVolume);
     if (err != ERR_OK) {
-        LOGE("ReadPartitionTable failed err=%{public}d, abandon disk=%{public}s", err, diskId.c_str());
-        (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
-        return err;
-    }
-
-    std::vector<std::string> lines = SplitRawDumpToLines(rawDump);
-    if (lines.size() > MIN_LINES) {
-        auto userdataIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
-            return str.find("userdata") != std::string::npos;
-        });
-        if (userdataIt != lines.end()) {
-            isUserData = true;
-            LOGI("BuildAndSyncPartitions: detected userdata partition in disk=%{public}s lines=%{public}zu",
-                 diskId.c_str(), lines.size());
-            auto diskIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
-                return str.find("DISK") != std::string::npos;
-            });
-            rawDump.clear();
-            rawDump += (diskIt != lines.end() ? *diskIt : "") + "\n";
-            rawDump += *userdataIt;
+        LOGE("ReadPartitionTable failed err=%{public}d, checking disk size for disk=%{public}s", err, diskId.c_str());
+        uint64_t diskSize = 0;
+        int32_t sizeErr = StorageDaemonAdapter::GetInstance().GetDiskSize(env.devName, diskSize);
+        if (sizeErr == ERR_OK && diskSize > 0 && (diskSize / BYTES_PER_MB) > MIN_DISK_SIZE_MB) {
+            LOGI("Disk size=%{public}" PRIu64 " bytes (>4MB), treat as valid storage device, disk=%{public}s",
+                 diskSize, diskId.c_str());
+            return E_STORAGE_VALID_NODE;
+        } else {
+            LOGE("GetDiskSize failed or size too small (size=%{public}" PRIu64 "), abandon disk=%{public}s",
+                 diskSize, diskId.c_str());
+            (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
+            return err;
         }
-    }
-    std::string tableType;
-    bool hasDiskLine = false;
-    if (!rawDump.empty()) {
-        hasDiskLine = PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
-    }
-    if (!hasDiskLine && env.major != DISK_CD_MAJOR) {
-        LOGE("ReadPartitionTable output has no DISK line, abandon disk=%{public}s", diskId.c_str());
-        (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
-        return DiskManagerErrNo::DISK_MGR_ERR;
+    } else {
+        std::vector<std::string> lines = SplitRawDumpToLines(rawDump);
+        if (lines.size() > MIN_LINES) {
+            auto userdataIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
+                return str.find("userdata") != std::string::npos;
+            });
+            if (userdataIt != lines.end()) {
+                isUserData = true;
+                LOGI("BuildAndSyncPartitions: detected userdata partition in disk=%{public}s lines=%{public}zu",
+                     diskId.c_str(), lines.size());
+                auto diskIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
+                    return str.find("DISK") != std::string::npos;
+                });
+                rawDump.clear();
+                rawDump += (diskIt != lines.end() ? *diskIt : "") + "\n";
+                rawDump += *userdataIt;
+            }
+        }
+        std::string tableType;
+        bool hasDiskLine = false;
+        if (!rawDump.empty()) {
+            hasDiskLine = PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
+        }
+        if (!hasDiskLine && env.major != DISK_CD_MAJOR) {
+            LOGE("ReadPartitionTable output has no DISK line, abandon disk=%{public}s", diskId.c_str());
+            (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
+            return DiskManagerErrNo::DISK_MGR_ERR;
+        }
     }
     (void)DiskManager::GetInstance().ReplacePartitionsForDisk(diskId, parts);
     return DiskManagerErrNo::E_OK;
@@ -753,6 +767,11 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     std::vector<PartitionRecord> parts;
     bool isUserData = false;
     int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts, isUserData);
+    if (err == E_STORAGE_VALID_NODE) {
+        UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent);
+        LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s, is a valid storage device", diskId.c_str());
+        return DiskManagerErrNo::E_OK;
+    }
     if (err != ERR_OK) {
         LOGE("BuildAndSyncPartitions failed with error: %{public}d", err);
         if (!publishNewDiskEvent) {
