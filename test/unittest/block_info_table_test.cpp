@@ -549,3 +549,68 @@ HWTEST_F(BlockInfoTableTest, UpsertDuplicateDiskId_TestCase_003, TestSize.Level0
     EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
     EXPECT_EQ(info.sizeBytes, UINT64_C(200));
 }
+
+HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_MissingKey_TestCase_001, TestSize.Level0)
+{
+    auto &table = BlockInfoTable::GetInstance();
+    auto &mockAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::string jsonStr = R"([{"diskId":"d1"}])";
+    EXPECT_CALL(mockAdapter, GetBlockInfoByTypeImpl(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(jsonStr), Return(E_OK)));
+    EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
+    BlockInfo info;
+    EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
+    EXPECT_EQ(info.rotational, 0);
+}
+
+HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_NullValue_TestCase_002, TestSize.Level0)
+{
+    auto &table = BlockInfoTable::GetInstance();
+    auto &mockAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::string jsonStr = R"([{"diskId":"d1","rotational":null}])";
+    EXPECT_CALL(mockAdapter, GetBlockInfoByTypeImpl(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(jsonStr), Return(E_OK)));
+    EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
+    BlockInfo info;
+    EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
+    EXPECT_EQ(info.rotational, 0);
+}
+
+HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_IntegerValue_TestCase_003, TestSize.Level0)
+{
+    auto &table = BlockInfoTable::GetInstance();
+    auto &mockAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::string jsonStr = R"([{"diskId":"d1","rotational":1}])";
+    EXPECT_CALL(mockAdapter, GetBlockInfoByTypeImpl(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(jsonStr), Return(E_OK)));
+    EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
+    BlockInfo info;
+    EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
+    EXPECT_EQ(info.rotational, 1);
+}
+
+HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_NegativeInteger_TestCase_004, TestSize.Level0)
+{
+    auto &table = BlockInfoTable::GetInstance();
+    auto &mockAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::string jsonStr = R"([{"diskId":"d1","rotational":-1}])";
+    EXPECT_CALL(mockAdapter, GetBlockInfoByTypeImpl(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(jsonStr), Return(E_OK)));
+    EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
+    BlockInfo info;
+    EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
+    EXPECT_EQ(info.rotational, -1);
+}
+
+HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_NonIntegerType_TestCase_005, TestSize.Level0)
+{
+    auto &table = BlockInfoTable::GetInstance();
+    auto &mockAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::string jsonStr = R"([{"diskId":"d1","rotational":"abc"}])";
+    EXPECT_CALL(mockAdapter, GetBlockInfoByTypeImpl(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(jsonStr), Return(E_OK)));
+    EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
+    BlockInfo info;
+    EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
+    EXPECT_EQ(info.rotational, 0);
+}

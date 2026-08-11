@@ -69,7 +69,7 @@ constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 /** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
-constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0,errors=continue";
+constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_service.enterprise_space_enable";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;

@@ -105,17 +105,19 @@ void DiskManagerProvider::StopIdleMonitor()
     LOGI("StopIdleMonitor begin");
     idleMonitorStopped_.store(true, std::memory_order_release);
     std::unique_ptr<Utils::Timer> timerToDestroy;
+    uint32_t timerIdToUnregister = 0;
     {
         std::lock_guard<std::mutex> lock(idleTimerMutex_);
         if (idleTimer_ == nullptr) {
             LOGI("StopIdleMonitor: timer not running, skip");
             return;
         }
-        idleTimer_->Shutdown(true);
-        idleTimer_->Unregister(idleTimerId_);
         timerToDestroy = std::move(idleTimer_);
+        timerIdToUnregister = idleTimerId_;
         idleTimerId_ = 0;
     }
+    timerToDestroy->Shutdown(true);
+    timerToDestroy->Unregister(timerIdToUnregister);
     LOGI("StopIdleMonitor end");
 }
 
