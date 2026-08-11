@@ -78,6 +78,7 @@ public:
     MOCK_METHOD(int32_t, Burn, (const std::string &devPath, const std::string &burnOptions,
                 const std::string &fsType));
     MOCK_METHOD(int32_t, GetVolumeOpProcess, (const std::string &volumeId, int32_t &progressPct));
+    MOCK_METHOD(int32_t, GetDiskSize, (const std::string &devName, uint64_t &size));
 
     static MockStorageDaemonAdapter *mockInstance_;
 };

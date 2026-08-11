@@ -239,6 +239,13 @@ HWTEST_F(StorageDaemonAdapterTest, GetVolumeOpProcess_ErrorPath_001, TestSize.Le
     EXPECT_NE(adapter.GetVolumeOpProcess("vol-1", progressPct), E_OK);
 }
 
+HWTEST_F(StorageDaemonAdapterTest, GetDiskSize_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t size = 0;
+    EXPECT_NE(adapter.GetDiskSize("sda", size), E_OK);
+}
+
 class StorageDaemonAdapterProxyTest : public testing::Test {
 public:
     void SetUp() override
@@ -518,5 +525,14 @@ HWTEST_F(StorageDaemonAdapterProxyTest, SdDeathRecipient_OnRemoteDied_001, TestS
     EXPECT_EQ(adapter.storageDaemon_, nullptr);
 }
 
+HWTEST_F(StorageDaemonAdapterProxyTest, GetDiskSize_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t size = 0;
+    EXPECT_CALL(*mockRemote_, GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(10ULL * 1024 * 1024), Return(E_OK)));
+    EXPECT_EQ(adapter.GetDiskSize("sda", size), E_OK);
+    EXPECT_EQ(size, 10ULL * 1024 * 1024);
+}
 } // namespace DiskManager
 } // namespace OHOS

@@ -63,6 +63,7 @@ public:
         const std::string &fsType, const std::string &mountPath));
     MOCK_METHOD3(Burn, ErrCode(const std::string &devPath, const std::string &burnOptions, const std::string &fsType));
     MOCK_METHOD2(GetVolumeOpProcess, ErrCode(const std::string &volumeId, int32_t &progressPct));
+    MOCK_METHOD2(GetDiskSize, ErrCode(const std::string &devName, uint64_t &size));
 };
 
 } // namespace DiskManager
