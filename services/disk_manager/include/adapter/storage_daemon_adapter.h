@@ -77,6 +77,7 @@ public:
                            const std::string &mountPath);
     int32_t Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
+    int32_t GetDiskSize(const std::string &devName, uint64_t &size);
 
 private:
     StorageDaemonAdapter();

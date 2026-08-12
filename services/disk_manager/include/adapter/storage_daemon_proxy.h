@@ -40,7 +40,7 @@ public:
                   const std::string &mountPath,
                   const std::string &fsType,
                   uint64_t mountFlag,
-                  const std::string &mountData = "") override;
+                  const std::string &mountData) override;
     ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) override;
     ErrCode FormatVolume(const std::string &devPath, const std::string &fsType,
                          const std::string &diskPath, const std::string &partitionType,
@@ -70,6 +70,7 @@ public:
                            const std::string &mountPath) override;
     ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) override;
     ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) override;
+    ErrCode GetDiskSize(const std::string &devName, uint64_t &size) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

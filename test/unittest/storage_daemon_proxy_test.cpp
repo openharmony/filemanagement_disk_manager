@@ -2656,5 +2656,128 @@ HWTEST_F(StorageDaemonProxyTest, GetVolumeOpProcess_TestCase_006, TestSize.Level
 
     GTEST_LOG_(INFO) << "GetVolumeOpProcess_TestCase_006 End";
 }
+
+/**
+ * @tc.name: GetDiskSize_TestCase_001
+ * @tc.desc: GetDiskSize: WriteInterfaceToken returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    uint64_t size = 0;
+    int32_t ret = proxy_->GetDiskSize("sda", size);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+    EXPECT_EQ(size, 0);
+
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetDiskSize_TestCase_002
+ * @tc.desc: GetDiskSize: WriteString16 returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    uint64_t size = 0;
+    int32_t ret = proxy_->GetDiskSize("sda", size);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetDiskSize_TestCase_003
+ * @tc.desc: GetDiskSize: SendRequest returns non-ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_DISK_SIZE), _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    uint64_t size = 0;
+    int32_t ret = proxy_->GetDiskSize("sda", size);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetDiskSize_TestCase_004
+ * @tc.desc: GetDiskSize: reply ReadInt32 is not ERR_OK (size reset to 0).
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    uint64_t size = 0;
+    int32_t ret = proxy_->GetDiskSize("sda", size);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_004 End";
+}
+
+/**
+ * @tc.name: GetDiskSize_TestCase_005
+ * @tc.desc: GetDiskSize: ReadUint64 returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadUint64(_)).WillOnce(Return(false));
+    uint64_t size = 0;
+    int32_t ret = proxy_->GetDiskSize("sda", size);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_005 End";
+}
+
+/**
+ * @tc.name: GetDiskSize_TestCase_006
+ * @tc.desc: GetDiskSize: success reads size value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_006 Start";
+
+    const uint64_t DISK_SIZE = 10ULL * 1024 * 1024;
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_GET_DISK_SIZE), _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadUint64(_)).WillOnce(DoAll(SetArgReferee<0>(DISK_SIZE), Return(true)));
+    uint64_t size = 0;
+    int32_t ret = proxy_->GetDiskSize("sda", size);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(size, DISK_SIZE);
+
+    GTEST_LOG_(INFO) << "GetDiskSize_TestCase_006 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

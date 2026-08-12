@@ -21,6 +21,7 @@
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 #include <thread>
+#include <nlohmann/json.hpp>
 
 #define private public
 #define protected public
@@ -670,6 +671,156 @@ HWTEST_F(DiskManagerTest, UpdateVolumeMetadata_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     EXPECT_EQ(dm.UpdateVolumeMetadata("vol-99-99", "uuid", "vfat", "desc"), E_NON_EXIST);
     GTEST_LOG_(INFO) << "UpdateVolumeMetadata_TestCase_002 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_001
+ * @tc.desc: Set disc state for non-existent volume returns E_NON_EXIST.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-99-99", CdromState::EMPTY_DISC), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_002
+ * @tc.desc: Set EMPTY_DISC on a volume with empty extraInfo writes DISC_STATE=1.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-30-2"));
+    dm.OnVolumeCreated(MakeUdfVolume("vol-30-2", "disk-30-2", "uuid-30-2"));
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-30-2", CdromState::EMPTY_DISC), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-30-2", out), E_OK);
+    nlohmann::json root = nlohmann::json::parse(out.GetExtraInfo(), nullptr, false);
+    EXPECT_TRUE(root.is_object());
+    EXPECT_TRUE(root.contains("ODD_INFO") && root["ODD_INFO"].is_object());
+    EXPECT_EQ(root["ODD_INFO"]["DISC_STATE"].get<int32_t>(), 1);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_002 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_003
+ * @tc.desc: Set NON_EMPTY_DISC writes DISC_STATE=2.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-30-3"));
+    dm.OnVolumeCreated(MakeUdfVolume("vol-30-3", "disk-30-3", "uuid-30-3"));
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-30-3", CdromState::NON_EMPTY_DISC), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-30-3", out);
+    nlohmann::json root = nlohmann::json::parse(out.GetExtraInfo(), nullptr, false);
+    EXPECT_EQ(root["ODD_INFO"]["DISC_STATE"].get<int32_t>(), 2);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_003 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_004
+ * @tc.desc: Existing valid extraInfo without ODD_INFO is merged, sibling fields preserved.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-30-4"));
+    VolumeExternal vol = MakeUdfVolume("vol-30-4", "disk-30-4", "uuid-30-4");
+    vol.SetExtraInfo(R"({"foo":"bar","num":7})");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-30-4", CdromState::EMPTY_DISC), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-30-4", out);
+    nlohmann::json root = nlohmann::json::parse(out.GetExtraInfo(), nullptr, false);
+    EXPECT_EQ(root["foo"].get<std::string>(), "bar");
+    EXPECT_EQ(root["num"].get<int>(), 7);
+    EXPECT_EQ(root["ODD_INFO"]["DISC_STATE"].get<int32_t>(), 1);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_004 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_005
+ * @tc.desc: Existing ODD_INFO object with sibling keys is updated, siblings preserved.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-30-5"));
+    VolumeExternal vol = MakeUdfVolume("vol-30-5", "disk-30-5", "uuid-30-5");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"MEDIA_TYPE":"cdrom"},"keep":true})");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-30-5", CdromState::NON_EMPTY_DISC), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-30-5", out);
+    nlohmann::json root = nlohmann::json::parse(out.GetExtraInfo(), nullptr, false);
+    EXPECT_EQ(root["keep"].get<bool>(), true);
+    EXPECT_EQ(root["ODD_INFO"]["MEDIA_TYPE"].get<std::string>(), "cdrom");
+    EXPECT_EQ(root["ODD_INFO"]["DISC_STATE"].get<int32_t>(), 2);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_005 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_006
+ * @tc.desc: Malformed extraInfo is reset to an object before writing DISC_STATE.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-30-6"));
+    VolumeExternal vol = MakeUdfVolume("vol-30-6", "disk-30-6", "uuid-30-6");
+    vol.SetExtraInfo("not-a-json-object");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-30-6", CdromState::EMPTY_DISC), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-30-6", out);
+    nlohmann::json root = nlohmann::json::parse(out.GetExtraInfo(), nullptr, false);
+    EXPECT_TRUE(root.is_object());
+    EXPECT_EQ(root["ODD_INFO"]["DISC_STATE"].get<int32_t>(), 1);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_006 End";
+}
+
+/**
+ * @tc.name: SetVolumeDiscState_TestCase_007
+ * @tc.desc: ODD_INFO present but not an object is reset to an object before writing DISC_STATE.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDiscState_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-30-7"));
+    VolumeExternal vol = MakeUdfVolume("vol-30-7", "disk-30-7", "uuid-30-7");
+    vol.SetExtraInfo(R"({"ODD_INFO":"bad-string"})");
+    dm.OnVolumeCreated(vol);
+    EXPECT_EQ(dm.SetVolumeDiscState("vol-30-7", CdromState::NON_EMPTY_DISC), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-30-7", out);
+    nlohmann::json root = nlohmann::json::parse(out.GetExtraInfo(), nullptr, false);
+    EXPECT_TRUE(root["ODD_INFO"].is_object());
+    EXPECT_EQ(root["ODD_INFO"]["DISC_STATE"].get<int32_t>(), 2);
+    GTEST_LOG_(INFO) << "SetVolumeDiscState_TestCase_007 End";
 }
 
 /**
@@ -4263,5 +4414,105 @@ HWTEST_F(DiskManagerTest, Format_TestCase_007, TestSize.Level0)
     GTEST_LOG_(INFO) << "Format_TestCase_007 End";
 }
 
+/**
+ * @tc.name: GetOddFreeSize_RomType_TestCase_001
+ * @tc.desc: ROM 光盘类型直接返回 freeSize=0
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_RomType_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_RomType_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    int64_t freeSize = -1;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"DVD-ROM"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-1", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, 0);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_RomType_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_FreeSizeNotZero_TestCase_002
+ * @tc.desc: GetOddCapacity 返回 freeSize 非零时直接返回 oddRet
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_FreeSizeNotZero_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 1024;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-2", diskInfo, freeSize), ERR_OK);
+    EXPECT_EQ(freeSize, mockFree);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_StartFreeSizeZero_TestCase_003
+ * @tc.desc: startFreeSize==0 时 fallback 为 totalSize-startTotalSize
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_StartFreeSizeZero_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 0;
+    const int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
+    const int64_t mockTotal = 819200;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-3", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, mockTotal - startTotalSize);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_Fallthrough_TestCase_004
+ * @tc.desc: freeSize==0 且 startFreeSize!=0 时回退为 startFreeSize
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-4", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, startFreeSize);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

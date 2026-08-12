@@ -465,5 +465,18 @@ int32_t StorageDaemonAdapter::GetVolumeOpProcess(const std::string &volumeId, in
     LOGI("GetVolumeOpProcess exit ret=%{public}d, progressPct=%{public}d", ret, progressPct);
     return ret;
 }
+
+int32_t StorageDaemonAdapter::GetDiskSize(const std::string &devName, uint64_t &size)
+{
+    LOGI("GetDiskSize enter, devName=%{public}s", devName.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetDiskSize exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->GetDiskSize(devName, size);
+    LOGI("GetDiskSize exit ret=%{public}d size=%{public}" PRIu64, ret, size);
+    return ret;
+}
 } // namespace DiskManager
 } // namespace OHOS

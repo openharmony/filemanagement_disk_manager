@@ -38,6 +38,9 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "common_event_publisher_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/block_info_table.cpp",
@@ -66,6 +69,7 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
   ]
 
   external_deps = [
+    "hisysevent:libhisysevent",
     "ability_base:base",
     "ability_base:want",
     "c_utils:utils",
@@ -91,6 +95,7 @@ ohos_unittest("storage_daemon_proxy_test") {
   sources = [
     "storage_daemon_proxy_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/storage_daemon_proxy.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
@@ -106,6 +111,7 @@ ohos_unittest("storage_daemon_proxy_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "json:nlohmann_json_static",
   ]
 
   subsystem_name = "filemanagement"
@@ -176,6 +182,9 @@ ohos_unittest("disk_manager_server_test") {
   sources = [
     "disk_manager_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/block_info_table.cpp",
@@ -216,6 +225,7 @@ ohos_unittest("disk_manager_server_test") {
   ]
 
   external_deps = [
+    "hisysevent:libhisysevent",
     "ability_base:base",
     "ability_base:want",
     "c_utils:utils",
@@ -352,6 +362,9 @@ ohos_unittest("storage_daemon_adapter_test") {
   sources = [
     "storage_daemon_adapter_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/storage_daemon_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
@@ -369,8 +382,10 @@ ohos_unittest("storage_daemon_adapter_test") {
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "init:libbegetutil",
     "ipc:ipc_single",
+    "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
@@ -531,6 +546,9 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/utils/src/ipc_caller_auth.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
@@ -571,6 +589,7 @@ ohos_unittest("disk_manager_provider_test") {
   ]
 
   external_deps = [
+    "hisysevent:libhisysevent",
     "ability_base:base",
     "ability_base:want",
     "c_utils:utils",
@@ -633,6 +652,9 @@ ohos_unittest("uevent_bootstrap_test") {
   sources = [
     "uevent_bootstrap_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_bootstrap.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_env_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
@@ -661,6 +683,7 @@ ohos_unittest("uevent_bootstrap_test") {
   ]
 
   external_deps = [
+    "hisysevent:libhisysevent",
     "c_utils:utils",
     "googletest:gmock_main",
     "googletest:gtest_main",
@@ -672,6 +695,101 @@ ohos_unittest("uevent_bootstrap_test") {
     "ability_base:base",
     "ability_base:want",
     "common_event_service:cesfwk_innerkits",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("disk_manager_dfx_types_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_manager_dfx_types_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("disk_manager_radar_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_manager_radar_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("hi_audit_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "hi_audit_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  defines = [ "private = public" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("disk_manager_dfx_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_manager_dfx_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "json:nlohmann_json_static",
   ]
 
@@ -701,5 +819,9 @@ group("disk_manager_ut") {
     ":disk_manager_provider_test",
     ":block_info_table_test",
     ":uevent_bootstrap_test",
+    ":disk_manager_dfx_types_test",
+    ":disk_manager_radar_test",
+    ":hi_audit_test",
+    ":disk_manager_dfx_test",
   ]
 }
