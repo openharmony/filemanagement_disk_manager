@@ -593,13 +593,13 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
     const std::string &volumeId = volExternal.GetId();
     const std::string mountedPath = volExternal.GetPath();
     if (!mountedPath.empty() && StartsWith(mountedPath, std::string(EXTERNAL_FUSE_DATA_ROOT))) {
+        // Do not publish volume events here; outer Unmount/Destroy paths own event order
+        // (same for Fuse and non-Fuse): safe eject EJECT->UNMOUNTED; remove REMOVED/BAD_REMOVAL.
         int32_t err = StorageDaemonAdapter::GetInstance().Unmount(mountedPath, fsType, force);
         if (err != ERR_OK) {
             return err;
         }
-        force ? CommonEventPublisher::PublishVolumeChange(BAD_REMOVAL, volExternal)
-              : CommonEventPublisher::PublishVolumeChange(REMOVED, volExternal);
-        LOGI("UnmountVolumeMountPoints: umount fuse notify");
+        LOGI("UnmountVolumeMountPoints: umount fuse data path done volumeId=%{public}s", volumeId.c_str());
         const std::string fuseMountPath = BuildSafeExternalMountPath(uuid);
         if (!fuseMountPath.empty()) {
             err = StorageDaemonAdapter::GetInstance().Unmount(fuseMountPath, FUSE_UMOUNT_FS_TYPE, force);
@@ -2495,11 +2495,13 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
     }
 
     const int32_t stateBeforeUnmount = vol.GetState();
-    const std::string mountedPathBeforeUnmount = vol.GetPath();
-    const int32_t unmountRet = ForceUnmount(vol.GetId());
-    if (unmountRet != E_OK) {
-        LOGE("DestroyVolumeByDiskIdAndPartNum: ForceUnmount failed volId=%{public}s ret=%{public}d",
-             vol.GetId().c_str(), unmountRet);
+    // Already safely ejected: skip ForceUnmount to avoid duplicate EJECT/UNMOUNTED.
+    if (stateBeforeUnmount != UNMOUNTED) {
+        const int32_t unmountRet = ForceUnmount(vol.GetId());
+        if (unmountRet != E_OK) {
+            LOGE("DestroyVolumeByDiskIdAndPartNum: ForceUnmount failed volId=%{public}s ret=%{public}d",
+                 vol.GetId().c_str(), unmountRet);
+        }
     }
 
     const std::string devPath = "/dev/block/" + vol.GetId();
@@ -2508,13 +2510,8 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
         LOGI("Destroy volume failed devPath:%{public}s, ret:%{public}d", devPath.c_str(), ret);
         return false;
     }
-    const bool isFuseVolume = !mountedPathBeforeUnmount.empty() &&
-        mountedPathBeforeUnmount.rfind(EXTERNAL_FUSE_DATA_ROOT, 0) == 0;
-    if (isFuseVolume) {
-        CommonEventPublisher::PublishVolumeChange(FUSE_REMOVED, vol);
-    } else {
-        CommonEventPublisher::PublishVolumeChange((stateBeforeUnmount == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
-    }
+    // Fuse and non-Fuse share the same remove events: REMOVED after safe eject, BAD_REMOVAL otherwise.
+    CommonEventPublisher::PublishVolumeChange((stateBeforeUnmount == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
     (void)OnVolumeDestroyed(vol.GetId());
     LOGI("DestroyVolume end.");
     return true;
