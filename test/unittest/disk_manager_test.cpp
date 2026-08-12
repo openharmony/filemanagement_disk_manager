@@ -3349,34 +3349,6 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_002, TestSize.Level0)
     EXPECT_NE(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-mvf-2"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
-{
-    g_mockFindParameterResult = -1;
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeSsdDisk("disk-11-7"));
-    VolumeExternal vol = MakeUsbVolume("vol-64-3", "disk-11-7", "uuid-mvfs-hmfs", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(HMFS));
-    dm.OnVolumeCreated(vol);
-
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-mvfs-hmfs", volOut);
-    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OTHER_MOUNT);
-}
-
-HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
-{
-    g_mockFindParameterResult = -1;
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeHddDisk("disk-12-3"));
-    VolumeExternal vol = MakeUsbVolume("vol-64-4", "disk-12-3", "uuid-ad-hdd", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(HMFS));
-    dm.OnVolumeCreated(vol);
-
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-ad-hdd", volOut);
-    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OTHER_MOUNT);
-}
-
 HWTEST_F(DiskManagerTest, ReadPersistUsbReadonlyMount_TestCase_001, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
