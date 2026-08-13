@@ -989,7 +989,7 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     std::string diskId;
     std::string oldFsUuid;
     std::string partitionType;
-    int32_t partitionNum;
+    int32_t partitionNum = 0;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -1014,8 +1014,16 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
         blockVolId = it->second.GetId();
         diskId = it->second.GetDiskId();
         oldFsUuid = it->second.GetUuid();
-        partitionType = it->second.GetPartitionType();
         partitionNum = it->second.GetPartitionNum();
+    }
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        const auto dit = diskMap_.find(diskId);
+        if (dit != diskMap_.end()) {
+            partitionType = dit->second.GetPartitionType();
+        } else {
+            LOGW("Format: disk %{public}s not found, partitionType unavailable", diskId.c_str());
+        }
     }
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(
         "/dev/block/" + blockVolId, fsType, "/dev/block/" + diskId, partitionType, partitionNum);

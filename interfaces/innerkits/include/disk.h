@@ -65,6 +65,8 @@ public:
     std::string GetVendor() const;
     CdromState GetCdromState() const;
     void SetCdromState(CdromState cdromState);
+    void SetPartitionType(const std::string &partitionType);
+    std::string GetPartitionType() const;
 
     // --- 进程内 ---
     /** 块设备节点路径，如 /dev/block/sda。 */
@@ -93,6 +95,7 @@ private:
     std::string sysPath_;    // /dev/block/{diskId}
     std::string devName_;
     std::string vendor_;
+    std::string partitionType_;
 };
 } // namespace DiskManager
 } // namespace OHOS

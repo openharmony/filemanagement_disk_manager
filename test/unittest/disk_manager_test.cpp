@@ -4385,14 +4385,14 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.
 HWTEST_F(DiskManagerTest, PartitionType_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "PartitionType_TestCase_001 Start";
-    VolumeExternal vol;
-    EXPECT_EQ(vol.GetPartitionType(), "");
-    vol.SetPartitionType("gpt");
-    EXPECT_EQ(vol.GetPartitionType(), "gpt");
-    vol.SetPartitionType("mbr");
-    EXPECT_EQ(vol.GetPartitionType(), "mbr");
-    vol.SetPartitionType("cd");
-    EXPECT_EQ(vol.GetPartitionType(), "cd");
+    Disk disk;
+    EXPECT_EQ(disk.GetPartitionType(), "");
+    disk.SetPartitionType("gpt");
+    EXPECT_EQ(disk.GetPartitionType(), "gpt");
+    disk.SetPartitionType("mbr");
+    EXPECT_EQ(disk.GetPartitionType(), "mbr");
+    disk.SetPartitionType("cd");
+    EXPECT_EQ(disk.GetPartitionType(), "cd");
     GTEST_LOG_(INFO) << "PartitionType_TestCase_001 End";
 }
 
@@ -4401,8 +4401,11 @@ HWTEST_F(DiskManagerTest, Format_TestCase_007, TestSize.Level0)
     GTEST_LOG_(INFO) << "Format_TestCase_007 Start";
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeUsbDisk("disk-28-6"));
+    Disk disk;
+    EXPECT_EQ(dm.GetDiskById("disk-28-6", disk), E_OK);
+    disk.SetPartitionType("gpt");
+    EXPECT_EQ(dm.UpdateDisk(disk), E_OK);
     VolumeExternal vol = MakeUsbVolume("vol-28-7", "disk-28-6", "uuid-fmt-7", UNMOUNTED);
-    vol.SetPartitionType("gpt");
     vol.SetPartitionNum(2);
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();

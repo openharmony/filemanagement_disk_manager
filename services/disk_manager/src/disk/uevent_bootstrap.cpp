@@ -253,7 +253,8 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
                                const std::string &diskId,
                                const std::string &diskDevPath,
                                std::vector<PartitionRecord> &parts,
-                               bool &isUserData)
+                               bool &isUserData,
+                               std::string &tableType)
 {
     int32_t err = StorageDaemonAdapter::GetInstance().CreateBlockDeviceNode(
         diskDevPath, K_DISK_BLOCK_DEVICE_NODE_MODE, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
@@ -297,7 +298,6 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
                 rawDump += *userdataIt;
             }
         }
-        std::string tableType;
         bool hasDiskLine = false;
         if (!rawDump.empty()) {
             hasDiskLine = PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
@@ -320,7 +320,10 @@ std::string BlockInfoToVolumeExtraInfo(const BlockInfo &blockInfo)
          {"fwVersion", blockInfo.fwVersion}});
 }
 
-void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, bool publishNewDiskEvent)
+void UpsertDiskAndPublishEvent(const UeventEnv &env,
+                               const std::string &diskId,
+                               bool publishNewDiskEvent,
+                               const std::string &tableType)
 {
     if (!publishNewDiskEvent) {
         return;
@@ -341,6 +344,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env, const std::string &diskId, 
         }
     }
     diskForEvent.SetVendor(blockInfo.vendor);
+    diskForEvent.SetPartitionType(tableType);
     diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);
@@ -396,8 +400,7 @@ bool TryLoadBlockInfoForVolume(const Disk &disk, BlockInfo &blockInfo)
 int32_t CreateAndSetupVolume(const std::string &diskId,
                              dev_t pDev,
                              const bool &isUserData,
-                             int32_t partitionNUm,
-                             const std::string partitionType)
+                             int32_t partitionNUm)
 {
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
@@ -412,7 +415,6 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     VolumeExternal volExternal(VolumeCore(volId, EXTERNAL, diskId));
     volExternal.SetUserData(isUserData);
     volExternal.SetPartitionNum(partitionNUm);
-    volExternal.SetPartitionType(partitionType);
     Disk disk;
     if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
         LOGE("Disk with id %{public}s not found", diskId.c_str());
@@ -467,7 +469,7 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     if (DiskManager::GetInstance().GetVolumeById(volId, vol) == E_OK && vol.GetState() == VolumeState::MOUNTED) {
         return;
     }
-    if (CreateAndSetupVolume(diskId, pDev, isUserData, static_cast<int32_t>(p.partitionNumber), p.partitionType) !=
+    if (CreateAndSetupVolume(diskId, pDev, isUserData, static_cast<int32_t>(p.partitionNumber)) !=
         ERR_OK) {
         return;
     }
@@ -519,7 +521,7 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
         }
     }
 
-    if (CreateAndSetupVolume(diskId, wholeDev, false, 0, "mbr") != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, wholeDev, false, 0) != ERR_OK) {
         return;
     }
 
@@ -555,7 +557,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
 
-    if (CreateAndSetupVolume(diskId, pDev, false, 0, "cd") != ERR_OK) {
+    if (CreateAndSetupVolume(diskId, pDev, false, 0) != ERR_OK) {
         return;
     }
 
@@ -655,7 +657,7 @@ int32_t DiscoverCdromVolumes(const UeventEnv &env, const std::string &diskId, bo
     }
 
     const bool publishNew = publishNewDiskEvent || !DiskManager::GetInstance().HasDisk(diskId);
-    UpsertDiskAndPublishEvent(env, diskId, publishNew);
+    UpsertDiskAndPublishEvent(env, diskId, publishNew, "cd");
     DiscoverSinglePartitionVolume4CD(env, diskId);
     return DiskManagerErrNo::E_OK;
 }
@@ -769,9 +771,10 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
 
     std::vector<PartitionRecord> parts;
     bool isUserData = false;
-    int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts, isUserData);
+    std::string tableType;
+    int32_t err = BuildAndSyncPartitions(env, diskId, diskDevPath, parts, isUserData, tableType);
     if (err == E_STORAGE_VALID_NODE) {
-        UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent);
+        UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent, tableType);
         LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s, is a valid storage device", diskId.c_str());
         return DiskManagerErrNo::E_OK;
     }
@@ -785,7 +788,7 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     }
     LOGI("BuildAndSyncPartitions completed successfully");
 
-    UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent);
+    UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent, tableType);
     LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s", diskId.c_str());
 
     // 内置数据盘 Partition() 仅恢复为单一 f2fs，无增删分区场景，直接 discover + Format。
