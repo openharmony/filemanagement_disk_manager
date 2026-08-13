@@ -4455,7 +4455,7 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Leve
     GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 End";
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_004, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_001, TestSize.Level0)
 {
     // 企业空间未使能（参数值为"true"），SSD 应拦截挂载
     g_mockFindParameterResult = 1;
@@ -4474,7 +4474,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_004, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_005, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_002, TestSize.Level0)
 {
     // 企业空间未使能（参数值为"true"），HDD 应拦截挂载
     g_mockFindParameterResult = 1;
@@ -4493,7 +4493,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_005, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_006, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_003, TestSize.Level0)
 {
     // 企业空间未使能（参数值为"false"），SSD 应正常挂载，不跳过
     g_mockFindParameterResult = 1;
@@ -4512,7 +4512,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_006, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-ssd-false"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_007, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_004, TestSize.Level0)
 {
     // 企业空间未使能（参数值为"false"），HDD 应正常挂载，不跳过
     g_mockFindParameterResult = 1;
@@ -4531,7 +4531,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_007, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hdd-false"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_008, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_005, TestSize.Level0)
 {
     // FindParameter 返回 -1（参数不存在），SSD 应正常挂载，不跳过
     g_mockFindParameterResult = -1;
@@ -4549,7 +4549,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_008, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-ssd-noparam"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_009, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_006, TestSize.Level0)
 {
     // 企业空间使能时，USB 盘应正常挂载，不被拦截
     g_mockFindParameterResult = 1;
@@ -4570,7 +4570,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_009, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-usb-ent"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_010, TestSize.Level0)
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_007, TestSize.Level0)
 {
     // 企业空间使能时，SD 卡应正常挂载，不被拦截
     g_mockFindParameterResult = 1;
