@@ -876,6 +876,7 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
 
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
+        LOGI("Enterprise space enable, not support SSD or HDD disk.");
         return DiskManagerErrNo::E_OK;
     }
 
