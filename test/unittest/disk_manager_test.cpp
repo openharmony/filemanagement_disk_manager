@@ -4558,7 +4558,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_006, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeUsbDisk("disk-usb-ent"));
     VolumeExternal vol = MakeUsbVolume("vol-usb-ent", "disk-usb-ent", "uuid-usb-ent", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(FAT));
+    vol.SetFsType(static_cast<int32_t>(VFAT));
     dm.OnVolumeCreated(vol);
 
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
@@ -4579,7 +4579,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_007, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeSdDisk("disk-sd-ent"));
     VolumeExternal vol = MakeUsbVolume("vol-sd-ent", "disk-sd-ent", "uuid-sd-ent", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(FAT));
+    vol.SetFsType(static_cast<int32_t>(VFAT));
     dm.OnVolumeCreated(vol);
 
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
