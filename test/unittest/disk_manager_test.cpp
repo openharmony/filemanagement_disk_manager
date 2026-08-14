@@ -1059,7 +1059,7 @@ HWTEST_F(DiskManagerTest, Format_TestCase_005, TestSize.Level0)
     VolumeExternal vol = MakeUsbVolume("vol-28-5", "disk-28-4", "uuid-fmt-5", UNMOUNTED);
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, FormatVolume(_, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
         SetArgReferee<1>("new-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
     EXPECT_EQ(dm.Format("vol-28-5", "vfat"), E_OK);
@@ -1084,7 +1084,7 @@ HWTEST_F(DiskManagerTest, Format_TestCase_006, TestSize.Level0)
     VolumeExternal vol = MakeUsbVolume("vol-28-6", "disk-28-5", "uuid-fmt-6", UNMOUNTED);
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, FormatVolume(_, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Format("vol-28-6", "vfat"), E_OK);
     GTEST_LOG_(INFO) << "Format_TestCase_006 End";
 }
@@ -4352,6 +4352,41 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.
     EXPECT_EQ(ssdDisk.GetExtraInfo(), extraInfoBefore);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_005 End";
+}
+
+HWTEST_F(DiskManagerTest, PartitionType_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PartitionType_TestCase_001 Start";
+    Disk disk;
+    EXPECT_EQ(disk.GetPartitionType(), "");
+    disk.SetPartitionType("gpt");
+    EXPECT_EQ(disk.GetPartitionType(), "gpt");
+    disk.SetPartitionType("mbr");
+    EXPECT_EQ(disk.GetPartitionType(), "mbr");
+    disk.SetPartitionType("cd");
+    EXPECT_EQ(disk.GetPartitionType(), "cd");
+    GTEST_LOG_(INFO) << "PartitionType_TestCase_001 End";
+}
+
+HWTEST_F(DiskManagerTest, Format_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-28-6"));
+    Disk disk;
+    EXPECT_EQ(dm.GetDiskById("disk-28-6", disk), E_OK);
+    disk.SetPartitionType("gpt");
+    EXPECT_EQ(dm.UpdateDisk(disk), E_OK);
+    VolumeExternal vol = MakeUsbVolume("vol-28-7", "disk-28-6", "uuid-fmt-7", UNMOUNTED);
+    vol.SetPartitionNum(2);
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume("/dev/block/vol-28-7", "vfat", "/dev/block/disk-28-6", "gpt", 2))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("new-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_EQ(dm.Format("vol-28-7", "vfat"), E_OK);
+    GTEST_LOG_(INFO) << "Format_TestCase_007 End";
 }
 
 /**

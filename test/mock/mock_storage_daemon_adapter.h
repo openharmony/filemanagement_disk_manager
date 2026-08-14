@@ -42,7 +42,9 @@ public:
         (const std::string &devPath, const std::string &mountPath,
          const std::string &fsType, uint64_t mountFlag, const std::string &mountData));
     MOCK_METHOD(int32_t, Unmount, (const std::string &mountPath, const std::string &fsType, bool force));
-    MOCK_METHOD(int32_t, FormatVolume, (const std::string &devPath, const std::string &fsType));
+    MOCK_METHOD(int32_t, FormatVolume, (const std::string &devPath, const std::string &fsType,
+                                        const std::string &diskPath, const std::string &partitionType,
+                                        const int32_t partitionNum));
     MOCK_METHOD(int32_t, Check, (const std::string &devPath, const std::string &fsType, bool autoFix));
     MOCK_METHOD(int32_t, Repair, (const std::string &devPath, const std::string &fsType));
     MOCK_METHOD(int32_t, SetLabel,

@@ -42,7 +42,9 @@ public:
                          uint64_t mountFlag,
                          const std::string &mountData));
     MOCK_METHOD3(Unmount, ErrCode(const std::string &mountPath, const std::string &fsType, bool force));
-    MOCK_METHOD2(FormatVolume, ErrCode(const std::string &devPath, const std::string &fsType));
+    MOCK_METHOD5(FormatVolume, ErrCode(const std::string &devPath, const std::string &fsType,
+                                       const std::string &diskPath, const std::string &partitionType,
+                                       const int32_t partitionNum));
     MOCK_METHOD3(Check, ErrCode(const std::string &devPath, const std::string &fsType, bool autoFix));
     MOCK_METHOD2(Repair, ErrCode(const std::string &devPath, const std::string &fsType));
     MOCK_METHOD3(SetLabel, ErrCode(const std::string &devPath, const std::string &fsType, const std::string &label));
