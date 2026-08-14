@@ -772,7 +772,7 @@ bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
 
     char spaceEnable[RD_ENABLE_LENGTH] = {"false"};
     auto res = GetParameterValue(handle, spaceEnable, RD_ENABLE_LENGTH);
-    if (res >= 0 && strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
+    if (res < 0 || strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
         return false;
     }
 
@@ -876,6 +876,7 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
 
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
+        LOGI("Enterprise space enable, not support SSD or HDD disk.");
         return DiskManagerErrNo::E_OK;
     }
 
