@@ -4457,7 +4457,7 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Leve
 
 HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_001, TestSize.Level0)
 {
-    // 企业空间未使能（参数值为"true"），SSD 应拦截挂载
+    // 企业空间使能（参数值为"true"），SSD 应拦截挂载
     g_mockFindParameterResult = 1;
     g_mockGetParameterValueResult = 4;
     strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
@@ -4476,7 +4476,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_001, TestSize.Level0)
 
 HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_002, TestSize.Level0)
 {
-    // 企业空间未使能（参数值为"true"），HDD 应拦截挂载
+    // 企业空间使能（参数值为"true"），HDD 应拦截挂载
     g_mockFindParameterResult = 1;
     g_mockGetParameterValueResult = 4;
     strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
