@@ -772,7 +772,7 @@ bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
 
     char spaceEnable[RD_ENABLE_LENGTH] = {"false"};
     auto res = GetParameterValue(handle, spaceEnable, RD_ENABLE_LENGTH);
-    if (res >= 0 && strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
+    if (res < 0 || strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
         return false;
     }
 
@@ -801,7 +801,7 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
                                             MountDataPathParams &params)
 {
     uint64_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(params.policy.useFuseData);
-    if ((fsType == "hmfs" || fsType == "f2fs") && volExternal.GetUserData()) {
+    if ((fsType == "hmfs" || fsType == "f2fs") && (volExternal.GetUserData() || !params.policy.useVoldataPath)) {
         mountFlag = HMFS_FLAG;
     }
 
@@ -876,14 +876,8 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
 
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
+        LOGI("Enterprise space enable, not support SSD or HDD disk.");
         return DiskManagerErrNo::E_OK;
-    }
-
-    if ((fsType == "hmfs" || fsType == "f2fs") && !volExternal.GetUserData() && !policy.useVoldataPath) {
-        LOGE("Reject %{public}s mount: not migration userdata scenario, vol=%{public}s",
-             fsType.c_str(), volExternal.GetId().c_str());
-        volExternal.SetState(VolumeState::UNMOUNTED);
-        return E_OTHER_MOUNT;
     }
 
     return ExecuteVolumeDataMount(volExternal, fsType, params);
