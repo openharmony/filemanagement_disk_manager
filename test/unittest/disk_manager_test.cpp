@@ -4503,6 +4503,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_003, TestSize.Level0)
     dm.OnDiskCreated(MakeSsdDisk("disk-mvfs-ssd-false"));
     VolumeExternal vol = MakeUsbVolume("vol-mvfs-ssd-false", "disk-mvfs-ssd-false", "uuid-mvfs-ssd-false", UNMOUNTED);
     vol.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetUserData(true);
     dm.OnVolumeCreated(vol);
 
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
@@ -4522,6 +4523,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_004, TestSize.Level0)
     dm.OnDiskCreated(MakeHddDisk("disk-mvfs-hdd-false"));
     VolumeExternal vol = MakeUsbVolume("vol-mvfs-hdd-false", "disk-mvfs-hdd-false", "uuid-mvfs-hdd-false", UNMOUNTED);
     vol.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetUserData(true);
     dm.OnVolumeCreated(vol);
 
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
@@ -4540,6 +4542,7 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_005, TestSize.Level0)
     VolumeExternal vol =
         MakeUsbVolume("vol-mvfs-ssd-noparam", "disk-mvfs-ssd-noparam", "uuid-mvfs-ssd-noparam", UNMOUNTED);
     vol.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetUserData(true);
     dm.OnVolumeCreated(vol);
 
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
