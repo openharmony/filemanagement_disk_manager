@@ -209,7 +209,9 @@ int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::s
     return ret;
 }
 
-int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std::string &fsType)
+int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std::string &fsType,
+                                           const std::string &diskPath, const std::string &partitionType,
+                                           const int32_t partitionNum)
 {
     LOGI("FormatVolume enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
     int32_t err = EnsureProxyReady();
@@ -217,7 +219,7 @@ int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std
         LOGE("FormatVolume exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->FormatVolume(devPath, fsType);
+    const int32_t ret = storageDaemon_->FormatVolume(devPath, fsType, diskPath, partitionType, partitionNum);
     LOGI("FormatVolume exit ret=%{public}d", ret);
     return ret;
 }
@@ -461,6 +463,19 @@ int32_t StorageDaemonAdapter::GetVolumeOpProcess(const std::string &volumeId, in
     }
     const int32_t ret = storageDaemon_->GetVolumeOpProcess(volumeId, progressPct);
     LOGI("GetVolumeOpProcess exit ret=%{public}d, progressPct=%{public}d", ret, progressPct);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::GetDiskSize(const std::string &devName, uint64_t &size)
+{
+    LOGI("GetDiskSize enter, devName=%{public}s", devName.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetDiskSize exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->GetDiskSize(devName, size);
+    LOGI("GetDiskSize exit ret=%{public}d size=%{public}" PRIu64, ret, size);
     return ret;
 }
 } // namespace DiskManager

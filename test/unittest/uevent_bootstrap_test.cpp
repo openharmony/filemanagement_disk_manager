@@ -754,6 +754,9 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_TestCase
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    // GetDiskSize returns 2MB (<=4MB), disk should be abandoned
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(2 * 1024 * 1024)), Return(E_OK)));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
@@ -1172,7 +1175,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_UnmountFail_TestCase_007, TestSiz
     UeventEnv env = MakeUenv("remove", 8, 1);
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
         .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
-            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", UNMOUNTED);
+            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", MOUNTED);
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
@@ -1181,7 +1184,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_UnmountFail_TestCase_007, TestSiz
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(REMOVED, _))
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(BAD_REMOVAL, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
@@ -1204,8 +1207,7 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_DestroyVolumeNodeFail_TestCase_00
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
-        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_)).Times(0);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(-1))
         .WillOnce(Return(E_OK));
@@ -1545,12 +1547,12 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_WithVolumes_TestCase_004, TestSiz
             out.push_back(VolumeExternal(vc));
             return E_OK;
         }));
-    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
-        .WillOnce(Return(E_OK));
+    // Safely ejected volume: skip ForceUnmount, only publish REMOVED.
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_)).Times(0);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(_, _))
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(REMOVED, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
@@ -1575,13 +1577,43 @@ HWTEST_F(UeventBootstrapTest, HandleDiskRemove_FuseVolume_TestCase_005, TestSize
             out.push_back(vol);
             return E_OK;
         }));
+    // Fuse same as non-Fuse: safely ejected -> VOLUME_REMOVED only.
+    EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(REMOVED, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskDestroyed(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    int32_t ret = UeventBootstrap::HandleDiskRemove(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(UeventBootstrapTest, HandleDiskRemove_FuseBadRemoval_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("remove", 8, 1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            VolumeCore vc("vol-8-2", EXTERNAL, "disk-8-1", MOUNTED);
+            VolumeExternal vol(vc);
+            vol.SetPath("/mnt/data/external_fuse/test-uuid");
+            out.push_back(vol);
+            return E_OK;
+        }));
+    // Fuse same as non-Fuse: mounted pull -> ForceUnmount then VOLUME_BAD_REMOVAL.
     EXPECT_CALL(DiskManager::GetInstance(), ForceUnmount(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(CommonEventPublisher::GetInstance(),
-                PublishVolumeChangeImpl(FUSE_REMOVED, _))
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishVolumeChangeImpl(BAD_REMOVAL, _))
         .Times(1);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeDestroyed(_))
         .WillOnce(Return(E_OK));
@@ -1808,4 +1840,106 @@ HWTEST_F(UeventBootstrapTest, PartitionDiff_ChangeTypeCode_TestCase_004, TestSiz
     ExpectIsPartitioningFalse();
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_TestCase_001
+ * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB, disk object should be created
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    // BuildAndSyncPartitions returns E_STORAGE_VALID_NODE early, only one CreateBlockDeviceNode call
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    // GetDiskSize returns 10MB (10 * 1024 * 1024 = 10485760 bytes), > 4MB threshold
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(10 * 1024 * 1024)), Return(E_OK)));
+    // E_STORAGE_VALID_NODE path skips ReplacePartitionsForDisk
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .Times(0);
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    // ReadExtDiskInfoFromDaemon called once in UpsertDiskAndPublishEvent (TryCopyByDiskId returns false)
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    // Should NOT call DestroyBlockDeviceNode since device is valid
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_NoPublish_TestCase_001
+ * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB with publishNewDiskEvent=false,
+ *           E_STORAGE_VALID_NODE path should return E_OK without UpsertDiskAndPublishEvent publishing
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_NoPublish_TestCase_001,
+         TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    // GetDiskSize returns 10MB, > 4MB threshold
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(10 * 1024 * 1024)), Return(E_OK)));
+    // publishNewDiskEvent=false, UpsertDiskAndPublishEvent returns early, no disk event published
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeSmall_TestCase_002
+ * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size <= 4MB, disk should be abandoned
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeSmall_TestCase_002, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    // GetDiskSize returns 2MB (2 * 1024 * 1024 = 2097152 bytes), <= 4MB threshold
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(2 * 1024 * 1024)), Return(E_OK)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_NE(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeFail_TestCase_003
+ * @tc.desc: ReadPartitionTable fails, GetDiskSize also fails, disk should be abandoned
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeFail_TestCase_003, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    // GetDiskSize fails
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(0)), Return(-1)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_NE(ret, DiskManagerErrNo::E_OK);
 }

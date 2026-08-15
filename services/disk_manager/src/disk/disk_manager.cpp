@@ -593,13 +593,13 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
     const std::string &volumeId = volExternal.GetId();
     const std::string mountedPath = volExternal.GetPath();
     if (!mountedPath.empty() && StartsWith(mountedPath, std::string(EXTERNAL_FUSE_DATA_ROOT))) {
+        // Do not publish volume events here; outer Unmount/Destroy paths own event order
+        // (same for Fuse and non-Fuse): safe eject EJECT->UNMOUNTED; remove REMOVED/BAD_REMOVAL.
         int32_t err = StorageDaemonAdapter::GetInstance().Unmount(mountedPath, fsType, force);
         if (err != ERR_OK) {
             return err;
         }
-        force ? CommonEventPublisher::PublishVolumeChange(BAD_REMOVAL, volExternal)
-              : CommonEventPublisher::PublishVolumeChange(REMOVED, volExternal);
-        LOGI("UnmountVolumeMountPoints: umount fuse notify");
+        LOGI("UnmountVolumeMountPoints: umount fuse data path done volumeId=%{public}s", volumeId.c_str());
         const std::string fuseMountPath = BuildSafeExternalMountPath(uuid);
         if (!fuseMountPath.empty()) {
             err = StorageDaemonAdapter::GetInstance().Unmount(fuseMountPath, FUSE_UMOUNT_FS_TYPE, force);
@@ -772,7 +772,7 @@ bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
 
     char spaceEnable[RD_ENABLE_LENGTH] = {"false"};
     auto res = GetParameterValue(handle, spaceEnable, RD_ENABLE_LENGTH);
-    if (res >= 0 && strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
+    if (res < 0 || strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
         return false;
     }
 
@@ -801,7 +801,7 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
                                             MountDataPathParams &params)
 {
     uint64_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(params.policy.useFuseData);
-    if ((fsType == "hmfs" || fsType == "f2fs") && volExternal.GetUserData()) {
+    if ((fsType == "hmfs" || fsType == "f2fs") && (volExternal.GetUserData() || !params.policy.useVoldataPath)) {
         mountFlag = HMFS_FLAG;
     }
 
@@ -876,14 +876,8 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     }
 
     if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
+        LOGI("Enterprise space enable, not support SSD or HDD disk.");
         return DiskManagerErrNo::E_OK;
-    }
-
-    if ((fsType == "hmfs" || fsType == "f2fs") && !volExternal.GetUserData() && !policy.useVoldataPath) {
-        LOGE("Reject %{public}s mount: not migration userdata scenario, vol=%{public}s",
-             fsType.c_str(), volExternal.GetId().c_str());
-        volExternal.SetState(VolumeState::UNMOUNTED);
-        return E_OTHER_MOUNT;
     }
 
     return ExecuteVolumeDataMount(volExternal, fsType, params);
@@ -988,6 +982,8 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
     std::string blockVolId;
     std::string diskId;
     std::string oldFsUuid;
+    std::string partitionType;
+    int32_t partitionNum = 0;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -1012,8 +1008,19 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
         blockVolId = it->second.GetId();
         diskId = it->second.GetDiskId();
         oldFsUuid = it->second.GetUuid();
+        partitionNum = it->second.GetPartitionNum();
     }
-    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume("/dev/block/" + blockVolId, fsType);
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        const auto dit = diskMap_.find(diskId);
+        if (dit != diskMap_.end()) {
+            partitionType = dit->second.GetPartitionType();
+        } else {
+            LOGW("Format: disk %{public}s not found, partitionType unavailable", diskId.c_str());
+        }
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(
+        "/dev/block/" + blockVolId, fsType, "/dev/block/" + diskId, partitionType, partitionNum);
     if (err != ERR_OK) {
         LOGE("Format vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         PublishFormatFailEvent(volumeId);
@@ -1484,6 +1491,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
     std::string path;
     std::string fsType;
     std::string blockVolId;
+    std::string extraInfo;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         VolumeExternal vol;
@@ -1493,6 +1501,7 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         path = vol.GetPath();
         fsType = vol.GetFsTypeString();
         blockVolId = vol.GetId();
+        extraInfo = vol.GetExtraInfo();
         LOGI("GetFreeSizeOfVolume path is %{public}s", path.c_str());
     }
     if (path.empty()) {
@@ -1505,24 +1514,38 @@ int32_t DiskManager::GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t 
         return DiskManagerErrNo::E_STATVFS;
     }
     if (IsOddFsType(fsType)) {
-        int64_t totalSize = 0;
-        int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
-        int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
-        std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
-        const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
-        LOGI("GetFreeSizeOfVolume startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
-             ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
-             startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
-        if (freeSize != 0) {
-            return oddRet;
-        }
-        if (startFreeSize == 0) {
-            freeSize = totalSize - startTotalSize;
-            LOGI("GetFreeSizeOfVolume fallback freeSize=%{public}" PRId64, freeSize);
-            return DiskManagerErrNo::E_OK;
-        }
+        return GetOddFreeSize(extraInfo, blockVolId, diskInfo, freeSize);
     }
     freeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
+                                    const struct statvfs &diskInfo, int64_t &freeSize)
+{
+    std::string discType = GetDiscType(extraInfo);
+    if (discType.find("ROM") != std::string::npos) {
+        LOGI("GetOddFreeSize discType=%{public}s, ROM type, freeSize=0", discType.c_str());
+        freeSize = 0;
+        return DiskManagerErrNo::E_OK;
+    }
+    int64_t totalSize = 0;
+    int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
+    int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
+    const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
+    LOGI("GetOddFreeSize startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
+         ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
+         startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
+    if (freeSize != 0) {
+        return oddRet;
+    }
+    if (startFreeSize == 0) {
+        freeSize = totalSize - startTotalSize;
+        LOGI("GetOddFreeSize fallback freeSize=%{public}" PRId64, freeSize);
+        return DiskManagerErrNo::E_OK;
+    }
+    freeSize = startFreeSize;
     return DiskManagerErrNo::E_OK;
 }
 
@@ -2479,11 +2502,13 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
     }
 
     const int32_t stateBeforeUnmount = vol.GetState();
-    const std::string mountedPathBeforeUnmount = vol.GetPath();
-    const int32_t unmountRet = ForceUnmount(vol.GetId());
-    if (unmountRet != E_OK) {
-        LOGE("DestroyVolumeByDiskIdAndPartNum: ForceUnmount failed volId=%{public}s ret=%{public}d",
-             vol.GetId().c_str(), unmountRet);
+    // Already safely ejected: skip ForceUnmount to avoid duplicate EJECT/UNMOUNTED.
+    if (stateBeforeUnmount != UNMOUNTED) {
+        const int32_t unmountRet = ForceUnmount(vol.GetId());
+        if (unmountRet != E_OK) {
+            LOGE("DestroyVolumeByDiskIdAndPartNum: ForceUnmount failed volId=%{public}s ret=%{public}d",
+                 vol.GetId().c_str(), unmountRet);
+        }
     }
 
     const std::string devPath = "/dev/block/" + vol.GetId();
@@ -2492,13 +2517,8 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
         LOGI("Destroy volume failed devPath:%{public}s, ret:%{public}d", devPath.c_str(), ret);
         return false;
     }
-    const bool isFuseVolume = !mountedPathBeforeUnmount.empty() &&
-        mountedPathBeforeUnmount.rfind(EXTERNAL_FUSE_DATA_ROOT, 0) == 0;
-    if (isFuseVolume) {
-        CommonEventPublisher::PublishVolumeChange(FUSE_REMOVED, vol);
-    } else {
-        CommonEventPublisher::PublishVolumeChange((stateBeforeUnmount == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
-    }
+    // Fuse and non-Fuse share the same remove events: REMOVED after safe eject, BAD_REMOVAL otherwise.
+    CommonEventPublisher::PublishVolumeChange((stateBeforeUnmount == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
     (void)OnVolumeDestroyed(vol.GetId());
     LOGI("DestroyVolume end.");
     return true;

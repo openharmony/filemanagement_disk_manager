@@ -193,7 +193,9 @@ ErrCode StorageDaemonProxy::Unmount(const std::string &mountPath, const std::str
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::string &fsType)
+ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::string &fsType,
+                                         const std::string &diskPath, const std::string &partitionType,
+                                         const int32_t partitionNum)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -201,7 +203,9 @@ ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(fsType))) {
+    if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(fsType)) ||
+        !data.WriteString16(Str8ToStr16(diskPath)) || !data.WriteString16(Str8ToStr16(partitionType)) ||
+        !data.WriteInt32(partitionNum)) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =
@@ -641,6 +645,33 @@ ErrCode StorageDaemonProxy::GetVolumeOpProcess(const std::string &volumeId, int3
         return res;
     }
     if (!reply.ReadInt32(progressPct)) {
+        return ERR_INVALID_DATA;
+    }
+    return ERR_OK;
+}
+
+ErrCode StorageDaemonProxy::GetDiskSize(const std::string &devName, uint64_t &size)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    size = 0;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devName))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_DISK_SIZE), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    if (!reply.ReadUint64(size)) {
         return ERR_INVALID_DATA;
     }
     return ERR_OK;

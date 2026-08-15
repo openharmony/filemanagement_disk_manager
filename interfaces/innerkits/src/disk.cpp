@@ -174,6 +174,16 @@ void Disk::SetCdromState(CdromState cdromState)
     cdromState_ = cdromState;
 }
 
+void Disk::SetPartitionType(const std::string &partitionType)
+{
+    partitionType_ = partitionType;
+}
+
+std::string Disk::GetPartitionType() const
+{
+    return partitionType_;
+}
+
 bool Disk::IsInternalDataDisk() const
 {
     return IsInternalDataDiskType(diskType_);

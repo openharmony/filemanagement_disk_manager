@@ -49,7 +49,9 @@ public:
                   uint64_t mountFlag,
                   const std::string &mountData = "");
     int32_t Unmount(const std::string &mountPath, const std::string &fsType, bool force);
-    int32_t FormatVolume(const std::string &devPath, const std::string &fsType);
+    int32_t FormatVolume(const std::string &devPath, const std::string &fsType,
+                         const std::string &diskPath, const std::string &partitionType,
+                         const int32_t partitionNum);
     int32_t Check(const std::string &devPath, const std::string &fsType, bool autoFix);
     int32_t Repair(const std::string &devPath, const std::string &fsType);
     int32_t SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label);
@@ -75,6 +77,7 @@ public:
                            const std::string &mountPath);
     int32_t Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
+    int32_t GetDiskSize(const std::string &devName, uint64_t &size);
 
 private:
     StorageDaemonAdapter();

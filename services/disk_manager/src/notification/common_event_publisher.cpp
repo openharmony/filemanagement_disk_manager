@@ -42,6 +42,13 @@ struct VolumeStateInfo {
     std::string eventAction;
 };
 
+/*
+ * 卷公共事件映射。拔插/安全弹出预期时序：
+ * 1) 接入：DISK_MOUNTED → 各卷 VOLUME_MOUNTED
+ * 2) 安全弹出(Unmount)：VOLUME_EJECT → VOLUME_UNMOUNTED（设备仍在，可再挂载）
+ * 3) 安全弹出后再拔出：仅 VOLUME_REMOVED（随后 DISK_REMOVED）；勿再发 EJECT/UNMOUNTED
+ * 4) 未安全弹出直接拔出：VOLUME_EJECT → VOLUME_UNMOUNTED → VOLUME_BAD_REMOVAL（随后 DISK_REMOVED）
+ */
 const VolumeStateInfo STATE_INFOS[] = {
     {REMOVED, "VOLUME_REMOVED", EventFwk::CommonEventSupport::COMMON_EVENT_VOLUME_REMOVED},
     {UNMOUNTED, "VOLUME_UNMOUNTED", EventFwk::CommonEventSupport::COMMON_EVENT_VOLUME_UNMOUNTED},

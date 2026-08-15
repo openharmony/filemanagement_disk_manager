@@ -53,6 +53,7 @@ enum class IStorageDaemonIpcCode {
     ADDON_BURN = 257,
     ADDON_GET_VOLUME_OP_PROCESS = 258,
     ADDON_VERIFY_BURN_DATA = 259,
+    ADDON_GET_DISK_SIZE = 261,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -76,7 +77,9 @@ public:
                           uint64_t mountFlag,
                           const std::string &mountData) = 0;
     virtual ErrCode Unmount(const std::string &mountPath, const std::string &fsType, bool force) = 0;
-    virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType) = 0;
+    virtual ErrCode FormatVolume(const std::string &devPath, const std::string &fsType,
+                                 const std::string &diskPath, const std::string &partitionType,
+                                 const int32_t partitionNum) = 0;
     virtual ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) = 0;
     virtual ErrCode Repair(const std::string &devPath, const std::string &fsType) = 0;
     virtual ErrCode SetLabel(const std::string &devPath,
@@ -112,6 +115,7 @@ public:
                                    const std::string &mountPath) = 0;
     virtual ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) = 0;
     virtual ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) = 0;
+    virtual ErrCode GetDiskSize(const std::string &devName, uint64_t &size) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

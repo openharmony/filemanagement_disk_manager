@@ -1059,7 +1059,7 @@ HWTEST_F(DiskManagerTest, Format_TestCase_005, TestSize.Level0)
     VolumeExternal vol = MakeUsbVolume("vol-28-5", "disk-28-4", "uuid-fmt-5", UNMOUNTED);
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, FormatVolume(_, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
         SetArgReferee<1>("new-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
     EXPECT_EQ(dm.Format("vol-28-5", "vfat"), E_OK);
@@ -1084,7 +1084,7 @@ HWTEST_F(DiskManagerTest, Format_TestCase_006, TestSize.Level0)
     VolumeExternal vol = MakeUsbVolume("vol-28-6", "disk-28-5", "uuid-fmt-6", UNMOUNTED);
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, FormatVolume(_, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Format("vol-28-6", "vfat"), E_OK);
     GTEST_LOG_(INFO) << "Format_TestCase_006 End";
 }
@@ -3349,34 +3349,6 @@ HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_002, TestSize.Level0)
     EXPECT_NE(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-mvf-2"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_004, TestSize.Level0)
-{
-    g_mockFindParameterResult = -1;
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeSsdDisk("disk-11-7"));
-    VolumeExternal vol = MakeUsbVolume("vol-64-3", "disk-11-7", "uuid-mvfs-hmfs", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(HMFS));
-    dm.OnVolumeCreated(vol);
-
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-mvfs-hmfs", volOut);
-    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OTHER_MOUNT);
-}
-
-HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_005, TestSize.Level0)
-{
-    g_mockFindParameterResult = -1;
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeHddDisk("disk-12-3"));
-    VolumeExternal vol = MakeUsbVolume("vol-64-4", "disk-12-3", "uuid-ad-hdd", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(HMFS));
-    dm.OnVolumeCreated(vol);
-
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-ad-hdd", volOut);
-    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OTHER_MOUNT);
-}
-
 HWTEST_F(DiskManagerTest, ReadPersistUsbReadonlyMount_TestCase_001, TestSize.Level0)
 {
     g_mockFindParameterResult = 1;
@@ -4380,6 +4352,281 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.
     EXPECT_EQ(ssdDisk.GetExtraInfo(), extraInfoBefore);
 
     GTEST_LOG_(INFO) << "QueryAndAppendEncryptionStatus_TestCase_005 End";
+}
+
+HWTEST_F(DiskManagerTest, PartitionType_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PartitionType_TestCase_001 Start";
+    Disk disk;
+    EXPECT_EQ(disk.GetPartitionType(), "");
+    disk.SetPartitionType("gpt");
+    EXPECT_EQ(disk.GetPartitionType(), "gpt");
+    disk.SetPartitionType("mbr");
+    EXPECT_EQ(disk.GetPartitionType(), "mbr");
+    disk.SetPartitionType("cd");
+    EXPECT_EQ(disk.GetPartitionType(), "cd");
+    GTEST_LOG_(INFO) << "PartitionType_TestCase_001 End";
+}
+
+HWTEST_F(DiskManagerTest, Format_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-28-6"));
+    Disk disk;
+    EXPECT_EQ(dm.GetDiskById("disk-28-6", disk), E_OK);
+    disk.SetPartitionType("gpt");
+    EXPECT_EQ(dm.UpdateDisk(disk), E_OK);
+    VolumeExternal vol = MakeUsbVolume("vol-28-7", "disk-28-6", "uuid-fmt-7", UNMOUNTED);
+    vol.SetPartitionNum(2);
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume("/dev/block/vol-28-7", "vfat", "/dev/block/disk-28-6", "gpt", 2))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("new-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_EQ(dm.Format("vol-28-7", "vfat"), E_OK);
+    GTEST_LOG_(INFO) << "Format_TestCase_007 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_RomType_TestCase_001
+ * @tc.desc: ROM 光盘类型直接返回 freeSize=0
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_RomType_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_RomType_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    int64_t freeSize = -1;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"DVD-ROM"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-1", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, 0);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_RomType_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_FreeSizeNotZero_TestCase_002
+ * @tc.desc: GetOddCapacity 返回 freeSize 非零时直接返回 oddRet
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_FreeSizeNotZero_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 1024;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-2", diskInfo, freeSize), ERR_OK);
+    EXPECT_EQ(freeSize, mockFree);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_StartFreeSizeZero_TestCase_003
+ * @tc.desc: startFreeSize==0 时 fallback 为 totalSize-startTotalSize
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_StartFreeSizeZero_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 0;
+    const int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
+    const int64_t mockTotal = 819200;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-3", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, mockTotal - startTotalSize);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_Fallthrough_TestCase_004
+ * @tc.desc: freeSize==0 且 startFreeSize!=0 时回退为 startFreeSize
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"BD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-4", diskInfo, freeSize), DiskManagerErrNo::E_OK);
+    EXPECT_EQ(freeSize, startFreeSize);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 End";
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_001, TestSize.Level0)
+{
+    // 企业空间使能（参数值为"true"），SSD 应拦截挂载
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 4;
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-mvfs-hmfs"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvfs-hmfs", "disk-mvfs-hmfs", "uuid-mvfs-hmfs", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(HMFS));
+    dm.OnVolumeCreated(vol);
+
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-mvfs-hmfs", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hmfs"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_002, TestSize.Level0)
+{
+    // 企业空间使能（参数值为"true"），HDD 应拦截挂载
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 4;
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeHddDisk("disk-ad-hdd"));
+    VolumeExternal vol = MakeUsbVolume("vol-ad-hdd", "disk-ad-hdd", "uuid-ad-hdd", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(HMFS));
+    dm.OnVolumeCreated(vol);
+
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-ad-hdd", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-ad-hdd"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_003, TestSize.Level0)
+{
+    // 企业空间未使能（参数值为"false"），SSD 应正常挂载，不跳过
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 5;
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "false");
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-mvfs-ssd-false"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvfs-ssd-false", "disk-mvfs-ssd-false", "uuid-mvfs-ssd-false", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetUserData(true);
+    dm.OnVolumeCreated(vol);
+
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-mvfs-ssd-false", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-ssd-false"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_004, TestSize.Level0)
+{
+    // 企业空间未使能（参数值为"false"），HDD 应正常挂载，不跳过
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 5;
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "false");
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeHddDisk("disk-mvfs-hdd-false"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvfs-hdd-false", "disk-mvfs-hdd-false", "uuid-mvfs-hdd-false", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetUserData(true);
+    dm.OnVolumeCreated(vol);
+
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-mvfs-hdd-false", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-hdd-false"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_005, TestSize.Level0)
+{
+    // FindParameter 返回 -1（参数不存在），SSD 应正常挂载，不跳过
+    g_mockFindParameterResult = -1;
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-mvfs-ssd-noparam"));
+    VolumeExternal vol =
+        MakeUsbVolume("vol-mvfs-ssd-noparam", "disk-mvfs-ssd-noparam", "uuid-mvfs-ssd-noparam", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(HMFS));
+    vol.SetUserData(true);
+    dm.OnVolumeCreated(vol);
+
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-mvfs-ssd-noparam", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "hmfs", "uuid-mvfs-ssd-noparam"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_006, TestSize.Level0)
+{
+    // 企业空间使能时，USB 盘应正常挂载，不被拦截
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 4;
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-usb-ent"));
+    VolumeExternal vol = MakeUsbVolume("vol-usb-ent", "disk-usb-ent", "uuid-usb-ent", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(VFAT));
+    dm.OnVolumeCreated(vol);
+
+    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
+    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillOnce(Return(false));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-usb-ent", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-usb-ent"), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_007, TestSize.Level0)
+{
+    // 企业空间使能时，SD 卡应正常挂载，不被拦截
+    g_mockFindParameterResult = 1;
+    g_mockGetParameterValueResult = 4;
+    strcpy_s(g_mockParameterValue, sizeof(g_mockParameterValue), "true");
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSdDisk("disk-sd-ent"));
+    VolumeExternal vol = MakeUsbVolume("vol-sd-ent", "disk-sd-ent", "uuid-sd-ent", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(VFAT));
+    dm.OnVolumeCreated(vol);
+
+    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
+    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillOnce(Return(false));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-sd-ent", volOut);
+    EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-sd-ent"), E_OK);
 }
 
 } // namespace DiskManager

@@ -120,7 +120,7 @@ HWTEST_F(StorageDaemonAdapterTest, Unmount_ErrorPath_001, TestSize.Level0)
 HWTEST_F(StorageDaemonAdapterTest, FormatVolume_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_NE(adapter.FormatVolume("/dev/block/sda1", "ext4"), E_OK);
+    EXPECT_NE(adapter.FormatVolume("/dev/block/sda1", "ext4", "/dev/disk", "gpt", 1), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterTest, Check_ErrorPath_001, TestSize.Level0)
@@ -239,6 +239,13 @@ HWTEST_F(StorageDaemonAdapterTest, GetVolumeOpProcess_ErrorPath_001, TestSize.Le
     EXPECT_NE(adapter.GetVolumeOpProcess("vol-1", progressPct), E_OK);
 }
 
+HWTEST_F(StorageDaemonAdapterTest, GetDiskSize_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t size = 0;
+    EXPECT_NE(adapter.GetDiskSize("sda", size), E_OK);
+}
+
 class StorageDaemonAdapterProxyTest : public testing::Test {
 public:
     void SetUp() override
@@ -353,8 +360,8 @@ HWTEST_F(StorageDaemonAdapterProxyTest, Unmount_Success_001, TestSize.Level0)
 HWTEST_F(StorageDaemonAdapterProxyTest, FormatVolume_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, FormatVolume(_, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.FormatVolume("/dev/block/sda1", "ext4"), E_OK);
+    EXPECT_CALL(*mockRemote_, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.FormatVolume("/dev/block/sda1", "ext4", "/dev/disk", "gpt", 1), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, Check_Success_001, TestSize.Level0)
@@ -518,5 +525,14 @@ HWTEST_F(StorageDaemonAdapterProxyTest, SdDeathRecipient_OnRemoteDied_001, TestS
     EXPECT_EQ(adapter.storageDaemon_, nullptr);
 }
 
+HWTEST_F(StorageDaemonAdapterProxyTest, GetDiskSize_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t size = 0;
+    EXPECT_CALL(*mockRemote_, GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(10ULL * 1024 * 1024), Return(E_OK)));
+    EXPECT_EQ(adapter.GetDiskSize("sda", size), E_OK);
+    EXPECT_EQ(size, 10ULL * 1024 * 1024);
+}
 } // namespace DiskManager
 } // namespace OHOS
