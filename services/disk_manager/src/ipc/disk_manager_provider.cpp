@@ -32,6 +32,7 @@
 #include "ipc_skeleton.h"
 #include "partition_types.h"
 #include "storage_daemon_adapter.h"
+#include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
 
@@ -43,11 +44,22 @@ namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
+constexpr size_t OP_DIAG_RAW_MAX_LEN = 8192;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
 
 inline int32_t IpcDfxRet(IpcDfxScope &dfx, int32_t ret)
 {
     return dfx.Finish(ret);
+}
+
+void ApplyVolumeOpDiagReport(const OpDiagReport &report)
+{
+    if (report.funcName.find("ReadMetadata") != std::string::npos) {
+        DiskManagerRadar::GetInstance().ReportMetadataFault(report.funcName, report.ret, report.info);
+        return;
+    }
+    DiskManagerRadar::GetInstance().ReportVolumeFault(report.funcName, report.bizStage, report.opType, report.ret,
+        report.info);
 }
 } // namespace
 
@@ -429,6 +441,26 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
     EndPendingStorageDaemonCallback();
     LOGI("OnBlockDiskUevent err=%{public}d", ret);
     return IpcDfxRet(dfx, ret);
+}
+
+int32_t DiskManagerProvider::ReportVolumeOpDiag(const std::string &opDiag)
+{
+    LOGI("ReportVolumeOpDiag len=%{public}zu", opDiag.size());
+    BeginPendingStorageDaemonCallback();
+    if (!CheckStorageDaemonPermission()) {
+        EndPendingStorageDaemonCallback();
+        return E_PERMISSION_DENIED;
+    }
+    if (opDiag.empty() || opDiag.size() > OP_DIAG_RAW_MAX_LEN) {
+        EndPendingStorageDaemonCallback();
+        return DiskManagerErrNo::E_OK;
+    }
+    OpDiagReport report = ParseOpDiagReport(opDiag);
+    if (report.valid && report.ret != DiskManagerErrNo::E_OK) {
+        ApplyVolumeOpDiagReport(report);
+    }
+    EndPendingStorageDaemonCallback();
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::GetAllDisks(std::vector<Disk> &vecOfDisk)

@@ -1072,5 +1072,38 @@ HWTEST_F(DiskManagerClientTest, GetInstanceTest001, TestSize.Level1)
     GTEST_LOG_(INFO) << "GetInstanceTest001 End";
 }
 
+/**
+ * @tc.name: ReportVolumeOpDiagTest001
+ * @tc.desc: ReportVolumeOpDiag when SA is unavailable returns error.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, ReportVolumeOpDiagTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ReportVolumeOpDiagTest001 Start";
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.ReportVolumeOpDiag(R"({"ret":-1,"funcName":"x"})"), E_OK);
+    GTEST_LOG_(INFO) << "ReportVolumeOpDiagTest001 End";
+}
+
+/**
+ * @tc.name: ReportVolumeOpDiagTest002
+ * @tc.desc: ReportVolumeOpDiag Connect success forwards to stub.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, ReportVolumeOpDiagTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ReportVolumeOpDiagTest002 Start";
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, ReportVolumeOpDiag(_)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_EQ(client.ReportVolumeOpDiag(
+        R"({"ret":-1,"funcName":"StorageDaemonProvider::Check","bizStage":41,"opType":4})"), E_OK);
+    GTEST_LOG_(INFO) << "ReportVolumeOpDiagTest002 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

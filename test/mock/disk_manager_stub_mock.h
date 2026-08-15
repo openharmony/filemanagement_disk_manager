@@ -40,6 +40,7 @@ public:
     MOCK_METHOD(int32_t, GetDiskById, (const std::string &diskId, Disk &disk));
     MOCK_METHOD(int32_t, QueryUsbIsInUse, (const std::string &diskPath, bool &isInUse));
     MOCK_METHOD(int32_t, OnBlockDiskUevent, (const std::string &rawUeventMsg));
+    MOCK_METHOD(int32_t, ReportVolumeOpDiag, (const std::string &opDiag));
     MOCK_METHOD(int32_t, NotifyMtpMounted,
         (const std::string &id, const std::string &path, const std::string &desc, const std::string &uuid,
          const std::string &fsType));

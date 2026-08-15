@@ -144,5 +144,84 @@ HWTEST_F(DiskManagerDfxTypesTest, DfxTruncate_001, TestSize.Level0)
     EXPECT_EQ(DfxTruncate(std::string(DFX_TRUNCATE_MAX_LEN, 'z')).size(), DFX_TRUNCATE_MAX_LEN);
     EXPECT_EQ(DfxTruncate(std::string(DFX_TRUNCATE_MAX_LEN + 10, 'z')).size(), DFX_TRUNCATE_MAX_LEN);
 }
+
+HWTEST_F(DiskManagerDfxTypesTest, ParseOpDiagText_JsonAndRaw_001, TestSize.Level0)
+{
+    VolumeReportInfo empty = ParseOpDiagText("");
+    EXPECT_TRUE(empty.devPath.empty());
+
+    VolumeReportInfo raw = ParseOpDiagText("not-json");
+    EXPECT_EQ(raw.extra, "not-json");
+
+    const std::string js = R"({"devPath":"/dev/sda1","fsType":"exfat","tools":[{"cmd":"fsck"}]})";
+    VolumeReportInfo parsed = ParseOpDiagText(js);
+    EXPECT_EQ(parsed.devPath, "/dev/sda1");
+    EXPECT_EQ(parsed.fsType, "exfat");
+    EXPECT_FALSE(parsed.extra.empty());
+}
+
+HWTEST_F(DiskManagerDfxTypesTest, BuildAutoMountSkipReportInfo_001, TestSize.Level0)
+{
+    AutoMountSkipContext ctx;
+    ctx.volId = "vol-1";
+    ctx.diskId = "disk-8-0";
+    ctx.volDevPath = "/dev/block/vol-1";
+    ctx.type = "exfat";
+    ctx.uuid = "uuid-1";
+    VolumeReportInfo info = BuildAutoMountSkipReportInfo(ctx);
+    EXPECT_EQ(info.volumeId, "vol-1");
+    EXPECT_EQ(info.fsType, "exfat");
+    EXPECT_EQ(info.fsUuid, "uuid-1");
+}
+
+HWTEST_F(DiskManagerDfxTypesTest, ResolveAutoMountSkipReason_001, TestSize.Level0)
+{
+    EXPECT_EQ(ResolveAutoMountSkipReason(false, "exfat", "uuid"),
+        AutoMountSkipReason::AUTO_MOUNT_DISABLED);
+    EXPECT_EQ(ResolveAutoMountSkipReason(true, "", ""), AutoMountSkipReason::MISSING_FS_TYPE_AND_UUID);
+    EXPECT_EQ(ResolveAutoMountSkipReason(true, "", "uuid"), AutoMountSkipReason::MISSING_FS_TYPE);
+    EXPECT_EQ(ResolveAutoMountSkipReason(true, "exfat", ""), AutoMountSkipReason::MISSING_UUID);
+    EXPECT_STREQ(AutoMountSkipReasonToString(AutoMountSkipReason::MISSING_FS_TYPE), "missingFsType");
+}
+
+HWTEST_F(DiskManagerDfxTypesTest, ParseOpDiagReport_ValidAndInvalid_001, TestSize.Level0)
+{
+    EXPECT_FALSE(ParseOpDiagReport("").valid);
+    EXPECT_FALSE(ParseOpDiagReport("not-json").valid);
+    EXPECT_FALSE(ParseOpDiagReport(R"({"devPath":"/dev/sda1"})").valid);
+    EXPECT_FALSE(ParseOpDiagReport(R"({"ret":"bad","funcName":"x"})").valid);
+    EXPECT_FALSE(ParseOpDiagReport(R"({"ret":1,"funcName":1})").valid);
+
+    const std::string js =
+        R"({"ret":-1,"funcName":"StorageDaemonProvider::Mount","bizStage":41,"opType":0,)"
+        R"("devPath":"/dev/sda1","fsType":"exfat","tools":[{"cmd":"fsck"}]})";
+    OpDiagReport report = ParseOpDiagReport(js);
+    EXPECT_TRUE(report.valid);
+    EXPECT_EQ(report.ret, -1);
+    EXPECT_EQ(report.funcName, "StorageDaemonProvider::Mount");
+    EXPECT_EQ(report.bizStage, 41);
+    EXPECT_EQ(report.opType, VolumeOpType::MOUNT);
+    EXPECT_EQ(report.info.devPath, "/dev/sda1");
+    EXPECT_EQ(report.info.fsType, "exfat");
+    EXPECT_FALSE(report.info.extra.empty());
+}
+
+HWTEST_F(DiskManagerDfxTypesTest, ParseOpDiagText_ExtraAndIds_001, TestSize.Level0)
+{
+    const std::string js =
+        R"({"devPath":"/dev/a","fsType":"vfat","volumeId":"vol-1","diskId":"disk-1","extra":"e1"})";
+    VolumeReportInfo info = ParseOpDiagText(js);
+    EXPECT_EQ(info.volumeId, "vol-1");
+    EXPECT_EQ(info.diskId, "disk-1");
+    EXPECT_EQ(info.extra, "e1");
+
+    VolumeReportInfo withTools = ParseOpDiagText(R"({"tools":[{"cmd":"sgdisk","exitCode":1}]})");
+    EXPECT_NE(withTools.extra.find("sgdisk"), std::string::npos);
+
+    OpDiagReport noStage = ParseOpDiagReport(R"({"ret":1,"funcName":"StorageDaemonProvider::Check"})");
+    EXPECT_TRUE(noStage.valid);
+    EXPECT_EQ(noStage.bizStage, 0);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

@@ -15,6 +15,7 @@
 
 #include "storage_daemon_adapter.h"
 #include "disk_manager_errno.h"
+#include "disk_manager_radar.h"
 
 #include <cinttypes>
 #include <iservice_registry.h>
@@ -28,6 +29,24 @@
 
 namespace OHOS {
 namespace DiskManager {
+namespace {
+int32_t FinishDaemonOp(const char *funcName, int32_t stage, VolumeOpType opType, int32_t ret,
+                       VolumeReportInfo info)
+{
+    if (ret != E_OK) {
+        DiskManagerRadar::GetInstance().ReportVolumeFault(funcName, stage, opType, ret, info);
+    }
+    return ret;
+}
+
+int32_t FinishMetadataOp(const char *funcName, int32_t ret, VolumeReportInfo info)
+{
+    if (ret != E_OK) {
+        DiskManagerRadar::GetInstance().ReportMetadataFault(funcName, ret, info);
+    }
+    return ret;
+}
+} // namespace
 
 StorageDaemonAdapter &StorageDaemonAdapter::GetInstance()
 {
@@ -149,10 +168,13 @@ int32_t StorageDaemonAdapter::DestroyBlockDeviceNode(const std::string &devPath)
 int32_t StorageDaemonAdapter::ReadPartitionTable(const std::string &devPath, std::string &output, int32_t &maxVolume)
 {
     LOGI("ReadPartitionTable enter, devPath=%{public}s", devPath.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("ReadPartitionTable exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::ReadPartitionTable", DFX_STAGE_GET_PARTITION_TABLE,
+                              VolumeOpType::GET_PARTITION_TABLE, err, info);
     }
     const int32_t ret = storageDaemon_->ReadPartitionTable(devPath, output, maxVolume);
     LOGI("ReadPartitionTable exit ret=%{public}d outputLen=%{public}zu maxVolume=%{public}d", ret, output.size(),
@@ -185,10 +207,12 @@ int32_t StorageDaemonAdapter::Mount(const std::string &devPath,
     LOGI("Mount enter, devPath=%{public}s, mountPath=%{public}s, fsType=%{public}s, mountFlag=%{public}" PRIu64
          ", mountData=%{public}s",
          devPath.c_str(), GetAnonyString(mountPath).c_str(), fsType.c_str(), mountFlag, mountData.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Mount exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::Mount", DFX_STAGE_MOUNT, VolumeOpType::MOUNT, err, info);
     }
     const int32_t ret = storageDaemon_->Mount(devPath, mountPath, fsType, mountFlag, mountData);
     LOGI("Mount exit ret=%{public}d", ret);
@@ -199,10 +223,12 @@ int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::s
 {
     LOGI("Unmount enter, mountPath=%{public}s, force=%{public}d",
          GetAnonyString(mountPath).c_str(), static_cast<int32_t>(force));
+    VolumeReportInfo info;
+    info.WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Unmount exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::Unmount", DFX_STAGE_UNMOUNT, VolumeOpType::UNMOUNT, err, info);
     }
     const int32_t ret = storageDaemon_->Unmount(mountPath, fsType, force);
     LOGI("Unmount exit ret=%{public}d", ret);
@@ -212,10 +238,12 @@ int32_t StorageDaemonAdapter::Unmount(const std::string &mountPath, const std::s
 int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std::string &fsType)
 {
     LOGI("FormatVolume enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("FormatVolume exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::FormatVolume", DFX_STAGE_FORMAT, VolumeOpType::FORMAT, err, info);
     }
     const int32_t ret = storageDaemon_->FormatVolume(devPath, fsType);
     LOGI("FormatVolume exit ret=%{public}d", ret);
@@ -253,10 +281,13 @@ int32_t StorageDaemonAdapter::SetLabel(const std::string &devPath, const std::st
 {
     LOGI("SetLabel enter, devPath=%{public}s, fsType=%{public}s, label=%{public}s", devPath.c_str(), fsType.c_str(),
          GetAnonyString(label).c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("SetLabel exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::SetLabel", DFX_STAGE_SET_VOLUME_DESCRIPTION,
+                              VolumeOpType::SET_VOLUME_DESCRIPTION, err, info);
     }
     const int32_t ret = storageDaemon_->SetLabel(devPath, fsType, label);
     LOGI("SetLabel exit ret=%{public}d", ret);
@@ -269,14 +300,17 @@ int32_t StorageDaemonAdapter::ReadMetadata(const std::string &devPath,
                                            std::string &label)
 {
     LOGI("ReadMetadata enter, devPath=%{public}s", devPath.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("ReadMetadata exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishMetadataOp("StorageDaemonAdapter::ReadMetadata", err, info);
     }
     const int32_t ret = storageDaemon_->ReadMetadata(devPath, uuid, type, label);
     LOGI("ReadMetadata exit ret=%{public}d uuidLen=%{public}zu type=%{public}s labelLen=%{public}zu", ret, uuid.size(),
          type.c_str(), label.size());
+    info.WithFsType(type);
     return ret;
 }
 
@@ -339,10 +373,13 @@ int32_t StorageDaemonAdapter::GetBlockInfoByType(const std::string &type, std::s
 int32_t StorageDaemonAdapter::GetPartitionTableInfo(const std::string &devPath, std::string &execRet)
 {
     LOGI("GetPartitionTableInfo enter, devPath=%{public}s", devPath.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("GetPartitionTableInfo exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::GetPartitionTableInfo", DFX_STAGE_GET_PARTITION_TABLE,
+                              VolumeOpType::GET_PARTITION_TABLE, err, info);
     }
     const int32_t ret = storageDaemon_->GetPartitionTableInfo(devPath, execRet);
     LOGI("GetPartitionTableInfo exit ret=%{public}d", ret);
@@ -353,10 +390,13 @@ int32_t StorageDaemonAdapter::CreatePartition(const std::string &devPath, int32_
                                               int64_t endSector, const std::string &typeCode)
 {
     LOGI("CreatePartition enter, devPath=%{public}s, partitionNum=%{public}d", devPath.c_str(), partitionNum);
+    VolumeReportInfo info;
+    info.WithDevPath(devPath);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("CreatePartition exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                              VolumeOpType::CREATE_PARTITION, err, info);
     }
     const int32_t ret = storageDaemon_->CreatePartition(devPath, partitionNum, startSector, endSector, typeCode);
     LOGI("CreatePartition exit ret=%{public}d", ret);
@@ -368,10 +408,13 @@ int32_t StorageDaemonAdapter::DeletePartition(const std::string &devPath, const 
 {
     LOGI("DeletePartition enter, devPath=%{public}s, diskId=%{public}s, partitionNum=%{public}d",
          devPath.c_str(), diskId.c_str(), partitionNum);
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithDiskId(diskId);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("DeletePartition exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::DeletePartition", DFX_STAGE_DELETE_PARTITION,
+                              VolumeOpType::DELETE_PARTITION, err, info);
     }
     const int32_t ret = storageDaemon_->DeletePartitionInfo(devPath, diskId, partitionNum);
     LOGI("DeletePartition exit ret=%{public}d", ret);
@@ -383,10 +426,13 @@ int32_t StorageDaemonAdapter::FormatPartition(const std::string &devPath, const 
 {
     LOGI("FormatPartition enter, devPath=%{public}s, fsType=%{public}s, volumeName=%{public}s",
          devPath.c_str(), fsType.c_str(), volumeName.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("FormatPartition exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                              VolumeOpType::FORMAT_PARTITION, err, info);
     }
     const int32_t ret = storageDaemon_->FormatPartition(devPath, fsType, volumeName, quickFormat);
     LOGI("FormatPartition exit ret=%{public}d", ret);

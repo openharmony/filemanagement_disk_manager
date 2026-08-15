@@ -45,6 +45,8 @@ interface OHOS.DiskManager.IDiskManager {
     /* ---------- storage_daemon 回调 ---------- */
     [ipccode 26] void NotifyMtpMounted([in] String id, [in] String path, [in] String desc, [in] String uuid, [in] String fsType);
     [ipccode 27] void NotifyMtpUnmounted([in] String id, [in] boolean isBadRemove);
+    /* storage_daemon 异步上报卷操作诊断（失败打点 / HiAudit） */
+    [oneway, ipccode 50] void ReportVolumeOpDiag([in] String opDiag);
 
     /* ---------- 光盘 / 扩展卷操作（与 @ohos.file.volumeManager Stage 扩展对齐） ---------- */
     [ipccode 40] void Erase([in] String volumeId);

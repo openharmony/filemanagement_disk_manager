@@ -23,7 +23,6 @@
 
 namespace OHOS {
 namespace StorageDaemon {
-
 StorageDaemonProxy::StorageDaemonProxy(const sptr<IRemoteObject> &impl) : IRemoteProxy<IStorageDaemon>(impl) {}
 
 ErrCode StorageDaemonProxy::QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)

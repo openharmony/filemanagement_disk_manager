@@ -166,5 +166,32 @@ void DiskManagerRadar::ReportMetadataFault(const std::string &funcName, int32_t 
 {
     ReportVolumeFault(funcName, DFX_STAGE_MOUNT, VolumeOpType::OTHER, err, info);
 }
+
+void DiskManagerRadar::ReportUeventParseFault(const VolumeReportInfo &info)
+{
+    ReportVolumeFault("UeventBootstrap::OnBlockDiskUevent", DFX_STAGE_UEVENT_PARSE, VolumeOpType::OTHER,
+                      DiskManagerErrNo::E_UEVENT_PARSE_FAILED, info);
+}
+
+void DiskManagerRadar::ReportAutoMountMetadataFault(const VolumeReportInfo &info, AutoMountSkipReason reason)
+{
+    VolumeReportInfo report = info;
+    const bool typeEmpty = report.fsType.empty();
+    const bool uuidEmpty = report.fsUuid.empty();
+    report.extra = std::string("reason=") + AutoMountSkipReasonToString(reason) + ",typeEmpty=" +
+                   std::to_string(typeEmpty) + ",uuidEmpty=" + std::to_string(uuidEmpty);
+    ReportVolumeFault("UeventBootstrap::DiscoverSinglePartitionVolume", DFX_STAGE_MOUNT, VolumeOpType::MOUNT,
+                      DiskManagerErrNo::E_PARAMS_INVALID, report);
+}
+
+void DiskManagerRadar::ReportDiscoverAutoMountSkipFault(const AutoMountSkipContext &ctx)
+{
+    LOGE("DiscoverSinglePartitionVolume skip auto mount volId=%{public}s diskId=%{public}s "
+         "devPath=%{public}s typeEmpty=%{public}d uuidEmpty=%{public}d autoMount=%{public}d",
+         ctx.volId.c_str(), ctx.diskId.c_str(), ctx.volDevPath.c_str(), ctx.type.empty() ? 1 : 0,
+         ctx.uuid.empty() ? 1 : 0, ctx.autoMountEnabled ? 1 : 0);
+    const AutoMountSkipReason reason = ResolveAutoMountSkipReason(ctx.autoMountEnabled, ctx.type, ctx.uuid);
+    ReportAutoMountMetadataFault(BuildAutoMountSkipReportInfo(ctx), reason);
+}
 } // namespace DiskManager
 } // namespace OHOS

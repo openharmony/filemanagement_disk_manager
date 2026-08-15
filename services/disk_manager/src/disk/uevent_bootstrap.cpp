@@ -27,6 +27,7 @@
 #include "disk_manager_errno.h"
 #include "disk_manager_dfx_types.h"
 #include "disk_manager_hilog.h"
+#include "disk_manager_radar.h"
 #include "disk_manager_utils.h"
 #include "errors.h"
 #include "notification/common_event_publisher.h"
@@ -484,6 +485,8 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     LOGI("AUTO_MOUNT_EXTERNAL_VOLUMES: %{public}d, type.empty(): %{public}d, uuid.empty(): %{public}d",
          AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
     if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
+        DiskManagerRadar::GetInstance().ReportDiscoverAutoMountSkipFault(
+            {volId, diskId, volDevPath, type, uuid, AUTO_MOUNT_EXTERNAL_VOLUMES});
         return;
     }
     int32_t err = DiskManager::GetInstance().Mount(volId);
@@ -712,6 +715,9 @@ int32_t UeventBootstrap::OnBlockDiskUevent(const std::string &rawUeventMsg)
     if (!UeventEnvParser::Parse(rawUeventMsg, env)) {
         LOGE("OnBlockDiskUevent parse failed rawLen=%{public}zu preview=%{public}s", rawUeventMsg.size(),
              DfxTruncate(rawUeventMsg).c_str());
+        VolumeReportInfo faultInfo;
+        faultInfo.extra = "ueventMsg=" + DfxTruncate(rawUeventMsg);
+        DiskManagerRadar::GetInstance().ReportUeventParseFault(faultInfo);
         return DiskManagerErrNo::E_UEVENT_PARSE_FAILED;
     }
     if (!env.IsBlockDiskEvent()) {
