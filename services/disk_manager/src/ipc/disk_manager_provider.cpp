@@ -817,5 +817,23 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
 }
+
+int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                              std::string &loopPath)
+{
+    LOGI("BindBlockLoopDev sysPath=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
+         sysPath.c_str(), offset, sizeLimit);
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("BindBlockLoopDev: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (IsFilePathInvalid(sysPath)) {
+        LOGE("BindBlockLoopDev: sysPath is invalid");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
+    LOGI("BindBlockLoopDev done ret=%{public}d", ret);
+    return ret;
+}
 } // namespace DiskManager
 } // namespace OHOS

@@ -71,6 +71,8 @@ public:
     ErrCode Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType) override;
     ErrCode GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct) override;
     ErrCode GetDiskSize(const std::string &devName, uint64_t &size) override;
+    ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                             std::string &loopPath) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

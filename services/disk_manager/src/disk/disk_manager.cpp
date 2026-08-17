@@ -2567,5 +2567,21 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
         disk.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo, extraKV));
     }
 }
+
+int32_t DiskManager::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                      std::string &loopPath)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDevPath(sysPath);
+    IpcDfxScope dfx("DiskManager::BindBlockLoopDev", DFX_STAGE_BIND_BLOCK_LOOP_DEV, VolumeOpType::BIND_BLOCK_LOOP_DEV,
+                    reportInfo);
+    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("BindBlockLoopDev failed, sysPath=%{public}s, err=%{public}d", sysPath.c_str(), ret);
+        return dfx.Finish(ret);
+    }
+    LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
+    return dfx.Finish(DiskManagerErrNo::E_OK);
+}
 } // namespace DiskManager
 } // namespace OHOS

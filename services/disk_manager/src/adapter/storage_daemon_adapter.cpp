@@ -524,5 +524,18 @@ int32_t StorageDaemonAdapter::GetDiskSize(const std::string &devName, uint64_t &
     LOGI("GetDiskSize exit ret=%{public}d size=%{public}" PRIu64, ret, size);
     return ret;
 }
+
+int32_t StorageDaemonAdapter::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                               std::string &loopPath)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("BindBlockLoopDev exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
+    LOGI("BindBlockLoopDev exit ret=%{public}d", ret);
+    return ret;
+}
 } // namespace DiskManager
 } // namespace OHOS

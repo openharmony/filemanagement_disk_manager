@@ -31,6 +31,7 @@ constexpr int32_t DFX_STAGE_GET_PARTITION_TABLE = 46;
 constexpr int32_t DFX_STAGE_CREATE_PARTITION = 47;
 constexpr int32_t DFX_STAGE_DELETE_PARTITION = 48;
 constexpr int32_t DFX_STAGE_FORMAT_PARTITION = 49;
+constexpr int32_t DFX_STAGE_BIND_BLOCK_LOOP_DEV = 50;
 // Must fit tools[] dump from volume op diag (cmd/ret/exitCode/output).
 constexpr size_t DFX_TRUNCATE_MAX_LEN = 2048;
 
@@ -44,6 +45,7 @@ enum class VolumeOpType : int32_t {
     CREATE_PARTITION = 6,
     DELETE_PARTITION = 7,
     FORMAT_PARTITION = 8,
+    BIND_BLOCK_LOOP_DEV = 9,
 };
 
 enum class AutoMountSkipReason : int32_t {

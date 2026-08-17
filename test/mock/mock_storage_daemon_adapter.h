@@ -81,6 +81,8 @@ public:
                 const std::string &fsType));
     MOCK_METHOD(int32_t, GetVolumeOpProcess, (const std::string &volumeId, int32_t &progressPct));
     MOCK_METHOD(int32_t, GetDiskSize, (const std::string &devName, uint64_t &size));
+    MOCK_METHOD(int32_t, BindBlockLoopDev, (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                            std::string &loopPath));
 
     static MockStorageDaemonAdapter *mockInstance_;
 };
