@@ -43,6 +43,7 @@ using namespace OHOS::DiskManager;
 namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
+constexpr pid_t FILE_GUARD_UID = 6266;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr size_t OP_DIAG_RAW_MAX_LEN = 8192;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
@@ -823,8 +824,10 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64
 {
     LOGI("BindBlockLoopDev sysPath=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
          sysPath.c_str(), offset, sizeLimit);
+    if (!IpcCallerAuth::VerifyNativeCallerMatches("file_guard", FILE_GUARD_UID)) {
+        return E_PERMISSION_DENIED;
+    }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
-        LOGE("BindBlockLoopDev: permission denied");
         return E_PERMISSION_DENIED;
     }
     if (IsFilePathInvalid(sysPath)) {

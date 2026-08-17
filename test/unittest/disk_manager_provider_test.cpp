@@ -42,6 +42,7 @@ extern std::string g_nativeProcessName;
 
 constexpr int32_t MOCK_PERMISSION_GRANTED = 0;
 constexpr int32_t MOCK_PERMISSION_DENIED = -1;
+constexpr int32_t FILE_GUARD_UID = 6266;
 
 namespace OHOS {
 namespace DiskManager {
@@ -2482,7 +2483,7 @@ HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_008, Tes
 
 /**
  * @tc.name: BindBlockLoopDev_PermissionDenied_001
- * @tc.desc: BindBlockLoopDev returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.desc: BindBlockLoopDev returns E_PERMISSION_DENIED when native caller is not file_guard.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2490,12 +2491,32 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_PermissionDenied_001, TestSiz
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_PermissionDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string loopPath;
+    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_PERMISSION_DENIED);
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_PermissionDenied_002
+ * @tc.desc: BindBlockLoopDev returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "file_guard";
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_PERMISSION_DENIED);
     EXPECT_TRUE(loopPath.empty());
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
-    GTEST_LOG_(INFO) << "BindBlockLoopDev_PermissionDenied_001 End";
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_PermissionDenied_002 End";
 }
 
 /**
@@ -2508,9 +2529,13 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_EmptyPath_001, TestSize.Level
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_EmptyPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "file_guard";
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("", 0, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "BindBlockLoopDev_EmptyPath_001 End";
 }
 
@@ -2524,9 +2549,13 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidPath_001, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "file_guard";
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/../sda1", 0, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_001 End";
 }
 
@@ -2540,9 +2569,13 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidPath_002, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "file_guard";
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1/..", 0, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_002 End";
 }
 
@@ -2556,12 +2589,16 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_001, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "file_guard";
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), BindBlockLoopDev(_, _, _, _))
         .WillOnce(DoAll(SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
     int32_t ret = provider.BindBlockLoopDev("/dev/block/sda1", 2048, 1048576, loopPath);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(loopPath, "/dev/loop0");
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 End";
 }
 
@@ -2575,12 +2612,16 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_nativeProcessName = "file_guard";
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), BindBlockLoopDev(_, _, _, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
     EXPECT_EQ(ret, E_DAEMON_IPC_FAILED);
     EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
 }
 
