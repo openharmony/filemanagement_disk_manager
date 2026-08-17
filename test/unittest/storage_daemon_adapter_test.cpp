@@ -246,6 +246,13 @@ HWTEST_F(StorageDaemonAdapterTest, GetDiskSize_ErrorPath_001, TestSize.Level0)
     EXPECT_NE(adapter.GetDiskSize("sda", size), E_OK);
 }
 
+HWTEST_F(StorageDaemonAdapterTest, BindBlockLoopDev_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string loopPath;
+    EXPECT_NE(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_OK);
+}
+
 class StorageDaemonAdapterProxyTest : public testing::Test {
 public:
     void SetUp() override
@@ -533,6 +540,25 @@ HWTEST_F(StorageDaemonAdapterProxyTest, GetDiskSize_Success_001, TestSize.Level0
         .WillOnce(DoAll(SetArgReferee<1>(10ULL * 1024 * 1024), Return(E_OK)));
     EXPECT_EQ(adapter.GetDiskSize("sda", size), E_OK);
     EXPECT_EQ(size, 10ULL * 1024 * 1024);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string loopPath;
+    EXPECT_CALL(*mockRemote_, BindBlockLoopDev(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    EXPECT_EQ(adapter.BindBlockLoopDev("/dev/block/sda1", 2048, 1048576, loopPath), E_OK);
+    EXPECT_EQ(loopPath, "/dev/loop0");
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_ErrorReturn_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::string loopPath;
+    EXPECT_CALL(*mockRemote_, BindBlockLoopDev(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_DAEMON_IPC_FAILED);
+    EXPECT_TRUE(loopPath.empty());
 }
 } // namespace DiskManager
 } // namespace OHOS

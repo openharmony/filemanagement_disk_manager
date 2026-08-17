@@ -4629,5 +4629,42 @@ HWTEST_F(DiskManagerTest, EnterprisespaceCheck_TestCase_007, TestSize.Level0)
     EXPECT_EQ(dm.MountVolumeFilesystem(volOut, "vfat", "uuid-sd-ent"), E_OK);
 }
 
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_001
+ * @tc.desc: BindBlockLoopDev returns E_OK when adapter succeeds and forwards loopPath.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    std::string loopPath;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, BindBlockLoopDev(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    EXPECT_EQ(dm.BindBlockLoopDev("/dev/block/sda1", 2048, 1048576, loopPath), E_OK);
+    EXPECT_EQ(loopPath, "/dev/loop0");
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_002
+ * @tc.desc: BindBlockLoopDev propagates adapter error code and keeps loopPath empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    std::string loopPath;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, BindBlockLoopDev(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_DAEMON_IPC_FAILED);
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
