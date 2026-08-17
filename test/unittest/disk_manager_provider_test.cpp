@@ -1073,6 +1073,72 @@ HWTEST_F(DiskManagerProviderTest, OnBlockDiskUevent_TestCase_003, TestSize.Level
 }
 
 /**
+ * @tc.name: ReportVolumeOpDiag_TestCase_001
+ * @tc.desc: ReportVolumeOpDiag returns E_PERMISSION_DENIED when CheckStorageDaemonPermission fails.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ReportVolumeOpDiag_TestCase_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 1000;
+    EXPECT_EQ(provider.ReportVolumeOpDiag(R"({"ret":-1,"funcName":"x"})"), E_PERMISSION_DENIED);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+}
+
+/**
+ * @tc.name: ReportVolumeOpDiag_TestCase_002
+ * @tc.desc: empty or invalid JSON does not fault-report; pending count returns to 0.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ReportVolumeOpDiag_TestCase_002, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.ReportVolumeOpDiag(""), E_OK);
+    EXPECT_EQ(provider.ReportVolumeOpDiag("not-json"), E_OK);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    g_nativeProcessName = "foundation";
+}
+
+/**
+ * @tc.name: ReportVolumeOpDiag_TestCase_003
+ * @tc.desc: oversized opDiag is ignored; valid failure JSON triggers ApplyVolumeOpDiagReport.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, ReportVolumeOpDiag_TestCase_003, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    const std::string tooLong(8193, 'a');
+    EXPECT_EQ(provider.ReportVolumeOpDiag(tooLong), E_OK);
+
+    const std::string okRet =
+        R"({"ret":0,"funcName":"StorageDaemonProvider::Mount","bizStage":41,"opType":0,)"
+        R"("devPath":"/dev/block/sda1","fsType":"exfat"})";
+    EXPECT_EQ(provider.ReportVolumeOpDiag(okRet), E_OK);
+
+    const std::string mountFault =
+        R"({"ret":-1,"funcName":"StorageDaemonProvider::Mount","bizStage":41,"opType":0,)"
+        R"("devPath":"/dev/block/sda1","fsType":"exfat","tools":[{"cmd":"mount.exfat","ret":-1,)"
+        R"("exitCode":1,"output":"fail"}]})";
+    EXPECT_EQ(provider.ReportVolumeOpDiag(mountFault), E_OK);
+
+    const std::string metaFault =
+        R"({"ret":13600020,"funcName":"StorageDaemonProvider::ReadMetadata","bizStage":0,"opType":4,)"
+        R"("devPath":"/dev/block/sda1","fsType":"","tools":[{"cmd":"blkid","ret":13600020,)"
+        R"("exitCode":2,"output":""}]})";
+    EXPECT_EQ(provider.ReportVolumeOpDiag(metaFault), E_OK);
+    EXPECT_EQ(provider.pendingStorageDaemonCallbackCount_.load(), 0);
+    g_nativeProcessName = "foundation";
+}
+
+/**
  * @tc.name: OnBlockDiskUevent_PendingCount_TestCase_001
  * @tc.desc: OnBlockDiskUevent 处理期间 pendingStorageDaemonCallbackCount_ 为 1，结束后归零。
  * @tc.type: FUNC

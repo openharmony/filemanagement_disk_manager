@@ -56,13 +56,17 @@ public:
                         const VolumeReportInfo &info, int32_t ret = 0);
 
     // Fault event FILE_STORAGE_FAULT; audit log is written automatically after report.
-    // Capability only for now: do not wire into business/adapter until enabled later.
+    // Wired at StorageDaemonAdapter local failure paths and ReportVolumeOpDiag.
     bool RecordFault(const RadarParameter &param);
     void ReportVolumeFault(const std::string &funcName, int32_t stage, VolumeOpType opType, int32_t err,
                            const VolumeReportInfo &info);
     void ReportMetadataFault(const std::string &funcName, int32_t err, const VolumeReportInfo &info);
 
+    void ReportUeventParseFault(const VolumeReportInfo &info);
+    void ReportDiscoverAutoMountSkipFault(const AutoMountSkipContext &ctx);
+
 private:
+    void ReportAutoMountMetadataFault(const VolumeReportInfo &info, AutoMountSkipReason reason);
     DiskManagerRadar() = default;
     ~DiskManagerRadar() = default;
     DiskManagerRadar(const DiskManagerRadar &) = delete;

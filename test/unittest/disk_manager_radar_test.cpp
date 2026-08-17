@@ -138,5 +138,33 @@ HWTEST_F(DiskManagerRadarTest, ReportVolumeFault_AllOpTypes_001, TestSize.Level1
     }
     SUCCEED();
 }
+
+HWTEST_F(DiskManagerRadarTest, ReportUeventParseFault_001, TestSize.Level0)
+{
+    VolumeReportInfo info;
+    info.extra = "ueventMsg=ACTION=add";
+    DiskManagerRadar::GetInstance().ReportUeventParseFault(info);
+    SUCCEED();
+}
+
+HWTEST_F(DiskManagerRadarTest, ReportDiscoverAutoMountSkipFault_001, TestSize.Level0)
+{
+    AutoMountSkipContext ctx;
+    ctx.volId = "vol-1";
+    ctx.diskId = "disk-8-0";
+    ctx.volDevPath = "/dev/block/vol-1";
+    ctx.autoMountEnabled = true;
+    DiskManagerRadar::GetInstance().ReportDiscoverAutoMountSkipFault(ctx);
+
+    ctx.volId = "vol-2";
+    ctx.volDevPath = "/dev/block/vol-2";
+    ctx.type = "exfat";
+    DiskManagerRadar::GetInstance().ReportDiscoverAutoMountSkipFault(ctx);
+
+    ctx.type.clear();
+    ctx.uuid = "uuid-3";
+    DiskManagerRadar::GetInstance().ReportDiscoverAutoMountSkipFault(ctx);
+    SUCCEED();
+}
 } // namespace DiskManager
 } // namespace OHOS

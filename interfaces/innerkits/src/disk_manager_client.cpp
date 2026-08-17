@@ -458,6 +458,19 @@ int32_t DiskManagerClient::OnBlockDiskUevent(const std::string &rawUeventMsg)
     return dm.OnBlockDiskUevent(rawUeventMsg);
 }
 
+int32_t DiskManagerClient::ReportVolumeOpDiag(const std::string &opDiag)
+{
+    LOGI("ReportVolumeOpDiag len=%{public}zu", opDiag.size());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        LOGE("ReportVolumeOpDiag: connect failed err=%{public}d", err);
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.ReportVolumeOpDiag(opDiag);
+}
+
 int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
                                             const std::string &uuid, const std::string &fsType)
 {

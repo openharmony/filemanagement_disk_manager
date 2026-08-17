@@ -47,7 +47,8 @@ public:
                                        const int32_t partitionNum));
     MOCK_METHOD3(Check, ErrCode(const std::string &devPath, const std::string &fsType, bool autoFix));
     MOCK_METHOD2(Repair, ErrCode(const std::string &devPath, const std::string &fsType));
-    MOCK_METHOD3(SetLabel, ErrCode(const std::string &devPath, const std::string &fsType, const std::string &label));
+    MOCK_METHOD3(SetLabel,
+                 ErrCode(const std::string &devPath, const std::string &fsType, const std::string &label));
     MOCK_METHOD4(ReadMetadata,
                  ErrCode(const std::string &devPath, std::string &uuid, std::string &type, std::string &label));
     MOCK_METHOD3(GetCapacity, ErrCode(const std::string &mountPath, int64_t &totalSize, int64_t &freeSize));

@@ -55,6 +55,7 @@ public:
     int32_t GetDiskById(const std::string &diskId, Disk &disk) override;
     int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse) override;
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg) override;
+    int32_t ReportVolumeOpDiag(const std::string &opDiag) override;
     int32_t Erase(const std::string &volumeId) override;
     int32_t Eject(const std::string &diskId) override;
     int32_t CreateIsoImage(const std::string &volumeId, const std::string &filePath) override;
