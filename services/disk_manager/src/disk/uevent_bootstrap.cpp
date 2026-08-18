@@ -346,7 +346,7 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env,
     }
     diskForEvent.SetVendor(blockInfo.vendor);
     diskForEvent.SetPartitionType(tableType);
-    diskForEvent.RefreshClassificationFromSysfs(env.sysPath);
+    diskForEvent.RefreshClassificationFromSysfs(env.sysPath, blockInfo.rotational);
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);
 }

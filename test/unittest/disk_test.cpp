@@ -242,6 +242,37 @@ HWTEST_F(DiskTest, RefreshClassification_DirectSata2_TestCase_001, TestSize.Leve
     EXPECT_EQ(disk.GetDiskType(), DATA_DISK_HDD);
 }
 
+HWTEST_F(DiskTest, RefreshClassification_DirectSata_RotationalZero_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", USB_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/ata/ahci0", 0);
+    EXPECT_EQ(disk.GetDiskType(), DATA_DISK_SSD);
+    EXPECT_FALSE(disk.GetRemovable());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_DirectSata_RotationalOne_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", USB_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/ata/ahci0", 1);
+    EXPECT_EQ(disk.GetDiskType(), DATA_DISK_HDD);
+    EXPECT_FALSE(disk.GetRemovable());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_DirectSata2_RotationalZero_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", USB_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/.sata/host0", 0);
+    EXPECT_EQ(disk.GetDiskType(), DATA_DISK_SSD);
+}
+
+HWTEST_F(DiskTest, RefreshClassification_DirectSata_RotationalDefault_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", USB_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/ata/ahci0", -1);
+    EXPECT_EQ(disk.GetDiskType(), DATA_DISK_HDD);
+    EXPECT_FALSE(disk.GetRemovable());
+}
+
 HWTEST_F(DiskTest, RefreshClassification_Usb_TestCase_001, TestSize.Level0)
 {
     Disk disk("d", 0, "", DISK_TYPE_UNKNOWN);

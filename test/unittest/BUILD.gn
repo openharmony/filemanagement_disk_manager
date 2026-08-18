@@ -146,6 +146,7 @@ ohos_unittest("disk_manager_client_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
@@ -282,6 +283,7 @@ ohos_unittest("disk_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "json:nlohmann_json_static",
   ]
 
   subsystem_name = "filemanagement"

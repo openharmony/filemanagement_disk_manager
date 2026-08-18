@@ -79,6 +79,17 @@ uint32_t ReadUInt32OrZero(const json &jsonObject, const char *key)
     return value <= static_cast<uint64_t>(UINT32_MAX) ? static_cast<uint32_t>(value) : UINT32_C(0);
 }
 
+int32_t ReadInt32OrZero(const json &jsonObject, const char *key)
+{
+    if (!jsonObject.contains(key) || jsonObject[key].is_null()) {
+        return 0;
+    }
+    if (jsonObject[key].is_number_integer()) {
+        return jsonObject[key].get<int32_t>();
+    }
+    return 0;
+}
+
 bool ReadBoolLikeOrFalse(const json &jsonObject, const char *key)
 {
     if (!jsonObject.contains(key) || jsonObject[key].is_null()) {
@@ -114,6 +125,7 @@ bool FillBlockInfo(const json &jsonObject, BlockInfo &blockInfo)
 
     blockInfo.interfaceType = ReadStringOrEmpty(jsonObject, "interfaceType");
     blockInfo.rpm = ReadUInt32OrZero(jsonObject, "rpm");
+    blockInfo.rotational = ReadInt32OrZero(jsonObject, "rotational");
     blockInfo.removable = ReadBoolLikeOrFalse(jsonObject, "removable");
     blockInfo.serialNumber = ReadStringOrEmpty(jsonObject, "serialNumber");
     blockInfo.devicePath = ReadStringOrEmpty(jsonObject, "devicePath");
@@ -135,6 +147,7 @@ json BlockInfoToJsonObject(const BlockInfo &blockInfo)
         {"ODD_INFO", blockInfo.ODD_INFO},
         {"interfaceType", blockInfo.interfaceType},
         {"rpm", blockInfo.rpm},
+        {"rotational", blockInfo.rotational},
         {"removable", blockInfo.removable},
         {"serialNumber", blockInfo.serialNumber},
         {"diskId", blockInfo.diskId},

@@ -36,6 +36,7 @@ struct BlockInfo {
     std::string model;
     std::string interfaceType;
     uint32_t rpm;
+    int32_t rotational;
     bool removable;
     std::string serialNumber;
     std::string diskId;
@@ -61,6 +62,7 @@ struct BlockInfo {
                     {"ODD_INFO", ODD_INFO},
                     {"interfaceType", interfaceType},
                     {"rpm", rpm},
+                    {"rotational", rotational},
                     {"removable", removable},
                     {"serialNumber", serialNumber},
                     {"diskId", diskId},

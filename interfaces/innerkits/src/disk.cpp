@@ -194,7 +194,7 @@ void Disk::UpdateRemovableFromDiskType()
     removable_ = IsInternalDataDiskType(diskType_) ? false : true;
 }
 
-void Disk::RefreshClassificationFromSysfs(const std::string &sysfsPath)
+void Disk::RefreshClassificationFromSysfs(const std::string &sysfsPath, int32_t rotational)
 {
     if (diskType_ == DVR_USB) {
         UpdateRemovableFromDiskType();
@@ -207,7 +207,7 @@ void Disk::RefreshClassificationFromSysfs(const std::string &sysfsPath)
     if (!p.empty()) {
         if (diskType_ == CD_FLAG || SysPathHasOpticalBlock(p)) {
             classifiedType = CD_FLAG;
-        } else if (SysPathHasNvme(p)) {
+        } else if (SysPathHasNvme(p) || (SysPathHasDirectSata(p) && rotational == 0)) {
             classifiedType = DATA_DISK_SSD;
         } else if (SysPathHasDirectSata(p)) {
             classifiedType = DATA_DISK_HDD;
