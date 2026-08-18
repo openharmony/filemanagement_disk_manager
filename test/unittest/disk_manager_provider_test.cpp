@@ -2518,6 +2518,42 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_PermissionDenied_002, TestSiz
 }
 
 /**
+ * @tc.name: BindBlockLoopDev_InvalidOffset_001
+ * @tc.desc: BindBlockLoopDev returns E_PARAMS_INVALID when offset is 0.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidOffset_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidOffset_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    std::string loopPath;
+    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_PARAMS_INVALID);
+    EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidOffset_001 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_InvalidSizeLimit_001
+ * @tc.desc: BindBlockLoopDev returns E_PARAMS_INVALID when sizeLimit is 0.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidSizeLimit_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidSizeLimit_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    std::string loopPath;
+    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1", 2048, 0, loopPath), E_PARAMS_INVALID);
+    EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidSizeLimit_001 End";
+}
+
+/**
  * @tc.name: BindBlockLoopDev_EmptyPath_001
  * @tc.desc: BindBlockLoopDev returns E_PARAMS_INVALID when sysPath is empty.
  * @tc.type: FUNC
@@ -2529,7 +2565,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_EmptyPath_001, TestSize.Level
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
-    EXPECT_EQ(provider.BindBlockLoopDev("", 0, 4096, loopPath), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.BindBlockLoopDev("", 2048, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "BindBlockLoopDev_EmptyPath_001 End";
@@ -2547,7 +2583,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidPath_001, TestSize.Lev
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
-    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/../sda1", 0, 4096, loopPath), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/../sda1", 2048, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_001 End";
@@ -2565,10 +2601,28 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidPath_002, TestSize.Lev
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     std::string loopPath;
-    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1/..", 0, 4096, loopPath), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1/..", 2048, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_002 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_InvalidPath_003
+ * @tc.desc: BindBlockLoopDev returns E_PARAMS_INVALID when sysPath prefix is not /dev/block/.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidPath_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    std::string loopPath;
+    EXPECT_EQ(provider.BindBlockLoopDev("/mnt/data/sda1", 2048, 4096, loopPath), E_PARAMS_INVALID);
+    EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidPath_003 End";
 }
 
 /**
@@ -2594,7 +2648,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_001, TestSize.Level0
 
 /**
  * @tc.name: BindBlockLoopDev_TestCase_002
- * @tc.desc: BindBlockLoopDev propagates adapter error and keeps loopPath empty.
+ * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when adapter returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2606,8 +2660,8 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
     std::string loopPath;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), BindBlockLoopDev(_, _, _, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
-    int32_t ret = provider.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
-    EXPECT_EQ(ret, E_DAEMON_IPC_FAILED);
+    int32_t ret = provider.BindBlockLoopDev("/dev/block/sda1", 2048, 4096, loopPath);
+    EXPECT_EQ(ret, E_BIND_LOOP_DEV_FAILED);
     EXPECT_TRUE(loopPath.empty());
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";

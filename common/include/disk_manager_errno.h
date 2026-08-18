@@ -75,6 +75,9 @@ enum DiskManagerErrNo : int32_t {
     E_EJECT_FAILED = 13600000 + 1804,
     E_BURN_FAILED = 13600000 + 1805,
 
+    // crypto device errno
+    E_BIND_LOOP_DEV_FAILED = 13600000 + 1901,
+
 };
 
 } // namespace DiskManager

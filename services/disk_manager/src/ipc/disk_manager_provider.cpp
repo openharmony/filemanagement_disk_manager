@@ -832,13 +832,24 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         return E_PERMISSION_DENIED;
     }
+    if (offset == 0 || sizeLimit == 0) {
+        LOGE("BindBlockLoopDev: invalid offset or sizeLimit");
+        return E_PARAMS_INVALID;
+    }
     if (IsFilePathInvalid(sysPath)) {
         LOGE("BindBlockLoopDev: sysPath is invalid");
         return E_PARAMS_INVALID;
     }
+    if (sysPath.find("/dev/block/") != 0) {
+        LOGE("BindBlockLoopDev: invalid sysPath prefix");
+        return E_PARAMS_INVALID;
+    }
     const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
     LOGI("BindBlockLoopDev done ret=%{public}d", ret);
-    return ret;
+    if (ret != E_OK) {
+        return E_BIND_LOOP_DEV_FAILED;
+    }
+    return E_OK;
 }
 } // namespace DiskManager
 } // namespace OHOS
