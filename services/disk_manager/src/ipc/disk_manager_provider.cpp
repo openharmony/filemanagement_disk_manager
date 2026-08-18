@@ -824,7 +824,9 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64
 {
     LOGI("BindBlockLoopDev sysPath=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
          sysPath.c_str(), offset, sizeLimit);
-    if (!IpcCallerAuth::VerifyNativeCallerMatches("file_guard", FILE_GUARD_UID)) {
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("BindBlockLoopDev: call uid %{public}d is invalid", uid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
