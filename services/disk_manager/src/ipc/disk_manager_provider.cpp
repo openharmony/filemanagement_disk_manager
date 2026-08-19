@@ -832,7 +832,7 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         return E_PERMISSION_DENIED;
     }
-    if (offset == 0 || sizeLimit == 0) {
+    if (offset == 0 || sizeLimit == 0 || sizeLimit <= offset) {
         LOGE("BindBlockLoopDev: invalid offset or sizeLimit");
         return E_PARAMS_INVALID;
     }

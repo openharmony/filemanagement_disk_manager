@@ -2554,6 +2554,24 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidSizeLimit_001, TestSiz
 }
 
 /**
+ * @tc.name: BindBlockLoopDev_InvalidSizeLimit_002
+ * @tc.desc: BindBlockLoopDev returns E_PARAMS_INVALID when sizeLimit <= offset.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidSizeLimit_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidSizeLimit_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    std::string loopPath;
+    EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1", 8192, 4096, loopPath), E_PARAMS_INVALID);
+    EXPECT_TRUE(loopPath.empty());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidSizeLimit_002 End";
+}
+
+/**
  * @tc.name: BindBlockLoopDev_EmptyPath_001
  * @tc.desc: BindBlockLoopDev returns E_PARAMS_INVALID when sysPath is empty.
  * @tc.type: FUNC
