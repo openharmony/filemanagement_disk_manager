@@ -497,7 +497,8 @@ ErrCode StorageDaemonProxy::DeletePartitionInfo(const std::string &devPath, cons
 }
 
 ErrCode StorageDaemonProxy::FormatPartition(const std::string &devPath, const std::string &fsType,
-                                            const std::string &volumeName, bool quickFormat)
+                                            const std::string &volumeName,
+                                            const std::vector<std::string> &cmd, bool quickFormat)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -513,6 +514,14 @@ ErrCode StorageDaemonProxy::FormatPartition(const std::string &devPath, const st
     }
     if (!data.WriteString16(Str8ToStr16(volumeName))) {
         return ERR_INVALID_DATA;
+    }
+    if (!data.WriteInt32(static_cast<int32_t>(cmd.size()))) {
+        return ERR_INVALID_DATA;
+    }
+    for (const auto &arg : cmd) {
+        if (!data.WriteString16(Str8ToStr16(arg))) {
+            return ERR_INVALID_DATA;
+        }
     }
     if (!data.WriteBool(quickFormat)) {
         return ERR_INVALID_DATA;

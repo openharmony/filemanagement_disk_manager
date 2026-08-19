@@ -2513,5 +2513,72 @@ std::string BlockInfoTable::ToJsonStringWithExtras(
     return "";
 }
 
+/**
+ * @tc.name: FormatPartition_FsTypeExt4_001
+ * @tc.desc: FormatPartition with fsType=ext4 reaches the sgdisk typeIdentifier construction.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_FsTypeExt4_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExt4_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-1"));
+    FormatParams params("ext4", true, "volume");
+    (void)provider.FormatPartition("disk-provider-1", 1, params);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExt4_001 End";
+}
+
+/**
+ * @tc.name: FormatPartition_FsTypeExfat_001
+ * @tc.desc: FormatPartition with fsType=exfat reaches the sgdisk typeIdentifier construction.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_FsTypeExfat_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExfat_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-2"));
+    FormatParams params("exfat", true, "volume");
+    (void)provider.FormatPartition("disk-provider-2", 2, params);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExfat_001 End";
+}
+
+/**
+ * @tc.name: FormatPartition_FsTypeVfat_001
+ * @tc.desc: FormatPartition with fsType=vfat reaches the sgdisk typeIdentifier construction.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_FsTypeVfat_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeVfat_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-3"));
+    FormatParams params("vfat", true, "volume");
+    (void)provider.FormatPartition("disk-provider-3", 3, params);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeVfat_001 End";
+}
+
+/**
+ * @tc.name: FormatPartition_FsTypeUnsupported_001
+ * @tc.desc: FormatPartition with unsupported fsType returns E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_FsTypeUnsupported_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeUnsupported_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-4"));
+    FormatParams params("ntfs", true, "volume");
+    EXPECT_EQ(provider.FormatPartition("disk-provider-4", 1, params), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeUnsupported_001 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

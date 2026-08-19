@@ -2272,7 +2272,8 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
-int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
+int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params,
+                                     const std::vector<std::string> &cmd)
 {
     VolumeReportInfo reportInfo;
     reportInfo.WithDiskId(diskId).WithFsType(params.GetFsType());
@@ -2311,7 +2312,8 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         }
     }
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
-                                                                      params.GetVolumeName(), params.GetQuickFormat());
+                                                                      params.GetVolumeName(), cmd,
+                                                                      params.GetQuickFormat());
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("FormatPartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         if (!fmtVol.GetId().empty()) {

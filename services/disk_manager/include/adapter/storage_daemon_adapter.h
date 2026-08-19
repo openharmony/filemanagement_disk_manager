@@ -67,7 +67,7 @@ public:
                             const std::string &typeCode);
     int32_t DeletePartition(const std::string &devPath, const std::string &diskId, int32_t partitionNum);
     int32_t FormatPartition(const std::string &devPath, const std::string &fsType, const std::string &volumeName,
-                            bool quickFormat);
+                            const std::vector<std::string> &cmd, bool quickFormat);
     
     int32_t Erase(const std::string &devPath);
     int32_t Eject(const std::string &devName);
