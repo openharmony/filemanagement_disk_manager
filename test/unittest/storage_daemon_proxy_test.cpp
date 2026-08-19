@@ -2779,5 +2779,148 @@ HWTEST_F(StorageDaemonProxyTest, GetDiskSize_TestCase_006, TestSize.Level0)
 
     GTEST_LOG_(INFO) << "GetDiskSize_TestCase_006 End";
 }
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_001
+ * @tc.desc: BindBlockLoopDev: WriteInterfaceToken returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_002
+ * @tc.desc: BindBlockLoopDev: WriteString16 (sysPath) returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_003
+ * @tc.desc: BindBlockLoopDev: first WriteUint64 (offset) returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_003 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).WillOnce(Return(false));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_003 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_004
+ * @tc.desc: BindBlockLoopDev: second WriteUint64 (sizeLimit) returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_004 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_004 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_005
+ * @tc.desc: BindBlockLoopDev: SendRequest returns non-ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_005 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_BIND_BLOCK_LOOP_DEV),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
+    EXPECT_EQ(ret, IPC_FAILED);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_005 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_006
+ * @tc.desc: BindBlockLoopDev: reply ReadInt32 is not ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_007
+ * @tc.desc: BindBlockLoopDev: success path reads loopPath payload.
+ * @tc.type: FUNC
+ */
+HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 Start";
+
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_BIND_BLOCK_LOOP_DEV),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadString16()).WillOnce(Return(u"/dev/loop0"));
+    std::string loopPath;
+    int32_t ret = proxy_->BindBlockLoopDev("/dev/block/sda1", 2048, 1048576, loopPath);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(loopPath, "/dev/loop0");
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

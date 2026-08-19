@@ -55,6 +55,8 @@ public:
     MOCK_METHOD(int32_t, DeletePartition, (const std::string &diskId, int32_t partitionNum));
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &diskId, int32_t partitionNum, const FormatParams &params));
+    MOCK_METHOD(int32_t, BindBlockLoopDev,
+        (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit, std::string &loopPath));
 };
 
 } // namespace DiskManager

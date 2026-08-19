@@ -106,6 +106,8 @@ public:
     std::string GetDriverType(const std::string &extraInfo);
 
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
+    int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                             std::string &loopPath);
 
 private:
     DiskManager();

@@ -675,5 +675,36 @@ ErrCode StorageDaemonProxy::GetDiskSize(const std::string &devName, uint64_t &si
     }
     return ERR_OK;
 }
+
+ErrCode StorageDaemonProxy::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                             std::string &loopPath)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(sysPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteUint64(offset)) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteUint64(sizeLimit)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_BIND_BLOCK_LOOP_DEV), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    loopPath = Str16ToStr8(reply.ReadString16());
+    return ERR_OK;
+}
 } // namespace StorageDaemon
 } // namespace OHOS

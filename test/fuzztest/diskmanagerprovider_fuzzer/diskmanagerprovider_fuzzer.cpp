@@ -74,7 +74,7 @@ constexpr uint8_t BYTE_INDEX_2 = 2;
 constexpr uint8_t BYTE_INDEX_3 = 3;
 
 constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
-    1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
+    1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
     26, 27, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49,
 };
 

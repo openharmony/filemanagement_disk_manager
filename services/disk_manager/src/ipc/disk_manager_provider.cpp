@@ -43,6 +43,7 @@ using namespace OHOS::DiskManager;
 namespace {
 constexpr pid_t STORAGEDAEMON_UID = 0;
 constexpr pid_t STORAGE_MANAGER_UID = 1090;
+constexpr pid_t FILE_GUARD_UID = 6266;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr size_t OP_DIAG_RAW_MAX_LEN = 8192;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
@@ -821,6 +822,39 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
+}
+
+int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                              std::string &loopPath)
+{
+    LOGI("BindBlockLoopDev sysPath=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
+         sysPath.c_str(), offset, sizeLimit);
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("BindBlockLoopDev: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    if (offset == 0 || sizeLimit == 0 || sizeLimit <= offset) {
+        LOGE("BindBlockLoopDev: invalid offset or sizeLimit");
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(sysPath)) {
+        LOGE("BindBlockLoopDev: sysPath is invalid");
+        return E_PARAMS_INVALID;
+    }
+    if (sysPath.find("/dev/block/") != 0) {
+        LOGE("BindBlockLoopDev: invalid sysPath prefix");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
+    LOGI("BindBlockLoopDev done ret=%{public}d", ret);
+    if (ret != E_OK) {
+        return E_BIND_LOOP_DEV_FAILED;
+    }
+    return E_OK;
 }
 } // namespace DiskManager
 } // namespace OHOS
