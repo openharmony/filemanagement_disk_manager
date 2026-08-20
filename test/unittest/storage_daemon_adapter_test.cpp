@@ -571,5 +571,12 @@ HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmLinear_Success_001, TestSize.Lev
     EXPECT_EQ(adapter.CreateDmLinear("/dev/block/test", 0, 1000, dmDev), E_OK);
     EXPECT_EQ(dmDev, static_cast<uint64_t>(makedev(253, 13)));
 }
+
+HWTEST_F(StorageDaemonAdapterTest, CreateDmLinear_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t dmDev = 0;
+    EXPECT_NE(adapter.CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev), E_OK);
+}
 } // namespace DiskManager
 } // namespace OHOS
