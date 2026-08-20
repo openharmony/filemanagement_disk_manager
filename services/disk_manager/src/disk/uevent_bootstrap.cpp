@@ -456,7 +456,6 @@ std::string &UeventBootstrap::SysBlockPathForTest()
 }
 
 static uint64_t GetDevSectorSize(const std::string &devName)
- 
 {
     std::string sysfsPath = g_sysBlockPath + "/" + devName + "/size";
     std::ifstream ifs(sysfsPath);
