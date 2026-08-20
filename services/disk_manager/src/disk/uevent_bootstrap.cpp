@@ -450,11 +450,6 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
  
 static std::string g_sysBlockPath = "/sys/class/block";
 
-std::string &UeventBootstrap::SysBlockPathForTest()
-{
-    return g_sysBlockPath;
-}
-
 static uint64_t GetDevSectorSize(const std::string &devName)
 {
     std::string sysfsPath = g_sysBlockPath + "/" + devName + "/size";
@@ -507,6 +502,12 @@ static dev_t ResolvePartitionDev(const UeventEnv &env, const std::string &diskId
     dev_t pDev = makedev(0, 0);
     if (isUserData) {
         int32_t maxMinor = GetMaxMinor(MAJORID_BLKEXT);
+        if (maxMinor == -1) {
+            pDev = makedev(MAJORID_BLKEXT, static_cast<uint32_t>(p.partitionNumber) - MAX_PARTITION);
+        } else {
+            pDev = makedev(MAJORID_BLKEXT, static_cast<uint32_t>(maxMinor) + static_cast<uint32_t>(p.partitionNumber) -
+                                               MAX_INTERVAL_PARTITION);
+        }
     } else {
         pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
     }
@@ -520,17 +521,6 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
                                    const bool &isUserData)
 {
     dev_t pDev = ResolvePartitionDev(env, diskId, p, isUserData);
-    if (isUserData) {
-        int32_t maxMinor = GetMaxMinor(MAJORID_BLKEXT);
-        if (maxMinor == -1) {
-            pDev = makedev(MAJORID_BLKEXT, static_cast<uint32_t>(p.partitionNumber) - MAX_PARTITION);
-        } else {
-            pDev = makedev(MAJORID_BLKEXT, static_cast<uint32_t>(maxMinor) + static_cast<uint32_t>(p.partitionNumber) -
-                                               MAX_INTERVAL_PARTITION);
-        }
-    } else {
-        pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
-    }
     const std::string volId = VolIdFromDev(pDev);
     VolumeExternal vol;
     if (DiskManager::GetInstance().GetVolumeById(volId, vol) == E_OK && vol.GetState() == VolumeState::MOUNTED) {
@@ -744,6 +734,11 @@ bool ContainsPartition(const std::vector<PartitionRecord> &list, const Partition
                        [&](const PartitionRecord &r) { return PartitionKeyEqual(r, target); });
 }
 } // namespace
+
+std::string &UeventBootstrap::SysBlockPathForTest()
+{
+    return g_sysBlockPath;
+}
 
 void UeventBootstrap::ComputePartitionDiff(const std::string &diskId,
                                            const std::vector<PartitionRecord> &newParts,
