@@ -81,7 +81,7 @@ public:
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
     int32_t CreateDmCryptVolume(const std::string &cryptParam, const std::string &loopPath,
-                                 const std::string &mapperName);
+                                const std::string &mapperName);
 
 private:
     StorageDaemonAdapter();
