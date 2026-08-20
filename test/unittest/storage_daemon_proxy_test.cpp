@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <string>
+#include <sys/sysmacros.h>
 
 #include "errors.h"
 #include "message_parcel_mock.h"
@@ -2921,6 +2922,41 @@ HWTEST_F(StorageDaemonProxyTest, BindBlockLoopDev_TestCase_007, TestSize.Level0)
     EXPECT_EQ(loopPath, "/dev/loop0");
 
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 End";
+}
+
+HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_001 Start";
+ 
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    uint64_t dmDev = 0;
+    int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+    EXPECT_EQ(dmDev, 0);
+ 
+    GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_001 End";
+}
+ 
+HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_002 Start";
+ 
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_DM_LINEAR),
+                            _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadUint64(_))
+        .WillOnce(DoAll(SetArgReferee<0>(makedev(253, 13)), Return(true)));
+    uint64_t dmDev = 0;
+    int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(dmDev, static_cast<uint64_t>(makedev(253, 13)));
+ 
+    GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_002 End";
 }
 } // namespace DiskManager
 } // namespace OHOS

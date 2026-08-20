@@ -447,13 +447,80 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
         (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
     }
 }
+ 
+static uint64_t GetDevSectorSize(const std::string &devName)
+ 
+{
+    std::string sysfsPath = g_sysBlockPath + "/" + devName + "/size";
+    std::ifstream ifs(sysfsPath);
+    uint64_t totalSectors = 0;
+    if (ifs.is_open()) {
+        ifs >> totalSectors;
+    }
+ 
+    return totalSectors;
+}
+
+static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t partitionNumber)
+{
+    std::string partDevName = devName + std::to_string(partitionNumber);
+    constexpr uint64_t DM_RESERVED_SECTORS = (20 * BYTES_PER_MB) / 512;  // 预留 20MB
+    uint64_t totalSectors = GetDevSectorSize(partDevName);
+    if (totalSectors <= DM_RESERVED_SECTORS) {
+        LOGE("CreateDmLinearForPartition: totalSectors=%{public}llu too small, skip",
+             static_cast<unsigned long long>(totalSectors));
+        return makedev(0, 0);
+    }
+    uint64_t mappingSectors = totalSectors - DM_RESERVED_SECTORS;
+    std::string partDevPath = std::string("/dev/block/") + partDevName;
+    uint64_t dmDevVal = 0;
+    int32_t err = StorageDaemonAdapter::GetInstance().CreateDmLinear(partDevPath, 0, mappingSectors, dmDevVal);
+    if (err != ERR_OK || dmDevVal == 0) {
+        LOGE("CreateDmLinearForPartition: CreateDmLinear failed, err=%{public}d, dmDev=0", err);
+        return makedev(0, 0);
+    }
+    dev_t dmDev = static_cast<dev_t>(dmDevVal);
+    LOGI("CreateDmLinearForPartition: success, partDevPath=%{public}s, dev=(%{public}u,%{public}u)",
+         partDevPath.c_str(),
+         major(dmDev),
+         minor(dmDev));
+ 
+    return dmDev;
+}
+
+static dev_t ResolvePartitionDev(const UeventEnv &env, const std::string &diskId, const PartitionRecord &p,
+                                 bool isUserData)
+{
+    if (IsInternalDataDiskById(diskId)) {
+        dev_t dmDev = CreateDmLinearForPartition(env.devName, p.partitionNumber);
+        if (dmDev != makedev(0, 0)) {
+            return dmDev;
+        }
+    }
+ 
+    dev_t pDev = makedev(0, 0);
+    if (isUserData) {
+        int32_t maxMinor = GetMaxMinor(MAJORID_BLKEXT);
+    } else {
+        pDev = PartitionDev(env.major, env.minor, p.partitionNumber);
+    }
+ 
+    return pDev;
+}
+
+static std::string g_sysBlockPath = "/sys/class/block";
+
+std::string &UeventBootstrap::SysBlockPathForTest()
+{
+    return g_sysBlockPath;
+}
 
 void DiscoverSinglePartitionVolume(const UeventEnv &env,
                                    const std::string &diskId,
                                    const PartitionRecord &p,
                                    const bool &isUserData)
 {
-    dev_t pDev = makedev(0, 0);
+    dev_t pDev = ResolvePartitionDev(env, diskId, p, isUserData);
     if (isUserData) {
         int32_t maxMinor = GetMaxMinor(MAJORID_BLKEXT);
         if (maxMinor == -1) {

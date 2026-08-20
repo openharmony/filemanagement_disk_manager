@@ -15,6 +15,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <sys/sysmacros.h>
 
 #include "disk_manager_errno.h"
 #include "storage_daemon_adapter.h"
@@ -559,6 +560,16 @@ HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_ErrorReturn_001, TestSi
     EXPECT_CALL(*mockRemote_, BindBlockLoopDev(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_DAEMON_IPC_FAILED);
     EXPECT_TRUE(loopPath.empty());
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmLinear_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t dmDev = 0;
+    EXPECT_CALL(*mockRemote_, CreateDmLinear(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(makedev(253, 13)), Return(E_OK)));
+    EXPECT_EQ(adapter.CreateDmLinear("/dev/block/test", 0, 1000, dmDev), E_OK);
+    EXPECT_EQ(dmDev, static_cast<uint64_t>(makedev(253, 13)));
 }
 } // namespace DiskManager
 } // namespace OHOS

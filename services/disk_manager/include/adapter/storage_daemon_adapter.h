@@ -80,6 +80,9 @@ public:
     int32_t GetDiskSize(const std::string &devName, uint64_t &size);
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
+    int32_t CreateDmLinear(const std::string &sourceDevPath,
+                           uint64_t startSector, uint64_t sectorCount,
+                           uint64_t &dmDev);
 
 private:
     StorageDaemonAdapter();

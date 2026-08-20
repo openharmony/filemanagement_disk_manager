@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <fstream>
+#include <sys/sysmacros.h>
 
 #include "disk/uevent_bootstrap.h"
 #include "disk/uevent_env_parser.h"
@@ -1942,4 +1944,292 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_NE(ret, DiskManagerErrNo::E_OK);
+}
+
+// ===== CreateDmLinearForPartition 测试：通过 mock sysfs 目录控制 GetDevSectorSize 返回值 =====
+ 
+static void CreateMockSysfsSizeFile(const std::string &basePath, const std::string &devName,
+                                     const std::string &sectorCount)
+{
+    std::string devDir = basePath + "/" + devName;
+    mkdir(basePath.c_str(), 0755);
+    mkdir(devDir.c_str(), 0755);
+    std::string sizePath = devDir + "/size";
+    std::ofstream ofs(sizePath);
+    ofs << sectorCount;
+}
+ 
+/**
+ * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearSuccess_TestCase_001
+ * @tc.desc: Internal data disk, partition size > 20MB, CreateDmLinear succeeds,
+ *           ResolvePartitionDev returns dm-linear device
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSuccess_TestCase_001, TestSize.Level0)
+{
+    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_1";
+    system(("rm -rf " + mockSysPath).c_str());
+    // 100MB = 204800 sectors (> 40960 reserved), so CreateDmLinearForPartition proceeds
+    CreateMockSysfsSizeFile(mockSysPath, "sda1", "204800");
+    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
+ 
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    constexpr int MOCK_DM_DEV_MAJOR = 253;
+    constexpr int MOCK_DM_DEV_MINOR = 0;
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(makedev(MOCK_DM_DEV_MAJOR, MOCK_DM_DEV_MINOR))),
+                        Return(E_OK)));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-8-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+ 
+    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
+    system(("rm -rf " + mockSysPath).c_str());
+}
+ 
+/**
+ * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearSizeTooSmall_TestCase_002
+ * @tc.desc: Internal data disk, partition size <= 20MB (DM_RESERVED_SECTORS),
+ *           CreateDmLinearForPartition returns (0,0), falls back to isUserData path
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSizeTooSmall_TestCase_002, TestSize.Level0)
+{
+    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_2";
+    system(("rm -rf " + mockSysPath).c_str());
+    // 10MB = 20480 sectors (<= 40960 reserved), CreateDmLinearForPartition returns (0,0)
+    CreateMockSysfsSizeFile(mockSysPath, "sda1", "20480");
+    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
+ 
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    // CreateDmLinear should NOT be called since size too small
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _)).Times(0);
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-8-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+ 
+    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
+    system(("rm -rf " + mockSysPath).c_str());
+}
+ 
+/**
+ * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearNoSysfsEntry_TestCase_003
+ * @tc.desc: Internal data disk, sysfs size file does not exist,
+ *           GetDevSectorSize returns 0, CreateDmLinearForPartition returns (0,0), falls back
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearNoSysfsEntry_TestCase_003, TestSize.Level0)
+{
+    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_3";
+    system(("rm -rf " + mockSysPath).c_str());
+    // No size file created -> GetDevSectorSize returns 0
+    mkdir(mockSysPath.c_str(), 0755);
+    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
+ 
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    // CreateDmLinear should NOT be called since GetDevSectorSize returns 0
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _)).Times(0);
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-8-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+ 
+    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
+    system(("rm -rf " + mockSysPath).c_str());
+}
+ 
+/**
+ * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearCreateFail_TestCase_004
+ * @tc.desc: Internal data disk, partition size > 20MB but CreateDmLinear fails,
+ *           CreateDmLinearForPartition returns (0,0), falls back to isUserData path
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreateFail_TestCase_004, TestSize.Level0)
+{
+    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_4";
+    system(("rm -rf " + mockSysPath).c_str());
+    // 100MB = 204800 sectors
+    CreateMockSysfsSizeFile(mockSysPath, "sda1", "204800");
+    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
+ 
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    // CreateDmLinear fails
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(0)), Return(-1)));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-8-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+ 
+    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
+    system(("rm -rf " + mockSysPath).c_str());
+}
+ 
+/**
+ * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearCreateDmDevZero_TestCase_005
+ * @tc.desc: Internal data disk, partition size > 20MB but CreateDmLinear returns dmDev=0,
+ *           CreateDmLinearForPartition returns (0,0), falls back to isUserData path
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreateDmDevZero_TestCase_005, TestSize.Level0)
+{
+    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_5";
+    system(("rm -rf " + mockSysPath).c_str());
+    // 100MB = 204800 sectors
+    CreateMockSysfsSizeFile(mockSysPath, "sda1", "204800");
+    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
+ 
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    // CreateDmLinear returns E_OK but dmDev=0
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(0)), Return(E_OK)));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-8-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+ 
+    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
+    system(("rm -rf " + mockSysPath).c_str());
 }

@@ -44,6 +44,9 @@ public:
 
     static void ResetPartitionSnapshotForTest();
 
+    /** 测试用：覆盖 sysfs block 基路径，用于 mock /sys/class/block/ 读取 */
+    static std::string &SysBlockPathForTest();
+
 private:
     static int32_t HandleDiskRemove(const UeventEnv &env);
     /** 首次出现 / 重新枚举：发布磁盘事件（若本事件首次见到该 diskId）。 */

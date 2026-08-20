@@ -26,6 +26,7 @@
 #include "errors.h"
 
 #include <sys/mount.h>
+#include <sys/sysmacros.h>
 
 namespace OHOS {
 namespace DiskManager {
@@ -536,6 +537,26 @@ int32_t StorageDaemonAdapter::BindBlockLoopDev(const std::string &sysPath, uint6
     const int32_t ret = storageDaemon_->BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
     LOGI("BindBlockLoopDev exit ret=%{public}d", ret);
     return ret;
+}
+
+int32_t StorageDaemonAdapter::CreateDmLinear(const std::string &sourceDevPath,
+                                             uint64_t startSector, uint64_t sectorCount,
+                                             uint64_t &dmDev)
+{
+    LOGI("CreateDmLinear enter, source=%{public}s, start=%{public}llu, count=%{public}llu",
+         sourceDevPath.c_str(),
+         static_cast<unsigned long long>(startSector), static_cast<unsigned long long>(sectorCount));
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("CreateDmLinear exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    uint64_t dmDevVal = 0;
+    const ErrCode ret = storageDaemon_->CreateDmLinear(sourceDevPath, startSector, sectorCount, dmDevVal);
+    dmDev = dmDevVal;
+    LOGI("CreateDmLinear exit ret=%{public}d, dmDev major=%{public}u minor=%{public}u",
+         static_cast<int32_t>(ret), major(dmDevVal), minor(dmDevVal));
+    return static_cast<int32_t>(ret);
 }
 } // namespace DiskManager
 } // namespace OHOS

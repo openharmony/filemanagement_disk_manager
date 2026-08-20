@@ -73,6 +73,9 @@ public:
     ErrCode GetDiskSize(const std::string &devName, uint64_t &size) override;
     ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
+    ErrCode CreateDmLinear(const std::string &sourceDevPath,
+                           uint64_t startSector, uint64_t sectorCount,
+                           uint64_t &dmDev) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;
