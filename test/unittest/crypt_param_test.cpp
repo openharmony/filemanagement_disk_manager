@@ -156,48 +156,5 @@ HWTEST_F(CryptParamTest, Unmarshalling_OversizedHash_TestCase_001, TestSize.Leve
     EXPECT_EQ(result, nullptr);
 }
 
-HWTEST_F(CryptParamTest, Serialize_TestCase_001, TestSize.Level0)
-{
-    CryptParam cp("secret123", "luks", "aes", 256, "sha256");
-    std::string text = cp.Serialize();
-    EXPECT_FALSE(text.empty());
-    EXPECT_NE(text.find("secret123"), std::string::npos);
-    EXPECT_NE(text.find("luks"), std::string::npos);
-    EXPECT_NE(text.find("aes"), std::string::npos);
-    EXPECT_NE(text.find("256"), std::string::npos);
-    EXPECT_NE(text.find("sha256"), std::string::npos);
-}
-
-HWTEST_F(CryptParamTest, Deserialize_Success_TestCase_001, TestSize.Level0)
-{
-    CryptParam cp("secret123", "luks", "aes", 256, "sha256");
-    CryptParam result = CryptParam::Deserialize(cp.Serialize());
-    EXPECT_EQ(result.GetPassPhrase(), "secret123");
-    EXPECT_EQ(result.GetType(), "luks");
-    EXPECT_EQ(result.GetCipher(), "aes");
-    EXPECT_EQ(result.GetKeySize(), 256);
-    EXPECT_EQ(result.GetHash(), "sha256");
-}
-
-HWTEST_F(CryptParamTest, Deserialize_EmptyText_TestCase_001, TestSize.Level0)
-{
-    CryptParam result = CryptParam::Deserialize("");
-    EXPECT_EQ(result.GetPassPhrase(), "");
-    EXPECT_EQ(result.GetType(), "");
-    EXPECT_EQ(result.GetCipher(), "");
-    EXPECT_EQ(result.GetKeySize(), 0);
-    EXPECT_EQ(result.GetHash(), "");
-}
-
-HWTEST_F(CryptParamTest, Deserialize_InvalidText_TestCase_001, TestSize.Level0)
-{
-    CryptParam result = CryptParam::Deserialize("not a json");
-    EXPECT_EQ(result.GetPassPhrase(), "");
-    EXPECT_EQ(result.GetType(), "");
-    EXPECT_EQ(result.GetCipher(), "");
-    EXPECT_EQ(result.GetKeySize(), 0);
-    EXPECT_EQ(result.GetHash(), "");
-}
-
 } // namespace DiskManager
 } // namespace OHOS

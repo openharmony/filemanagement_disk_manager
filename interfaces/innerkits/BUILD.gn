@@ -46,7 +46,6 @@ ohos_source_set("disk_manager_ipc_native") {
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
-    "json:nlohmann_json_static",
   ]
   part_name = "disk_manager"
   subsystem_name = "filemanagement"

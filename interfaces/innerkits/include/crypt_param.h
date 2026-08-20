@@ -18,13 +18,11 @@
 
 #include "parcel.h"
 
-#include <nlohmann/json.hpp>
 #include <cstdint>
 #include <string>
 
 namespace OHOS {
 namespace DiskManager {
-using json = nlohmann::json;
 
 class CryptParam : public Parcelable {
 public:
@@ -45,30 +43,6 @@ public:
 
     bool Marshalling(Parcel &parcel) const override;
     static CryptParam *Unmarshalling(Parcel &parcel);
-
-    std::string Serialize() const
-    {
-        return json{{"passPhrase", passPhrase_},
-                    {"type", type_},
-                    {"cipher", cipher_},
-                    {"keySize", keySize_},
-                    {"hash", hash_}}.dump();
-    }
-
-    static CryptParam Deserialize(const std::string &text)
-    {
-        CryptParam param;
-        nlohmann::json j = nlohmann::json::parse(text, nullptr, false);
-        if (!j.is_object()) {
-            return param;
-        }
-        param.passPhrase_ = j.value("passPhrase", std::string{});
-        param.type_ = j.value("type", std::string{});
-        param.cipher_ = j.value("cipher", std::string{});
-        param.keySize_ = j.value("keySize", 0);
-        param.hash_ = j.value("hash", std::string{});
-        return param;
-    }
 
 private:
     std::string passPhrase_;
