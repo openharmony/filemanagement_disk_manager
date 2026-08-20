@@ -78,7 +78,7 @@ public:
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                 const std::string &mapperName) override;
+                                const std::string &mapperName) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);

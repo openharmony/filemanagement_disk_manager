@@ -570,8 +570,12 @@ HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_ErrorReturn_001, TestSi
 HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}), E_OK);
+    std::vector<std::string> inputCmd = {"cryptsetup", "open", "--type", "luks", "/dev/block/sda1", "mapper0"};
+    std::vector<std::string> capturedCmd;
+    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_))
+        .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
+    EXPECT_EQ(adapter.CreateDmCryptVolume(inputCmd), E_OK);
+    EXPECT_EQ(capturedCmd, inputCmd);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_ErrorReturn_001, TestSize.Level0)

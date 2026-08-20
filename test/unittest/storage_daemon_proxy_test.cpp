@@ -3005,15 +3005,19 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_005, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_005 Start";
 
+    std::vector<std::string> inputCmd = {"cryptsetup", "open", "--type", "luks", "/dev/block/loop0", "mapper0"};
+    std::vector<std::string> capturedCmd;
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_))
+        .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(true)));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_DM_CRYPT_VOLUME),
                             _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    int32_t ret = proxy_->CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/loop0", "mapper0"});
+    int32_t ret = proxy_->CreateDmCryptVolume(inputCmd);
     EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(capturedCmd, inputCmd);
 
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_005 End";
 }

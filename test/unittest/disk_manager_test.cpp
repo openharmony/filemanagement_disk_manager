@@ -4678,8 +4678,23 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     CryptParam param("secret", "luks", "aes", 256, "sha256");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, CreateDmCryptVolume(_)).WillOnce(Return(E_OK));
+    std::vector<std::string> capturedCmd;
+    EXPECT_CALL(sdAdapter, CreateDmCryptVolume(_))
+        .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
     EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
+    ASSERT_EQ(capturedCmd.size(), 12u);
+    EXPECT_EQ(capturedCmd[0], "cryptsetup");
+    EXPECT_EQ(capturedCmd[1], "open");
+    EXPECT_EQ(capturedCmd[2], "--type");
+    EXPECT_EQ(capturedCmd[3], "luks");
+    EXPECT_EQ(capturedCmd[4], "--cipher");
+    EXPECT_EQ(capturedCmd[5], "aes");
+    EXPECT_EQ(capturedCmd[6], "--key-size");
+    EXPECT_EQ(capturedCmd[7], "256");
+    EXPECT_EQ(capturedCmd[8], "--hash");
+    EXPECT_EQ(capturedCmd[9], "sha256");
+    EXPECT_EQ(capturedCmd[10], "/dev/block/loop0");
+    EXPECT_EQ(capturedCmd[11], "mapper0");
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 End";
 }
 
