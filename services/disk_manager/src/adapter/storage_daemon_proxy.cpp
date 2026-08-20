@@ -706,5 +706,31 @@ ErrCode StorageDaemonProxy::BindBlockLoopDev(const std::string &sysPath, uint64_
     loopPath = Str16ToStr8(reply.ReadString16());
     return ERR_OK;
 }
+
+ErrCode StorageDaemonProxy::CreateDmCryptVolume(const std::string &cryptParam, const std::string &loopPath,
+                                                const std::string &mapperName)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(cryptParam))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(loopPath))) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString16(Str8ToStr16(mapperName))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_CREATE_DM_CRYPT_VOLUME), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    return reply.ReadInt32();
+}
 } // namespace StorageDaemon
 } // namespace OHOS

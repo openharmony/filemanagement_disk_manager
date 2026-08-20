@@ -1105,5 +1105,85 @@ HWTEST_F(DiskManagerClientTest, ReportVolumeOpDiagTest002, TestSize.Level1)
     GTEST_LOG_(INFO) << "ReportVolumeOpDiagTest002 End";
 }
 
+/**
+ * @tc.name: BindBlockLoopDevTest001
+ * @tc.desc: 测试 BindBlockLoopDev 传入有效 sysPath 与 offset/sizeLimit，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, BindBlockLoopDevTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDevTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::string loopPath;
+    int32_t ret = client.BindBlockLoopDev("/dev/block/sda1", 2048, 1048576, loopPath);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDevTest001 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDevTest002
+ * @tc.desc: BindBlockLoopDev Connect 成功后转发到 stub，预期返回 E_OK 且 loopPath 被回填。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, BindBlockLoopDevTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDevTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, BindBlockLoopDev(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::string loopPath;
+    EXPECT_EQ(client.BindBlockLoopDev("/dev/block/sda1", 2048, 1048576, loopPath), E_OK);
+    EXPECT_EQ(loopPath, "/dev/loop0");
+
+    GTEST_LOG_(INFO) << "BindBlockLoopDevTest002 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolumeTest001
+ * @tc.desc: 测试 CreateDmCryptVolume 传入有效 CryptParam 与路径，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, CreateDmCryptVolumeTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolumeTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    int32_t ret = client.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0");
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "CreateDmCryptVolumeTest001 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolumeTest002
+ * @tc.desc: CreateDmCryptVolume Connect 成功后转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, CreateDmCryptVolumeTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolumeTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    EXPECT_EQ(client.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
+
+    GTEST_LOG_(INFO) << "CreateDmCryptVolumeTest002 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

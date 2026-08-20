@@ -537,5 +537,18 @@ int32_t StorageDaemonAdapter::BindBlockLoopDev(const std::string &sysPath, uint6
     LOGI("BindBlockLoopDev exit ret=%{public}d", ret);
     return ret;
 }
+
+int32_t StorageDaemonAdapter::CreateDmCryptVolume(const std::string &cryptParam, const std::string &loopPath,
+                                                  const std::string &mapperName)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("CreateDmCryptVolume exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->CreateDmCryptVolume(cryptParam, loopPath, mapperName);
+    LOGI("CreateDmCryptVolume exit ret=%{public}d", ret);
+    return ret;
+}
 } // namespace DiskManager
 } // namespace OHOS

@@ -4666,5 +4666,39 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
 }
 
+/**
+ * @tc.name: CreateDmCryptVolume_TestCase_001
+ * @tc.desc: CreateDmCryptVolume returns E_OK when adapter succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_TestCase_002
+ * @tc.desc: CreateDmCryptVolume propagates adapter error code.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_DAEMON_IPC_FAILED);
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

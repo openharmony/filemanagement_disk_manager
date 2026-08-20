@@ -77,6 +77,7 @@ enum DiskManagerErrNo : int32_t {
 
     // crypto device errno
     E_BIND_LOOP_DEV_FAILED = 13600000 + 1901,
+    E_CREATE_DM_CRYPT_VOLUME_FAILED = 13600000 + 1902,
 
 };
 

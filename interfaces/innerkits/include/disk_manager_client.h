@@ -27,6 +27,7 @@
 #include "disk.h"
 #include "partition_types.h"
 #include "volume_external.h"
+#include "crypt_param.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -83,6 +84,8 @@ public:
     int32_t NotifyMtpUnmounted(const std::string &id, const bool isBadRemove);
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
     int32_t ReportVolumeOpDiag(const std::string &opDiag);
+    int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit, std::string &loopPath);
+    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath, const std::string &mapperName);
 
 private:
     DiskManagerClient() = default;

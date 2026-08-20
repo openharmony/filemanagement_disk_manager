@@ -2583,5 +2583,21 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &sysPath, uint64_t offse
     LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
+
+int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                          const std::string &mapperName)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDevPath(loopPath);
+    IpcDfxScope dfx("DiskManager::CreateDmCryptVolume", DFX_STAGE_CREATE_DM_CRYPT_VOLUME,
+                    VolumeOpType::CREATE_DM_CRYPT_VOLUME, reportInfo);
+    int32_t ret = StorageDaemonAdapter::GetInstance().CreateDmCryptVolume(param.Serialize(), loopPath, mapperName);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("CreateDmCryptVolume failed, loopPath=%{public}s, err=%{public}d", loopPath.c_str(), ret);
+        return dfx.Finish(ret);
+    }
+    LOGI("CreateDmCryptVolume success, mapperName=%{public}s", mapperName.c_str());
+    return dfx.Finish(DiskManagerErrNo::E_OK);
+}
 } // namespace DiskManager
 } // namespace OHOS

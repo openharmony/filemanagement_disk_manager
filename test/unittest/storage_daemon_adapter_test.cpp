@@ -253,6 +253,12 @@ HWTEST_F(StorageDaemonAdapterTest, BindBlockLoopDev_ErrorPath_001, TestSize.Leve
     EXPECT_NE(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_OK);
 }
 
+HWTEST_F(StorageDaemonAdapterTest, CreateDmCryptVolume_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_NE(adapter.CreateDmCryptVolume("crypt", "/dev/block/sda1", "mapper0"), E_OK);
+}
+
 class StorageDaemonAdapterProxyTest : public testing::Test {
 public:
     void SetUp() override
@@ -559,6 +565,20 @@ HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_ErrorReturn_001, TestSi
     EXPECT_CALL(*mockRemote_, BindBlockLoopDev(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_DAEMON_IPC_FAILED);
     EXPECT_TRUE(loopPath.empty());
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.CreateDmCryptVolume("crypt", "/dev/block/sda1", "mapper0"), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_ErrorReturn_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(adapter.CreateDmCryptVolume("crypt", "/dev/block/sda1", "mapper0"), E_DAEMON_IPC_FAILED);
 }
 } // namespace DiskManager
 } // namespace OHOS

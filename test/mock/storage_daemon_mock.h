@@ -69,6 +69,8 @@ public:
     MOCK_METHOD2(GetDiskSize, ErrCode(const std::string &devName, uint64_t &size));
     MOCK_METHOD4(BindBlockLoopDev, ErrCode(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                            std::string &loopPath));
+    MOCK_METHOD3(CreateDmCryptVolume, ErrCode(const std::string &cryptParam, const std::string &loopPath,
+                                              const std::string &mapperName));
 };
 
 } // namespace DiskManager
