@@ -2933,7 +2933,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_001, TestSize.Leve
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
+    int32_t ret = proxy_->CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/loop0", "mapper0"});
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
 
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 End";
@@ -2941,7 +2941,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_001, TestSize.Leve
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_002
- * @tc.desc: CreateDmCryptVolume: first WriteString16 (cryptParam) returns false.
+ * @tc.desc: CreateDmCryptVolume: WriteStringVector returns false.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
@@ -2949,8 +2949,8 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_002, TestSize.Leve
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
+    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/loop0", "mapper0"});
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
@@ -2958,7 +2958,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_002, TestSize.Leve
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_003
- * @tc.desc: CreateDmCryptVolume: second WriteString16 (loopPath) returns false.
+ * @tc.desc: CreateDmCryptVolume: SendRequest returns non-ERR_OK.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_003, TestSize.Level0)
@@ -2966,16 +2966,20 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_003, TestSize.Leve
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_003 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_,
+                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_DM_CRYPT_VOLUME),
+                            _, _, _))
+        .WillOnce(Return(IPC_FAILED));
+    int32_t ret = proxy_->CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/loop0", "mapper0"});
+    EXPECT_EQ(ret, IPC_FAILED);
 
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_003 End";
 }
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_004
- * @tc.desc: CreateDmCryptVolume: third WriteString16 (mapperName) returns false.
+ * @tc.desc: CreateDmCryptVolume: reply ReadInt32 is not ERR_OK.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_004, TestSize.Level0)
@@ -2983,17 +2987,18 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_004, TestSize.Leve
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_004 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
-        .WillOnce(Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    int32_t ret = proxy_->CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/loop0", "mapper0"});
+    EXPECT_EQ(ret, REMOTE_FAILED);
 
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_004 End";
 }
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_005
- * @tc.desc: CreateDmCryptVolume: SendRequest returns non-ERR_OK.
+ * @tc.desc: CreateDmCryptVolume: success path.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_005, TestSize.Level0)
@@ -3001,56 +3006,16 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_005, TestSize.Leve
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_005 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
-    EXPECT_CALL(*remote_,
-                SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_DM_CRYPT_VOLUME),
-                            _, _, _))
-        .WillOnce(Return(IPC_FAILED));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
-    EXPECT_EQ(ret, IPC_FAILED);
-
-    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_005 End";
-}
-
-/**
- * @tc.name: CreateDmCryptVolume_TestCase_006
- * @tc.desc: CreateDmCryptVolume: reply ReadInt32 is not ERR_OK.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_006, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_006 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
-    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
-    EXPECT_EQ(ret, REMOTE_FAILED);
-
-    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_006 End";
-}
-
-/**
- * @tc.name: CreateDmCryptVolume_TestCase_007
- * @tc.desc: CreateDmCryptVolume: success path.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, CreateDmCryptVolume_TestCase_007, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_007 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(3).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CREATE_DM_CRYPT_VOLUME),
                             _, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    int32_t ret = proxy_->CreateDmCryptVolume("crypt", "/dev/block/loop0", "mapper0");
+    int32_t ret = proxy_->CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/loop0", "mapper0"});
     EXPECT_EQ(ret, ERR_OK);
 
-    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_007 End";
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_005 End";
 }
 } // namespace DiskManager
 } // namespace OHOS

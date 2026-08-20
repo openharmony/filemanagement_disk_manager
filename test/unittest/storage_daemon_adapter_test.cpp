@@ -256,7 +256,7 @@ HWTEST_F(StorageDaemonAdapterTest, BindBlockLoopDev_ErrorPath_001, TestSize.Leve
 HWTEST_F(StorageDaemonAdapterTest, CreateDmCryptVolume_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_NE(adapter.CreateDmCryptVolume("crypt", "/dev/block/sda1", "mapper0"), E_OK);
+    EXPECT_NE(adapter.CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}), E_OK);
 }
 
 class StorageDaemonAdapterProxyTest : public testing::Test {
@@ -570,15 +570,16 @@ HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_ErrorReturn_001, TestSi
 HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.CreateDmCryptVolume("crypt", "/dev/block/sda1", "mapper0"), E_OK);
+    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_ErrorReturn_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(adapter.CreateDmCryptVolume("crypt", "/dev/block/sda1", "mapper0"), E_DAEMON_IPC_FAILED);
+    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(adapter.CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}),
+              E_DAEMON_IPC_FAILED);
 }
 } // namespace DiskManager
 } // namespace OHOS

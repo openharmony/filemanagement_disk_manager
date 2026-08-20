@@ -2591,7 +2591,11 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     reportInfo.WithDevPath(loopPath);
     IpcDfxScope dfx("DiskManager::CreateDmCryptVolume", DFX_STAGE_CREATE_DM_CRYPT_VOLUME,
                     VolumeOpType::CREATE_DM_CRYPT_VOLUME, reportInfo);
-    int32_t ret = StorageDaemonAdapter::GetInstance().CreateDmCryptVolume(param.Serialize(), loopPath, mapperName);
+    std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
+                                    "--cipher", param.GetCipher(),
+                                    "--key-size", std::to_string(param.GetKeySize()),
+                                    "--hash", param.GetHash(), loopPath, mapperName};
+    int32_t ret = StorageDaemonAdapter::GetInstance().CreateDmCryptVolume(cmd);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreateDmCryptVolume failed, loopPath=%{public}s, err=%{public}d", loopPath.c_str(), ret);
         return dfx.Finish(ret);

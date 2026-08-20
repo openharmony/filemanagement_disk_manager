@@ -707,8 +707,7 @@ ErrCode StorageDaemonProxy::BindBlockLoopDev(const std::string &sysPath, uint64_
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::CreateDmCryptVolume(const std::string &cryptParam, const std::string &loopPath,
-                                                const std::string &mapperName)
+ErrCode StorageDaemonProxy::CreateDmCryptVolume(const std::vector<std::string> &cmd)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -716,13 +715,7 @@ ErrCode StorageDaemonProxy::CreateDmCryptVolume(const std::string &cryptParam, c
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(cryptParam))) {
-        return ERR_INVALID_DATA;
-    }
-    if (!data.WriteString16(Str8ToStr16(loopPath))) {
-        return ERR_INVALID_DATA;
-    }
-    if (!data.WriteString16(Str8ToStr16(mapperName))) {
+    if (!data.WriteStringVector(cmd)) {
         return ERR_INVALID_DATA;
     }
     int32_t ret = Remote()->SendRequest(

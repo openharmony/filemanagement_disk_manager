@@ -73,8 +73,7 @@ public:
     ErrCode GetDiskSize(const std::string &devName, uint64_t &size) override;
     ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
-    ErrCode CreateDmCryptVolume(const std::string &cryptParam, const std::string &loopPath,
-                                const std::string &mapperName) override;
+    ErrCode CreateDmCryptVolume(const std::vector<std::string> &cmd) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

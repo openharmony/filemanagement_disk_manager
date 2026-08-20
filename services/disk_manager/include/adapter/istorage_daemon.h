@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <iremote_broker.h>
 #include <string>
+#include <vector>
 
 namespace OHOS {
 namespace StorageDaemon {
@@ -120,8 +121,7 @@ public:
     virtual ErrCode GetDiskSize(const std::string &devName, uint64_t &size) = 0;
     virtual ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                      std::string &loopPath) = 0;
-    virtual ErrCode CreateDmCryptVolume(const std::string &cryptParam, const std::string &loopPath,
-                                        const std::string &mapperName) = 0;
+    virtual ErrCode CreateDmCryptVolume(const std::vector<std::string> &cmd) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

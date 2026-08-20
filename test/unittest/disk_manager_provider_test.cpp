@@ -2816,7 +2816,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_001, TestSize.Lev
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     CryptParam param("secret", "luks", "aes", 256, "sha256");
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmCryptVolume(_)).WillOnce(Return(E_OK));
     int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
     EXPECT_EQ(ret, E_OK);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2835,7 +2835,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_002, TestSize.Lev
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     CryptParam param("secret", "luks", "aes", 256, "sha256");
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmCryptVolume(_, _, _))
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmCryptVolume(_))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
     EXPECT_EQ(ret, E_CREATE_DM_CRYPT_VOLUME_FAILED);
