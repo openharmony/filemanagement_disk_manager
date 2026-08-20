@@ -572,8 +572,7 @@ HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_Success_001, TestSiz
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::vector<std::string> inputCmd = {"cryptsetup", "open", "--type", "luks", "/dev/block/sda1", "mapper0"};
     std::vector<std::string> capturedCmd;
-    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_))
-        .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
+    EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_)).WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
     EXPECT_EQ(adapter.CreateDmCryptVolume(inputCmd), E_OK);
     EXPECT_EQ(capturedCmd, inputCmd);
 }
@@ -582,8 +581,7 @@ HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmCryptVolume_ErrorReturn_001, Tes
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
     EXPECT_CALL(*mockRemote_, CreateDmCryptVolume(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(adapter.CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}),
-              E_DAEMON_IPC_FAILED);
+    EXPECT_EQ(adapter.CreateDmCryptVolume({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}), E_DAEMON_IPC_FAILED);
 }
 } // namespace DiskManager
 } // namespace OHOS
