@@ -448,6 +448,13 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
     }
 }
  
+static std::string g_sysBlockPath = "/sys/class/block";
+
+std::string &UeventBootstrap::SysBlockPathForTest()
+{
+    return g_sysBlockPath;
+}
+
 static uint64_t GetDevSectorSize(const std::string &devName)
  
 {
@@ -506,13 +513,6 @@ static dev_t ResolvePartitionDev(const UeventEnv &env, const std::string &diskId
     }
  
     return pDev;
-}
-
-static std::string g_sysBlockPath = "/sys/class/block";
-
-std::string &UeventBootstrap::SysBlockPathForTest()
-{
-    return g_sysBlockPath;
 }
 
 void DiscoverSinglePartitionVolume(const UeventEnv &env,
