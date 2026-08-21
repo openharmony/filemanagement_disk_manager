@@ -61,7 +61,7 @@ public:
                             const std::string &typeCode) override;
     ErrCode DeletePartitionInfo(const std::string &devPath, const std::string &diskId, int32_t partitionNum) override;
     ErrCode FormatPartition(const std::string &devPath, const std::string &fsType, const std::string &volumeName,
-                            bool quickFormat) override;
+                            const std::vector<std::string> &cmd, bool quickFormat) override;
     ErrCode Erase(const std::string &devPath) override;
     ErrCode Eject(const std::string &devName) override;
     ErrCode CreateIsoImage(const std::string &devPath,

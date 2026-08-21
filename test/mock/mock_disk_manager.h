@@ -73,7 +73,8 @@ public:
     MOCK_METHOD(int32_t, CreatePartition, (const std::string &diskId, const PartitionParams &params));
     MOCK_METHOD(int32_t, DeletePartition, (const std::string &diskId, int32_t partitionNum));
     MOCK_METHOD(int32_t, FormatPartition,
-        (const std::string &diskId, int32_t partitionNum, const FormatParams &params));
+        (const std::string &diskId, int32_t partitionNum, const FormatParams &params,
+         const std::vector<std::string> &cmd));
 
     static MockDiskManager *mockInstance_;
 };

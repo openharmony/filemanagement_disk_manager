@@ -68,7 +68,7 @@ public:
                 int32_t partitionNum));
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &devPath, const std::string &fsType,
-         const std::string &volumeName, bool quickFormat));
+         const std::string &volumeName, const std::vector<std::string> &cmd, bool quickFormat));
     MOCK_METHOD(int32_t, EnsureProxyReady, ());
     MOCK_METHOD(int32_t, ResetSdProxy, ());
     MOCK_METHOD(int32_t, Erase, (const std::string &devPath));

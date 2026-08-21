@@ -205,7 +205,8 @@ HWTEST_F(StorageDaemonAdapterTest, DeletePartition_ErrorPath_001, TestSize.Level
 HWTEST_F(StorageDaemonAdapterTest, FormatPartition_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_NE(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_NE(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", cmd, false), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterTest, Erase_ErrorPath_001, TestSize.Level0)
@@ -481,8 +482,9 @@ HWTEST_F(StorageDaemonAdapterProxyTest, DeletePartition_Success_001, TestSize.Le
 HWTEST_F(StorageDaemonAdapterProxyTest, FormatPartition_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, FormatPartition(_, _, _, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_CALL(*mockRemote_, FormatPartition(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", cmd, false), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, Erase_Success_001, TestSize.Level0)

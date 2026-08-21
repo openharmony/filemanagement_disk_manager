@@ -1940,7 +1940,8 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_001 Start";
     auto &dm = DiskManager::GetInstance();
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(dm.FormatPartition("disk-99-99", 1, params), E_NON_EXIST);
+    std::vector<std::string> cmdTmp{};
+    EXPECT_EQ(dm.FormatPartition("disk-99-99", 1, params, cmdTmp), E_NON_EXIST);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_001 End";
 }
 
@@ -1956,7 +1957,8 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeCdDisk("disk-9-28"));
     FormatParams params("vfat", true, "volume");
-    EXPECT_EQ(dm.FormatPartition("disk-9-28", 1, params), E_FORMAT_PARTITION_NOT_SUPPORT);
+    std::vector<std::string> cmdTmp{};
+    EXPECT_EQ(dm.FormatPartition("disk-9-28", 1, params, cmdTmp), E_FORMAT_PARTITION_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "FormatPartition_TestCase_002 End";
 }
 
@@ -2688,7 +2690,8 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_003, TestSize.Level0)
     dm.GetVolumeById("vol-56-1", volOut);
     volOut.SetPartitionNum(1);
     FormatParams params("vfat", true, "volume");
-    EXPECT_NE(dm.FormatPartition("disk-56-1", 1, params), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_NE(dm.FormatPartition("disk-56-1", 1, params, cmd), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, IsParamsValid_TestCase_007, TestSize.Level0)
@@ -3221,9 +3224,10 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_004, TestSize.Level0)
     info.SetPartitions({pinfo});
     dm.partitionTableMap_["disk-56-2"] = info;
     FormatParams params("vfat", true, "volume");
+    std::vector<std::string> cmd{};
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.FormatPartition("disk-56-2", 1, params), E_OK);
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.FormatPartition("disk-56-2", 1, params, cmd), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, FormatPartition_TestCase_005, TestSize.Level0)
@@ -3237,9 +3241,10 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_005, TestSize.Level0)
     info.SetPartitions({pinfo});
     dm.partitionTableMap_["disk-56-3"] = info;
     FormatParams params("vfat", true, "volume");
+    std::vector<std::string> cmd{};
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.FormatPartition("disk-56-3", 1, params), E_FORMAT_PARTITION_ERROR);
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.FormatPartition("disk-56-3", 1, params, cmd), E_FORMAT_PARTITION_ERROR);
 }
 
 HWTEST_F(DiskManagerTest, FormatPartition_TestCase_006, TestSize.Level0)
@@ -3253,7 +3258,8 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_006, TestSize.Level0)
     info.SetPartitions({pinfo});
     dm.partitionTableMap_["disk-56-4"] = info;
     FormatParams params("vfat", true, "volume");
-    EXPECT_NE(dm.FormatPartition("disk-56-4", 1, params), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_NE(dm.FormatPartition("disk-56-4", 1, params, cmd), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, FormatPartition_TestCase_007, TestSize.Level0)
@@ -3264,7 +3270,8 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_007, TestSize.Level0)
     PartitionTableInfo info;
     dm.partitionTableMap_["disk-56-5"] = info;
     FormatParams params("vfat", true, "volume");
-    EXPECT_NE(dm.FormatPartition("disk-56-5", 1, params), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_NE(dm.FormatPartition("disk-56-5", 1, params, cmd), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_001, TestSize.Level0)

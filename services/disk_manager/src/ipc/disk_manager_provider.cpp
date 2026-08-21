@@ -814,12 +814,20 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
         LOGE("FormatPartition: quickFormat is invalid");
         return E_PARAMS_INVALID;
     }
-    if (params.GetVolumeName().empty() || params.GetVolumeName().size() > VOLUME_NAME_MAX_LEN) {
-        LOGE("FormatPartition: volumeName is empty or length exceeds %{public}zu limit",
-             static_cast<size_t>(VOLUME_NAME_MAX_LEN));
-        return E_NON_EXIST;
+    std::string typeIdentifier;
+    std::string type = params.GetFsType();
+    std::string diskPath = "/dev/block/" + diskId;
+    LOGE("FormatPartition: type=%{public}s, diskPath=%{public}s", type.c_str(), diskPath.c_str());
+    if (type == "ext4") {
+        typeIdentifier = std::to_string(partitionNum) + ":" + "0x8300";
+    } else if (type == "exfat" || type == "vfat") {
+        typeIdentifier = std::to_string(partitionNum) + ":" + "0x0700";
+    } else {
+        LOGE("FormatPartition: type=%{public}s is not support", type.c_str());
+        return E_PARAMS_INVALID;
     }
-    int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
+    std::vector<std::string> cmd = {"sgdisk", "-t", typeIdentifier, diskPath};
+    int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params, cmd);
     LOGI("FormatPartition done ret=%{public}d", ret);
     return ret;
 }

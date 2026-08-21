@@ -107,7 +107,8 @@ public:
     virtual ErrCode DeletePartitionInfo(const std::string &devPath, const std::string &diskId,
                                         int32_t partitionNum) = 0;
     virtual ErrCode FormatPartition(const std::string &devPath, const std::string &fsType,
-                                    const std::string &volumeName, bool quickFormat) = 0;
+                                    const std::string &volumeName,
+                                    const std::vector<std::string> &cmd, bool quickFormat) = 0;
     virtual ErrCode Erase(const std::string &devPath) = 0;
     virtual ErrCode Eject(const std::string &devName) = 0;
     virtual ErrCode CreateIsoImage(const std::string &devPath,
