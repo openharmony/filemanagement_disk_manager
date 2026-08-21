@@ -69,7 +69,6 @@ constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
-constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_service.enterprise_space_enable";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
 
@@ -753,27 +752,6 @@ std::string DiskManager::BuildMountDataPath(const MountDataPathParams &params)
     return std::string(EXTERNAL_MOUNT_ROOT) + params.fsUuid;
 }
 
-bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
-{
-    int32_t handle = static_cast<int32_t>(FindParameter(PERSIST_ENTERPRISE_SPACE_ENABLE));
-    if (handle == -1) {
-        return false;
-    }
-
-    char spaceEnable[RD_ENABLE_LENGTH] = {"false"};
-    auto res = GetParameterValue(handle, spaceEnable, RD_ENABLE_LENGTH);
-    if (res < 0 || strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
-        return false;
-    }
-
-    if (flag == DATA_DISK_SSD || flag == DATA_DISK_HDD) {
-        LOGW("Enterprise space enable, disk type is SSD or HDD, skipping mount operation.");
-        return true;
-    }
-
-    return false;
-}
-
 int32_t DiskManager::MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath)
 {
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
@@ -862,11 +840,6 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
         params.diskFlag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
-    }
-
-    if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
-        LOGI("Enterprise space enable, not support SSD or HDD disk.");
-        return DiskManagerErrNo::E_OK;
     }
 
     return ExecuteVolumeDataMount(volExternal, fsType, params);
