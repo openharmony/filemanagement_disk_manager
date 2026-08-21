@@ -2585,7 +2585,7 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &sysPath, uint64_t offse
 }
 
 int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                          const std::string &mapperName)
+                                         const std::string &mapperName)
 {
     VolumeReportInfo reportInfo;
     reportInfo.WithDevPath(loopPath);
@@ -2597,11 +2597,14 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
                                     "--hash", param.GetHash(), loopPath, mapperName};
     std::vector<std::string> output;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, output);
+    for (const auto &item: output) {
+        LOGE("exec command: %{public}s", item.c_str());
+    }
     if (ret != DiskManagerErrNo::E_OK) {
-        LOGE("CreateDmCryptVolume failed, loopPath=%{public}s, err=%{public}d", loopPath.c_str(), ret);
+        LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
         return dfx.Finish(ret);
     }
-    LOGI("CreateDmCryptVolume success, mapperName=%{public}s", mapperName.c_str());
+    LOGI("CreateDmCryptVolume success");
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 } // namespace DiskManager

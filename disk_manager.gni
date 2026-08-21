@@ -21,3 +21,9 @@ if ("${target_platform}" == "car") {
 } else {
   car_device_enable = false
 }
+
+if ("${target_platform}" == "pc" || "${target_platform}" == "2in1" || "${target_platform}" == "tablet") {
+  pc_device_enable = true
+} else {
+  pc_device_enable = false
+}

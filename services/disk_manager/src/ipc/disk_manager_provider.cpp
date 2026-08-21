@@ -863,6 +863,7 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
                                                  const std::string &mapperName)
 {
     LOGI("CreateDmCryptVolume loopPath=%{public}s mapperName=%{public}s", loopPath.c_str(), mapperName.c_str());
+#ifdef PC_MANAGER
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != FILE_GUARD_UID) {
         LOGE("CreateDmCryptVolume: call uid %{public}d is invalid", uid);
@@ -886,6 +887,10 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
         return E_CREATE_DM_CRYPT_VOLUME_FAILED;
     }
     return E_OK;
+#else
+    LOGI("CreateDmCryptVolume: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
 }
 } // namespace DiskManager
 } // namespace OHOS

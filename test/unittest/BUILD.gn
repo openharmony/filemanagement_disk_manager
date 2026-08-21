@@ -605,6 +605,10 @@ ohos_unittest("disk_manager_provider_test") {
     "dlerror=MockDlerror",
   ]
 
+  if (pc_device_enable) {
+    defines += [ "PC_MANAGER" ]
+  }
+
   if (car_device_enable) {
     defines += [ "CDC_STORAGE" ]
   }

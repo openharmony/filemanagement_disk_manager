@@ -2685,6 +2685,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
 }
 
+#ifdef PC_MANAGER
 /**
  * @tc.name: CreateDmCryptVolume_PermissionDenied_001
  * @tc.desc: CreateDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
@@ -2842,6 +2843,22 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_002, TestSize.Lev
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
 }
+#else
+/**
+ * @tc.name: CreateDmCryptVolume_NotSupport_001
+ * @tc.desc: CreateDmCryptVolume returns E_NOT_SUPPORT when PC_MANAGER is disabled.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_NOT_SUPPORT);
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_NotSupport_001 End";
+}
+#endif
 
 } // namespace DiskManager
 } // namespace OHOS
