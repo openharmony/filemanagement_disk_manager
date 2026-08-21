@@ -4679,7 +4679,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
     CryptParam param("secret", "luks", "aes", 256, "sha256");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     std::vector<std::string> capturedCmd;
-    EXPECT_CALL(sdAdapter, CreateDmCryptVolume(_))
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _))
         .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
     EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
     ASSERT_EQ(capturedCmd.size(), 12u);
@@ -4710,7 +4710,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     CryptParam param("secret", "luks", "aes", 256, "sha256");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, CreateDmCryptVolume(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_DAEMON_IPC_FAILED);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
 }

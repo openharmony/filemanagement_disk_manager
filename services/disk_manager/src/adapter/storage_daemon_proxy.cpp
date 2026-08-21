@@ -707,7 +707,7 @@ ErrCode StorageDaemonProxy::BindBlockLoopDev(const std::string &sysPath, uint64_
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::CreateDmCryptVolume(const std::vector<std::string> &cmd)
+ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, std::vector<std::string> &output)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -719,11 +719,16 @@ ErrCode StorageDaemonProxy::CreateDmCryptVolume(const std::vector<std::string> &
         return ERR_INVALID_DATA;
     }
     int32_t ret = Remote()->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_CREATE_DM_CRYPT_VOLUME), data, reply, option);
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND), data, reply, option);
     if (ret != ERR_OK) {
         return ret;
     }
-    return reply.ReadInt32();
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    reply.ReadStringVector(&output);
+    return ERR_OK;
 }
 } // namespace StorageDaemon
 } // namespace OHOS

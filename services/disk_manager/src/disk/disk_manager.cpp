@@ -2595,7 +2595,8 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
                                     "--cipher", param.GetCipher(),
                                     "--key-size", std::to_string(param.GetKeySize()),
                                     "--hash", param.GetHash(), loopPath, mapperName};
-    int32_t ret = StorageDaemonAdapter::GetInstance().CreateDmCryptVolume(cmd);
+    std::vector<std::string> output;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, output);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreateDmCryptVolume failed, loopPath=%{public}s, err=%{public}d", loopPath.c_str(), ret);
         return dfx.Finish(ret);

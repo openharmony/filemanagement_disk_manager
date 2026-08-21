@@ -80,7 +80,7 @@ public:
     int32_t GetDiskSize(const std::string &devName, uint64_t &size);
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
-    int32_t CreateDmCryptVolume(const std::vector<std::string> &cmd);
+    int32_t ExecuteCommand(const std::vector<std::string> &cmd, std::vector<std::string> &output);
 
 private:
     StorageDaemonAdapter();
