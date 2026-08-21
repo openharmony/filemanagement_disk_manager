@@ -199,7 +199,6 @@ private:
                                  const std::string &blockVolId);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
-    bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
     int32_t MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath);
 
     /**
