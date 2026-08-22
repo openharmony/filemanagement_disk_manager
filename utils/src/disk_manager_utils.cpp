@@ -36,6 +36,7 @@ constexpr char FILE_SEPARATOR_CHAR = '/';
 constexpr size_t VOL_PREFIX_LEN = 4;
 constexpr size_t DISK_PREFIX_LEN = 5;
 constexpr size_t UUID_MAX_LEN = 128;
+constexpr size_t UUID_DEDUP_SUFFIX_MAX_DIGITS = 4;
 
 constexpr size_t UUID_BYTES = 16;
 constexpr int BITS_PER_BYTE = 8;
@@ -246,6 +247,16 @@ bool IsUuidValid(const std::string &uuid)
 {
     if (IsFilePathInvalid(uuid)) {
         LOGE("IsUuidValid: uuid path traversal detected");
+        return false;
+    }
+    size_t sep = uuid.rfind(UUID_SEQ_SEPARATOR);
+    if (sep != std::string::npos) {
+        std::string base = uuid.substr(0, sep);
+        std::string suffix = uuid.substr(sep + 1);
+        if (IsPureDigitsInRange(suffix, 1, UUID_DEDUP_SUFFIX_MAX_DIGITS) && base.size() <= UUID_MAX_LEN) {
+            return true;
+        }
+        LOGE("IsUuidValid: invalid resolved uuid, len=%{public}zu", uuid.size());
         return false;
     }
     if (uuid.size() > UUID_MAX_LEN) {

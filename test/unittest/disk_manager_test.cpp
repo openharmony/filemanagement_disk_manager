@@ -32,6 +32,7 @@
 #include "disk.h"
 #include "volume_external.h"
 #include "volume_core.h"
+#include "disk_manager_utils.h"
 #include "partition_types.h"
 #include "storage_spec_models.h"
 #include "disk_manager_errno.h"
@@ -52,6 +53,8 @@ using namespace testing::ext;
 namespace {
 const int64_t SIZE = 4096;
 const uint32_t VALUESIZE = 5;
+
+constexpr uint32_t FILLED_SEQ_MAX = 1000;
 
 Disk MakeUsbDisk(const std::string &diskId = "disk-8-1")
 {
@@ -674,6 +677,214 @@ HWTEST_F(DiskManagerTest, UpdateVolumeMetadata_TestCase_002, TestSize.Level0)
 }
 
 /**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_001
+ * @tc.desc: UpdateVolumeMetadata keeps original uuid when no duplicate exists.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-70-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-70-1", "disk-70-1", "", UNMOUNTED));
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-70-1", "same-uuid", "vfat", "label"), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-70-1", out), E_OK);
+    EXPECT_EQ(out.GetUuid(), "same-uuid");
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_001 End";
+}
+
+/**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_002
+ * @tc.desc: Two volumes with same uuid, second gets _1 suffix; both mount paths differ.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-71-1"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-71-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-71-1", "disk-71-1", "", UNMOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-71-2", "disk-71-2", "", UNMOUNTED));
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-71-1", "same-uuid", "vfat", "label"), E_OK);
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-71-2", "same-uuid", "vfat", "label"), E_OK);
+    VolumeExternal outA;
+    VolumeExternal outB;
+    dm.GetVolumeById("vol-71-1", outA);
+    dm.GetVolumeById("vol-71-2", outB);
+    EXPECT_EQ(outA.GetUuid(), "same-uuid");
+    EXPECT_EQ(outB.GetUuid(), "same-uuid_1");
+    EXPECT_NE(outA.GetUuid(), outB.GetUuid());
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_002 End";
+}
+
+/**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_003
+ * @tc.desc: Three volumes with same uuid get _1 and _2 suffixes.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-72-1"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-72-2"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-72-3"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-72-1", "disk-72-1", "", UNMOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-72-2", "disk-72-2", "", UNMOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-72-3", "disk-72-3", "", UNMOUNTED));
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-72-1", "same-uuid", "vfat", "label"), E_OK);
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-72-2", "same-uuid", "vfat", "label"), E_OK);
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-72-3", "same-uuid", "vfat", "label"), E_OK);
+    VolumeExternal outA;
+    VolumeExternal outB;
+    VolumeExternal outC;
+    dm.GetVolumeById("vol-72-1", outA);
+    dm.GetVolumeById("vol-72-2", outB);
+    dm.GetVolumeById("vol-72-3", outC);
+    EXPECT_EQ(outA.GetUuid(), "same-uuid");
+    EXPECT_EQ(outB.GetUuid(), "same-uuid_1");
+    EXPECT_EQ(outC.GetUuid(), "same-uuid_2");
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_003 End";
+}
+
+/**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_004
+ * @tc.desc: Removed middle volume's seq is reused by next same-uuid volume (fill hole).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-73-1"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-73-2"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-73-3"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-73-4"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-73-1", "disk-73-1", "", UNMOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-73-2", "disk-73-2", "", UNMOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-73-3", "disk-73-3", "", UNMOUNTED));
+    dm.UpdateVolumeMetadata("vol-73-1", "same-uuid", "vfat", "label");
+    dm.UpdateVolumeMetadata("vol-73-2", "same-uuid", "vfat", "label");
+    dm.UpdateVolumeMetadata("vol-73-3", "same-uuid", "vfat", "label");
+    dm.OnVolumeDestroyed("vol-73-2");
+    dm.OnVolumeCreated(MakeUsbVolume("vol-73-4", "disk-73-4", "", UNMOUNTED));
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-73-4", "same-uuid", "vfat", "label"), E_OK);
+    VolumeExternal outD;
+    dm.GetVolumeById("vol-73-4", outD);
+    EXPECT_EQ(outD.GetUuid(), "same-uuid_1");
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_004 End";
+}
+
+/**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_005
+ * @tc.desc: Re-UpdateVolumeMetadata on volume already holding _1 keeps _1 (self excluded).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-74-1"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-74-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-74-1", "disk-74-1", "", UNMOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-74-2", "disk-74-2", "", UNMOUNTED));
+    dm.UpdateVolumeMetadata("vol-74-1", "same-uuid", "vfat", "label");
+    dm.UpdateVolumeMetadata("vol-74-2", "same-uuid", "vfat", "label");
+    VolumeExternal outB;
+    dm.GetVolumeById("vol-74-2", outB);
+    EXPECT_EQ(outB.GetUuid(), "same-uuid_1");
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-74-2", "same-uuid", "vfat", "label"), E_OK);
+    dm.GetVolumeById("vol-74-2", outB);
+    EXPECT_EQ(outB.GetUuid(), "same-uuid_1");
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_005 End";
+}
+
+/**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_006
+ * @tc.desc: EnsureFsUuidReady fallback re-query dedups raw uuid to _1 suffix.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-75-1"));
+    dm.OnDiskCreated(MakeUsbDisk("disk-75-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-75-1", "disk-75-1", "same-uuid", MOUNTED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-75-2", "disk-75-2", "", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("same-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Mount("vol-75-2"), E_OK);
+    VolumeExternal outB;
+    dm.GetVolumeById("vol-75-2", outB);
+    EXPECT_EQ(outB.GetUuid(), "same-uuid_1");
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_006 End";
+}
+
+/**
+ * @tc.name: ResolveDuplicateFsUuid_TestCase_007
+ * @tc.desc: Filling a large seq range, dedup resolves to the next free seq beyond it (no artificial cap).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, ResolveDuplicateFsUuid_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    {
+        std::unique_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
+        VolumeExternal primary(VolumeCore("vol-exh-0", EXTERNAL, "disk-exh"));
+        primary.SetFsUuid("same-uuid");
+        dm.volumeMap_["vol-exh-0"] = primary;
+        for (uint32_t i = 1; i <= FILLED_SEQ_MAX; ++i) {
+            VolumeExternal v(VolumeCore("vol-exh-" + std::to_string(i), EXTERNAL, "disk-exh"));
+            v.SetFsUuid("same-uuid_" + std::to_string(i));
+            dm.volumeMap_["vol-exh-" + std::to_string(i)] = v;
+        }
+        VolumeExternal target(VolumeCore("vol-exh-new", EXTERNAL, "disk-exh"));
+        dm.volumeMap_["vol-exh-new"] = target;
+    }
+    EXPECT_EQ(dm.UpdateVolumeMetadata("vol-exh-new", "same-uuid", "vfat", "label"), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-exh-new", out);
+    EXPECT_EQ(out.GetUuid(), "same-uuid_1001");
+    GTEST_LOG_(INFO) << "ResolveDuplicateFsUuid_TestCase_007 End";
+}
+
+/**
+ * @tc.name: IsUuidValid_Resolved_TestCase_001
+ * @tc.desc: IsUuidValid accepts physical uuid and dedup-resolved base_<digits>, rejects malformed/empty/overlong.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsUuidValid_Resolved_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsUuidValid_Resolved_TestCase_001 Start";
+    EXPECT_TRUE(IsUuidValid("550e8400-e29b-41d4-a716-446655440000"));
+    EXPECT_TRUE(IsUuidValid("same-uuid"));
+    EXPECT_TRUE(IsUuidValid("same-uuid_1"));
+    EXPECT_TRUE(IsUuidValid("same-uuid_1000"));
+    EXPECT_TRUE(IsUuidValid(std::string(128, 'a') + "_1"));
+    EXPECT_FALSE(IsUuidValid(""));
+    EXPECT_FALSE(IsUuidValid("same-uuid_"));
+    EXPECT_FALSE(IsUuidValid("same-uuid_abc"));
+    EXPECT_FALSE(IsUuidValid("foo_bar"));
+    EXPECT_FALSE(IsUuidValid("same-uuid_10000"));
+    EXPECT_FALSE(IsUuidValid(std::string(129, 'a') + "_1"));
+    GTEST_LOG_(INFO) << "IsUuidValid_Resolved_TestCase_001 End";
+}
+
+/**
  * @tc.name: SetVolumeDiscState_TestCase_001
  * @tc.desc: Set disc state for non-existent volume returns E_NON_EXIST.
  * @tc.type: FUNC
@@ -1087,6 +1298,31 @@ HWTEST_F(DiskManagerTest, Format_TestCase_006, TestSize.Level0)
     EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Format("vol-28-6", "vfat"), E_OK);
     GTEST_LOG_(INFO) << "Format_TestCase_006 End";
+}
+
+/**
+ * @tc.name: DedupFsUuid_Format_TestCase_001
+ * @tc.desc: Format path dedups new uuid when it collides with another volume's uuid.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, DedupFsUuid_Format_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DedupFsUuid_Format_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-76-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-76-1", "disk-76-1", "same-uuid", MOUNTED));
+    dm.OnDiskCreated(MakeUsbDisk("disk-76-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-76-2", "disk-76-2", "uuid-fmt-old", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("same-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_EQ(dm.Format("vol-76-2", "vfat"), E_OK);
+    VolumeExternal outB;
+    dm.GetVolumeById("vol-76-2", outB);
+    EXPECT_EQ(outB.GetUuid(), "same-uuid_1");
+    GTEST_LOG_(INFO) << "DedupFsUuid_Format_TestCase_001 End";
 }
 
 /**
