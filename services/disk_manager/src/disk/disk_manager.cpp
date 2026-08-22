@@ -427,6 +427,31 @@ int32_t DiskManager::LookupVolumeByUuidUnlocked(const std::string &fsUuid, Volum
     return E_NON_EXIST;
 }
 
+bool DiskManager::IsUuidOccupiedUnlocked(const std::string &volumeId, const std::string &uuid) const
+{
+    for (const auto &kv : volumeMap_) {
+        if (kv.first != volumeId && kv.second.GetUuid() == uuid) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string DiskManager::DedupFsUuidUnlocked(const std::string &volumeId, const std::string &fsUuid) const
+{
+    if (!IsUuidOccupiedUnlocked(volumeId, fsUuid)) {
+        return fsUuid;
+    }
+    for (uint32_t seq = 1; ; ++seq) {
+        const std::string candidate = fsUuid + UUID_SEQ_SEPARATOR + std::to_string(seq);
+        if (!IsUuidOccupiedUnlocked(volumeId, candidate)) {
+            LOGI("DedupFsUuidUnlocked: uuid duplicated, resolved volId=%{public}s to %{public}s",
+                 volumeId.c_str(), GetAnonyString(candidate).c_str());
+            return candidate;
+        }
+    }
+}
+
 std::string DiskManager::GetVolumePath(const std::string &volumeUuid)
 {
     std::shared_lock<std::shared_mutex> readlock(volumeMapMutex_);
@@ -503,6 +528,14 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
         LOGE("EnsureFsUuidReady: uuid is invalid volId=%{public}s uuid=%{public}s",
              volExternal.GetId().c_str(), GetAnonyString(uuid).c_str());
         return E_PARAMS_INVALID;
+    }
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        uuid = DedupFsUuidUnlocked(volExternal.GetId(), uuid);
+        auto it = volumeMap_.find(volExternal.GetId());
+        if (it != volumeMap_.end()) {
+            it->second.SetFsUuid(uuid);
+        }
     }
     volExternal.SetFsUuid(uuid);
     outFsUuid = uuid;
@@ -1441,11 +1474,12 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
         return E_NON_EXIST;
     }
     VolumeExternal &volExternal = it->second;
-    volExternal.SetFsUuid(fsUuid);
+    const std::string resolvedUuid = DedupFsUuidUnlocked(volumeId, fsUuid);
+    volExternal.SetFsUuid(resolvedUuid);
     volExternal.SetFsType(volExternal.GetFsTypeByStr(fsTypeStr));
     volExternal.SetDescription(description);
     LOGI("Updated metadata for volume %{public}s: uuid=%{public}s, fsType=%{public}d, description=%{public}s",
-         volumeId.c_str(), GetAnonyString(fsUuid).c_str(),
+         volumeId.c_str(), GetAnonyString(resolvedUuid).c_str(),
          volExternal.GetFsType(), GetAnonyString(description).c_str());
     return DiskManagerErrNo::E_OK;
 }
@@ -2367,6 +2401,10 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
         LOGE("UpdateVolumeAfterFormat: uuid is invalid volId=%{public}s uuid=%{public}s",
              volumeId.c_str(), GetAnonyString(uuid).c_str());
         return E_PARAMS_INVALID;
+    }
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        uuid = DedupFsUuidUnlocked(volumeId, uuid);
     }
     UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
