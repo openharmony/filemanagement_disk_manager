@@ -24,25 +24,22 @@ namespace OHOS {
 using namespace DiskManager;
 
 namespace {
-const std::string DEFAULT_PASS_PHRASE = "secret";
 const std::string DEFAULT_TYPE = "luks";
 const std::string DEFAULT_CIPHER = "aes";
-const std::string DEFAULT_HASH = "sha256";
+const std::string DEFAULT_KEY_FILE = "/keyfile";
 } // namespace
 
 void FuzzCryptParam(const int32_t flag, Parcel &parcel)
 {
-    CryptParam cryptParam(DEFAULT_PASS_PHRASE, DEFAULT_TYPE, DEFAULT_CIPHER, flag, DEFAULT_HASH);
-    cryptParam.SetPassPhrase(DEFAULT_PASS_PHRASE);
+    CryptParam cryptParam(DEFAULT_TYPE, DEFAULT_CIPHER, flag, DEFAULT_KEY_FILE);
     cryptParam.SetType(DEFAULT_TYPE);
     cryptParam.SetCipher(DEFAULT_CIPHER);
     cryptParam.SetKeySize(flag);
-    cryptParam.SetHash(DEFAULT_HASH);
-    cryptParam.GetPassPhrase();
+    cryptParam.SetKeyFile(DEFAULT_KEY_FILE);
     cryptParam.GetType();
     cryptParam.GetCipher();
     cryptParam.GetKeySize();
-    cryptParam.GetHash();
+    cryptParam.GetKeyFile();
     cryptParam.Marshalling(parcel);
     auto unmarshallingCryptParam = std::unique_ptr<CryptParam>(CryptParam::Unmarshalling(parcel));
 }

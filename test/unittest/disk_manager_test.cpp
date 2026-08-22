@@ -4676,7 +4676,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
     auto &dm = DiskManager::GetInstance();
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     std::vector<std::string> capturedCmd;
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _))
@@ -4691,8 +4691,8 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
     EXPECT_EQ(capturedCmd[5], "aes");
     EXPECT_EQ(capturedCmd[6], "--key-size");
     EXPECT_EQ(capturedCmd[7], "256");
-    EXPECT_EQ(capturedCmd[8], "--hash");
-    EXPECT_EQ(capturedCmd[9], "sha256");
+    EXPECT_EQ(capturedCmd[8], "--key-file");
+    EXPECT_EQ(capturedCmd[9], "/keyfile");
     EXPECT_EQ(capturedCmd[10], "/dev/block/loop0");
     EXPECT_EQ(capturedCmd[11], "mapper0");
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 End";
@@ -4708,7 +4708,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_DAEMON_IPC_FAILED);

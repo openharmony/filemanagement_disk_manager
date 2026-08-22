@@ -715,11 +715,16 @@ ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, 
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteStringVector(cmd)) {
+    if (!data.WriteInt32(static_cast<int32_t>(cmd.size()))) {
         return ERR_INVALID_DATA;
     }
+    for (const auto &s : cmd) {
+        if (!data.WriteString16(Str8ToStr16(s))) {
+            return ERR_INVALID_DATA;
+        }
+    }
     int32_t ret = Remote()->SendRequest(
-        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND), data, reply, option);
+            static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND), data, reply, option);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -727,7 +732,12 @@ ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, 
     if (res != ERR_OK) {
         return res;
     }
-    reply.ReadStringVector(&output);
+    output.clear();
+    int32_t outputSize = reply.ReadInt32();
+    output.reserve(outputSize);
+    for (int32_t i = 0; i < outputSize; ++i) {
+        output.push_back(Str16ToStr8(reply.ReadString16()));
+    }
     return ERR_OK;
 }
 } // namespace StorageDaemon

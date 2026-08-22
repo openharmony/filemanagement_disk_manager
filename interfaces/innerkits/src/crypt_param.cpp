@@ -21,19 +21,9 @@ namespace {
 constexpr size_t PARCEL_STRING_MAX_LEN = 4096;
 }
 
-CryptParam::CryptParam(const std::string &passPhrase, const std::string &type, const std::string &cipher,
-    int32_t keySize, const std::string &hash) : passPhrase_(passPhrase), type_(type), cipher_(cipher),
-    keySize_(keySize), hash_(hash) {}
-
-std::string CryptParam::GetPassPhrase() const
-{
-    return passPhrase_;
-}
-
-void CryptParam::SetPassPhrase(const std::string &passPhrase)
-{
-    passPhrase_ = passPhrase;
-}
+CryptParam::CryptParam(const std::string &type, const std::string &cipher,
+    int32_t keySize, const std::string &keyFile) : type_(type), cipher_(cipher),
+    keySize_(keySize), keyFile_(keyFile) {}
 
 std::string CryptParam::GetType() const
 {
@@ -65,21 +55,18 @@ void CryptParam::SetKeySize(int32_t keySize)
     keySize_ = keySize;
 }
 
-std::string CryptParam::GetHash() const
+std::string CryptParam::GetKeyFile() const
 {
-    return hash_;
+    return keyFile_;
 }
 
-void CryptParam::SetHash(const std::string &hash)
+void CryptParam::SetKeyFile(const std::string &keyFile)
 {
-    hash_ = hash;
+    keyFile_ = keyFile;
 }
 
 bool CryptParam::Marshalling(Parcel &parcel) const
 {
-    if (!parcel.WriteString(passPhrase_)) {
-        return false;
-    }
     if (!parcel.WriteString(type_)) {
         return false;
     }
@@ -89,7 +76,7 @@ bool CryptParam::Marshalling(Parcel &parcel) const
     if (!parcel.WriteInt32(keySize_)) {
         return false;
     }
-    if (!parcel.WriteString(hash_)) {
+    if (!parcel.WriteString(keyFile_)) {
         return false;
     }
     return true;
@@ -99,11 +86,6 @@ CryptParam *CryptParam::Unmarshalling(Parcel &parcel)
 {
     CryptParam *obj = new (std::nothrow) CryptParam();
     if (obj == nullptr) {
-        return nullptr;
-    }
-    obj->passPhrase_ = parcel.ReadString();
-    if (obj->passPhrase_.size() > PARCEL_STRING_MAX_LEN) {
-        delete obj;
         return nullptr;
     }
     obj->type_ = parcel.ReadString();
@@ -117,8 +99,8 @@ CryptParam *CryptParam::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->keySize_ = parcel.ReadInt32();
-    obj->hash_ = parcel.ReadString();
-    if (obj->hash_.size() > PARCEL_STRING_MAX_LEN) {
+    obj->keyFile_ = parcel.ReadString();
+    if (obj->keyFile_.size() > PARCEL_STRING_MAX_LEN) {
         delete obj;
         return nullptr;
     }

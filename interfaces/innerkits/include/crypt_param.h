@@ -27,29 +27,26 @@ namespace DiskManager {
 class CryptParam : public Parcelable {
 public:
     CryptParam() = default;
-    CryptParam(const std::string &passPhrase, const std::string &type, const std::string &cipher,
-               int32_t keySize, const std::string &hash);
+    CryptParam(const std::string &type, const std::string &cipher,
+               int32_t keySize, const std::string &keyFile);
 
-    std::string GetPassPhrase() const;
-    void SetPassPhrase(const std::string &passPhrase);
     std::string GetType() const;
     void SetType(const std::string &type);
     std::string GetCipher() const;
     void SetCipher(const std::string &cipher);
     int32_t GetKeySize() const;
     void SetKeySize(int32_t keySize);
-    std::string GetHash() const;
-    void SetHash(const std::string &hash);
+    std::string GetKeyFile() const;
+    void SetKeyFile(const std::string &keyFile);
 
     bool Marshalling(Parcel &parcel) const override;
     static CryptParam *Unmarshalling(Parcel &parcel);
 
 private:
-    std::string passPhrase_;
     std::string type_;
     std::string cipher_;
     int32_t keySize_ {0};
-    std::string hash_;
+    std::string keyFile_;
 };
 
 } // namespace DiskManager

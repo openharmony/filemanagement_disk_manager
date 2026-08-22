@@ -2696,7 +2696,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_PermissionDenied_001, Test
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_PERMISSION_DENIED);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_001 End";
 }
@@ -2713,7 +2713,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_PermissionDenied_002, Test
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2731,7 +2731,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidLoopPath_001, TestS
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "", "mapper0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_001 End";
@@ -2748,7 +2748,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidLoopPath_002, TestS
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/mnt/data/sda1", "mapper0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_002 End";
@@ -2765,7 +2765,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_001, Tes
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", ""), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_001 End";
@@ -2782,7 +2782,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_002, Tes
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper-0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_002 End";
@@ -2799,7 +2799,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_003, Tes
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", std::string(129, 'a')), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_003 End";
@@ -2816,7 +2816,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_001, TestSize.Lev
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _)).WillOnce(Return(E_OK));
     int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
     EXPECT_EQ(ret, E_OK);
@@ -2835,7 +2835,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_002, TestSize.Lev
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
@@ -2854,7 +2854,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_NotSupport_001, TestSize.L
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_NotSupport_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_NOT_SUPPORT);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_NotSupport_001 End";
 }
