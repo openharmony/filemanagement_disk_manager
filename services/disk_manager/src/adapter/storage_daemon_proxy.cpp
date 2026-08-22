@@ -724,7 +724,7 @@ ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, 
         }
     }
     int32_t ret = Remote()->SendRequest(
-            static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND), data, reply, option);
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND), data, reply, option);
     if (ret != ERR_OK) {
         return ret;
     }
