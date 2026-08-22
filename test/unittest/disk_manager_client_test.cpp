@@ -1158,7 +1158,7 @@ HWTEST_F(DiskManagerClientTest, CreateDmCryptVolumeTest001, TestSize.Level1)
 
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "sha256");
     int32_t ret = client.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0");
     EXPECT_NE(ret, E_OK);
 
@@ -1179,7 +1179,7 @@ HWTEST_F(DiskManagerClientTest, CreateDmCryptVolumeTest002, TestSize.Level1)
     EXPECT_CALL(*dmStubMock_, CreateDmCryptVolume(_, _, _)).WillOnce(Return(E_OK));
     DiskManagerClient &client = DiskManagerClient::GetInstance();
     client.ResetProxy();
-    CryptParam param("secret", "luks", "aes", 256, "sha256");
+    CryptParam param("luks", "aes", 256, "sha256");
     EXPECT_EQ(client.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
 
     GTEST_LOG_(INFO) << "CreateDmCryptVolumeTest002 End";
