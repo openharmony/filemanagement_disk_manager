@@ -2602,6 +2602,9 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
         LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
         return dfx.Finish(ret);
     }
+    for (const auto &item: output) {
+        LOGE("exec output: %{public}s", item.c_str());
+    }
     if (execRet != DiskManagerErrNo::E_OK) {
         LOGE("CreateDmCryptVolume command failed, execRet=%{public}d", execRet);
         return dfx.Finish(DiskManagerErrNo::E_CREATE_DM_CRYPT_VOLUME_FAILED);
