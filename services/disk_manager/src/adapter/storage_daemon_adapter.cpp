@@ -538,14 +538,15 @@ int32_t StorageDaemonAdapter::BindBlockLoopDev(const std::string &sysPath, uint6
     return ret;
 }
 
-int32_t StorageDaemonAdapter::ExecuteCommand(const std::vector<std::string> &cmd, std::vector<std::string> &output)
+int32_t StorageDaemonAdapter::ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
+                                                std::vector<std::string> &output)
 {
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("ExecuteCommand exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->ExecuteCommand(cmd, output);
+    const int32_t ret = storageDaemon_->ExecuteCommand(cmd, execRet, output);
     LOGI("ExecuteCommand exit ret=%{public}d", ret);
     return ret;
 }

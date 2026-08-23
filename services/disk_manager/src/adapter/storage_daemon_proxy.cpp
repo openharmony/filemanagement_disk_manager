@@ -707,7 +707,8 @@ ErrCode StorageDaemonProxy::BindBlockLoopDev(const std::string &sysPath, uint64_
     return ERR_OK;
 }
 
-ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, std::vector<std::string> &output)
+ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
+                                             std::vector<std::string> &output)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -732,6 +733,7 @@ ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, 
     if (res != ERR_OK) {
         return res;
     }
+    execRet = reply.ReadInt32();
     output.clear();
     int32_t outputSize = reply.ReadInt32();
     output.reserve(outputSize);

@@ -2932,9 +2932,11 @@ HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_001 Start";
 
+    std::vector<std::string> cmd = {"cryptsetup", "open"};
+    int32_t execRet = 0;
     std::vector<std::string> output;
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->ExecuteCommand({"cryptsetup", "open", "/dev/block/loop0", "mapper0"}, output);
+    int32_t ret = proxy_->ExecuteCommand(cmd, execRet, output);
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
 
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_001 End";
@@ -2942,17 +2944,19 @@ HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: ExecuteCommand_TestCase_002
- * @tc.desc: ExecuteCommand: WriteStringVector returns false.
+ * @tc.desc: ExecuteCommand: WriteInt32 (cmd size) returns false.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_002 Start";
 
+    std::vector<std::string> cmd = {"cryptsetup", "open"};
+    int32_t execRet = 0;
     std::vector<std::string> output;
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->ExecuteCommand({"cryptsetup", "open", "/dev/block/loop0", "mapper0"}, output);
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(false));
+    int32_t ret = proxy_->ExecuteCommand(cmd, execRet, output);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_002 End";
@@ -2967,14 +2971,17 @@ HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_003, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_003 Start";
 
+    std::vector<std::string> cmd = {"cryptsetup", "open"};
+    int32_t execRet = 0;
     std::vector<std::string> output;
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND),
                             _, _, _))
         .WillOnce(Return(IPC_FAILED));
-    int32_t ret = proxy_->ExecuteCommand({"cryptsetup", "open", "/dev/block/loop0", "mapper0"}, output);
+    int32_t ret = proxy_->ExecuteCommand(cmd, execRet, output);
     EXPECT_EQ(ret, IPC_FAILED);
 
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_003 End";
@@ -2982,19 +2989,22 @@ HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_003, TestSize.Level0)
 
 /**
  * @tc.name: ExecuteCommand_TestCase_004
- * @tc.desc: ExecuteCommand: reply ReadInt32 is not ERR_OK.
+ * @tc.desc: ExecuteCommand: reply ReadInt32 (res) is not ERR_OK.
  * @tc.type: FUNC
  */
 HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_004, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_004 Start";
 
+    std::vector<std::string> cmd = {"cryptsetup", "open"};
+    int32_t execRet = 0;
     std::vector<std::string> output;
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
     EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
-    int32_t ret = proxy_->ExecuteCommand({"cryptsetup", "open", "/dev/block/loop0", "mapper0"}, output);
+    int32_t ret = proxy_->ExecuteCommand(cmd, execRet, output);
     EXPECT_EQ(ret, REMOTE_FAILED);
 
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_004 End";
@@ -3009,21 +3019,23 @@ HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_005, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_005 Start";
 
-    std::vector<std::string> inputCmd = {"cryptsetup", "open", "--type", "luks", "/dev/block/loop0", "mapper0"};
-    std::vector<std::string> capturedCmd;
+    std::vector<std::string> cmd = {"cryptsetup", "open"};
+    int32_t execRet = 0;
     std::vector<std::string> output;
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteStringVector(_))
-        .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(true)));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND),
                             _, _, _))
         .WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(*messageParcelMock_, ReadStringVector(_)).WillOnce(Return(true));
-    int32_t ret = proxy_->ExecuteCommand(inputCmd, output);
+    EXPECT_CALL(*messageParcelMock_, ReadInt32())
+        .Times(3)
+        .WillOnce(Return(ERR_OK))
+        .WillOnce(Return(0))
+        .WillOnce(Return(0));
+    int32_t ret = proxy_->ExecuteCommand(cmd, execRet, output);
     EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(capturedCmd, inputCmd);
 
     GTEST_LOG_(INFO) << "ExecuteCommand_TestCase_005 End";
 }

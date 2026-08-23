@@ -69,7 +69,7 @@ public:
     MOCK_METHOD2(GetDiskSize, ErrCode(const std::string &devName, uint64_t &size));
     MOCK_METHOD4(BindBlockLoopDev, ErrCode(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                            std::string &loopPath));
-    MOCK_METHOD2(ExecuteCommand, ErrCode(const std::vector<std::string> &, std::vector<std::string> &));
+    MOCK_METHOD3(ExecuteCommand, ErrCode(const std::vector<std::string> &, int32_t &, std::vector<std::string> &));
 };
 
 } // namespace DiskManager

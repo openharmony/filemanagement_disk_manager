@@ -2596,10 +2596,15 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
                                     "--key-size", std::to_string(param.GetKeySize()),
                                     "--key-file", param.GetKeyFile(), loopPath, mapperName};
     std::vector<std::string> output;
-    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, output);
+    int32_t execRet = 0;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
         return dfx.Finish(ret);
+    }
+    if (execRet != DiskManagerErrNo::E_OK) {
+        LOGE("CreateDmCryptVolume command failed, execRet=%{public}d", execRet);
+        return dfx.Finish(DiskManagerErrNo::E_CREATE_DM_CRYPT_VOLUME_FAILED);
     }
     LOGI("CreateDmCryptVolume success");
     return dfx.Finish(DiskManagerErrNo::E_OK);
