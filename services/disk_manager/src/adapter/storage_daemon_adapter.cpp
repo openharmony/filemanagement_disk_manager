@@ -539,7 +539,7 @@ int32_t StorageDaemonAdapter::BindBlockLoopDev(const std::string &sysPath, uint6
 }
 
 int32_t StorageDaemonAdapter::ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
-                                                std::vector<std::string> &output)
+                                             std::vector<std::string> &output)
 {
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {

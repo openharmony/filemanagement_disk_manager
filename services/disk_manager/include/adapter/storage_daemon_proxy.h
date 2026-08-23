@@ -74,7 +74,7 @@ public:
     ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
     ErrCode ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
-                            std::vector<std::string> &output) override;
+                           std::vector<std::string> &output) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

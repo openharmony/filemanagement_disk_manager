@@ -122,7 +122,7 @@ public:
     virtual ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                      std::string &loopPath) = 0;
     virtual ErrCode ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
-                                    std::vector<std::string> &output) = 0;
+                                   std::vector<std::string> &output) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };
