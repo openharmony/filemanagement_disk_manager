@@ -79,6 +79,8 @@ public:
                              std::string &loopPath) override;
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
                                 const std::string &mapperName) override;
+    int32_t DestroyDmCryptVolume(const std::string &mapperName) override;
+    int32_t UnbindBlockLoopDev(const std::string &loopPath) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);

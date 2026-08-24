@@ -579,5 +579,29 @@ int32_t DiskManagerClient::CreateDmCryptVolume(const CryptParam &param, const st
     IDiskManager &dm = *proxy;
     return dm.CreateDmCryptVolume(param, loopPath, mapperName);
 }
+
+int32_t DiskManagerClient::DestroyDmCryptVolume(const std::string &mapperName)
+{
+    LOGI("DestroyDmCryptVolume mapperName=%{public}s", mapperName.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.DestroyDmCryptVolume(mapperName);
+}
+
+int32_t DiskManagerClient::UnbindBlockLoopDev(const std::string &loopPath)
+{
+    LOGI("UnbindBlockLoopDev loopPath=%{public}s", loopPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.UnbindBlockLoopDev(loopPath);
+}
 } // namespace DiskManager
 } // namespace OHOS

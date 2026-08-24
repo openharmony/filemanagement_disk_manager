@@ -42,6 +42,8 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 15] void BindBlockLoopDev([in] String sysPath, [in] unsigned long offset, [in] unsigned long sizeLimit,
                                        [out] String loopPath);
     [ipccode 16] void CreateDmCryptVolume([in] CryptParam param, [in] String loopPath, [in] String mapperName);
+    [ipccode 17] void DestroyDmCryptVolume([in] String mapperName);
+    [ipccode 18] void UnbindBlockLoopDev([in] String loopPath);
 
     /* ---------- storage_daemon 转发 block/disk 级 uevent（已由 daemon 过滤 DEVTYPE=disk） ---------- */
     [ipccode 39] void OnBlockDiskUevent([in] String rawUeventMsg);
