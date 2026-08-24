@@ -55,7 +55,7 @@ enum class IStorageDaemonIpcCode {
     ADDON_VERIFY_BURN_DATA = 259,
     ADDON_GET_DISK_SIZE = 261,
     ADDON_BIND_BLOCK_LOOP_DEV = 262,
-    ADDON_CREATE_DM_LINEAR = 263,
+    ADDON_CREATE_DM_LINEAR = 264,
 };
 
 class IStorageDaemon : public IRemoteBroker {
