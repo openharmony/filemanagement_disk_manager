@@ -17,6 +17,7 @@
 #define OHOS_FILEMANAGEMENT_DISK_MANAGER_PROVIDER_H
 
 #include "disk_manager_stub.h"
+#include "crypt_param.h"
 #include "partition_types.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
@@ -76,6 +77,8 @@ public:
     // crypto disk inner APIs
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
+    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                const std::string &mapperName) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);

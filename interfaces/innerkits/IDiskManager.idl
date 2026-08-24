@@ -18,6 +18,7 @@ sequenceable PartitionTypes..OHOS.DiskManager.PartitionInfo;
 sequenceable PartitionTypes..OHOS.DiskManager.PartitionTableInfo;
 sequenceable PartitionTypes..OHOS.DiskManager.PartitionParams;
 sequenceable PartitionTypes..OHOS.DiskManager.FormatParams;
+sequenceable CryptParam..OHOS.DiskManager.CryptParam;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeCore;
 sequenceable VolumeExternal..OHOS.DiskManager.VolumeExternal;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
@@ -40,6 +41,7 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 14] void QueryUsbIsInUse([in] String diskPath, [out] boolean isInUse);
     [ipccode 15] void BindBlockLoopDev([in] String sysPath, [in] unsigned long offset, [in] unsigned long sizeLimit,
                                        [out] String loopPath);
+    [ipccode 16] void CreateDmCryptVolume([in] CryptParam param, [in] String loopPath, [in] String mapperName);
 
     /* ---------- storage_daemon 转发 block/disk 级 uevent（已由 daemon 过滤 DEVTYPE=disk） ---------- */
     [ipccode 39] void OnBlockDiskUevent([in] String rawUeventMsg);

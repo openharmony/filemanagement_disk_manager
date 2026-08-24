@@ -19,6 +19,7 @@
 #include "storage_spec_models.h"
 
 #include "disk.h"
+#include "crypt_param.h"
 #include "partition_types.h"
 #include "volume_external.h"
 #include "adapter/pc_encryption_adapter.h"
@@ -109,6 +110,8 @@ public:
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
+    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                const std::string &mapperName);
 
 private:
     DiskManager();

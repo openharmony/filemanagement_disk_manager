@@ -2685,6 +2685,181 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
 }
 
+#ifdef PC_MANAGER
+/**
+ * @tc.name: CreateDmCryptVolume_PermissionDenied_001
+ * @tc.desc: CreateDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_PERMISSION_DENIED);
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_PermissionDenied_002
+ * @tc.desc: CreateDmCryptVolume returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_InvalidLoopPath_001
+ * @tc.desc: CreateDmCryptVolume returns E_PARAMS_INVALID when loopPath is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidLoopPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "", "mapper0"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_001 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_InvalidLoopPath_002
+ * @tc.desc: CreateDmCryptVolume returns E_PARAMS_INVALID when loopPath prefix is not /dev/block/.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidLoopPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/mnt/data/sda1", "mapper0"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_002 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_InvalidMapperName_001
+ * @tc.desc: CreateDmCryptVolume returns E_PARAMS_INVALID when mapperName is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", ""), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_001 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_InvalidMapperName_002
+ * @tc.desc: CreateDmCryptVolume returns E_PARAMS_INVALID when mapperName contains non-alphanumeric chars.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper-0"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_002 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_InvalidMapperName_003
+ * @tc.desc: CreateDmCryptVolume returns E_PARAMS_INVALID when mapperName length exceeds 128.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", std::string(129, 'a')), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_003 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_TestCase_001
+ * @tc.desc: CreateDmCryptVolume delegates to DiskManager and returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _)).WillOnce(Return(E_OK));
+    int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
+    EXPECT_EQ(ret, E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: CreateDmCryptVolume_TestCase_002
+ * @tc.desc: CreateDmCryptVolume returns E_CREATE_DM_CRYPT_VOLUME_FAILED when adapter returns error.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
+    EXPECT_EQ(ret, E_CREATE_DM_CRYPT_VOLUME_FAILED);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
+}
+#else
+/**
+ * @tc.name: CreateDmCryptVolume_NotSupport_001
+ * @tc.desc: CreateDmCryptVolume returns E_NOT_SUPPORT when PC_MANAGER is disabled.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    CryptParam param("luks", "aes", 256, "/keyfile");
+    EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_NOT_SUPPORT);
+    GTEST_LOG_(INFO) << "CreateDmCryptVolume_NotSupport_001 End";
+}
+#endif
+
 } // namespace DiskManager
 } // namespace OHOS
 

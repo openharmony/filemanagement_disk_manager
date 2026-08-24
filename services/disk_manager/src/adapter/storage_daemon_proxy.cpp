@@ -715,5 +715,41 @@ ErrCode StorageDaemonProxy::BindBlockLoopDev(const std::string &sysPath, uint64_
     loopPath = Str16ToStr8(reply.ReadString16());
     return ERR_OK;
 }
+
+ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
+                                           std::vector<std::string> &output)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteInt32(static_cast<int32_t>(cmd.size()))) {
+        return ERR_INVALID_DATA;
+    }
+    for (const auto &s : cmd) {
+        if (!data.WriteString16(Str8ToStr16(s))) {
+            return ERR_INVALID_DATA;
+        }
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_EXECUTE_COMMAND), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    execRet = reply.ReadInt32();
+    output.clear();
+    int32_t outputSize = reply.ReadInt32();
+    output.reserve(outputSize);
+    for (int32_t i = 0; i < outputSize; ++i) {
+        output.push_back(Str16ToStr8(reply.ReadString16()));
+    }
+    return ERR_OK;
+}
 } // namespace StorageDaemon
 } // namespace OHOS

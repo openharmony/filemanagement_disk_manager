@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <iremote_broker.h>
 #include <string>
+#include <vector>
 
 namespace OHOS {
 namespace StorageDaemon {
@@ -55,6 +56,7 @@ enum class IStorageDaemonIpcCode {
     ADDON_VERIFY_BURN_DATA = 259,
     ADDON_GET_DISK_SIZE = 261,
     ADDON_BIND_BLOCK_LOOP_DEV = 262,
+    ADDON_EXECUTE_COMMAND = 263,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -120,6 +122,8 @@ public:
     virtual ErrCode GetDiskSize(const std::string &devName, uint64_t &size) = 0;
     virtual ErrCode BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                      std::string &loopPath) = 0;
+    virtual ErrCode ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
+                                   std::vector<std::string> &output) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

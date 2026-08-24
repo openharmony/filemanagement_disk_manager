@@ -2585,5 +2585,34 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &sysPath, uint64_t offse
     LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
+
+int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                         const std::string &mapperName)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDevPath(loopPath);
+    IpcDfxScope dfx("DiskManager::CreateDmCryptVolume", DFX_STAGE_CREATE_DM_CRYPT_VOLUME,
+                    VolumeOpType::CREATE_DM_CRYPT_VOLUME, reportInfo);
+    std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
+                                    "--cipher", param.GetCipher(),
+                                    "--key-size", std::to_string(param.GetKeySize()),
+                                    "--key-file", param.GetKeyFile(), loopPath, mapperName};
+    std::vector<std::string> output;
+    int32_t execRet = 0;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
+        return dfx.Finish(ret);
+    }
+    for (const auto &item: output) {
+        LOGE("exec output: %{public}s", item.c_str());
+    }
+    if (execRet != DiskManagerErrNo::E_OK) {
+        LOGE("CreateDmCryptVolume command failed, execRet=%{public}d", execRet);
+        return dfx.Finish(DiskManagerErrNo::E_CREATE_DM_CRYPT_VOLUME_FAILED);
+    }
+    LOGI("CreateDmCryptVolume success");
+    return dfx.Finish(DiskManagerErrNo::E_OK);
+}
 } // namespace DiskManager
 } // namespace OHOS

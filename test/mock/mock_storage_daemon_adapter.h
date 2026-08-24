@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -83,6 +84,7 @@ public:
     MOCK_METHOD(int32_t, GetDiskSize, (const std::string &devName, uint64_t &size));
     MOCK_METHOD(int32_t, BindBlockLoopDev, (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                             std::string &loopPath));
+    MOCK_METHOD(int32_t, ExecuteCommand, (const std::vector<std::string> &, int32_t &, std::vector<std::string> &));
 
     static MockStorageDaemonAdapter *mockInstance_;
 };

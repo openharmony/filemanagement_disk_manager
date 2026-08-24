@@ -69,7 +69,8 @@
               "volume_core.h",
               "volume_external.h",
               "partition_types.h",
-              "block_info.h"
+              "block_info.h",
+              "crypt_param.h"
             ],
             "header_base": "//foundation/filemanagement/disk_manager/interfaces/innerkits/include"
           }

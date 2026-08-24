@@ -17,6 +17,7 @@
 
 #include <cinttypes>
 #include <climits>
+#include <regex>
 #include <sstream>
 
 #include <iservice_registry.h>
@@ -31,6 +32,7 @@
 #include "ipc_caller_auth.h"
 #include "ipc_skeleton.h"
 #include "partition_types.h"
+#include "crypt_param.h"
 #include "storage_daemon_adapter.h"
 #include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
@@ -863,6 +865,40 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64
         return E_BIND_LOOP_DEV_FAILED;
     }
     return E_OK;
+}
+
+int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                                 const std::string &mapperName)
+{
+    LOGI("CreateDmCryptVolume loopPath=%{public}s mapperName=%{public}s", loopPath.c_str(), mapperName.c_str());
+#ifdef PC_MANAGER
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("CreateDmCryptVolume: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    if (loopPath.empty() || IsFilePathInvalid(loopPath) || loopPath.find("/dev/block/") != 0) {
+        LOGE("CreateDmCryptVolume: loopPath is invalid");
+        return E_PARAMS_INVALID;
+    }
+    static const std::regex mapperNamePattern(R"(^[A-Za-z0-9]{1,128}$)");
+    if (!std::regex_match(mapperName, mapperNamePattern)) {
+        LOGE("CreateDmCryptVolume: mapperName is invalid");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().CreateDmCryptVolume(param, loopPath, mapperName);
+    LOGI("CreateDmCryptVolume done ret=%{public}d", ret);
+    if (ret != E_OK) {
+        return E_CREATE_DM_CRYPT_VOLUME_FAILED;
+    }
+    return E_OK;
+#else
+    LOGI("CreateDmCryptVolume: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
 }
 } // namespace DiskManager
 } // namespace OHOS
