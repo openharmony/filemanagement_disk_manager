@@ -46,7 +46,7 @@ void FormatPartitionSync(taihe::string_view diskId,
 void EraseSync(taihe::string_view volumeId);
 void EjectSync(taihe::string_view diskId);
 void CreateIsoImageSync(taihe::string_view volumeId, taihe::string_view path);
-void BurnSync(taihe::string_view volumeId, const ohos::file::volumeManager::BurnOptions &options);
+void BurnSync(taihe::string_view volumeId, uintptr_t want);
 int32_t GetOpProcessSync(taihe::string_view volumeId);
 bool IsVolumeInUseSync(taihe::string_view volumePath);
 } // namespace ANI::VolumeManager
