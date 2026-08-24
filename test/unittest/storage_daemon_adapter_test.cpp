@@ -206,7 +206,8 @@ HWTEST_F(StorageDaemonAdapterTest, DeletePartition_ErrorPath_001, TestSize.Level
 HWTEST_F(StorageDaemonAdapterTest, FormatPartition_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_NE(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_NE(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", cmd, false), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterTest, Erase_ErrorPath_001, TestSize.Level0)
@@ -252,6 +253,14 @@ HWTEST_F(StorageDaemonAdapterTest, BindBlockLoopDev_ErrorPath_001, TestSize.Leve
     auto &adapter = StorageDaemonAdapter::GetInstance();
     std::string loopPath;
     EXPECT_NE(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_OK);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, ExecuteCommand_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int32_t execRet = 0;
+    std::vector<std::string> output;
+    EXPECT_NE(adapter.ExecuteCommand({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}, execRet, output), E_OK);
 }
 
 class StorageDaemonAdapterProxyTest : public testing::Test {
@@ -482,8 +491,9 @@ HWTEST_F(StorageDaemonAdapterProxyTest, DeletePartition_Success_001, TestSize.Le
 HWTEST_F(StorageDaemonAdapterProxyTest, FormatPartition_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, FormatPartition(_, _, _, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", false), E_OK);
+    std::vector<std::string> cmd{};
+    EXPECT_CALL(*mockRemote_, FormatPartition(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.FormatPartition("/dev/block/sda1", "ext4", "volume1", cmd, false), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, Erase_Success_001, TestSize.Level0)
@@ -560,6 +570,28 @@ HWTEST_F(StorageDaemonAdapterProxyTest, BindBlockLoopDev_ErrorReturn_001, TestSi
     EXPECT_CALL(*mockRemote_, BindBlockLoopDev(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(adapter.BindBlockLoopDev("/dev/block/sda1", 0, 4096, loopPath), E_DAEMON_IPC_FAILED);
     EXPECT_TRUE(loopPath.empty());
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, ExecuteCommand_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::vector<std::string> inputCmd = {"cryptsetup", "open", "--type", "luks", "/dev/block/sda1", "mapper0"};
+    std::vector<std::string> capturedCmd;
+    int32_t execRet = 0;
+    std::vector<std::string> output;
+    EXPECT_CALL(*mockRemote_, ExecuteCommand(_, _, _)).WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
+    EXPECT_EQ(adapter.ExecuteCommand(inputCmd, execRet, output), E_OK);
+    EXPECT_EQ(capturedCmd, inputCmd);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, ExecuteCommand_ErrorReturn_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    int32_t execRet = 0;
+    std::vector<std::string> output;
+    EXPECT_CALL(*mockRemote_, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(adapter.ExecuteCommand({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}, execRet, output),
+              E_DAEMON_IPC_FAILED);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmLinear_Success_001, TestSize.Level0)

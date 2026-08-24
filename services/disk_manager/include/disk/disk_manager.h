@@ -19,6 +19,7 @@
 #include "storage_spec_models.h"
 
 #include "disk.h"
+#include "crypt_param.h"
 #include "partition_types.h"
 #include "volume_external.h"
 #include "adapter/pc_encryption_adapter.h"
@@ -100,7 +101,8 @@ public:
     int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out);
     int32_t CreatePartition(const std::string &diskId, const PartitionParams &params);
     int32_t DeletePartition(const std::string &diskId, int32_t partitionNum);
-    int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params);
+    int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params,
+                            const std::vector<std::string> &cmd);
     void NotifyPartitionDone(const std::string &diskId);
     std::string GetDiscType(const std::string &extraInfo);
     std::string GetDriverType(const std::string &extraInfo);
@@ -108,6 +110,8 @@ public:
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
+    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                const std::string &mapperName);
 
 private:
     DiskManager();
@@ -133,6 +137,10 @@ private:
 
     /** 调用方已持 volumeMapMutex_（读锁）。 */
     int32_t LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const;
+    /** 调用方已持 volumeMapMutex_（读锁或写锁）。返回去重后的 fsUuid：若与其它卷重复则改写为 原UUID_序号。 */
+    std::string DedupFsUuidUnlocked(const std::string &volumeId, const std::string &fsUuid) const;
+    /** 调用方已持 volumeMapMutex_（读锁或写锁）。判断 uuid 是否被除 volumeId 外的其它卷占用。 */
+    bool IsUuidOccupiedUnlocked(const std::string &volumeId, const std::string &uuid) const;
     std::string GetVolumePath(const std::string &volumeUuid);
     bool IsOddFsType(const std::string &fsType);
     int32_t GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
@@ -198,7 +206,6 @@ private:
                                  const std::string &blockVolId);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
-    bool CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag);
     int32_t MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath);
 
     /**

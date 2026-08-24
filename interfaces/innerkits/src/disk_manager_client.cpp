@@ -553,5 +553,31 @@ int32_t DiskManagerClient::FormatPartition(const std::string &diskId, int32_t pa
     IDiskManager &dm = *proxy;
     return dm.FormatPartition(diskId, partitionNum, params);
 }
+
+int32_t DiskManagerClient::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+                                            std::string &loopPath)
+{
+    LOGI("BindBlockLoopDev sysPath=%{public}s", sysPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
+}
+
+int32_t DiskManagerClient::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                               const std::string &mapperName)
+{
+    LOGI("CreateDmCryptVolume loopPath=%{public}s, mapperName=%{public}s", loopPath.c_str(), mapperName.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.CreateDmCryptVolume(param, loopPath, mapperName);
+}
 } // namespace DiskManager
 } // namespace OHOS

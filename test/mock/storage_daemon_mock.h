@@ -59,7 +59,8 @@ public:
     MOCK_METHOD2(GetPartitionTableInfo, ErrCode(const std::string &, std::string &));
     MOCK_METHOD5(CreatePartition, ErrCode(const std::string &, int32_t, int64_t, int64_t, const std::string &));
     MOCK_METHOD3(DeletePartitionInfo, ErrCode(const std::string &, const std::string &, int32_t));
-    MOCK_METHOD4(FormatPartition, ErrCode(const std::string &, const std::string &, const std::string &, bool));
+    MOCK_METHOD5(FormatPartition, ErrCode(const std::string &, const std::string &, const std::string &,
+                                           const std::vector<std::string> &, bool));
     MOCK_METHOD1(Erase, ErrCode(const std::string &devPath));
     MOCK_METHOD1(Eject, ErrCode(const std::string &devName));
     MOCK_METHOD4(CreateIsoImage, ErrCode(const std::string &devPath, const std::string &filePath,
@@ -69,6 +70,7 @@ public:
     MOCK_METHOD2(GetDiskSize, ErrCode(const std::string &devName, uint64_t &size));
     MOCK_METHOD4(BindBlockLoopDev, ErrCode(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                            std::string &loopPath));
+    MOCK_METHOD3(ExecuteCommand, ErrCode(const std::vector<std::string> &, int32_t &, std::vector<std::string> &));
     MOCK_METHOD4(CreateDmLinear, ErrCode(const std::string &sourceDevPath,
                                           uint64_t startSector, uint64_t sectorCount,
                                           uint64_t &dmDev));

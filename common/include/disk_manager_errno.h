@@ -46,6 +46,7 @@ enum DiskManagerErrNo : int32_t {
     E_PERMISSION_DENIED = 13600000 + 1,
     E_PARAMS_INVALID = 13600000 + 2,
     E_NON_EXIST = 13600000 + 4,
+    E_NOT_SUPPORT = 13600000 + 7,
     E_SYS_APP_PERMISSION_DENIED = 13600000 + 25,
     E_STATVFS = 13600000 + 1204,
 
@@ -77,6 +78,7 @@ enum DiskManagerErrNo : int32_t {
 
     // crypto device errno
     E_BIND_LOOP_DEV_FAILED = 13600000 + 1901,
+    E_CREATE_DM_CRYPT_VOLUME_FAILED = 13600000 + 1902,
 
 };
 

@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -68,7 +69,7 @@ public:
                 int32_t partitionNum));
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &devPath, const std::string &fsType,
-         const std::string &volumeName, bool quickFormat));
+         const std::string &volumeName, const std::vector<std::string> &cmd, bool quickFormat));
     MOCK_METHOD(int32_t, EnsureProxyReady, ());
     MOCK_METHOD(int32_t, ResetSdProxy, ());
     MOCK_METHOD(int32_t, Erase, (const std::string &devPath));
@@ -83,6 +84,7 @@ public:
     MOCK_METHOD(int32_t, GetDiskSize, (const std::string &devName, uint64_t &size));
     MOCK_METHOD(int32_t, BindBlockLoopDev, (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
                                             std::string &loopPath));
+    MOCK_METHOD(int32_t, ExecuteCommand, (const std::vector<std::string> &, int32_t &, std::vector<std::string> &));
     MOCK_METHOD(int32_t, CreateDmLinear,
         (const std::string &sourceDevPath,
          uint64_t startSector, uint64_t sectorCount, uint64_t &dmDev));

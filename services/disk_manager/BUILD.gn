@@ -74,6 +74,10 @@ ohos_shared_library("disk_manager_server") {
     defines += [ "CDC_STORAGE" ]
   }
 
+  if (pc_device_enable) {
+    defines += [ "PC_MANAGER" ]
+  }
+
   configs = [
     ":disk_manager_config",
     "//foundation/filemanagement/disk_manager/common:disk_manager_common_include",

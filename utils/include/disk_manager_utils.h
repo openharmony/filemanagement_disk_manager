@@ -27,6 +27,8 @@ namespace DiskManager {
 
 constexpr size_t VOLUME_NAME_MAX_LEN = 64;
 
+constexpr const char *UUID_SEQ_SEPARATOR = "_";
+
 std::string GetAnonyString(const std::string &value);
 
 bool IsFilePathInvalid(const std::string &filePath);

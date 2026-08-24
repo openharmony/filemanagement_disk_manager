@@ -22,6 +22,7 @@
 #include "partition_types.h"
 #include "storageStatistics_taihe_error.h"
 
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 namespace {
@@ -359,7 +360,105 @@ void CreateIsoImageSync(::taihe::string_view volumeId, ::taihe::string_view path
     }
 }
 
-void BurnSync(::taihe::string_view volumeId, const ohos::file::volumeManager::BurnOptions &options)
+namespace {
+std::string AniStringToUtf8(ani_env *env, ani_string str)
+{
+    ani_size size = 0;
+    env->String_GetUTF8Size(str, &size);
+    std::vector<char> buffer(size + 1);
+    ani_size copied = 0;
+    env->String_GetUTF8(str, buffer.data(), buffer.size(), &copied);
+    buffer[copied] = '\0';
+    return std::string(buffer.data());
+}
+
+// ANI C++ API cannot reliably access Record<string, Object> entries, so we
+// serialize Want.parameters via JSON.stringify and parse it back into the
+// key=value\n format expected by DiskManagerClient::Burn().
+std::string StringifyWantParameters(ani_env *env, ani_object wantObj)
+{
+    // Step 1: Get want.parameters property
+    ani_ref parametersRef = nullptr;
+    ani_status status = env->Object_GetPropertyByName_Ref(wantObj, "parameters", &parametersRef);
+    if (status != ANI_OK || parametersRef == nullptr) {
+        LOGE("StringifyWantParameters: GetPropertyByName parameters failed, status=%{public}d", status);
+        return "";
+    }
+
+    // Step 2: Find std.core.JSON class and stringify method
+    ani_class jsonClass = nullptr;
+    status = env->FindClass("std.core.JSON", &jsonClass);
+    if (status != ANI_OK) {
+        LOGE("StringifyWantParameters: FindClass std.core.JSON failed, status=%{public}d", status);
+        return "";
+    }
+
+    ani_static_method stringifyMethod = nullptr;
+    status = env->Class_FindStaticMethod(jsonClass, "stringify", "Y:C{std.core.String}", &stringifyMethod);
+    if (status != ANI_OK) {
+        LOGE("StringifyWantParameters: Class_FindStaticMethod stringify failed, status=%{public}d", status);
+        return "";
+    }
+
+    // Step 3: Call JSON.stringify(parameters) → JSON string
+    ani_ref resultRef = nullptr;
+    status = env->Class_CallStaticMethod_Ref(jsonClass, stringifyMethod, &resultRef,
+        static_cast<ani_object>(parametersRef));
+    if (status != ANI_OK || resultRef == nullptr) {
+        LOGE("StringifyWantParameters: JSON.stringify call failed, status=%{public}d", status);
+        return "";
+    }
+
+    std::string jsonString = AniStringToUtf8(env, reinterpret_cast<ani_string>(resultRef));
+    LOGI("StringifyWantParameters: JSON=%{public}s", jsonString.c_str());
+    return jsonString;
+}
+
+std::string BuildBurnOptionsFromWant(ani_env *env, ani_object wantObj)
+{
+    std::string jsonString = StringifyWantParameters(env, wantObj);
+    if (jsonString.empty()) {
+        return "";
+    }
+
+    // Step 4: Parse JSON and build key=value\n string for DiskManagerClient::Burn
+    nlohmann::json paramsJson = nlohmann::json::parse(jsonString, nullptr, false);
+    if (paramsJson.is_discarded() || !paramsJson.is_object()) {
+        LOGE("BuildBurnOptionsFromWant: JSON parse failed or not an object");
+        return "";
+    }
+
+    std::ostringstream oss;
+    auto appendStr = [&paramsJson, &oss](const char *key) {
+        if (paramsJson.contains(key) && paramsJson[key].is_string()) {
+            oss << key << '=' << paramsJson[key].get<std::string>() << '\n';
+        }
+    };
+    auto appendBool = [&paramsJson, &oss](const char *key) {
+        if (paramsJson.contains(key) && paramsJson[key].is_boolean()) {
+            oss << key << '=' << (paramsJson[key].get<bool>() ? "true" : "false") << '\n';
+        }
+    };
+    auto appendInt = [&paramsJson, &oss](const char *key) {
+        if (paramsJson.contains(key) && paramsJson[key].is_number_integer()) {
+            oss << key << '=' << paramsJson[key].get<int32_t>() << '\n';
+        }
+    };
+    appendStr("diskName");
+    appendStr("burnPath");
+    appendBool("isIsoImage");
+    appendInt("burnSpeed");
+    appendStr("fsType");
+    appendBool("isIncBurnSupport");
+    appendBool("isVerifyBurn");
+
+    std::string result = oss.str();
+    LOGI("BuildBurnOptionsFromWant: result=%{public}s", result.c_str());
+    return result;
+}
+} // namespace
+
+void BurnSync(::taihe::string_view volumeId, uintptr_t want)
 {
     std::string volumeIdString = std::string(volumeId);
     if (volumeIdString.empty()) {
@@ -368,16 +467,24 @@ void BurnSync(::taihe::string_view volumeId, const ohos::file::volumeManager::Bu
         return;
     }
 
-    // Build burn options string
-    std::ostringstream oss;
-    oss << "diskName=" << std::string(options.diskName) << '\n';
-    oss << "burnPath=" << std::string(options.burnPath) << '\n';
-    oss << "isIsoImage=" << (options.isIsoImage ? "true" : "false") << '\n';
-    oss << "burnSpeed=" << options.burnSpeed << '\n';
-    oss << "fsType=" << std::string(options.fsType) << '\n';
-    oss << "isIncBurnSupport=" << (options.isIncBurnSupport ? "true" : "false") << '\n';
+    ani_env *env = taihe::get_env();
+    if (env == nullptr) {
+        LOGE("BurnSync: get_env failed");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
 
-    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Burn(volumeIdString, oss.str());
+    ani_object wantObj = reinterpret_cast<ani_object>(want);
+
+    // Serialize Want.parameters Record via JSON.stringify, then parse in C++.
+    std::string burnOpts = BuildBurnOptionsFromWant(env, wantObj);
+    if (burnOpts.empty()) {
+        LOGE("BurnSync: burn options is empty, want has no parameters");
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PARAMS);
+        return;
+    }
+
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Burn(volumeIdString, burnOpts);
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;

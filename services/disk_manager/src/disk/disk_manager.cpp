@@ -68,10 +68,7 @@ constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
-/** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时的 SELinux context。 */
-constexpr const char *VOLDATA_MOUNT_SELINUX_CONTEXT = "context=u:object_r:mnt_external_file:s0";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
-constexpr const char *PERSIST_ENTERPRISE_SPACE_ENABLE = "persist.space_mgr_service.enterprise_space_enable";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
 
@@ -321,14 +318,6 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
     return dataMountPath;
 }
 
-std::string BuildMountDataOptions(bool useVoldataPath)
-{
-    if (useVoldataPath) {
-        return VOLDATA_MOUNT_SELINUX_CONTEXT;
-    }
-    return "";
-}
-
 std::string BuildSafeExternalMountPath(const std::string &suffix)
 {
     if (!IsUuidValid(suffix)) {
@@ -437,6 +426,31 @@ int32_t DiskManager::LookupVolumeByUuidUnlocked(const std::string &fsUuid, Volum
     return E_NON_EXIST;
 }
 
+bool DiskManager::IsUuidOccupiedUnlocked(const std::string &volumeId, const std::string &uuid) const
+{
+    for (const auto &kv : volumeMap_) {
+        if (kv.first != volumeId && kv.second.GetUuid() == uuid) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string DiskManager::DedupFsUuidUnlocked(const std::string &volumeId, const std::string &fsUuid) const
+{
+    if (!IsUuidOccupiedUnlocked(volumeId, fsUuid)) {
+        return fsUuid;
+    }
+    for (uint32_t seq = 1; ; ++seq) {
+        const std::string candidate = fsUuid + UUID_SEQ_SEPARATOR + std::to_string(seq);
+        if (!IsUuidOccupiedUnlocked(volumeId, candidate)) {
+            LOGI("DedupFsUuidUnlocked: uuid duplicated, resolved volId=%{public}s to %{public}s",
+                 volumeId.c_str(), GetAnonyString(candidate).c_str());
+            return candidate;
+        }
+    }
+}
+
 std::string DiskManager::GetVolumePath(const std::string &volumeUuid)
 {
     std::shared_lock<std::shared_mutex> readlock(volumeMapMutex_);
@@ -513,6 +527,14 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
         LOGE("EnsureFsUuidReady: uuid is invalid volId=%{public}s uuid=%{public}s",
              volExternal.GetId().c_str(), GetAnonyString(uuid).c_str());
         return E_PARAMS_INVALID;
+    }
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        uuid = DedupFsUuidUnlocked(volExternal.GetId(), uuid);
+        auto it = volumeMap_.find(volExternal.GetId());
+        if (it != volumeMap_.end()) {
+            it->second.SetFsUuid(uuid);
+        }
     }
     volExternal.SetFsUuid(uuid);
     outFsUuid = uuid;
@@ -763,27 +785,6 @@ std::string DiskManager::BuildMountDataPath(const MountDataPathParams &params)
     return std::string(EXTERNAL_MOUNT_ROOT) + params.fsUuid;
 }
 
-bool DiskManager::CheckSSDAndHDDWhenEnterpriseSpaceEnable(int32_t flag)
-{
-    int32_t handle = static_cast<int32_t>(FindParameter(PERSIST_ENTERPRISE_SPACE_ENABLE));
-    if (handle == -1) {
-        return false;
-    }
-
-    char spaceEnable[RD_ENABLE_LENGTH] = {"false"};
-    auto res = GetParameterValue(handle, spaceEnable, RD_ENABLE_LENGTH);
-    if (res < 0 || strncmp(spaceEnable, "true", TRUE_LEN) != 0) {
-        return false;
-    }
-
-    if (flag == DATA_DISK_SSD || flag == DATA_DISK_HDD) {
-        LOGW("Enterprise space enable, disk type is SSD or HDD, skipping mount operation.");
-        return true;
-    }
-
-    return false;
-}
-
 int32_t DiskManager::MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath)
 {
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
@@ -805,9 +806,8 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
         mountFlag = HMFS_FLAG;
     }
 
-    const std::string mountData = BuildMountDataOptions(params.policy.useVoldataPath);
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(),
-                                                            params.dataMountPath, fsType, mountFlag, mountData);
+                                                            params.dataMountPath, fsType, mountFlag, "");
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         if (params.policy.useVoldataPath && params.voldataMappingCreated != nullptr && *params.voldataMappingCreated) {
@@ -873,11 +873,6 @@ int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
         params.diskFlag = ResolveVolumeFlagsUnlocked(volExternal.GetDiskId());
-    }
-
-    if (CheckSSDAndHDDWhenEnterpriseSpaceEnable(params.diskFlag)) {
-        LOGI("Enterprise space enable, not support SSD or HDD disk.");
-        return DiskManagerErrNo::E_OK;
     }
 
     return ExecuteVolumeDataMount(volExternal, fsType, params);
@@ -1452,11 +1447,12 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
         return E_NON_EXIST;
     }
     VolumeExternal &volExternal = it->second;
-    volExternal.SetFsUuid(fsUuid);
+    const std::string resolvedUuid = DedupFsUuidUnlocked(volumeId, fsUuid);
+    volExternal.SetFsUuid(resolvedUuid);
     volExternal.SetFsType(volExternal.GetFsTypeByStr(fsTypeStr));
     volExternal.SetDescription(description);
     LOGI("Updated metadata for volume %{public}s: uuid=%{public}s, fsType=%{public}d, description=%{public}s",
-         volumeId.c_str(), GetAnonyString(fsUuid).c_str(),
+         volumeId.c_str(), GetAnonyString(resolvedUuid).c_str(),
          volExternal.GetFsType(), GetAnonyString(description).c_str());
     return DiskManagerErrNo::E_OK;
 }
@@ -2272,7 +2268,8 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
-int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
+int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params,
+                                     const std::vector<std::string> &cmd)
 {
     VolumeReportInfo reportInfo;
     reportInfo.WithDiskId(diskId).WithFsType(params.GetFsType());
@@ -2311,7 +2308,8 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         }
     }
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
-                                                                      params.GetVolumeName(), params.GetQuickFormat());
+                                                                      params.GetVolumeName(), cmd,
+                                                                      params.GetQuickFormat());
     if (ret != DiskManagerErrNo::E_OK) {
         LOGE("FormatPartition failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         if (!fmtVol.GetId().empty()) {
@@ -2376,6 +2374,10 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
         LOGE("UpdateVolumeAfterFormat: uuid is invalid volId=%{public}s uuid=%{public}s",
              volumeId.c_str(), GetAnonyString(uuid).c_str());
         return E_PARAMS_INVALID;
+    }
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        uuid = DedupFsUuidUnlocked(volumeId, uuid);
     }
     UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
@@ -2581,6 +2583,35 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &sysPath, uint64_t offse
         return dfx.Finish(ret);
     }
     LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
+    return dfx.Finish(DiskManagerErrNo::E_OK);
+}
+
+int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
+                                         const std::string &mapperName)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDevPath(loopPath);
+    IpcDfxScope dfx("DiskManager::CreateDmCryptVolume", DFX_STAGE_CREATE_DM_CRYPT_VOLUME,
+                    VolumeOpType::CREATE_DM_CRYPT_VOLUME, reportInfo);
+    std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
+                                    "--cipher", param.GetCipher(),
+                                    "--key-size", std::to_string(param.GetKeySize()),
+                                    "--key-file", param.GetKeyFile(), loopPath, mapperName};
+    std::vector<std::string> output;
+    int32_t execRet = 0;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
+        return dfx.Finish(ret);
+    }
+    for (const auto &item: output) {
+        LOGE("exec output: %{public}s", item.c_str());
+    }
+    if (execRet != DiskManagerErrNo::E_OK) {
+        LOGE("CreateDmCryptVolume command failed, execRet=%{public}d", execRet);
+        return dfx.Finish(DiskManagerErrNo::E_CREATE_DM_CRYPT_VOLUME_FAILED);
+    }
+    LOGI("CreateDmCryptVolume success");
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 } // namespace DiskManager

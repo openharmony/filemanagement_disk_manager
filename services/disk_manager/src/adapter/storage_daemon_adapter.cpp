@@ -425,7 +425,8 @@ int32_t StorageDaemonAdapter::DeletePartition(const std::string &devPath, const 
 }
 
 int32_t StorageDaemonAdapter::FormatPartition(const std::string &devPath, const std::string &fsType,
-                                              const std::string &volumeName, bool quickFormat)
+                                              const std::string &volumeName,
+                                              const std::vector<std::string> &cmd, bool quickFormat)
 {
     LOGI("FormatPartition enter, devPath=%{public}s, fsType=%{public}s, volumeName=%{public}s",
          devPath.c_str(), fsType.c_str(), volumeName.c_str());
@@ -437,7 +438,7 @@ int32_t StorageDaemonAdapter::FormatPartition(const std::string &devPath, const 
         return FinishDaemonOp("StorageDaemonAdapter::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
                               VolumeOpType::FORMAT_PARTITION, err, info);
     }
-    const int32_t ret = storageDaemon_->FormatPartition(devPath, fsType, volumeName, quickFormat);
+    const int32_t ret = storageDaemon_->FormatPartition(devPath, fsType, volumeName, cmd, quickFormat);
     LOGI("FormatPartition exit ret=%{public}d", ret);
     return ret;
 }
@@ -536,6 +537,19 @@ int32_t StorageDaemonAdapter::BindBlockLoopDev(const std::string &sysPath, uint6
     }
     const int32_t ret = storageDaemon_->BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
     LOGI("BindBlockLoopDev exit ret=%{public}d", ret);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
+                                             std::vector<std::string> &output)
+{
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("ExecuteCommand exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->ExecuteCommand(cmd, execRet, output);
+    LOGI("ExecuteCommand exit ret=%{public}d", ret);
     return ret;
 }
 

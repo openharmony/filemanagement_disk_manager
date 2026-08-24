@@ -19,6 +19,8 @@
 static { loadLibrary("volume_manager_taihe.z"); }
 """)
 
+@!sts_inject_into_module("import Want from '@ohos.app.ability.Want';")
+
 struct Volume {
     id: String;
     uuid: String;
@@ -81,16 +83,6 @@ struct FormatParams {
     fsType: String;
     quickFormat: Optional<bool>;
     volumeName: Optional<String>;
-}
-
-// Burn options for optical drive operations (@since 26.0.0)
-struct BurnOptions {
-    diskName: String;
-    burnPath: String;
-    isIsoImage: bool;
-    burnSpeed: i32;
-    fsType: String;
-    isIncBurnSupport: bool;
 }
 
 @gen_async("getVolumeByUuid")
@@ -165,7 +157,7 @@ function CreateIsoImageSync(volumeId: String, path: String): void;
 
 @gen_async("burn")
 @gen_promise("burn")
-function BurnSync(volumeId: String, options: BurnOptions): void;
+function BurnSync(volumeId: String, want: @sts_type("Want") Opaque): void;
 
 @gen_async("getOpProcess")
 @gen_promise("getOpProcess")
