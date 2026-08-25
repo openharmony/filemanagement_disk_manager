@@ -605,7 +605,7 @@ int32_t DiskManagerClient::UnbindBlockLoopDev(const std::string &loopPath)
 }
 
 int32_t DiskManagerClient::MountVolumeByPath(const std::string &diskId, const std::string &volPath,
-                                              const MountParam &mountParam)
+                                             const MountParam &mountParam)
 {
     LOGI("MountVolumeByPath diskId=%{public}s volPath=%{public}s", diskId.c_str(), volPath.c_str());
     sptr<IDiskManager> proxy;
