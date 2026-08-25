@@ -957,5 +957,40 @@ int32_t DiskManagerProvider::UnbindBlockLoopDev(const std::string &loopPath)
     return E_NOT_SUPPORT;
 #endif
 }
+
+int32_t DiskManagerProvider::MountVolumeByPath(const std::string &diskId, const std::string &volPath,
+                                               const MountParam &param)
+{
+    LOGI("MountVolumeByPath diskId=%{public}s volPath=%{public}s readOnly=%{public}d", diskId.c_str(), volPath.c_str(),
+         param.GetReadOnly());
+#ifdef PC_MANAGER
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("MountVolumeByPath: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("MountVolumeByPath: diskId is invalid");
+        return E_PARAMS_INVALID;
+    }
+    if (volPath.empty() || IsFilePathInvalid(volPath) || (volPath.find("/dev/block/") != 0 &&
+        volPath.find("/dev/mapper/") != 0)) {
+        LOGE("MountVolumeByPath: volPath is invalid");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().MountVolumeByPath(diskId, volPath, param);
+    LOGI("MountVolumeByPath done ret=%{public}d", ret);
+    if (ret != E_OK) {
+        return E_MOUNT_VOL_BY_PATH_FAILED;
+    }
+    return E_OK;
+#else
+    LOGI("MountVolumeByPath: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
+}
 } // namespace DiskManager
 } // namespace OHOS

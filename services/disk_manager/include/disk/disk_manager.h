@@ -21,7 +21,9 @@
 #include "disk.h"
 #include "crypt_param.h"
 #include "partition_types.h"
+#include "volume_core.h"
 #include "volume_external.h"
+#include "mount_param.h"
 #include "adapter/pc_encryption_adapter.h"
 
 #include <cstdint>
@@ -114,6 +116,7 @@ public:
                                 const std::string &mapperName);
     int32_t DestroyDmCryptVolume(const std::string &mapperName);
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
+    int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
 
 private:
     DiskManager();

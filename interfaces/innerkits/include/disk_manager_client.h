@@ -28,6 +28,7 @@
 #include "partition_types.h"
 #include "volume_external.h"
 #include "crypt_param.h"
+#include "mount_param.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -88,6 +89,7 @@ public:
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath, const std::string &mapperName);
     int32_t DestroyDmCryptVolume(const std::string &mapperName);
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
+    int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
 
 private:
     DiskManagerClient() = default;

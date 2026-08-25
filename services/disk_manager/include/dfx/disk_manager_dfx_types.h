@@ -35,6 +35,7 @@ constexpr int32_t DFX_STAGE_BIND_BLOCK_LOOP_DEV = 50;
 constexpr int32_t DFX_STAGE_CREATE_DM_CRYPT_VOLUME = 51;
 constexpr int32_t DFX_STAGE_DESTROY_DM_CRYPT_VOLUME = 52;
 constexpr int32_t DFX_STAGE_UNBIND_BLOCK_LOOP_DEV = 53;
+constexpr int32_t DFX_STAGE_MOUNT_VOL_BY_PATH = 54;
 // Must fit tools[] dump from volume op diag (cmd/ret/exitCode/output).
 constexpr size_t DFX_TRUNCATE_MAX_LEN = 2048;
 
@@ -52,6 +53,7 @@ enum class VolumeOpType : int32_t {
     CREATE_DM_CRYPT_VOLUME = 10,
     DESTROY_DM_CRYPT_VOLUME = 11,
     UNBIND_BLOCK_LOOP_DEV = 12,
+    MOUNT_VOL_BY_PATH = 13,
 };
 
 enum class AutoMountSkipReason : int32_t {
