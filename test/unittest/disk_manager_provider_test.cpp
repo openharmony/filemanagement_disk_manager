@@ -2860,6 +2860,271 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_NotSupport_001, TestSize.L
 }
 #endif
 
+#ifdef PC_MANAGER
+/**
+ * @tc.name: DestroyDmCryptVolume_PermissionDenied_001
+ * @tc.desc: DestroyDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.DestroyDmCryptVolume("mapper0"), E_PERMISSION_DENIED);
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_PermissionDenied_002
+ * @tc.desc: DestroyDmCryptVolume returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.DestroyDmCryptVolume("mapper0"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_InvalidMapperName_001
+ * @tc.desc: DestroyDmCryptVolume returns E_PARAMS_INVALID when mapperName is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_InvalidMapperName_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_EQ(provider.DestroyDmCryptVolume(""), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_001 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_InvalidMapperName_002
+ * @tc.desc: DestroyDmCryptVolume returns E_PARAMS_INVALID when mapperName contains non-alphanumeric chars.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_InvalidMapperName_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_EQ(provider.DestroyDmCryptVolume("mapper-0"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_002 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_InvalidMapperName_003
+ * @tc.desc: DestroyDmCryptVolume returns E_PARAMS_INVALID when mapperName length exceeds 128.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_InvalidMapperName_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_EQ(provider.DestroyDmCryptVolume(std::string(129, 'a')), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_003 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_TestCase_001
+ * @tc.desc: DestroyDmCryptVolume delegates to DiskManager and returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _)).WillOnce(Return(E_OK));
+    int32_t ret = provider.DestroyDmCryptVolume("mapper0");
+    EXPECT_EQ(ret, E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_TestCase_002
+ * @tc.desc: DestroyDmCryptVolume returns E_DESTROY_DM_CRYPT_VOLUME_FAILED when adapter returns error.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    int32_t ret = provider.DestroyDmCryptVolume("mapper0");
+    EXPECT_EQ(ret, E_DESTROY_DM_CRYPT_VOLUME_FAILED);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_002 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_PermissionDenied_001
+ * @tc.desc: UnbindBlockLoopDev returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.UnbindBlockLoopDev("/dev/block/loop0"), E_PERMISSION_DENIED);
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_PermissionDenied_002
+ * @tc.desc: UnbindBlockLoopDev returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.UnbindBlockLoopDev("/dev/block/loop0"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_EmptyPath_001
+ * @tc.desc: UnbindBlockLoopDev returns E_PARAMS_INVALID when loopPath is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_EmptyPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_EmptyPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_EQ(provider.UnbindBlockLoopDev(""), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_EmptyPath_001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_InvalidPath_001
+ * @tc.desc: UnbindBlockLoopDev returns E_PARAMS_INVALID when loopPath contains ../ path traversal.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_EQ(provider.UnbindBlockLoopDev("/dev/block/../loop0"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_InvalidPath_002
+ * @tc.desc: UnbindBlockLoopDev returns E_PARAMS_INVALID when loopPath prefix is not /dev/block/.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_InvalidPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_EQ(provider.UnbindBlockLoopDev("/mnt/data/loop0"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_002 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_TestCase_001
+ * @tc.desc: UnbindBlockLoopDev delegates to DiskManager and returns E_OK when ExecuteCommand succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK), Return(E_OK)));
+    int32_t ret = provider.UnbindBlockLoopDev("/dev/block/loop0");
+    EXPECT_EQ(ret, E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_TestCase_002
+ * @tc.desc: UnbindBlockLoopDev returns E_UNBIND_LOOP_DEV_FAILED when ExecuteCommand execRet is non-zero.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
+    int32_t ret = provider.UnbindBlockLoopDev("/dev/block/loop0");
+    EXPECT_EQ(ret, E_UNBIND_LOOP_DEV_FAILED);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_002 End";
+}
+#else
+/**
+ * @tc.name: DestroyDmCryptVolume_NotSupport_001
+ * @tc.desc: DestroyDmCryptVolume returns E_NOT_SUPPORT when PC_MANAGER is disabled.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.DestroyDmCryptVolume("mapper0"), E_NOT_SUPPORT);
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_NotSupport_001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_NotSupport_001
+ * @tc.desc: UnbindBlockLoopDev returns E_NOT_SUPPORT when PC_MANAGER is disabled.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.UnbindBlockLoopDev("/dev/block/loop0"), E_NOT_SUPPORT);
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_NotSupport_001 End";
+}
+#endif
+
 } // namespace DiskManager
 } // namespace OHOS
 

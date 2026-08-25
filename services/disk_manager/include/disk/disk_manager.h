@@ -112,6 +112,8 @@ public:
                              std::string &loopPath);
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
                                 const std::string &mapperName);
+    int32_t DestroyDmCryptVolume(const std::string &mapperName);
+    int32_t UnbindBlockLoopDev(const std::string &loopPath);
 
 private:
     DiskManager();

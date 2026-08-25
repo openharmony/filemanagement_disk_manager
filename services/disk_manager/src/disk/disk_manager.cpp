@@ -2627,5 +2627,55 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     LOGI("CreateDmCryptVolume success");
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
+
+int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDevPath("/dev/mapper/" + mapperName);
+    IpcDfxScope dfx("DiskManager::DestroyDmCryptVolume", DFX_STAGE_DESTROY_DM_CRYPT_VOLUME,
+                    VolumeOpType::DESTROY_DM_CRYPT_VOLUME, reportInfo);
+    std::vector<std::string> cmd = {"cryptsetup", "close", "/dev/mapper/" + mapperName};
+    std::vector<std::string> output;
+    int32_t execRet = 0;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("DestroyDmCryptVolume failed, err=%{public}d", ret);
+        return dfx.Finish(ret);
+    }
+    for (const auto &item: output) {
+        LOGE("exec output: %{public}s", item.c_str());
+    }
+    if (execRet != DiskManagerErrNo::E_OK) {
+        LOGE("DestroyDmCryptVolume command failed, execRet=%{public}d", execRet);
+        return dfx.Finish(DiskManagerErrNo::E_DESTROY_DM_CRYPT_VOLUME_FAILED);
+    }
+    LOGI("DestroyDmCryptVolume success");
+    return dfx.Finish(DiskManagerErrNo::E_OK);
+}
+
+int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDevPath(loopPath);
+    IpcDfxScope dfx("DiskManager::UnbindBlockLoopDev", DFX_STAGE_UNBIND_BLOCK_LOOP_DEV,
+                    VolumeOpType::UNBIND_BLOCK_LOOP_DEV, reportInfo);
+    std::vector<std::string> cmd = {"losetup", "-d", loopPath};
+    std::vector<std::string> output;
+    int32_t execRet = 0;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
+    if (ret != DiskManagerErrNo::E_OK) {
+        LOGE("UnbindBlockLoopDev failed, err=%{public}d", ret);
+        return dfx.Finish(ret);
+    }
+    for (const auto &item : output) {
+        LOGE("exec output: %{public}s", item.c_str());
+    }
+    if (execRet != DiskManagerErrNo::E_OK) {
+        LOGE("UnbindBlockLoopDev command failed, execRet=%{public}d", execRet);
+        return dfx.Finish(DiskManagerErrNo::E_UNBIND_LOOP_DEV_FAILED);
+    }
+    LOGI("UnbindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
+    return dfx.Finish(DiskManagerErrNo::E_OK);
+}
 } // namespace DiskManager
 } // namespace OHOS

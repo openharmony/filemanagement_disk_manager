@@ -1185,5 +1185,78 @@ HWTEST_F(DiskManagerClientTest, CreateDmCryptVolumeTest002, TestSize.Level1)
     GTEST_LOG_(INFO) << "CreateDmCryptVolumeTest002 End";
 }
 
+/**
+ * @tc.name: DestroyDmCryptVolumeTest001
+ * @tc.desc: 测试 DestroyDmCryptVolume 传入有效 mapperName，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, DestroyDmCryptVolumeTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolumeTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.DestroyDmCryptVolume("mapper0");
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolumeTest001 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolumeTest002
+ * @tc.desc: DestroyDmCryptVolume Connect 成功后转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, DestroyDmCryptVolumeTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolumeTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, DestroyDmCryptVolume(_)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_EQ(client.DestroyDmCryptVolume("mapper0"), E_OK);
+
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolumeTest002 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDevTest001
+ * @tc.desc: 测试 UnbindBlockLoopDev 传入有效 loopPath，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, UnbindBlockLoopDevTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDevTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.UnbindBlockLoopDev("/dev/loop0");
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDevTest001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDevTest002
+ * @tc.desc: UnbindBlockLoopDev Connect 成功后转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, UnbindBlockLoopDevTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDevTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, UnbindBlockLoopDev(_)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_EQ(client.UnbindBlockLoopDev("/dev/loop0"), E_OK);
+
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDevTest002 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

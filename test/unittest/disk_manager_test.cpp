@@ -4886,5 +4886,106 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_003 End";
 }
 
+/**
+ * @tc.name: DestroyDmCryptVolume_TestCase_001
+ * @tc.desc: DestroyDmCryptVolume returns E_OK when adapter succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, DestroyDmCryptVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::vector<std::string> capturedCmd;
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
+    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_OK);
+    ASSERT_EQ(capturedCmd.size(), 3u);
+    EXPECT_EQ(capturedCmd[0], "cryptsetup");
+    EXPECT_EQ(capturedCmd[1], "close");
+    EXPECT_EQ(capturedCmd[2], "/dev/mapper/mapper0");
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_TestCase_002
+ * @tc.desc: DestroyDmCryptVolume propagates adapter error code.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, DestroyDmCryptVolume_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_DAEMON_IPC_FAILED);
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_002 End";
+}
+
+/**
+ * @tc.name: DestroyDmCryptVolume_TestCase_003
+ * @tc.desc: DestroyDmCryptVolume returns E_DESTROY_DM_CRYPT_VOLUME_FAILED when command exec fails (execRet != E_OK).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, DestroyDmCryptVolume_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_DAEMON_IPC_FAILED), Return(E_OK)));
+    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_DESTROY_DM_CRYPT_VOLUME_FAILED);
+    GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_003 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_TestCase_001
+ * @tc.desc: UnbindBlockLoopDev returns E_OK when ExecuteCommand succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(DoAll(SetArgReferee<1>(E_OK), Return(E_OK)));
+    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_OK);
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_001 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_TestCase_002
+ * @tc.desc: UnbindBlockLoopDev returns IPC error when ExecuteCommand fails.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_DAEMON_IPC_FAILED);
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_002 End";
+}
+
+/**
+ * @tc.name: UnbindBlockLoopDev_TestCase_003
+ * @tc.desc: UnbindBlockLoopDev returns E_UNBIND_LOOP_DEV_FAILED when execRet is non-zero.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
+    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_UNBIND_LOOP_DEV_FAILED);
+    GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_003 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

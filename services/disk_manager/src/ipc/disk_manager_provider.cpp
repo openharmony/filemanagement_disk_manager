@@ -900,5 +900,62 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
     return E_NOT_SUPPORT;
 #endif
 }
+
+int32_t DiskManagerProvider::DestroyDmCryptVolume(const std::string &mapperName)
+{
+    LOGI("DestroyDmCryptVolume mapperName=%{public}s", mapperName.c_str());
+#ifdef PC_MANAGER
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("DestroyDmCryptVolume: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    static const std::regex mapperNamePattern(R"(^[A-Za-z0-9]{1,128}$)");
+    if (!std::regex_match(mapperName, mapperNamePattern)) {
+        LOGE("DestroyDmCryptVolume: mapperName is invalid");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().DestroyDmCryptVolume(mapperName);
+    LOGI("DestroyDmCryptVolume done ret=%{public}d", ret);
+    if (ret != E_OK) {
+        return E_DESTROY_DM_CRYPT_VOLUME_FAILED;
+    }
+    return E_OK;
+#else
+    LOGI("DestroyDmCryptVolume: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
+}
+
+int32_t DiskManagerProvider::UnbindBlockLoopDev(const std::string &loopPath)
+{
+    LOGI("UnbindBlockLoopDev loopPath=%{public}s", loopPath.c_str());
+#ifdef PC_MANAGER
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("UnbindBlockLoopDev: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    if (loopPath.empty() || IsFilePathInvalid(loopPath) || loopPath.find("/dev/block/") != 0) {
+        LOGE("UnbindBlockLoopDev: loopPath is invalid");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().UnbindBlockLoopDev(loopPath);
+    LOGI("UnbindBlockLoopDev done ret=%{public}d", ret);
+    if (ret != E_OK) {
+        return E_UNBIND_LOOP_DEV_FAILED;
+    }
+    return E_OK;
+#else
+    LOGI("UnbindBlockLoopDev: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
+}
 } // namespace DiskManager
 } // namespace OHOS
