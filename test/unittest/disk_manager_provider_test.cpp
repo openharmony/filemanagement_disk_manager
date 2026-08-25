@@ -2687,6 +2687,165 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
 
 #ifdef PC_MANAGER
 /**
+ * @tc.name: MountVolumeByPath_PermissionDenied_001
+ * @tc.desc: MountVolumeByPath returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_PermissionDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/dev/mapper/mvp1", param), E_PERMISSION_DENIED);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_PermissionDenied_002
+ * @tc.desc: MountVolumeByPath returns E_PERMISSION_DENIED when caller lacks MOUNT_UNMOUNT_MANAGER permission.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_PermissionDenied_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_PermissionDenied_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/dev/mapper/mvp1", param), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_PermissionDenied_002 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_InvalidDiskId_001
+ * @tc.desc: MountVolumeByPath returns E_PARAMS_INVALID when diskId is invalid (missing second dash).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidDiskId_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidDiskId_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8", "/dev/mapper/mvp1", param), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidDiskId_001 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_InvalidVolPath_001
+ * @tc.desc: MountVolumeByPath returns E_PARAMS_INVALID when volPath is empty.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidVolPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "", param), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_001 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_InvalidVolPath_002
+ * @tc.desc: MountVolumeByPath returns E_PARAMS_INVALID when volPath contains ../ path traversal.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidVolPath_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/dev/block/../mvp1", param), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_002 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_InvalidVolPath_003
+ * @tc.desc: MountVolumeByPath returns E_PARAMS_INVALID when volPath prefix is not /dev/block/ or /dev/mapper/.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidVolPath_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/mnt/data/mvp1", param), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_003 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_001
+ * @tc.desc: MountVolumeByPath delegates to DiskManager and returns E_OK on success.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-77"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-mvp-1"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-77", "/dev/mapper/mvp1", param), E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_001 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_002
+ * @tc.desc: MountVolumeByPath returns E_MOUNT_VOL_BY_PATH_FAILED when DiskManager returns non-E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-99-99", "/dev/mapper/mvp2", param),
+              E_MOUNT_VOL_BY_PATH_FAILED);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_002 End";
+}
+#else
+/**
+ * @tc.name: MountVolumeByPath_NotSupport_001
+ * @tc.desc: MountVolumeByPath returns E_NOT_SUPPORT when PC_MANAGER is disabled.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MountParam param;
+    EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/dev/mapper/mvp1", param), E_NOT_SUPPORT);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_NotSupport_001 End";
+}
+#endif
+
+#ifdef PC_MANAGER
+/**
  * @tc.name: CreateDmCryptVolume_PermissionDenied_001
  * @tc.desc: CreateDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
  * @tc.type: FUNC

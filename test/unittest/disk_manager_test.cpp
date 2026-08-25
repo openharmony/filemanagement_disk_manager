@@ -4987,5 +4987,309 @@ HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_003, TestSize.Level0)
     EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_UNBIND_LOOP_DEV_FAILED);
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_003 End";
 }
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_001
+ * @tc.desc: MountVolumeByPath on non-existent disk returns E_NON_EXIST.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    MountParam param;
+    EXPECT_EQ(dm.MountVolumeByPath("disk-99-99", "/dev/block/dm-mvp-1", param), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_001 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_002
+ * @tc.desc: MountVolumeByPath on non-USB (CD) disk returns E_MOUNT_VOL_BY_PATH_FAILED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-9-mvp-2"));
+    MountParam param;
+    EXPECT_EQ(dm.MountVolumeByPath("disk-9-mvp-2", "/dev/block/dm-mvp-2", param),
+              E_MOUNT_VOL_BY_PATH_FAILED);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_002 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_003
+ * @tc.desc: MountVolumeByPath on existing volume in MOUNTED state returns E_VOL_STATE.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-3"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvp-3", "disk-8-mvp-3", "uuid-mvp-3", MOUNTED);
+    vol.SetCryptPath("/dev/block/dm-mvp-3");
+    dm.OnVolumeCreated(vol);
+    MountParam param;
+    EXPECT_EQ(dm.MountVolumeByPath("disk-8-mvp-3", "/dev/block/dm-mvp-3", param), E_VOL_STATE);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_003 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_004
+ * @tc.desc: MountVolumeByPath on existing UNMOUNTED volume succeeds without creating a new volume.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvp-4", "disk-8-mvp-4", "uuid-mvp-4", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-mvp-4");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-mvp-4"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    std::vector<VolumeExternal> before;
+    dm.GetAllVolumes(before);
+    size_t countBefore = before.size();
+    MountParam param;
+    EXPECT_EQ(dm.MountVolumeByPath("disk-8-mvp-4", "/dev/block/dm-mvp-4", param), E_OK);
+    std::vector<VolumeExternal> after;
+    dm.GetAllVolumes(after);
+    EXPECT_EQ(after.size(), countBefore);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_004 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_005
+ * @tc.desc: MountVolumeByPath on existing volume with Mount failure returns error.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvp-5", "disk-8-mvp-5", "uuid-mvp-5", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-mvp-5");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-mvp-5"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    MountParam param;
+    EXPECT_NE(dm.MountVolumeByPath("disk-8-mvp-5", "/dev/block/dm-mvp-5", param), E_OK);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_005 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_006
+ * @tc.desc: MountVolumeByPath on existing volume with ReadMetadata failure returns error; Mount not called.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-mvp-6", "disk-8-mvp-6", "uuid-mvp-6", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-mvp-6");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_NE(dm.MountVolumeByPath("disk-8-mvp-6", "/dev/block/dm-mvp-6", param), E_OK);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_006 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_007
+ * @tc.desc: MountVolumeByPath creates new volume when cryptPath not in map; OnVolumeCreated inserts MOUNTED volume.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-7"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-mvp-7"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    MountParam param;
+    EXPECT_EQ(dm.MountVolumeByPath("disk-8-mvp-7", "/dev/block/dm-mvp-7", param), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("dm-mvp-7", out), E_OK);
+    EXPECT_EQ(out.GetState(), MOUNTED);
+    EXPECT_EQ(out.GetCryptPath(), "/dev/block/dm-mvp-7");
+    EXPECT_EQ(out.GetDiskId(), "disk-8-mvp-7");
+    EXPECT_EQ(out.GetFlags(), USB_FLAG);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_007 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_008
+ * @tc.desc: MountVolumeByPath new volume with Mount failure returns error; volume not inserted into map.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_008, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_008 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-8"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-mvp-8"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    MountParam param;
+    EXPECT_NE(dm.MountVolumeByPath("disk-8-mvp-8", "/dev/block/dm-mvp-8", param), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("dm-mvp-8", out), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_008 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_009
+ * @tc.desc: MountVolumeByPath new volume with ReadMetadata failure returns error; volume not inserted.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_009, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_009 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-9"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_NE(dm.MountVolumeByPath("disk-8-mvp-9", "/dev/block/dm-mvp-9", param), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("dm-mvp-9", out), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_009 End";
+}
+
+/**
+ * @tc.name: MountVolumeByPath_TestCase_010
+ * @tc.desc: MountVolumeByPath with readOnly MountParam sets MS_RDONLY bit in mountFlag passed to adapter.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MountVolumeByPath_TestCase_010, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_010 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mvp-10"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-mvp-10"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    uint64_t capturedFlag = 0;
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(DoAll(SaveArg<3>(&capturedFlag), Return(ERR_OK)));
+    MountParam param(true);
+    EXPECT_EQ(dm.MountVolumeByPath("disk-8-mvp-10", "/dev/block/dm-mvp-10", param), E_OK);
+    EXPECT_TRUE((capturedFlag & static_cast<uint64_t>(MS_RDONLY)) != 0);
+    GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_010 End";
+}
+
+/**
+ * @tc.name: LookupVolumeByCryptPath_TestCase_001
+ * @tc.desc: LookupVolumeByCryptPath finds existing volume by diskId + cryptPath; returns false otherwise.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, LookupVolumeByCryptPath_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "LookupVolumeByCryptPath_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-lk-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-lk-1", "disk-8-lk-1", "uuid-lk-1", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-lk-1");
+    dm.OnVolumeCreated(vol);
+    VolumeExternal out;
+    EXPECT_TRUE(dm.LookupVolumeByCryptPath("disk-8-lk-1", "/dev/block/dm-lk-1", out));
+    EXPECT_EQ(out.GetId(), "vol-lk-1");
+    EXPECT_EQ(out.GetCryptPath(), "/dev/block/dm-lk-1");
+    EXPECT_FALSE(dm.LookupVolumeByCryptPath("disk-8-lk-1", "/dev/block/dm-unknown", out));
+    EXPECT_FALSE(dm.LookupVolumeByCryptPath("disk-99-99", "/dev/block/dm-lk-1", out));
+    GTEST_LOG_(INFO) << "LookupVolumeByCryptPath_TestCase_001 End";
+}
+
+/**
+ * @tc.name: InitAndMountVolume_TestCase_001
+ * @tc.desc: InitAndMountVolume returns E_OK when ReadMetadata and Mount both succeed; fills volume metadata.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-imv-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-imv-1", "disk-8-imv-1", "", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-imv-1");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-imv-1"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/block/dm-imv-1", 0), E_OK);
+    EXPECT_EQ(vol.GetUuid(), "uuid-imv-1");
+    EXPECT_EQ(vol.GetPath(), "/mnt/data/external/uuid-imv-1");
+    EXPECT_EQ(vol.GetFsTypeString(), "vfat");
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: InitAndMountVolume_TestCase_002
+ * @tc.desc: InitAndMountVolume returns error when ReadMetadata fails; Mount not called.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-imv-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-imv-2", "disk-8-imv-2", "", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-imv-2");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    EXPECT_NE(dm.InitAndMountVolume(vol, "/dev/block/dm-imv-2", 0), E_OK);
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_002 End";
+}
+
+/**
+ * @tc.name: InitAndMountVolume_TestCase_003
+ * @tc.desc: InitAndMountVolume returns error when Mount fails after ReadMetadata success.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-imv-3"));
+    VolumeExternal vol = MakeUsbVolume("vol-imv-3", "disk-8-imv-3", "", UNMOUNTED);
+    vol.SetCryptPath("/dev/block/dm-imv-3");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-imv-3"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/block/dm-imv-3", 0), E_DAEMON_IPC_FAILED);
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_003 End";
+}
 } // namespace DiskManager
 } // namespace OHOS
