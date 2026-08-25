@@ -1857,6 +1857,53 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_008, TestSize.Level0)
 }
 
 /**
+ * @tc.name: Burn_TestCase_009
+ * @tc.desc: Burn with unmounted volume skips pre-burn unmount and proceeds to burn.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_009, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_009 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-9-25"));
+    VolumeExternal vol = MakeUdfVolume("vol-36-7", "disk-9-25", "uuid-bn-9");
+    vol.SetState(UNMOUNTED);
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).Times(0);
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Burn("vol-36-7", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_009 End";
+}
+
+/**
+ * @tc.name: Burn_TestCase_010
+ * @tc.desc: Burn with mounted volume whose pre-burn unmount fails returns E_VOL_UMOUNT_ERR.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_010, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_010 Start";
+
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-9-26"));
+    VolumeExternal vol = MakeUdfVolume("vol-36-8", "disk-9-26", "uuid-bn-10");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).Times(0);
+    EXPECT_EQ(dm.Burn("vol-36-8", "dao", "test.bundle", 0), E_VOL_UMOUNT_ERR);
+
+    GTEST_LOG_(INFO) << "Burn_TestCase_010 End";
+}
+
+/**
  * @tc.name: GetVolumeOpProcess_TestCase_001
  * @tc.desc: GetVolumeOpProcess with non-existent volumeId returns E_PARAMS_INVALID
  * @tc.type: FUNC
@@ -2669,6 +2716,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_001, TestSize.Level0)
     vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Burn("vol-36-1", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
 }
@@ -2681,6 +2729,7 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_002, TestSize.Level0)
     vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Burn("vol-36-2", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
 }

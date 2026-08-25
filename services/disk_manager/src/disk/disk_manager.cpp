@@ -1742,6 +1742,8 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
 {
     std::string blockVolId;
     std::string fsType;
+    std::string mountPath;
+    int32_t volState = UNMOUNTED;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -1751,6 +1753,8 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         }
         blockVolId = it->second.GetId();
         fsType = it->second.GetFsTypeString();
+        mountPath = it->second.GetPath();
+        volState = it->second.GetState();
     }
     if (!IsOddFsType(fsType)) {
         LOGE("Burn only support odd fsType, fsType is %{public}s", fsType.c_str());
@@ -1760,7 +1764,16 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         LOGE("Burn: burnOptions is empty");
         return E_PARAMS_INVALID;
     }
-
+    // Only mounted volumes need unmounting before burn; skip when already unmounted.
+    if ((volState == VolumeState::MOUNTED || volState == VolumeState::DAMAGED_MOUNTED) && !mountPath.empty()) {
+        int32_t umountErr = StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, true);
+        if (umountErr != ERR_OK) {
+            LOGE("Burn: unmount before burn failed volumeId=%{public}s mountPath=%{public}s err=%{public}d",
+                volumeId.c_str(), GetAnonyString(mountPath).c_str(), umountErr);
+            return E_VOL_UMOUNT_ERR;
+        }
+        LOGI("Burn: unmount before burn succeeded volumeId=%{public}s", volumeId.c_str());
+    }
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
     LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
         callerBundle.c_str(), callerUserId, fsType.c_str());
