@@ -142,6 +142,9 @@ private:
 
     /** 调用方已持 volumeMapMutex_（读锁）。 */
     int32_t LookupVolumeByUuidUnlocked(const std::string &fsUuid, VolumeExternal &out) const;
+    /** 按 diskId + cryptPath 查找已存在卷（内部自取 volumeMapMutex_ 读锁）。 */
+    bool LookupVolumeByCryptPath(const std::string &diskId, const std::string &cryptPath,
+                                 VolumeExternal &out) const;
     /** 调用方已持 volumeMapMutex_（读锁或写锁）。返回去重后的 fsUuid：若与其它卷重复则改写为 原UUID_序号。 */
     std::string DedupFsUuidUnlocked(const std::string &volumeId, const std::string &fsUuid) const;
     /** 调用方已持 volumeMapMutex_（读锁或写锁）。判断 uuid 是否被除 volumeId 外的其它卷占用。 */
@@ -220,6 +223,9 @@ private:
      * 注意：调用此函数前必须已持有 volumeMapMutex_ 读锁。
      */
     void QueryAndAppendEncryptionStatusUnlocked(Disk &disk);
+    int32_t InitVolume(VolumeExternal &volExternal);
+    /** InitVolume + StorageDaemonAdapter::Mount，返回 errno（E_OK 表示成功），错误码由调用方经 IpcDfxScope 上报。 */
+    int32_t InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。

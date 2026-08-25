@@ -47,6 +47,7 @@ HWTEST_F(VolumeExternalTest, DefaultConstructor_TestCase_001, TestSize.Level0)
     EXPECT_EQ(ve.GetPartitionNum(), 0);
     EXPECT_EQ(ve.GetFreeSize(), 0);
     EXPECT_FALSE(ve.GetUserData());
+    EXPECT_EQ(ve.GetCryptPath(), "");
 }
 
 HWTEST_F(VolumeExternalTest, ConstructorFromVolumeCore_TestCase_001, TestSize.Level0)
@@ -323,6 +324,25 @@ HWTEST_F(VolumeExternalTest, SetFreeSize_GetFreeSize_TestCase_001, TestSize.Leve
     ve.SetFreeSize(-1);
     EXPECT_EQ(ve.GetFreeSize(), -1);
     GTEST_LOG_(INFO) << "SetFreeSize_GetFreeSize_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetCryptPath_GetCryptPath_TestCase_001
+ * @tc.desc: SetCryptPath/GetCryptPath 读写 cryptPath
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetCryptPath_GetCryptPath_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetCryptPath_GetCryptPath_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_EQ(ve.GetCryptPath(), "");
+    ve.SetCryptPath("/data/misc/keystore");
+    EXPECT_EQ(ve.GetCryptPath(), "/data/misc/keystore");
+    ve.SetCryptPath("");
+    EXPECT_EQ(ve.GetCryptPath(), "");
+    GTEST_LOG_(INFO) << "SetCryptPath_GetCryptPath_TestCase_001 End";
 }
 
 /**
