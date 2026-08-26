@@ -132,6 +132,16 @@ void VolumeExternal::SetPartitionNum(int32_t partitionNum)
     partitionNum_ = partitionNum;
 }
 
+std::string VolumeExternal::GetCryptPath() const
+{
+    return cryptPath_;
+}
+
+void VolumeExternal::SetCryptPath(const std::string &cryptPath)
+{
+    cryptPath_ = cryptPath;
+}
+
 VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
 {
     std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));

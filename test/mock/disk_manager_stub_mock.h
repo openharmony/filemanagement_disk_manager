@@ -19,6 +19,7 @@
 #include <gmock/gmock.h>
 
 #include "crypt_param.h"
+#include "mount_param.h"
 #include "disk_manager_stub.h"
 
 namespace OHOS {
@@ -62,6 +63,8 @@ public:
         (const CryptParam &param, const std::string &loopPath, const std::string &mapperName));
     MOCK_METHOD(int32_t, DestroyDmCryptVolume, (const std::string &mapperName));
     MOCK_METHOD(int32_t, UnbindBlockLoopDev, (const std::string &loopPath));
+    MOCK_METHOD(int32_t, MountVolumeByPath,
+        (const std::string &diskId, const std::string &volPath, const MountParam &param));
 };
 
 } // namespace DiskManager

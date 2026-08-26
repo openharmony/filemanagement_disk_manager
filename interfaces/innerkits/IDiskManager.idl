@@ -19,6 +19,7 @@ sequenceable PartitionTypes..OHOS.DiskManager.PartitionTableInfo;
 sequenceable PartitionTypes..OHOS.DiskManager.PartitionParams;
 sequenceable PartitionTypes..OHOS.DiskManager.FormatParams;
 sequenceable CryptParam..OHOS.DiskManager.CryptParam;
+sequenceable MountParam..OHOS.DiskManager.MountParam;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeCore;
 sequenceable VolumeExternal..OHOS.DiskManager.VolumeExternal;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
@@ -44,6 +45,7 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 16] void CreateDmCryptVolume([in] CryptParam param, [in] String loopPath, [in] String mapperName);
     [ipccode 17] void DestroyDmCryptVolume([in] String mapperName);
     [ipccode 18] void UnbindBlockLoopDev([in] String loopPath);
+    [ipccode 19] void MountVolumeByPath([in] String diskId, [in] String volPath, [in] MountParam param);
 
     /* ---------- storage_daemon 转发 block/disk 级 uevent（已由 daemon 过滤 DEVTYPE=disk） ---------- */
     [ipccode 39] void OnBlockDiskUevent([in] String rawUeventMsg);

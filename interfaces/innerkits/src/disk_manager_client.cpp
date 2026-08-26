@@ -603,5 +603,18 @@ int32_t DiskManagerClient::UnbindBlockLoopDev(const std::string &loopPath)
     IDiskManager &dm = *proxy;
     return dm.UnbindBlockLoopDev(loopPath);
 }
+
+int32_t DiskManagerClient::MountVolumeByPath(const std::string &diskId, const std::string &volPath,
+                                             const MountParam &mountParam)
+{
+    LOGI("MountVolumeByPath diskId=%{public}s volPath=%{public}s", diskId.c_str(), volPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.MountVolumeByPath(diskId, volPath, mountParam);
+}
 } // namespace DiskManager
 } // namespace OHOS

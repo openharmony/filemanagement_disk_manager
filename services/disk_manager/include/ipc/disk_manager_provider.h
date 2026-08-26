@@ -18,6 +18,7 @@
 
 #include "disk_manager_stub.h"
 #include "crypt_param.h"
+#include "mount_param.h"
 #include "partition_types.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
@@ -81,6 +82,8 @@ public:
                                 const std::string &mapperName) override;
     int32_t DestroyDmCryptVolume(const std::string &mapperName) override;
     int32_t UnbindBlockLoopDev(const std::string &loopPath) override;
+    int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath,
+                              const MountParam &param) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);

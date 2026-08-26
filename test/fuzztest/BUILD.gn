@@ -26,5 +26,6 @@ group("disk_manager_fuzztest") {
     "//foundation/filemanagement/disk_manager/test/fuzztest/partitiontypes_fuzzer:partitiontypes_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/volumecore_fuzzer:volumecore_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/cryptparam_fuzzer:cryptparam_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/mountparam_fuzzer:mountparam_fuzztest",
   ]
 }

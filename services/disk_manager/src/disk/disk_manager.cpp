@@ -715,7 +715,11 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-
+    if (!volExternal.GetCryptPath().empty()) {
+        MountParam param;
+        param.SetReadOnly(false);
+        return MountVolumeByPath(volExternal.GetDiskId(), volExternal.GetCryptPath(), param);
+    }
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
 
     {
@@ -2676,6 +2680,102 @@ int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
     }
     LOGI("UnbindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
     return dfx.Finish(DiskManagerErrNo::E_OK);
+}
+
+int32_t DiskManager::MountVolumeByPath(const std::string &diskId, const std::string &volPath,
+                                       const MountParam &mountParam)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDiskId(diskId);
+    reportInfo.WithDevPath(volPath);
+    IpcDfxScope dfx("DiskManager::MountVolumeByPath", DFX_STAGE_MOUNT_VOL_BY_PATH,
+                    VolumeOpType::MOUNT_VOL_BY_PATH, reportInfo);
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        LOGE("MountVolumeByPath: disk not found, diskId=%{public}s", diskId.c_str());
+        return dfx.Finish(E_NON_EXIST);
+    }
+    if (disk.GetDiskType() != DiskType::USB_FLAG) {
+        LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        return dfx.Finish(E_MOUNT_VOL_BY_PATH_FAILED);
+    }
+    VolumeExternal volExternal;
+    bool isVolExist = LookupVolumeByCryptPath(diskId, volPath, volExternal);
+    if (isVolExist && volExternal.GetState() == VolumeState::MOUNTED) {
+        LOGE("MountVolumeByPath: vol status is mounted");
+        return dfx.Finish(E_VOL_STATE);
+    }
+    if (!isVolExist) {
+        std::string volId = volPath.substr(volPath.find_last_of('/') + 1);
+        VolumeCore vc(volId, 0, diskId);
+        volExternal = VolumeExternal(vc);
+        volExternal.SetCryptPath(volPath);
+    }
+    uint64_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(false);
+    if (mountParam.GetReadOnly()) {
+        mountFlag |= static_cast<uint64_t>(MS_RDONLY);
+    }
+    int32_t res = InitAndMountVolume(volExternal, volPath, mountFlag);
+    if (res != E_OK) {
+        return dfx.Finish(res);
+    }
+    volExternal.SetState(VolumeState::MOUNTED);
+    if (!isVolExist) {
+        OnVolumeCreated(volExternal);
+    }
+    CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
+    LOGI("MountVolumeByPath: mount success");
+    return dfx.Finish(E_OK);
+}
+
+bool DiskManager::LookupVolumeByCryptPath(const std::string &diskId, const std::string &cryptPath,
+                                          VolumeExternal &out) const
+{
+    std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+    for (const auto &item : volumeMap_) {
+        if (item.second.GetDiskId() == diskId && item.second.GetCryptPath() == cryptPath) {
+            out = item.second;
+            return true;
+        }
+    }
+    return false;
+}
+
+int32_t DiskManager::InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag)
+{
+    int32_t res = InitVolume(volExternal);
+    if (res != E_OK) {
+        return res;
+    }
+    res = StorageDaemonAdapter::GetInstance().Mount(volPath, volExternal.GetPath(),
+                                                    volExternal.GetFsTypeString(), mountFlag, "");
+    if (res != E_OK) {
+        LOGE("MountVolumeByPath: mount failed volId=%{public}s err=%{public}d", volPath.c_str(), res);
+        return res;
+    }
+    return E_OK;
+}
+
+int32_t DiskManager::InitVolume(VolumeExternal &volExternal)
+{
+    std::string uuid;
+    std::string type;
+    std::string label;
+    int32_t err = StorageDaemonAdapter::GetInstance().ReadMetadata(volExternal.GetCryptPath(), uuid, type, label);
+    if (err != E_OK) {
+        LOGE("EnsureFsUuidReady: ReadMetadata failed err=%{public}d", err);
+        return err;
+    }
+    if (!IsUuidValid(uuid)) {
+        LOGE("EnsureFsUuidReady: uuid is invalid, uuid=%{public}s", GetAnonyString(uuid).c_str());
+        return E_PARAMS_INVALID;
+    }
+    volExternal.SetFsUuid(uuid);
+    volExternal.SetDescription(label);
+    volExternal.SetFsType(volExternal.GetFsTypeByStr(type));
+    volExternal.SetPath(std::string(EXTERNAL_MOUNT_ROOT) + uuid);
+    volExternal.SetFlags(DiskType::USB_FLAG);
+    return E_OK;
 }
 } // namespace DiskManager
 } // namespace OHOS
