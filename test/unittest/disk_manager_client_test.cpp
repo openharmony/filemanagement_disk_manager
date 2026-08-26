@@ -1297,5 +1297,44 @@ HWTEST_F(DiskManagerClientTest, MountVolumeByPathTest002, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "MountVolumeByPathTest002 End";
 }
+
+/**
+ * @tc.name: GetUsbDeviceInfoTest001
+ * @tc.desc: 测试 GetUsbDeviceInfo 传入有效 diskId，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetUsbDeviceInfoTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfoTest001 Start";
+ 
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::string usbInfo;
+    int32_t ret = client.GetUsbDeviceInfo(TEST_DISK_ID, usbInfo);
+    EXPECT_NE(ret, E_OK);
+ 
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfoTest001 End";
+}
+ 
+/**
+ * @tc.name: GetUsbDeviceInfoTest002
+ * @tc.desc: 测试 GetUsbDeviceInfo SA 可达时代理调用成功。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetUsbDeviceInfoTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfoTest002 Start";
+ 
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetUsbDeviceInfo(_, _)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::string usbInfo;
+    EXPECT_EQ(client.GetUsbDeviceInfo(TEST_DISK_ID, usbInfo), E_OK);
+ 
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfoTest002 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

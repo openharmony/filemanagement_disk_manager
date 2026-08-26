@@ -3384,5 +3384,82 @@ HWTEST_F(DiskManagerProviderTest, FormatPartition_FsTypeUnsupported_001, TestSiz
     EXPECT_EQ(provider.FormatPartition("disk-provider-4", 1, params), E_PARAMS_INVALID);
     GTEST_LOG_(INFO) << "FormatPartition_FsTypeUnsupported_001 End";
 }
+
+/**
+ * @tc.name: GetUsbDeviceInfo_EmptyDiskId_TestCase_001
+ * @tc.desc: GetUsbDeviceInfo with empty diskId returns E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetUsbDeviceInfo_EmptyDiskId_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_EmptyDiskId_TestCase_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    std::string usbInfo;
+    EXPECT_EQ(provider.GetUsbDeviceInfo("", usbInfo), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_EmptyDiskId_TestCase_001 End";
+}
+ 
+/**
+ * @tc.name: GetUsbDeviceInfo_NotSystemApp_TestCase_002
+ * @tc.desc: GetUsbDeviceInfo with non-system app returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetUsbDeviceInfo_NotSystemApp_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_NotSystemApp_TestCase_002 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_isSystemApp = false;
+    std::string usbInfo;
+    EXPECT_EQ(provider.GetUsbDeviceInfo("disk-8-1", usbInfo), E_PERMISSION_DENIED);
+    g_isSystemApp = true;
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_NotSystemApp_TestCase_002 End";
+}
+ 
+/**
+ * @tc.name: GetUsbDeviceInfo_PermissionDenied_TestCase_003
+ * @tc.desc: GetUsbDeviceInfo with permission denied returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetUsbDeviceInfo_PermissionDenied_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_PermissionDenied_TestCase_003 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    std::string usbInfo;
+    EXPECT_EQ(provider.GetUsbDeviceInfo("disk-8-1", usbInfo), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_PermissionDenied_TestCase_003 End";
+}
+ 
+/**
+ * @tc.name: GetUsbDeviceInfo_Success_TestCase_004
+ * @tc.desc: GetUsbDeviceInfo delegates to DiskManager and returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetUsbDeviceInfo_Success_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_Success_TestCase_004 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+ 
+    auto &dm = DiskManager::GetInstance();
+    Disk disk("disk-8-300", SIZE, "/dev/block/disk-8-300", USB_FLAG);
+    disk.SetExtraInfo(R"({"vid":"0781","pid":"5581","serialNumber":"SN001","busnum":"2","devnum":"3"})");
+    dm.OnDiskCreated(disk);
+ 
+    std::string usbInfo;
+    EXPECT_EQ(provider.GetUsbDeviceInfo("disk-8-300", usbInfo), E_OK);
+    EXPECT_NE(usbInfo.find("\"vid\":\"0781\""), std::string::npos);
+ 
+    dm.OnDiskDestroyed("disk-8-300");
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    GTEST_LOG_(INFO) << "GetUsbDeviceInfo_Success_TestCase_004 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

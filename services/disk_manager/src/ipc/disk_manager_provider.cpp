@@ -992,5 +992,25 @@ int32_t DiskManagerProvider::MountVolumeByPath(const std::string &diskId, const 
     return E_NOT_SUPPORT;
 #endif
 }
+
+int32_t DiskManagerProvider::GetUsbDeviceInfo(const std::string &diskId, std::string &usbDeviceInfo)
+{
+    LOGI("GetUsbDeviceInfo diskId=%{public}s", diskId.c_str());
+    if (!IpcCallerAuth::IsCallingSystemApp()) {
+        LOGE("GetUsbDeviceInfo: caller is not system app");
+        return E_SYS_APP_PERMISSION_DENIED;
+    }
+    if (!IsStorageManagerCaller() && !IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        LOGE("GetUsbDeviceInfo: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    if (diskId.empty()) {
+        LOGE("GetUsbDeviceInfo: diskId is empty");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t err = DiskManager::GetInstance().GetUsbDeviceInfo(diskId, usbDeviceInfo);
+    LOGI("GetUsbDeviceInfo diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    return err;
+}
 } // namespace DiskManager
 } // namespace OHOS

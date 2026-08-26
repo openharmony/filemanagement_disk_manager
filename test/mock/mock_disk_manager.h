@@ -75,6 +75,7 @@ public:
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &diskId, int32_t partitionNum, const FormatParams &params,
          const std::vector<std::string> &cmd));
+    MOCK_METHOD(int32_t, GetUsbDeviceInfo, (const std::string &diskId, std::string &usbDeviceInfo));
 
     static MockDiskManager *mockInstance_;
 };

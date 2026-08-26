@@ -2777,5 +2777,42 @@ int32_t DiskManager::InitVolume(VolumeExternal &volExternal)
     volExternal.SetFlags(DiskType::USB_FLAG);
     return E_OK;
 }
+
+int32_t DiskManager::GetUsbDeviceInfo(const std::string &diskId, std::string &usbDeviceInfo)
+{
+    LOGI("GetUsbDeviceInfo diskId=%{public}s", diskId.c_str());
+    std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+    auto it = diskMap_.find(diskId);
+    if (it == diskMap_.end()) {
+        LOGE("GetUsbDeviceInfo: diskId %{public}s not exists", diskId.c_str());
+        return E_NON_EXIST;
+    }
+ 
+    const std::string &extraInfo = it->second.GetExtraInfo();
+    if (extraInfo.empty()) {
+        LOGW("GetUsbDeviceInfo: extraInfo is empty for diskId=%{public}s", diskId.c_str());
+        usbDeviceInfo = "{}";
+        return DiskManagerErrNo::E_OK;
+    }
+ 
+    json extraInfoJson = json::parse(extraInfo, nullptr, false);
+    if (extraInfoJson.is_discarded() || !extraInfoJson.is_object()) {
+        LOGW("GetUsbDeviceInfo: failed to parse extraInfo JSON for diskId=%{public}s", diskId.c_str());
+        usbDeviceInfo = "{}";
+        return DiskManagerErrNo::E_OK;
+    }
+ 
+    json usbJson = json::object();
+    static const std::vector<std::string> USB_FIELDS = {"vid", "pid", "serialNumber", "busnum", "devnum"};
+    for (const auto &field : USB_FIELDS) {
+        if (extraInfoJson.contains(field) && extraInfoJson[field].is_string()) {
+            usbJson[field] = extraInfoJson[field].get<std::string>();
+        }
+    }
+ 
+    usbDeviceInfo = usbJson.dump();
+    LOGI("GetUsbDeviceInfo: diskId=%{public}s result=%{public}s", diskId.c_str(), usbDeviceInfo.c_str());
+    return DiskManagerErrNo::E_OK;
+}
 } // namespace DiskManager
 } // namespace OHOS

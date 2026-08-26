@@ -178,6 +178,31 @@ ohos_unittest("uevent_env_parser_test") {
   part_name = "disk_manager"
 }
 
+ohos_unittest("sysfs_reader_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+ 
+  sources = [
+    "sysfs_reader_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/sysfs_reader.cpp",
+  ]
+ 
+  configs = [ ":disk_manager_unittest_common" ]
+ 
+  defines = [
+    "private = public",
+  ]
+ 
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+ 
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 ohos_unittest("disk_manager_server_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
@@ -710,6 +735,7 @@ ohos_unittest("uevent_bootstrap_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/uevent_env_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/sysfs_reader.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_disk_manager.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_block_info_table.cpp",
@@ -857,6 +883,7 @@ group("disk_manager_ut") {
     ":storage_daemon_proxy_test",
     ":disk_manager_client_test",
     ":uevent_env_parser_test",
+    ":sysfs_reader_test",
     ":disk_manager_server_test",
     ":disk_test",
     ":volume_core_test",
