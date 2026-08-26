@@ -38,7 +38,9 @@
 #include <cstdlib>
 #include <algorithm>
 #include <dirent.h>
+#include <fcntl.h>
 #include <fstream>
+#include <unistd.h>
 #include <map>
 #include <mutex>
 #include <string_view>
@@ -447,19 +449,22 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
         (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
     }
 }
- 
-static std::string g_sysBlockPath = "/sys/class/block";
 
 static uint64_t GetDevSectorSize(const std::string &devName)
 {
-    std::string sysfsPath = g_sysBlockPath + "/" + devName + "/size";
-    std::ifstream ifs(sysfsPath);
-    uint64_t totalSectors = 0;
-    if (ifs.is_open()) {
-        ifs >> totalSectors;
-    }
+    std::string sysfsPath = "/sys/class/block/" + devName + "/size";
+    int fd = open(sysfsPath.c_str(), O_RDONLY);
+    if (fd < 0) {
+        return 0;
  
-    return totalSectors;
+    }
+    char buf[32] = {};
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+    if (n <= 0) {
+        return 0;
+    }
+    return strtoull(buf, nullptr, 10);
 }
 
 static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t partitionNumber)
@@ -734,11 +739,6 @@ bool ContainsPartition(const std::vector<PartitionRecord> &list, const Partition
                        [&](const PartitionRecord &r) { return PartitionKeyEqual(r, target); });
 }
 } // namespace
-
-std::string &UeventBootstrap::SysBlockPathForTest()
-{
-    return g_sysBlockPath;
-}
 
 void UeventBootstrap::ComputePartitionDiff(const std::string &diskId,
                                            const std::vector<PartitionRecord> &newParts,

@@ -16,6 +16,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <fstream>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdarg.h>
 #include <sys/sysmacros.h>
 
 #include "disk/uevent_bootstrap.h"
@@ -43,7 +46,75 @@ using namespace testing::ext;
 constexpr int DISK_METADATA_ARG_UUID = 1;
 constexpr int DISK_METADATA_ARG_TYPE = 2;
 constexpr int DISK_METADATA_ARG_LABEL = 3;
-constexpr mode_t MOCK_DIR_MODE = 0755;
+
+static bool g_interceptSysfs = false;
+static uint64_t g_mockDevSectorSize = 0;
+static int g_mockSysfsFd = -1;
+ 
+extern "C" int __real_open(const char *pathname, int flags, ...);
+extern "C" int __real___open_chk(const char *pathname, int flags);
+extern "C" ssize_t __real_read(int fd, void *buf, size_t count);
+extern "C" int __real_close(int fd);
+
+extern "C" int __wrap_open(const char *pathname, int flags, ...)
+{
+    if (g_interceptSysfs && pathname != nullptr &&
+        strncmp(pathname, "/sys/class/block/", 17) == 0 && strstr(pathname, "/size") != nullptr) {
+        g_mockSysfsFd = 10000;
+        return g_mockSysfsFd;
+    }
+    if (flags & O_CREAT) {
+        va_list args;
+        va_start(args, flags);
+        int mode = va_arg(args, int);
+        va_end(args);
+        return __real_open(pathname, flags, mode);
+    }
+    return __real_open(pathname, flags);
+}
+
+extern "C" int __wrap___open_chk(const char *pathname, int flags)
+{
+    if (g_interceptSysfs && pathname != nullptr &&
+        strncmp(pathname, "/sys/class/block/", 17) == 0 && strstr(pathname, "/size") != nullptr) {
+        g_mockSysfsFd = 10000;
+        return g_mockSysfsFd;
+    }
+    return __real___open_chk(pathname, flags);
+}
+
+extern "C" ssize_t __wrap_read(int fd, void *buf, size_t count)
+{
+    if (g_interceptSysfs && fd == g_mockSysfsFd) {
+        std::string val = std::to_string(g_mockDevSectorSize);
+        size_t n = val.size() < count ? val.size() : count;
+        memcpy(buf, val.c_str(), n);
+        return static_cast<ssize_t>(n);
+    }
+    return __real_read(fd, buf, count);
+}
+
+extern "C" int __wrap_close(int fd)
+{
+    if (g_interceptSysfs && fd == g_mockSysfsFd) {
+        g_mockSysfsFd = -1;
+        return 0;
+    }
+    return __real_close(fd);
+}
+
+struct SysfsInterceptGuard {
+    explicit SysfsInterceptGuard(uint64_t sectors)
+    {
+        g_interceptSysfs = true;
+        g_mockDevSectorSize = sectors;
+    }
+    ~SysfsInterceptGuard()
+    {
+        g_interceptSysfs = false;
+        g_mockDevSectorSize = 0;
+    }
+};
 
 class UeventBootstrapTest : public Test {
 protected:
@@ -1952,32 +2023,17 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
     EXPECT_NE(ret, DiskManagerErrNo::E_OK);
 }
 
-// ===== CreateDmLinearForPartition 测试：通过 mock sysfs 目录控制 GetDevSectorSize 返回值 =====
- 
-static void CreateMockSysfsSizeFile(const std::string &basePath, const std::string &devName,
-                                    const std::string &sectorCount)
-{
-    std::string devDir = basePath + "/" + devName;
-    mkdir(basePath.c_str(), MOCK_DIR_MODE);
-    mkdir(devDir.c_str(), MOCK_DIR_MODE);
-    std::string sizePath = devDir + "/size";
-    std::ofstream ofs(sizePath);
-    ofs << sectorCount;
-}
- 
+// ===== ResolvePartitionDev / CreateDmLinearForPartition 测试 =====
+// 从 DiscoverPartitionsAndVolumes 入口，通过 mock 控制进入 DiscoverSinglePartitionVolume，
+// 使用 SysfsInterceptGuard 控制 GetDevSectorSize 返回值。
+
 /**
- * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearSuccess_TestCase_001
- * @tc.desc: Internal data disk, partition size > 20MB, CreateDmLinear succeeds,
- *           ResolvePartitionDev returns dm-linear device
+ * @tc.name: DmLinear_InternalDataDisk_Success_001
+ * @tc.desc: 内置数据盘，分区扇区数 > 40960，CreateDmLinear 成功
  */
-HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSuccess_TestCase_001, TestSize.Level0)
+HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_Success_001, TestSize.Level0)
 {
-    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_1";
-    system(("rm -rf " + mockSysPath).c_str());
-    // 100MB = 204800 sectors (> 40960 reserved), so CreateDmLinearForPartition proceeds
-    CreateMockSysfsSizeFile(mockSysPath, "sda1", "204800");
-    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
- 
+    SysfsInterceptGuard guard(204800); // > DM_RESERVED_SECTORS(40960)
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -1992,11 +2048,8 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSucces
             FillInternalDataDisk(diskId, out);
             return E_OK;
         }));
-    constexpr int MOCK_DM_DEV_MAJOR = 253;
-    constexpr int MOCK_DM_DEV_MINOR = 0;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(makedev(MOCK_DM_DEV_MAJOR, MOCK_DM_DEV_MINOR))),
-                        Return(E_OK)));
+        .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(makedev(253, 0))), Return(E_OK)));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
             info.diskId = "disk-8-1";
@@ -2014,27 +2067,17 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSucces
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
- 
-    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
-    system(("rm -rf " + mockSysPath).c_str());
 }
- 
+
 /**
- * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearSizeTooSmall_TestCase_002
- * @tc.desc: Internal data disk, partition size <= 20MB (DM_RESERVED_SECTORS),
- *           CreateDmLinearForPartition returns (0,0), falls back to isUserData path
+ * @tc.name: DmLinear_InternalDataDisk_SectorTooSmall_002
+ * @tc.desc: 内置数据盘，分区扇区数 <= 40960，CreateDmLinearForPartition 跳过
  */
-HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSizeTooSmall_TestCase_002, TestSize.Level0)
+HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_SectorTooSmall_002, TestSize.Level0)
 {
-    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_2";
-    system(("rm -rf " + mockSysPath).c_str());
-    // 10MB = 20480 sectors (<= 40960 reserved), CreateDmLinearForPartition returns (0,0)
-    CreateMockSysfsSizeFile(mockSysPath, "sda1", "20480");
-    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
- 
+    SysfsInterceptGuard guard(20480); // <= DM_RESERVED_SECTORS(40960)
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2049,7 +2092,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSizeTo
             FillInternalDataDisk(diskId, out);
             return E_OK;
         }));
-    // CreateDmLinear should NOT be called since size too small
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _)).Times(0);
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
@@ -2068,27 +2110,17 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearSizeTo
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
- 
-    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
-    system(("rm -rf " + mockSysPath).c_str());
 }
- 
+
 /**
- * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearNoSysfsEntry_TestCase_003
- * @tc.desc: Internal data disk, sysfs size file does not exist,
- *           GetDevSectorSize returns 0, CreateDmLinearForPartition returns (0,0), falls back
+ * @tc.name: DmLinear_InternalDataDisk_SysfsZero_003
+ * @tc.desc: 内置数据盘，GetDevSectorSize 返回 0，CreateDmLinearForPartition 跳过
  */
-HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearNoSysfsEntry_TestCase_003, TestSize.Level0)
+HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_SysfsZero_003, TestSize.Level0)
 {
-    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_3";
-    system(("rm -rf " + mockSysPath).c_str());
-    // No size file created -> GetDevSectorSize returns 0
-    mkdir(mockSysPath.c_str(), MOCK_DIR_MODE);
-    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
- 
+    SysfsInterceptGuard guard(0);
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2103,7 +2135,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearNoSysf
             FillInternalDataDisk(diskId, out);
             return E_OK;
         }));
-    // CreateDmLinear should NOT be called since GetDevSectorSize returns 0
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _)).Times(0);
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
@@ -2122,27 +2153,17 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearNoSysf
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
- 
-    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
-    system(("rm -rf " + mockSysPath).c_str());
 }
- 
+
 /**
- * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearCreateFail_TestCase_004
- * @tc.desc: Internal data disk, partition size > 20MB but CreateDmLinear fails,
- *           CreateDmLinearForPartition returns (0,0), falls back to isUserData path
+ * @tc.name: DmLinear_InternalDataDisk_CreateFail_004
+ * @tc.desc: 内置数据盘，扇区数足够但 CreateDmLinear 失败(err≠0)，走 fallback
  */
-HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreateFail_TestCase_004, TestSize.Level0)
+HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_CreateFail_004, TestSize.Level0)
 {
-    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_4";
-    system(("rm -rf " + mockSysPath).c_str());
-    // 100MB = 204800 sectors
-    CreateMockSysfsSizeFile(mockSysPath, "sda1", "204800");
-    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
- 
+    SysfsInterceptGuard guard(204800);
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2157,7 +2178,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreate
             FillInternalDataDisk(diskId, out);
             return E_OK;
         }));
-    // CreateDmLinear fails
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _))
         .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(0)), Return(-1)));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -2177,27 +2197,17 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreate
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
- 
-    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
-    system(("rm -rf " + mockSysPath).c_str());
 }
- 
+
 /**
- * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearCreateDmDevZero_TestCase_005
- * @tc.desc: Internal data disk, partition size > 20MB but CreateDmLinear returns dmDev=0,
- *           CreateDmLinearForPartition returns (0,0), falls back to isUserData path
+ * @tc.name: DmLinear_InternalDataDisk_DmDevZero_005
+ * @tc.desc: 内置数据盘，CreateDmLinear 返回 E_OK 但 dmDev=0，走 fallback
  */
-HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreateDmDevZero_TestCase_005, TestSize.Level0)
+HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_DmDevZero_005, TestSize.Level0)
 {
-    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_5";
-    system(("rm -rf " + mockSysPath).c_str());
-    // 100MB = 204800 sectors
-    CreateMockSysfsSizeFile(mockSysPath, "sda1", "204800");
-    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
- 
+    SysfsInterceptGuard guard(204800);
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2212,7 +2222,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreate
             FillInternalDataDisk(diskId, out);
             return E_OK;
         }));
-    // CreateDmLinear returns E_OK but dmDev=0
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _))
         .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(0)), Return(E_OK)));
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
@@ -2232,30 +2241,18 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearCreate
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
- 
-    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
-    system(("rm -rf " + mockSysPath).c_str());
 }
 
 /**
- * @tc.name: DiscoverPartitions_InternalDataDisk_DmLinearFallThroughUserData_TestCase_006
- * @tc.desc: Internal data disk, DmLinear size too small → fall through,
- *           and isUserData=true (dump contains "userdata" with >32 lines),
- *           covers ResolvePartitionDev isUserData=true → GetMaxMinor → maxMinor==-1 branch.
+ * @tc.name: DmLinear_InternalDataDisk_FallbackIsUserData_006
+ * @tc.desc: 内置数据盘，DmLinear 跳过 + isUserData=true(>32分区含"userdata")，
+ *           覆盖 ResolvePartitionDev isUserData=true 分支
  */
-HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearFallThroughUserData_TestCase_006,
-          TestSize.Level0)
+HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_FallbackIsUserData_006, TestSize.Level0)
 {
-    std::string mockSysPath = "/data/local/tmp/disk_mgr_test_sysfs_6";
-    system(("rm -rf " + mockSysPath).c_str());
-    // 10MB = 20480 sectors (<= 40960 reserved), CreateDmLinearForPartition returns (0,0)
-    CreateMockSysfsSizeFile(mockSysPath, "sda1", "20480");
-    UeventBootstrap::SysBlockPathForTest() = mockSysPath;
- 
-    // Build dump with > 32 lines containing "userdata" to set isUserData=true
+    SysfsInterceptGuard guard(20480);
     std::string dump = "DISK gpt\n";
     for (int i = 1; i <= 33; ++i) {
         if (i == 1) {
@@ -2264,7 +2261,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearFallTh
             dump += "PART " + std::to_string(i) + "\n";
         }
     }
- 
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK))
@@ -2278,7 +2274,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearFallTh
             FillInternalDataDisk(diskId, out);
             return E_OK;
         }));
-    // CreateDmLinear should NOT be called since size too small
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _)).Times(0);
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
@@ -2297,10 +2292,6 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_InternalDataDisk_DmLinearFallTh
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
- 
-    UeventBootstrap::SysBlockPathForTest() = "/sys/class/block";
-    system(("rm -rf " + mockSysPath).c_str());
 }

@@ -707,6 +707,13 @@ ohos_unittest("uevent_bootstrap_test") {
     defines += [ "CDC_STORAGE" ]
   }
 
+  ldflags = [
+    "-Wl,--wrap=open",
+    "-Wl,--wrap=__open_chk",
+    "-Wl,--wrap=read",
+    "-Wl,--wrap=close",
+  ]
+
   deps = [
     "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
   ]
