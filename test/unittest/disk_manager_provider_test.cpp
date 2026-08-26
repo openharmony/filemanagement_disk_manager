@@ -42,7 +42,9 @@ extern std::string g_nativeProcessName;
 
 constexpr int32_t MOCK_PERMISSION_GRANTED = 0;
 constexpr int32_t MOCK_PERMISSION_DENIED = -1;
+#ifdef PC_MANAGER
 constexpr int32_t FILE_GUARD_UID = 6266;
+#endif
 
 namespace OHOS {
 namespace DiskManager {
