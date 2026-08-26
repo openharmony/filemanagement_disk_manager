@@ -18,7 +18,7 @@
 #include <fstream>
 #include <fcntl.h>
 #include <unistd.h>
-#include <stdarg.h>
+#include <cstdarg>
 #include <sys/sysmacros.h>
 
 #include "disk/uevent_bootstrap.h"
@@ -50,7 +50,9 @@ constexpr int DISK_METADATA_ARG_LABEL = 3;
 static bool g_interceptSysfs = false;
 static uint64_t g_mockDevSectorSize = 0;
 static int g_mockSysfsFd = -1;
- 
+static constexpr int MOCK_SYSFS_FD = 10000;
+static constexpr size_t SYSFS_BLOCK_PREFIX_LEN = sizeof("/sys/class/block/") - 1;
+
 extern "C" int __real_open(const char *pathname, int flags, ...);
 extern "C" int __real___open_chk(const char *pathname, int flags);
 extern "C" ssize_t __real_read(int fd, void *buf, size_t count);
@@ -59,8 +61,8 @@ extern "C" int __real_close(int fd);
 extern "C" int __wrap_open(const char *pathname, int flags, ...)
 {
     if (g_interceptSysfs && pathname != nullptr &&
-        strncmp(pathname, "/sys/class/block/", 17) == 0 && strstr(pathname, "/size") != nullptr) {
-        g_mockSysfsFd = 10000;
+        strncmp(pathname, "/sys/class/block/", SYSFS_BLOCK_PREFIX_LEN) == 0 && strstr(pathname, "/size") != nullptr) {
+        g_mockSysfsFd = MOCK_SYSFS_FD;
         return g_mockSysfsFd;
     }
     if (flags & O_CREAT) {
@@ -76,8 +78,8 @@ extern "C" int __wrap_open(const char *pathname, int flags, ...)
 extern "C" int __wrap___open_chk(const char *pathname, int flags)
 {
     if (g_interceptSysfs && pathname != nullptr &&
-        strncmp(pathname, "/sys/class/block/", 17) == 0 && strstr(pathname, "/size") != nullptr) {
-        g_mockSysfsFd = 10000;
+        strncmp(pathname, "/sys/class/block/", SYSFS_BLOCK_PREFIX_LEN) == 0 && strstr(pathname, "/size") != nullptr) {
+        g_mockSysfsFd = MOCK_SYSFS_FD;
         return g_mockSysfsFd;
     }
     return __real___open_chk(pathname, flags);

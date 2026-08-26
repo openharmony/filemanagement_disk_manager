@@ -456,7 +456,6 @@ static uint64_t GetDevSectorSize(const std::string &devName)
     int fd = open(sysfsPath.c_str(), O_RDONLY);
     if (fd < 0) {
         return 0;
- 
     }
     char buf[32] = {};
     ssize_t n = read(fd, buf, sizeof(buf) - 1);
@@ -464,7 +463,7 @@ static uint64_t GetDevSectorSize(const std::string &devName)
     if (n <= 0) {
         return 0;
     }
-    return strtoull(buf, nullptr, 10);
+    return strtoull(buf, nullptr, DEC_BASE);
 }
 
 static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t partitionNumber)
