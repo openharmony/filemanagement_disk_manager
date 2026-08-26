@@ -73,8 +73,10 @@ public:
     void Reset();
     int32_t GetPartitionNum() const;
     void SetPartitionNum(int32_t partitionNum);
-    void SetCryptPath(const std::string &cryptPath);
-    std::string GetCryptPath() const;
+    void SetLoopPath(const std::string &loopPath);
+    std::string GetLoopPath() const;
+    void SetMapperPath(const std::string &mapperPath);
+    std::string GetMapperPath() const;
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeExternal *Unmarshalling(Parcel &parcel);
@@ -88,7 +90,8 @@ private:
     bool isUserData_ = false;
     int32_t partitionNum_ = 0;
     int64_t freeSize_ { 0 };
-    std::string cryptPath_;
+    std::string loopPath_;
+    std::string mapperPath_;
 };
 } // namespace DiskManager
 } // namespace OHOS

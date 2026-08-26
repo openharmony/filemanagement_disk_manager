@@ -1297,5 +1297,42 @@ HWTEST_F(DiskManagerClientTest, MountVolumeByPathTest002, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "MountVolumeByPathTest002 End";
 }
+
+/**
+ * @tc.name: UmountVolumeByPathTest001
+ * @tc.desc: 测试 UmountVolumeByPath 传入有效参数，ResetProxy 后 IPC 失败预期返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, UmountVolumeByPathTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UmountVolumeByPathTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.UmountVolumeByPath("disk-8-1", "/dev/mapper/uvp1");
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "UmountVolumeByPathTest001 End";
+}
+
+/**
+ * @tc.name: UmountVolumeByPathTest002
+ * @tc.desc: UmountVolumeByPath Connect 成功后转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, UmountVolumeByPathTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UmountVolumeByPathTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, UmountVolumeByPath(_, _)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_EQ(client.UmountVolumeByPath("disk-8-1", "/dev/mapper/uvp1"), E_OK);
+
+    GTEST_LOG_(INFO) << "UmountVolumeByPathTest002 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

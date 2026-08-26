@@ -191,6 +191,10 @@ bool IsVolumeIdValid(const std::string &volumeId)
         LOGI("IsVolumeIdValid: volume is mtp or ptp");
         return true;
     }
+    if (volumeId.find("vol-crypt-") == 0) {
+        LOGI("IsVolumeIdValid: volumeId is crypt usb");
+        return true;
+    }
     if (volumeId.find("vol-") != 0) {
         LOGE("IsVolumeIdValid: volumeId prefix is not vol-");
         return false;

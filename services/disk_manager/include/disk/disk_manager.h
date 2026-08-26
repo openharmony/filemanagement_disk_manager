@@ -110,13 +110,14 @@ public:
     std::string GetDriverType(const std::string &extraInfo);
 
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
-    int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+    int32_t BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
                                 const std::string &mapperName);
     int32_t DestroyDmCryptVolume(const std::string &mapperName);
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
+    int32_t UmountVolumeByPath(const std::string &diskId, const std::string &volPath);
 
 private:
     DiskManager();
@@ -212,6 +213,8 @@ private:
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
                                  const std::string &diskId, const std::string &oldFsUuid,
                                  const std::string &blockVolId);
+    /** 将挂载/卸载后修改的 VolumeExternal 整体回写 volumeMap_（自取写锁）。返回 E_OK / E_NON_EXIST。 */
+    int32_t UpdateVolumeExternal(const VolumeExternal &volExternal);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
     int32_t RepairAndCheckVolume(VolumeExternal &volExternal, const std::string &volumeId);
     int32_t MountVolumeSetPath(VolumeExternal &volExternal, std::string& dataMountPath);
@@ -223,7 +226,7 @@ private:
      * 注意：调用此函数前必须已持有 volumeMapMutex_ 读锁。
      */
     void QueryAndAppendEncryptionStatusUnlocked(Disk &disk);
-    int32_t InitVolume(VolumeExternal &volExternal);
+    int32_t InitVolume(VolumeExternal &volExternal, const std::string &volPath);
     /** InitVolume + StorageDaemonAdapter::Mount，返回 errno（E_OK 表示成功），错误码由调用方经 IpcDfxScope 上报。 */
     int32_t InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag);
 

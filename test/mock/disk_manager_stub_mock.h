@@ -65,6 +65,7 @@ public:
     MOCK_METHOD(int32_t, UnbindBlockLoopDev, (const std::string &loopPath));
     MOCK_METHOD(int32_t, MountVolumeByPath,
         (const std::string &diskId, const std::string &volPath, const MountParam &param));
+    MOCK_METHOD(int32_t, UmountVolumeByPath, (const std::string &diskId, const std::string &volPath));
 };
 
 } // namespace DiskManager

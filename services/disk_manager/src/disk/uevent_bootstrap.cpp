@@ -185,6 +185,13 @@ void DestroyALLVolume(const std::string &diskId)
                 LOGE("ForceUnmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
             }
         }
+        if (!vol.GetMapperPath().empty()) {
+            std::string mapperName = vol.GetMapperPath().substr(vol.GetMapperPath().find_last_of('/') + 1);
+            DiskManager::GetInstance().DestroyDmCryptVolume(mapperName);
+        }
+        if (!vol.GetLoopPath().empty()) {
+            DiskManager::GetInstance().UnbindBlockLoopDev(vol.GetLoopPath());
+        }
         int32_t ret = StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(BlockPathForId(vol.GetId()));
         if (ret != E_OK) {
             LOGI("Destroy volume failed vol:%{public}s, ret:%{public}d", vol.GetId().c_str(), ret);

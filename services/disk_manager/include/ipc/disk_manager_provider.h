@@ -76,7 +76,7 @@ public:
     int32_t DeletePartition(const std::string &diskId, int32_t partitionNum) override;
     int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params) override;
     // crypto disk inner APIs
-    int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+    int32_t BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
                                 const std::string &mapperName) override;
@@ -84,6 +84,7 @@ public:
     int32_t UnbindBlockLoopDev(const std::string &loopPath) override;
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath,
                               const MountParam &param) override;
+    int32_t UmountVolumeByPath(const std::string &diskId, const std::string &volPath) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);

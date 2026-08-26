@@ -132,14 +132,24 @@ void VolumeExternal::SetPartitionNum(int32_t partitionNum)
     partitionNum_ = partitionNum;
 }
 
-std::string VolumeExternal::GetCryptPath() const
+std::string VolumeExternal::GetLoopPath() const
 {
-    return cryptPath_;
+    return loopPath_;
 }
 
-void VolumeExternal::SetCryptPath(const std::string &cryptPath)
+void VolumeExternal::SetLoopPath(const std::string &loopPath)
 {
-    cryptPath_ = cryptPath;
+    loopPath_ = loopPath;
+}
+
+std::string VolumeExternal::GetMapperPath() const
+{
+    return mapperPath_;
+}
+
+void VolumeExternal::SetMapperPath(const std::string &mapperPath)
+{
+    mapperPath_ = mapperPath;
 }
 
 VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
