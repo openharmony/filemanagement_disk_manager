@@ -47,7 +47,8 @@ HWTEST_F(VolumeExternalTest, DefaultConstructor_TestCase_001, TestSize.Level0)
     EXPECT_EQ(ve.GetPartitionNum(), 0);
     EXPECT_EQ(ve.GetFreeSize(), 0);
     EXPECT_FALSE(ve.GetUserData());
-    EXPECT_EQ(ve.GetCryptPath(), "");
+    EXPECT_EQ(ve.GetLoopPath(), "");
+    EXPECT_EQ(ve.GetMapperPath(), "");
 }
 
 HWTEST_F(VolumeExternalTest, ConstructorFromVolumeCore_TestCase_001, TestSize.Level0)
@@ -327,22 +328,41 @@ HWTEST_F(VolumeExternalTest, SetFreeSize_GetFreeSize_TestCase_001, TestSize.Leve
 }
 
 /**
- * @tc.name: SetCryptPath_GetCryptPath_TestCase_001
- * @tc.desc: SetCryptPath/GetCryptPath 读写 cryptPath
+ * @tc.name: SetLoopPath_GetLoopPath_TestCase_001
+ * @tc.desc: SetLoopPath/GetLoopPath 读写 loopPath
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(VolumeExternalTest, SetCryptPath_GetCryptPath_TestCase_001, TestSize.Level0)
+HWTEST_F(VolumeExternalTest, SetLoopPath_GetLoopPath_TestCase_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "SetCryptPath_GetCryptPath_TestCase_001 Start";
+    GTEST_LOG_(INFO) << "SetLoopPath_GetLoopPath_TestCase_001 Start";
 
     VolumeExternal ve;
-    EXPECT_EQ(ve.GetCryptPath(), "");
-    ve.SetCryptPath("/data/misc/keystore");
-    EXPECT_EQ(ve.GetCryptPath(), "/data/misc/keystore");
-    ve.SetCryptPath("");
-    EXPECT_EQ(ve.GetCryptPath(), "");
-    GTEST_LOG_(INFO) << "SetCryptPath_GetCryptPath_TestCase_001 End";
+    EXPECT_EQ(ve.GetLoopPath(), "");
+    ve.SetLoopPath("/dev/loop0");
+    EXPECT_EQ(ve.GetLoopPath(), "/dev/loop0");
+    ve.SetLoopPath("");
+    EXPECT_EQ(ve.GetLoopPath(), "");
+    GTEST_LOG_(INFO) << "SetLoopPath_GetLoopPath_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetMapperPath_GetMapperPath_TestCase_001
+ * @tc.desc: SetMapperPath/GetMapperPath 读写 mapperPath
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetMapperPath_GetMapperPath_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetMapperPath_GetMapperPath_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_EQ(ve.GetMapperPath(), "");
+    ve.SetMapperPath("/dev/mapper/mvp0");
+    EXPECT_EQ(ve.GetMapperPath(), "/dev/mapper/mvp0");
+    ve.SetMapperPath("");
+    EXPECT_EQ(ve.GetMapperPath(), "");
+    GTEST_LOG_(INFO) << "SetMapperPath_GetMapperPath_TestCase_001 End";
 }
 
 /**

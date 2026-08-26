@@ -834,11 +834,12 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     return ret;
 }
 
-int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                                               std::string &loopPath)
 {
-    LOGI("BindBlockLoopDev sysPath=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
-         sysPath.c_str(), offset, sizeLimit);
+    LOGI("BindBlockLoopDev diskId=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
+         diskId.c_str(), offset, sizeLimit);
+#ifdef PC_MANAGER
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != FILE_GUARD_UID) {
         LOGE("BindBlockLoopDev: call uid %{public}d is invalid", uid);
@@ -847,24 +848,24 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &sysPath, uint64
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         return E_PERMISSION_DENIED;
     }
-    if (offset == 0 || sizeLimit == 0 || sizeLimit <= offset) {
+    if (offset == 0 || sizeLimit == 0) {
         LOGE("BindBlockLoopDev: invalid offset or sizeLimit");
         return E_PARAMS_INVALID;
     }
-    if (IsFilePathInvalid(sysPath)) {
-        LOGE("BindBlockLoopDev: sysPath is invalid");
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("BindBlockLoopDev: diskId is invalid");
         return E_PARAMS_INVALID;
     }
-    if (sysPath.find("/dev/block/") != 0) {
-        LOGE("BindBlockLoopDev: invalid sysPath prefix");
-        return E_PARAMS_INVALID;
-    }
-    const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
+    const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(diskId, offset, sizeLimit, loopPath);
     LOGI("BindBlockLoopDev done ret=%{public}d", ret);
     if (ret != E_OK) {
         return E_BIND_LOOP_DEV_FAILED;
     }
     return E_OK;
+#else
+    LOGI("BindBlockLoopDev: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
 }
 
 int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
@@ -989,6 +990,39 @@ int32_t DiskManagerProvider::MountVolumeByPath(const std::string &diskId, const 
     return E_OK;
 #else
     LOGI("MountVolumeByPath: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
+}
+
+int32_t DiskManagerProvider::UmountVolumeByPath(const std::string &diskId, const std::string &volPath)
+{
+    LOGI("UmountVolumeByPath diskId=%{public}s volPath=%{public}s", diskId.c_str(), volPath.c_str());
+#ifdef PC_MANAGER
+    int32_t uid = IpcCallerAuth::GetCallingUid();
+    if (uid != FILE_GUARD_UID) {
+        LOGE("UmountVolumeByPath: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("UmountVolumeByPath: diskId is invalid");
+        return E_PARAMS_INVALID;
+    }
+    if (volPath.empty() || IsFilePathInvalid(volPath) || (volPath.find("/dev/block/") != 0 &&
+        volPath.find("/dev/mapper/") != 0)) {
+        LOGE("UmountVolumeByPath: volPath is invalid");
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().UmountVolumeByPath(diskId, volPath);
+    LOGI("UmountVolumeByPath done ret=%{public}d", ret);
+    if (ret != E_OK) {
+        return E_UMOUNT_VOL_BY_PATH_FAILED;
+    }
+    return E_OK;
+#else
+    LOGI("UmountVolumeByPath: <<< EXIT <<< not support");
     return E_NOT_SUPPORT;
 #endif
 }

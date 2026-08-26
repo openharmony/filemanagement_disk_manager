@@ -616,5 +616,17 @@ int32_t DiskManagerClient::MountVolumeByPath(const std::string &diskId, const st
     IDiskManager &dm = *proxy;
     return dm.MountVolumeByPath(diskId, volPath, mountParam);
 }
+
+int32_t DiskManagerClient::UmountVolumeByPath(const std::string &diskId, const std::string &volPath)
+{
+    LOGI("UmountVolumeByPath diskId=%{public}s volPath=%{public}s", diskId.c_str(), volPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.UmountVolumeByPath(diskId, volPath);
+}
 } // namespace DiskManager
 } // namespace OHOS

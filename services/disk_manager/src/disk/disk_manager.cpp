@@ -715,10 +715,10 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-    if (!volExternal.GetCryptPath().empty()) {
+    if (!volExternal.GetLoopPath().empty()) {
         MountParam param;
         param.SetReadOnly(false);
-        return MountVolumeByPath(volExternal.GetDiskId(), volExternal.GetCryptPath(), param);
+        return MountVolumeByPath(volExternal.GetDiskId(), volExternal.GetLoopPath(), param);
     }
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
 
@@ -2370,6 +2370,18 @@ void DiskManager::SetVolumeStateLocked(const std::string &volumeId, VolumeState 
     }
 }
 
+int32_t DiskManager::UpdateVolumeExternal(const VolumeExternal &volExternal)
+{
+    std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+    const auto it = volumeMap_.find(volExternal.GetId());
+    if (it == volumeMap_.end()) {
+        LOGE("UpdateVolumeExternal: volume not found in map, volumeId=%{public}s", volExternal.GetId().c_str());
+        return E_NON_EXIST;
+    }
+    it->second = volExternal;
+    return E_OK;
+}
+
 void DiskManager::PublishFormatFailEvent(const std::string &volumeId)
 {
     SetVolumeStateLocked(volumeId, FORMAT_FINISH_FAIL);
@@ -2587,20 +2599,35 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
     }
 }
 
-int32_t DiskManager::BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
+int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                                       std::string &loopPath)
 {
     VolumeReportInfo reportInfo;
-    reportInfo.WithDevPath(sysPath);
+    reportInfo.WithDevPath(diskId);
     IpcDfxScope dfx("DiskManager::BindBlockLoopDev", DFX_STAGE_BIND_BLOCK_LOOP_DEV, VolumeOpType::BIND_BLOCK_LOOP_DEV,
                     reportInfo);
-    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev(sysPath, offset, sizeLimit, loopPath);
-    if (ret != DiskManagerErrNo::E_OK) {
-        LOGE("BindBlockLoopDev failed, sysPath=%{public}s, err=%{public}d", sysPath.c_str(), ret);
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        LOGE("BindBlockLoopDev: disk not found, diskId=%{public}s", diskId.c_str());
+        return dfx.Finish(E_NON_EXIST);
+    }
+    if (disk.GetDiskType() != DiskType::USB_FLAG) {
+        LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
+    }
+    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev(diskId, offset, sizeLimit, loopPath);
+    if (ret != E_OK) {
+        LOGE("BindBlockLoopDev failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return dfx.Finish(ret);
     }
+    std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
+    VolumeCore vc(volId, 0, diskId);
+    VolumeExternal volumeExternal(vc);
+    volumeExternal.SetLoopPath(loopPath);
+    volumeExternal.SetState(VolumeState::UNMOUNTED);
+    OnVolumeCreated(volumeExternal);
     LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
-    return dfx.Finish(DiskManagerErrNo::E_OK);
+    return dfx.Finish(E_OK);
 }
 
 int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
@@ -2610,6 +2637,12 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     reportInfo.WithDevPath(loopPath);
     IpcDfxScope dfx("DiskManager::CreateDmCryptVolume", DFX_STAGE_CREATE_DM_CRYPT_VOLUME,
                     VolumeOpType::CREATE_DM_CRYPT_VOLUME, reportInfo);
+    std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
+    VolumeExternal volumeExternal;
+    if (GetVolumeById(volId, volumeExternal) != E_OK) {
+        LOGE("CreateDmCryptVolume failed, this loopPath not bind");
+        return dfx.Finish(E_NON_EXIST);
+    }
     std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
                                     "--cipher", param.GetCipher(),
                                     "--key-size", std::to_string(param.GetKeySize()),
@@ -2617,19 +2650,24 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     std::vector<std::string> output;
     int32_t execRet = 0;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
-    if (ret != DiskManagerErrNo::E_OK) {
+    if (ret != E_OK) {
         LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
         return dfx.Finish(ret);
     }
     for (const auto &item: output) {
-        LOGE("exec output: %{public}s", item.c_str());
+        LOGE("CreateDmCryptVolume exec output: %{public}s", item.c_str());
     }
-    if (execRet != DiskManagerErrNo::E_OK) {
+    if (execRet != E_OK) {
         LOGE("CreateDmCryptVolume command failed, execRet=%{public}d", execRet);
-        return dfx.Finish(DiskManagerErrNo::E_CREATE_DM_CRYPT_VOLUME_FAILED);
+        return dfx.Finish(E_CREATE_DM_CRYPT_VOLUME_FAILED);
+    }
+    volumeExternal.SetMapperPath("/dev/mapper/" + mapperName);
+    int32_t updateErr = UpdateVolumeExternal(volumeExternal);
+    if (updateErr != E_OK) {
+        return dfx.Finish(updateErr);
     }
     LOGI("CreateDmCryptVolume success");
-    return dfx.Finish(DiskManagerErrNo::E_OK);
+    return dfx.Finish(E_OK);
 }
 
 int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
@@ -2642,19 +2680,19 @@ int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
     std::vector<std::string> output;
     int32_t execRet = 0;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
-    if (ret != DiskManagerErrNo::E_OK) {
+    if (ret != E_OK) {
         LOGE("DestroyDmCryptVolume failed, err=%{public}d", ret);
         return dfx.Finish(ret);
     }
     for (const auto &item: output) {
-        LOGE("exec output: %{public}s", item.c_str());
+        LOGE("DestroyDmCryptVolume exec output: %{public}s", item.c_str());
     }
-    if (execRet != DiskManagerErrNo::E_OK) {
+    if (execRet != E_OK) {
         LOGE("DestroyDmCryptVolume command failed, execRet=%{public}d", execRet);
-        return dfx.Finish(DiskManagerErrNo::E_DESTROY_DM_CRYPT_VOLUME_FAILED);
+        return dfx.Finish(E_DESTROY_DM_CRYPT_VOLUME_FAILED);
     }
     LOGI("DestroyDmCryptVolume success");
-    return dfx.Finish(DiskManagerErrNo::E_OK);
+    return dfx.Finish(E_OK);
 }
 
 int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
@@ -2667,19 +2705,19 @@ int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
     std::vector<std::string> output;
     int32_t execRet = 0;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
-    if (ret != DiskManagerErrNo::E_OK) {
+    if (ret != E_OK) {
         LOGE("UnbindBlockLoopDev failed, err=%{public}d", ret);
         return dfx.Finish(ret);
     }
     for (const auto &item : output) {
-        LOGE("exec output: %{public}s", item.c_str());
+        LOGE("UnbindBlockLoopDev exec output: %{public}s", item.c_str());
     }
-    if (execRet != DiskManagerErrNo::E_OK) {
+    if (execRet != E_OK) {
         LOGE("UnbindBlockLoopDev command failed, execRet=%{public}d", execRet);
-        return dfx.Finish(DiskManagerErrNo::E_UNBIND_LOOP_DEV_FAILED);
+        return dfx.Finish(E_UNBIND_LOOP_DEV_FAILED);
     }
     LOGI("UnbindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
-    return dfx.Finish(DiskManagerErrNo::E_OK);
+    return dfx.Finish(E_OK);
 }
 
 int32_t DiskManager::MountVolumeByPath(const std::string &diskId, const std::string &volPath,
@@ -2696,20 +2734,18 @@ int32_t DiskManager::MountVolumeByPath(const std::string &diskId, const std::str
         return dfx.Finish(E_NON_EXIST);
     }
     if (disk.GetDiskType() != DiskType::USB_FLAG) {
-        LOGE("disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        LOGE("MountVolumeByPath: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_MOUNT_VOL_BY_PATH_FAILED);
     }
     VolumeExternal volExternal;
     bool isVolExist = LookupVolumeByCryptPath(diskId, volPath, volExternal);
-    if (isVolExist && volExternal.GetState() == VolumeState::MOUNTED) {
-        LOGE("MountVolumeByPath: vol status is mounted");
-        return dfx.Finish(E_VOL_STATE);
-    }
     if (!isVolExist) {
-        std::string volId = volPath.substr(volPath.find_last_of('/') + 1);
-        VolumeCore vc(volId, 0, diskId);
-        volExternal = VolumeExternal(vc);
-        volExternal.SetCryptPath(volPath);
+        LOGE("MountVolumeByPath: volume not exist.");
+        return dfx.Finish(E_NON_EXIST);
+    }
+    if (volExternal.GetState() == VolumeState::MOUNTED) {
+        LOGE("MountVolumeByPath: volume status is mounted.");
+        return dfx.Finish(E_VOL_STATE);
     }
     uint64_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(false);
     if (mountParam.GetReadOnly()) {
@@ -2717,14 +2753,52 @@ int32_t DiskManager::MountVolumeByPath(const std::string &diskId, const std::str
     }
     int32_t res = InitAndMountVolume(volExternal, volPath, mountFlag);
     if (res != E_OK) {
+        LOGI("MountVolumeByPath: mount failed, err=%{public}d", res);
         return dfx.Finish(res);
     }
     volExternal.SetState(VolumeState::MOUNTED);
-    if (!isVolExist) {
-        OnVolumeCreated(volExternal);
+    volExternal.SetFlags(disk.GetDiskType());
+    int32_t updateErr = UpdateVolumeExternal(volExternal);
+    if (updateErr != E_OK) {
+        return dfx.Finish(updateErr);
     }
     CommonEventPublisher::PublishVolumeChange(MOUNTED, volExternal);
     LOGI("MountVolumeByPath: mount success");
+    return dfx.Finish(E_OK);
+}
+
+int32_t DiskManager::UmountVolumeByPath(const std::string &diskId, const std::string &volPath)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDiskId(diskId);
+    reportInfo.WithDevPath(volPath);
+    IpcDfxScope dfx("DiskManager::UmountVolumeByPath", DFX_STAGE_UMOUNT_VOL_BY_PATH,
+                    VolumeOpType::UMOUNT_VOL_BY_PATH, reportInfo);
+    Disk disk;
+    if (GetDiskById(diskId, disk) != E_OK) {
+        LOGE("UmountVolumeByPath: disk not found, diskId=%{public}s", diskId.c_str());
+        return dfx.Finish(E_NON_EXIST);
+    }
+    if (disk.GetDiskType() != DiskType::USB_FLAG) {
+        LOGE("UmountVolumeByPath: disk type not support, diskType=%{public}d.", disk.GetDiskType());
+        return dfx.Finish(E_UMOUNT_VOL_BY_PATH_FAILED);
+    }
+    VolumeExternal volExternal;
+    bool isVolExist = LookupVolumeByCryptPath(diskId, volPath, volExternal);
+    if (!isVolExist) {
+        LOGE("UmountVolumeByPath: volume not exist.");
+        return dfx.Finish(E_NON_EXIST);
+    }
+    if (volExternal.GetState() == VolumeState::UNMOUNTED) {
+        LOGE("UmountVolumeByPath: volume has unmounted");
+        return dfx.Finish(E_VOL_STATE);
+    }
+    int32_t res = DoUnmountVolume(volExternal);
+    if (res != E_OK) {
+        LOGE("UmountVolumeByPath: umount failed, err=%{public}d", res);
+        return dfx.Finish(res);
+    }
+    LOGI("UmountVolumeByPath: umount success");
     return dfx.Finish(E_OK);
 }
 
@@ -2733,7 +2807,8 @@ bool DiskManager::LookupVolumeByCryptPath(const std::string &diskId, const std::
 {
     std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
     for (const auto &item : volumeMap_) {
-        if (item.second.GetDiskId() == diskId && item.second.GetCryptPath() == cryptPath) {
+        if (item.second.GetDiskId() == diskId &&
+            (item.second.GetLoopPath() == cryptPath || item.second.GetMapperPath() == cryptPath)) {
             out = item.second;
             return true;
         }
@@ -2743,7 +2818,7 @@ bool DiskManager::LookupVolumeByCryptPath(const std::string &diskId, const std::
 
 int32_t DiskManager::InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag)
 {
-    int32_t res = InitVolume(volExternal);
+    int32_t res = InitVolume(volExternal, volPath);
     if (res != E_OK) {
         return res;
     }
@@ -2756,25 +2831,24 @@ int32_t DiskManager::InitAndMountVolume(VolumeExternal &volExternal, const std::
     return E_OK;
 }
 
-int32_t DiskManager::InitVolume(VolumeExternal &volExternal)
+int32_t DiskManager::InitVolume(VolumeExternal &volExternal, const std::string &volPath)
 {
     std::string uuid;
     std::string type;
     std::string label;
-    int32_t err = StorageDaemonAdapter::GetInstance().ReadMetadata(volExternal.GetCryptPath(), uuid, type, label);
+    int32_t err = StorageDaemonAdapter::GetInstance().ReadMetadata(volPath, uuid, type, label);
     if (err != E_OK) {
-        LOGE("EnsureFsUuidReady: ReadMetadata failed err=%{public}d", err);
+        LOGE("InitVolume: ReadMetadata failed err=%{public}d", err);
         return err;
     }
     if (!IsUuidValid(uuid)) {
-        LOGE("EnsureFsUuidReady: uuid is invalid, uuid=%{public}s", GetAnonyString(uuid).c_str());
+        LOGE("InitVolume: uuid is invalid, uuid=%{public}s", GetAnonyString(uuid).c_str());
         return E_PARAMS_INVALID;
     }
     volExternal.SetFsUuid(uuid);
     volExternal.SetDescription(label);
     volExternal.SetFsType(volExternal.GetFsTypeByStr(type));
     volExternal.SetPath(std::string(EXTERNAL_MOUNT_ROOT) + uuid);
-    volExternal.SetFlags(DiskType::USB_FLAG);
     return E_OK;
 }
 } // namespace DiskManager
