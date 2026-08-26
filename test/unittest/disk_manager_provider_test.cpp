@@ -2923,12 +2923,12 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_TestCase_001, TestSize.Leve
     GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
-    DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-u1"));
-    VolumeExternal vol = MakeUsbVolume("vol-u1", "disk-8-u1", "uuid-u1", MOUNTED);
+    DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-91"));
+    VolumeExternal vol = MakeUsbVolume("vol-u1", "disk-8-91", "uuid-u1", MOUNTED);
     vol.SetMapperPath("/dev/mapper/uvp1");
     DiskManager::GetInstance().OnVolumeCreated(vol);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Unmount(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(provider.UmountVolumeByPath("disk-8-u1", "/dev/mapper/uvp1"), E_OK);
+    EXPECT_EQ(provider.UmountVolumeByPath("disk-8-91", "/dev/mapper/uvp1"), E_OK);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_001 End";
 }
@@ -3095,6 +3095,10 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_001, TestSize.Lev
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-51"));
+    VolumeExternal cryptVol = MakeUsbVolume("vol-crypt-sda1", "disk-8-51", "uuid-crypt-1", UNMOUNTED);
+    cryptVol.SetLoopPath("/dev/block/sda1");
+    DiskManager::GetInstance().OnVolumeCreated(cryptVol);
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _)).WillOnce(Return(E_OK));
     int32_t ret = provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0");
@@ -3114,6 +3118,10 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_002, TestSize.Lev
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-52"));
+    VolumeExternal cryptVol = MakeUsbVolume("vol-crypt-sda1", "disk-8-52", "uuid-crypt-2", UNMOUNTED);
+    cryptVol.SetLoopPath("/dev/block/sda1");
+    DiskManager::GetInstance().OnVolumeCreated(cryptVol);
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));

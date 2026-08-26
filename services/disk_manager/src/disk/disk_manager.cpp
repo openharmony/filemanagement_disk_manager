@@ -2738,8 +2738,7 @@ int32_t DiskManager::MountVolumeByPath(const std::string &diskId, const std::str
         return dfx.Finish(E_MOUNT_VOL_BY_PATH_FAILED);
     }
     VolumeExternal volExternal;
-    bool isVolExist = LookupVolumeByCryptPath(diskId, volPath, volExternal);
-    if (!isVolExist) {
+    if (!LookupVolumeByCryptPath(diskId, volPath, volExternal)) {
         LOGE("MountVolumeByPath: volume not exist.");
         return dfx.Finish(E_NON_EXIST);
     }
@@ -2784,8 +2783,7 @@ int32_t DiskManager::UmountVolumeByPath(const std::string &diskId, const std::st
         return dfx.Finish(E_UMOUNT_VOL_BY_PATH_FAILED);
     }
     VolumeExternal volExternal;
-    bool isVolExist = LookupVolumeByCryptPath(diskId, volPath, volExternal);
-    if (!isVolExist) {
+    if (!LookupVolumeByCryptPath(diskId, volPath, volExternal)) {
         LOGE("UmountVolumeByPath: volume not exist.");
         return dfx.Finish(E_NON_EXIST);
     }

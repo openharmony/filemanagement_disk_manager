@@ -40,6 +40,8 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 12] void GetAllDisks([out] Disk[] vecOfDisk);
     [ipccode 13] void GetDiskById([in] String diskId, [out] Disk disk);
     [ipccode 14] void QueryUsbIsInUse([in] String diskPath, [out] boolean isInUse);
+
+    /* ---------- 加密U盘相关操作 ---------- */
     [ipccode 15] void BindBlockLoopDev([in] String diskId, [in] unsigned long offset, [in] unsigned long sizeLimit,
                                        [out] String loopPath);
     [ipccode 16] void CreateDmCryptVolume([in] CryptParam param, [in] String loopPath, [in] String mapperName);
