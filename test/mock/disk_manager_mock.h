@@ -65,7 +65,6 @@ public:
     MOCK_METHOD(std::string, GetDiscType, (const std::string &extraInfo));
     MOCK_METHOD(std::string, GetDriverType, (const std::string &extraInfo));
     MOCK_METHOD(bool, DestroyVolumeByDiskIdAndPartNum, (const std::string &diskId, int32_t partNum));
-    MOCK_METHOD(int32_t, GetUsbDeviceInfo, (const std::string &diskId, std::string &usbDeviceInfo));
 
     static DiskManager *mockInstance_;
 };

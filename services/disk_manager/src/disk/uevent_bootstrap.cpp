@@ -321,7 +321,8 @@ std::string BlockInfoToVolumeExtraInfo(const BlockInfo &blockInfo, const UsbSysf
         {"busnum", blockInfo.busnum}, {"devNode", blockInfo.devNode}, {"scsiBusNum", blockInfo.scsiBusNum},
         {"fwVersion", blockInfo.fwVersion}};
  
-    // 注入直读sysfs获取的USB设备信息（若存在）
+    // 注入直读sysfs获取的USB设备信息（若存在），仅PC设备执行
+#ifdef PC_MANAGER
     if (!usbInfo.vid.empty()) {
         extras["vid"] = usbInfo.vid;
     }
@@ -337,6 +338,7 @@ std::string BlockInfoToVolumeExtraInfo(const BlockInfo &blockInfo, const UsbSysf
     if (!usbInfo.devnum.empty()) {
         extras["devnum"] = usbInfo.devnum;
     }
+#endif
  
     return BlockInfoTable::ToJsonStringWithExtras(blockInfo, extras);
 }
@@ -353,11 +355,13 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env,
     const bool hasBlockInfo = BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo);
     Disk diskForEvent(diskId, hasBlockInfo ? static_cast<int64_t>(blockInfo.sizeBytes) : 0, env.devName,
                       ResolveInitialDiskFlag(env));
-    // 直读sysfs获取USB设备信息（仅DEVPATH含"usb"时遍历，跳过SATA/NVMe设备）
+    // 直读sysfs获取USB设备信息（仅DEVPATH含"usb"时遍历，跳过SATA/NVMe设备），仅PC设备执行
     UsbSysfsInfo usbInfo;
+#ifdef PC_MANAGER
     if (env.devPath.find("usb") != std::string::npos) {
         usbInfo = SysfsReader::ReadUsbInfo(env.sysPath, env.devName);
     }
+#endif
     if (hasBlockInfo) {
         diskForEvent.SetExtraInfo(BlockInfoToVolumeExtraInfo(blockInfo, usbInfo));
     } else {

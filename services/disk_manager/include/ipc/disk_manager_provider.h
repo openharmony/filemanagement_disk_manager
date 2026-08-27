@@ -84,8 +84,6 @@ public:
     int32_t UnbindBlockLoopDev(const std::string &loopPath) override;
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath,
                               const MountParam &param) override;
-    // USB device info query
-    int32_t GetUsbDeviceInfo(const std::string &diskId, std::string &usbDeviceInfo) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);

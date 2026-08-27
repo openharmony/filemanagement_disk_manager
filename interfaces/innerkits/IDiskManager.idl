@@ -68,7 +68,4 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 47] void CreatePartition([in] String diskId, [in] PartitionParams params);
     [ipccode 48] void DeletePartition([in] String diskId, [in] int partitionNum);
     [ipccode 49] void FormatPartition([in] String diskId, [in] int partitionNum, [in] FormatParams params);
-
-    /* ---------- USB设备信息查询 ---------- */
-    [ipccode 51] void GetUsbDeviceInfo([in] String diskId, [out] String usbDeviceInfo);
 }

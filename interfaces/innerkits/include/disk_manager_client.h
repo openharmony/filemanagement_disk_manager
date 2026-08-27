@@ -79,9 +79,6 @@ public:
     /** @param mountPath 挂载路径，如 /mnt/data/external/{uuid} 或 /mnt/data/voldata/dataX */
     int32_t QueryUsbIsInUse(const std::string &mountPath, bool &isInUse);
 
-    /* ---------- USB device info query ---------- */
-    int32_t GetUsbDeviceInfo(const std::string &diskId, std::string &usbDeviceInfo);
-
     /* ---------- storage_daemon 回调（IDiskManager / 进程内，由 storage_daemon 调用） ---------- */
     int32_t NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
                              const std::string &uuid, const std::string &fsType);

@@ -117,7 +117,6 @@ public:
     int32_t DestroyDmCryptVolume(const std::string &mapperName);
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
-    int32_t GetUsbDeviceInfo(const std::string &diskId, std::string &usbDeviceInfo);
 
 private:
     DiskManager();
