@@ -4712,6 +4712,8 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_FreeSizeNotZero_TestCase_002, TestSize.
 {
     GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-odd-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-odd-2", "disk-odd-2", "uuid-odd-2", MOUNTED));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     struct statvfs diskInfo {};
     diskInfo.f_bsize = 4096;
@@ -4738,6 +4740,8 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_StartFreeSizeZero_TestCase_003, TestSiz
 {
     GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 Start";
     auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-odd-3"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-odd-3", "disk-odd-3", "uuid-odd-3", MOUNTED));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     struct statvfs diskInfo {};
     diskInfo.f_bsize = 4096;
@@ -4765,6 +4769,8 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 Start";
     auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-odd-4"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-odd-4", "disk-odd-4", "uuid-odd-4", MOUNTED));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     struct statvfs diskInfo {};
     diskInfo.f_bsize = 4096;
