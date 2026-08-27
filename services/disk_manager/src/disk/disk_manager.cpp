@@ -2883,7 +2883,7 @@ std::string DiskManager::CheckVolId(const std::string &volId)
     }
     VolumeExternal external;
     if (GetVolumeById(volId, external) != E_OK) {
-        LOGE("CheckVolId: volId not exist, volId = %{public}s", volId);
+        LOGE("CheckVolId: volId not exist, volId = %{public}s", volId.c_str());
         return "";
     }
     if (volId.find("vol-crypt-") == 0) {
