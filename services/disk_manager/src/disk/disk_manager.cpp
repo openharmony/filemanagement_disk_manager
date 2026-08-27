@@ -716,10 +716,11 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-    if (!volExternal.GetLoopPath().empty()) {
+    std::string devPath = CheckVolId(volumeId);
+    if (!devPath.empty() && volumeId.find("vol-crypt-") == 0) {
         MountParam param;
         param.SetReadOnly(false);
-        return MountVolumeByPath(volExternal.GetDiskId(), volExternal.GetLoopPath(), param);
+        return MountVolumeByPath(volExternal.GetDiskId(), devPath, param);
     }
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
 
@@ -2627,8 +2628,6 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
-    offset = offset * DEFAULT_SECTOR_SIZE;
-    sizeLimit = sizeLimit * DEFAULT_SECTOR_SIZE;
     int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev("/dev/block/" + diskId, offset,
         sizeLimit, loopPath);
     if (ret != E_OK) {
@@ -2866,7 +2865,13 @@ int32_t DiskManager::InitVolume(VolumeExternal &volExternal, const std::string &
     }
     volExternal.SetFsUuid(uuid);
     if (label.empty()) {
-        volExternal.SetDescription("加密区");
+        if (!volExternal.GetMapperPath().empty()) {
+            volExternal.SetDescription("加密区");
+        } else if (!volExternal.GetLoopPath().empty()) {
+            volExternal.SetDescription("公共区");
+        } else {
+            volExternal.SetDescription("MyUSB");
+        }
     } else {
         volExternal.SetDescription(label);
     }

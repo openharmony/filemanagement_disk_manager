@@ -3377,6 +3377,52 @@ HWTEST_F(DiskManagerTest, Mount_TestCase_008, TestSize.Level0)
     EXPECT_NE(dm.Mount("vol-26-7"), E_OK);
 }
 
+/**
+ * @tc.name: Mount_TestCase_009
+ * @tc.desc: Mount vol-crypt- volume with MapperPath routes to MountVolumeByPath with mapper path.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Mount_TestCase_009, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_TestCase_009 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mc-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-mc-1", "disk-8-mc-1", "uuid-mc-1", UNMOUNTED);
+    vol.SetMapperPath("/dev/mapper/mapper-mc-1");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata("/dev/mapper/mapper-mc-1", _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-mc-1"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount("/dev/mapper/mapper-mc-1", _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Mount("vol-crypt-mc-1"), E_OK);
+    GTEST_LOG_(INFO) << "Mount_TestCase_009 End";
+}
+
+/**
+ * @tc.name: Mount_TestCase_010
+ * @tc.desc: Mount vol-crypt- volume with only LoopPath routes to MountVolumeByPath with loop path.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Mount_TestCase_010, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_TestCase_010 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-mc-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-mc-2", "disk-8-mc-2", "uuid-mc-2", UNMOUNTED);
+    vol.SetLoopPath("/dev/block/loop-mc-2");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata("/dev/block/loop-mc-2", _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-mc-2"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount("/dev/block/loop-mc-2", _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Mount("vol-crypt-mc-2"), E_OK);
+    GTEST_LOG_(INFO) << "Mount_TestCase_010 End";
+}
+
 HWTEST_F(DiskManagerTest, Partition_TestCase_004, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
@@ -4861,6 +4907,32 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_004, TestSize.Level0)
 }
 
 /**
+ * @tc.name: BindBlockLoopDev_TestCase_005
+ * @tc.desc: BindBlockLoopDev passes offset/sizeLimit directly without DEFAULT_SECTOR_SIZE multiplication.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-5"));
+    std::string loopPath;
+    const uint64_t inputOffset = 2048;
+    const uint64_t inputSizeLimit = 1048576;
+    uint64_t capturedOffset = 0;
+    uint64_t capturedSizeLimit = 0;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, BindBlockLoopDev(_, _, _, _))
+        .WillOnce(DoAll(SaveArg<1>(&capturedOffset), SaveArg<2>(&capturedSizeLimit),
+                        SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-5", inputOffset, inputSizeLimit, loopPath), E_OK);
+    EXPECT_EQ(capturedOffset, inputOffset);
+    EXPECT_EQ(capturedSizeLimit, inputSizeLimit);
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_005 End";
+}
+
+/**
  * @tc.name: CreateDmCryptVolume_TestCase_001
  * @tc.desc: CreateDmCryptVolume returns E_OK when bound volume exists and adapter succeeds.
  * @tc.type: FUNC
@@ -5361,6 +5433,71 @@ HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_003, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/block/dm-imv-3", 0), E_DAEMON_IPC_FAILED);
     GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_003 End";
+}
+
+/**
+ * @tc.name: InitAndMountVolume_TestCase_004
+ * @tc.desc: InitVolume sets description to "加密区" when label empty and MapperPath set.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-imv-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-imv-4", "disk-8-imv-4", "", UNMOUNTED);
+    vol.SetMapperPath("/dev/mapper/mapper-imv-4");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-imv-4"), SetArgReferee<2>("vfat"), SetArgReferee<3>(""), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/mapper/mapper-imv-4", 0), E_OK);
+    EXPECT_EQ(vol.GetDescription(), "加密区");
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_004 End";
+}
+
+/**
+ * @tc.name: InitAndMountVolume_TestCase_005
+ * @tc.desc: InitVolume sets description to "公共区" when label empty and only LoopPath set.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-imv-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-imv-5", "disk-8-imv-5", "", UNMOUNTED);
+    vol.SetLoopPath("/dev/block/dm-imv-5");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-imv-5"), SetArgReferee<2>("vfat"), SetArgReferee<3>(""), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/block/dm-imv-5", 0), E_OK);
+    EXPECT_EQ(vol.GetDescription(), "公共区");
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_005 End";
+}
+
+/**
+ * @tc.name: InitAndMountVolume_TestCase_006
+ * @tc.desc: InitVolume sets description to "MyUSB" when label empty and neither path set.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-imv-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-imv-6", "disk-8-imv-6", "", UNMOUNTED);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-imv-6"), SetArgReferee<2>("vfat"), SetArgReferee<3>(""), Return(ERR_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/block/vol-imv-6", 0), E_OK);
+    EXPECT_EQ(vol.GetDescription(), "MyUSB");
+    GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_006 End";
 }
 
 /**
