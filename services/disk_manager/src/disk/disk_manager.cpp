@@ -2615,11 +2615,18 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
-    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev(diskId, offset, sizeLimit, loopPath);
+    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev("/dev/block/" + diskId, offset,
+        sizeLimit, loopPath);
     if (ret != E_OK) {
         LOGE("BindBlockLoopDev failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return dfx.Finish(ret);
     }
+    if (loopPath.empty()) {
+        LOGE("BindBlockLoopDev: loopPath is empty.");
+        return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
+    }
+    std::vector<std::string> tempInfo = SplitRawDumpToLines(loopPath);
+    loopPath = tempInfo[0];
     std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
     VolumeCore vc(volId, 0, diskId);
     VolumeExternal volumeExternal(vc);
