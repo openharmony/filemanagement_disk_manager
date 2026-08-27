@@ -38,7 +38,7 @@ public:
  
     explicit SysfsTree(const std::string &prefix)
     {
-        char tmpl[] = "/tmp/sysfs_test_XXXXXX";
+        char tmpl[] = "/data/local/tmp/sysfs_test_XXXXXX";
         root_ = mkdtemp(tmpl);
     }
  
@@ -53,6 +53,7 @@ public:
     // 创建目录
     void Mkdir(const std::string &relPath)
     {
+        if (root_.empty()) return;
         std::string full = root_ + relPath;
         std::string cmd = "mkdir -p " + full;
         (void)system(cmd.c_str());
@@ -61,6 +62,7 @@ public:
     // 写入属性文件
     void WriteFile(const std::string &relPath, const std::string &content)
     {
+        if (root_.empty()) return;
         std::string full = root_ + relPath;
         std::ofstream ofs(full);
         if (ofs.is_open()) {
@@ -77,6 +79,7 @@ public:
     // 创建 subsystem 符号链接（目标为相对路径）
     void SymlinkSubsys(const std::string &relDir, const std::string &subsysName)
     {
+        if (root_.empty()) return;
         // 先确保 bus 目录存在
         Mkdir("/bus/" + subsysName);
         std::string linkPath = root_ + relDir + "/subsystem";
