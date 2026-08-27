@@ -715,10 +715,11 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-    if (!volExternal.GetLoopPath().empty()) {
+    std::string devPath = CheckVolId(volumeId);
+    if (!devPath.empty() && volumeId.find("vol-crypt-") == 0) {
         MountParam param;
         param.SetReadOnly(false);
-        return MountVolumeByPath(volExternal.GetDiskId(), volExternal.GetLoopPath(), param);
+        return MountVolumeByPath(volExternal.GetDiskId(), devPath, param);
     }
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
 
@@ -1018,14 +1019,18 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             LOGW("Format: disk %{public}s not found, partitionType unavailable", diskId.c_str());
         }
     }
-    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(
-        "/dev/block/" + blockVolId, fsType, "/dev/block/" + diskId, partitionType, partitionNum);
+    std::string devPath = CheckVolId(volumeId);
+    if (devPath.empty()) {
+        return dfx.Finish(E_NON_EXIST);
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(devPath, fsType, "/dev/block/" + diskId,
+                                                                   partitionType, partitionNum);
     if (err != ERR_OK) {
         LOGE("Format vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         PublishFormatFailEvent(volumeId);
         return dfx.Finish(err);
     }
-    return dfx.Finish(UpdateVolumeAfterFormat(volumeId, fsType, diskId, oldFsUuid, blockVolId));
+    return dfx.Finish(UpdateVolumeAfterFormat(volumeId, fsType, diskId, oldFsUuid, devPath));
 }
 
 int32_t DiskManager::TryToFix(const std::string &volumeId)
@@ -1099,29 +1104,28 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
         fsTypeStr = volExternal.GetFsTypeString();
         diskId = volExternal.GetDiskId();
     }
-
     if (description.empty() || description.size() > VOLUME_DESCRIPTION_MAX_LEN) {
         LOGE("SetVolumeDescription: description empty or exceeds %{public}zu", VOLUME_DESCRIPTION_MAX_LEN);
         return dfx.Finish(E_PARAMS_INVALID);
     }
-
     if (IsDiskSupported(diskId) != E_OK) {
         LOGE("SetVolumeDescription: disk not support, diskId=%{public}s", diskId.c_str());
         return dfx.Finish(E_NOT_SUPPORT);
     }
-
     if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
         LOGE("SetVolumeDescription: fsType not support, fsType=%{public}s", fsTypeStr.c_str());
         return dfx.Finish(E_NOT_SUPPORT);
     }
-
+    std::string devPath = CheckVolId(blockVolId);
+    if (devPath.empty()) {
+        return dfx.Finish(E_NON_EXIST);
+    }
     const int32_t err =
-        StorageDaemonAdapter::GetInstance().SetLabel("/dev/block/" + blockVolId, fsTypeStr, description);
+        StorageDaemonAdapter::GetInstance().SetLabel(devPath, fsTypeStr, description);
     if (err != ERR_OK) {
         LOGE("SetLabel vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return dfx.Finish(err);
     }
-
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(blockVolId);
     if (it == volumeMap_.end()) {
@@ -1533,7 +1537,11 @@ int32_t DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::str
     int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
     int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
     std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
-    const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
+    std::string devPath = CheckVolId(blockVolId);
+    if (devPath.empty()) {
+        return E_NON_EXIST;
+    }
+    const int32_t oddRet = GetOddCapacity(devPath, totalSize, freeSize);
     LOGI("GetOddFreeSize startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
          ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
          startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
@@ -1577,7 +1585,11 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     if (IsOddFsType(fsType)) {
         int64_t freeSize = 0;
         std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
-        (void)GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
+        std::string devPath = CheckVolId(blockVolId);
+        if (devPath.empty()) {
+            return E_NON_EXIST;
+        }
+        (void)GetOddCapacity(devPath, totalSize, freeSize);
         return DiskManagerErrNo::E_OK;
     }
     totalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
@@ -2393,12 +2405,12 @@ void DiskManager::PublishFormatFailEvent(const std::string &volumeId)
 }
 
 int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
-    const std::string &diskId, const std::string &oldFsUuid, const std::string &blockVolId)
+    const std::string &diskId, const std::string &oldFsUuid, const std::string &devPath)
 {
     std::string uuid;
     std::string type;
     std::string label;
-    StorageDaemonAdapter::GetInstance().ReadMetadata("/dev/block/" + blockVolId, uuid, type, label);
+    StorageDaemonAdapter::GetInstance().ReadMetadata(devPath, uuid, type, label);
     if (!IsUuidValid(uuid)) {
         LOGE("UpdateVolumeAfterFormat: uuid is invalid volId=%{public}s uuid=%{public}s",
              volumeId.c_str(), GetAnonyString(uuid).c_str());
@@ -2851,10 +2863,42 @@ int32_t DiskManager::InitVolume(VolumeExternal &volExternal, const std::string &
         return E_PARAMS_INVALID;
     }
     volExternal.SetFsUuid(uuid);
-    volExternal.SetDescription(label);
+    if (label.empty()) {
+        if (!volExternal.GetMapperPath().empty()) {
+            volExternal.SetDescription("加密区");
+        } else if (!volExternal.GetLoopPath().empty()) {
+            volExternal.SetDescription("公共区");
+        } else {
+            volExternal.SetDescription("MyUSB");
+        }
+    } else {
+        volExternal.SetDescription(label);
+    }
     volExternal.SetFsType(volExternal.GetFsTypeByStr(type));
     volExternal.SetPath(std::string(EXTERNAL_MOUNT_ROOT) + uuid);
     return E_OK;
+}
+
+std::string DiskManager::CheckVolId(const std::string &volId)
+{
+    if (volId.empty()) {
+        LOGE("CheckVolId: volId is empty");
+        return "";
+    }
+    VolumeExternal external;
+    if (GetVolumeById(volId, external) != E_OK) {
+        LOGE("CheckVolId: volId not exist, volId = %{public}s", volId.c_str());
+        return "";
+    }
+    if (volId.find("vol-crypt-") == 0) {
+        if (!external.GetMapperPath().empty()) {
+            return external.GetMapperPath();
+        } else if (!external.GetLoopPath().empty()) {
+            return external.GetLoopPath();
+        }
+        return "";
+    }
+    return "/dev/block/" + volId;
 }
 } // namespace DiskManager
 } // namespace OHOS

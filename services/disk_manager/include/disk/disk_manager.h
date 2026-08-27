@@ -212,7 +212,7 @@ private:
     void PublishFormatFailEvent(const std::string &volumeId);
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
                                  const std::string &diskId, const std::string &oldFsUuid,
-                                 const std::string &blockVolId);
+                                 const std::string &devPath);
     /** 将挂载/卸载后修改的 VolumeExternal 整体回写 volumeMap_（自取写锁）。返回 E_OK / E_NON_EXIST。 */
     int32_t UpdateVolumeExternal(const VolumeExternal &volExternal);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);
@@ -229,6 +229,7 @@ private:
     int32_t InitVolume(VolumeExternal &volExternal, const std::string &volPath);
     /** InitVolume + StorageDaemonAdapter::Mount，返回 errno（E_OK 表示成功），错误码由调用方经 IpcDfxScope 上报。 */
     int32_t InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag);
+    std::string CheckVolId(const std::string &volId);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
