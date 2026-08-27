@@ -118,7 +118,6 @@ constexpr int64_t EXT4_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int64_t F2FS_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int32_t WAIT_UEVENT_TIMEOUT = 1 * 60 * 1000;
 constexpr size_t VOLUME_DESCRIPTION_MAX_LEN = 512;
-constexpr uint64_t DEFAULT_SECTOR_SIZE = 512;
 constexpr const char *PERSIST_FILEMANAGEMENT_USB_READONLY = "persist.filemanagement.usb.readonly";
 const std::map<std::string, std::string> typeCodeMap_ = {
     {"vfat", "0x0700"},
