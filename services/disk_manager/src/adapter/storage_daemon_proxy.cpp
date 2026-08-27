@@ -751,5 +751,35 @@ ErrCode StorageDaemonProxy::ExecuteCommand(const std::vector<std::string> &cmd, 
     }
     return ERR_OK;
 }
+
+ErrCode StorageDaemonProxy::CreateDmLinear(const std::string &sourceDevPath,
+                                           uint64_t startSector, uint64_t sectorCount,
+                                           uint64_t &dmDev)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    dmDev = 0;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(sourceDevPath)) ||
+        !data.WriteUint64(startSector) || !data.WriteUint64(sectorCount)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_CREATE_DM_LINEAR), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    if (!reply.ReadUint64(dmDev)) {
+        return ERR_INVALID_DATA;
+    }
+    return ERR_OK;
+}
 } // namespace StorageDaemon
 } // namespace OHOS

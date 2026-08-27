@@ -82,6 +82,9 @@ public:
                              std::string &loopPath);
     int32_t ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
                            std::vector<std::string> &output);
+    int32_t CreateDmLinear(const std::string &sourceDevPath,
+                           uint64_t startSector, uint64_t sectorCount,
+                           uint64_t &dmDev);
 
 private:
     StorageDaemonAdapter();

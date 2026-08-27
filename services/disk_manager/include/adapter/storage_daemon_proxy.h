@@ -75,6 +75,9 @@ public:
                              std::string &loopPath) override;
     ErrCode ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
                            std::vector<std::string> &output) override;
+    ErrCode CreateDmLinear(const std::string &sourceDevPath,
+                           uint64_t startSector, uint64_t sectorCount,
+                           uint64_t &dmDev) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

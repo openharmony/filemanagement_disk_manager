@@ -15,6 +15,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <sys/sysmacros.h>
 
 #include "disk_manager_errno.h"
 #include "storage_daemon_adapter.h"
@@ -591,6 +592,23 @@ HWTEST_F(StorageDaemonAdapterProxyTest, ExecuteCommand_ErrorReturn_001, TestSize
     EXPECT_CALL(*mockRemote_, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(adapter.ExecuteCommand({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}, execRet, output),
               E_DAEMON_IPC_FAILED);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmLinear_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t dmDev = 0;
+    EXPECT_CALL(*mockRemote_, CreateDmLinear(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(makedev(253, 13)), Return(E_OK)));
+    EXPECT_EQ(adapter.CreateDmLinear("/dev/block/test", 0, 1000, dmDev), E_OK);
+    EXPECT_EQ(dmDev, static_cast<uint64_t>(makedev(253, 13)));
+}
+
+HWTEST_F(StorageDaemonAdapterTest, CreateDmLinear_ErrorPath_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    uint64_t dmDev = 0;
+    EXPECT_NE(adapter.CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev), E_OK);
 }
 } // namespace DiskManager
 } // namespace OHOS
