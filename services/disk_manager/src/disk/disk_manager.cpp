@@ -2615,7 +2615,8 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
-    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev("/dev/block/" + diskId, offset, sizeLimit, loopPath);
+    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev("/dev/block/" + diskId, offset,
+        sizeLimit, loopPath);
     if (ret != E_OK) {
         LOGE("BindBlockLoopDev failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return dfx.Finish(ret);
