@@ -77,6 +77,8 @@ public:
     std::string GetLoopPath() const;
     void SetMapperPath(const std::string &mapperPath);
     std::string GetMapperPath() const;
+    void SetMountFlag(bool mountFlag);
+    bool GetMountFlag() const;
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeExternal *Unmarshalling(Parcel &parcel);
@@ -92,6 +94,7 @@ private:
     int64_t freeSize_ { 0 };
     std::string loopPath_;
     std::string mapperPath_;
+    bool mountFlag_ = false;
 };
 } // namespace DiskManager
 } // namespace OHOS

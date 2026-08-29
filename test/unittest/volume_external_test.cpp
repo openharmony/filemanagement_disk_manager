@@ -49,6 +49,7 @@ HWTEST_F(VolumeExternalTest, DefaultConstructor_TestCase_001, TestSize.Level0)
     EXPECT_FALSE(ve.GetUserData());
     EXPECT_EQ(ve.GetLoopPath(), "");
     EXPECT_EQ(ve.GetMapperPath(), "");
+    EXPECT_FALSE(ve.GetMountFlag());
 }
 
 HWTEST_F(VolumeExternalTest, ConstructorFromVolumeCore_TestCase_001, TestSize.Level0)
@@ -363,6 +364,25 @@ HWTEST_F(VolumeExternalTest, SetMapperPath_GetMapperPath_TestCase_001, TestSize.
     ve.SetMapperPath("");
     EXPECT_EQ(ve.GetMapperPath(), "");
     GTEST_LOG_(INFO) << "SetMapperPath_GetMapperPath_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetMountFlag_GetMountFlag_TestCase_001
+ * @tc.desc: SetMountFlag/GetMountFlag 读写 mountFlag
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetMountFlag_GetMountFlag_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetMountFlag_GetMountFlag_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_FALSE(ve.GetMountFlag());
+    ve.SetMountFlag(true);
+    EXPECT_TRUE(ve.GetMountFlag());
+    ve.SetMountFlag(false);
+    EXPECT_FALSE(ve.GetMountFlag());
+    GTEST_LOG_(INFO) << "SetMountFlag_GetMountFlag_TestCase_001 End";
 }
 
 /**
