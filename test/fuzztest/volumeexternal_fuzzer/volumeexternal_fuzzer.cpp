@@ -41,6 +41,7 @@ bool VolumeExternalFuzzTest(const uint8_t *data, size_t size)
     vol.SetUserData(true);
     vol.SetFreeSize(static_cast<int64_t>(flag));
     vol.SetPartitionNum(flag);
+    vol.SetMountFlag(flag != 0);
 
     vol.GetFlags();
     vol.GetFsType();
@@ -51,6 +52,7 @@ bool VolumeExternalFuzzTest(const uint8_t *data, size_t size)
     vol.GetUserData();
     vol.GetFreeSize();
     vol.GetPartitionNum();
+    vol.GetMountFlag();
     vol.GetFsTypeByStr("ext4");
     vol.Reset();
 

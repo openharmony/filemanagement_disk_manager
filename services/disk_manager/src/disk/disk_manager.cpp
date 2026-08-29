@@ -718,7 +718,7 @@ int32_t DiskManager::Mount(const std::string &volumeId)
     std::string devPath = CheckVolId(volumeId);
     if (!devPath.empty() && volumeId.find("vol-crypt-") == 0) {
         MountParam param;
-        param.SetReadOnly(false);
+        param.SetReadOnly(volExternal.GetMountFlag());
         return MountVolumeByPath(volExternal.GetDiskId(), devPath, param);
     }
     const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
@@ -2776,6 +2776,7 @@ int32_t DiskManager::MountVolumeByPath(const std::string &diskId, const std::str
     }
     volExternal.SetState(VolumeState::MOUNTED);
     volExternal.SetFlags(disk.GetDiskType());
+    volExternal.SetMountFlag(mountParam.GetReadOnly());
     int32_t updateErr = UpdateVolumeExternal(volExternal);
     if (updateErr != E_OK) {
         return dfx.Finish(updateErr);

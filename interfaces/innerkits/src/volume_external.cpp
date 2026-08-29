@@ -152,6 +152,16 @@ void VolumeExternal::SetMapperPath(const std::string &mapperPath)
     mapperPath_ = mapperPath;
 }
 
+bool VolumeExternal::GetMountFlag() const
+{
+    return mountFlag_;
+}
+
+void VolumeExternal::SetMountFlag(bool mountFlag)
+{
+    mountFlag_ = mountFlag;
+}
+
 VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
 {
     std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));
