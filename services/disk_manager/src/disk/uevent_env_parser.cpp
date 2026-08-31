@@ -17,16 +17,16 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstdlib>
 #include <sstream>
 #include <string_view>
+
+#include "disk_manager_hilog.h"
+#include "parse_uevent_uint.h"
 
 namespace OHOS {
 namespace DiskManager {
 
 namespace {
-
-constexpr int DEC_BASE = 10;
 
 constexpr uint32_t KeyHash(std::string_view sv)
 {
@@ -73,10 +73,16 @@ void ApplyEnvValue(UeventEnv &out, uint32_t keyHash, const std::string &val)
             UeventEnvParser::ToLower(out.devType);
             break;
         case KeyHash("major"):
-            out.major = static_cast<unsigned int>(strtoul(val.c_str(), nullptr, DEC_BASE));
+            if (!ParseUeventUint(val, out.major)) {
+                LOGW("invalid uevent major: %{public}s", val.c_str());
+                out.major = 0;
+            }
             break;
         case KeyHash("minor"):
-            out.minor = static_cast<unsigned int>(strtoul(val.c_str(), nullptr, DEC_BASE));
+            if (!ParseUeventUint(val, out.minor)) {
+                LOGW("invalid uevent minor: %{public}s", val.c_str());
+                out.minor = 0;
+            }
             break;
         case KeyHash("devpath"):
             out.devPath = val;
