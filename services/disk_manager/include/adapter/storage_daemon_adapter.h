@@ -78,8 +78,6 @@ public:
     int32_t Burn(const std::string &devPath, const std::string &burnOptions, const std::string &fsType);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
     int32_t GetDiskSize(const std::string &devName, uint64_t &size);
-    int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
-                             std::string &loopPath);
     int32_t ExecuteCommand(const std::vector<std::string> &cmd, int32_t &execRet,
                            std::vector<std::string> &output);
     int32_t CreateDmLinear(const std::string &sourceDevPath,
