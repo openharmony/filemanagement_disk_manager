@@ -68,8 +68,6 @@ public:
     MOCK_METHOD3(Burn, ErrCode(const std::string &devPath, const std::string &burnOptions, const std::string &fsType));
     MOCK_METHOD2(GetVolumeOpProcess, ErrCode(const std::string &volumeId, int32_t &progressPct));
     MOCK_METHOD2(GetDiskSize, ErrCode(const std::string &devName, uint64_t &size));
-    MOCK_METHOD4(BindBlockLoopDev, ErrCode(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit,
-                                           std::string &loopPath));
     MOCK_METHOD3(ExecuteCommand, ErrCode(const std::vector<std::string> &, int32_t &, std::vector<std::string> &));
     MOCK_METHOD4(CreateDmLinear, ErrCode(const std::string &sourceDevPath,
                                           uint64_t startSector, uint64_t sectorCount,

@@ -2605,8 +2605,9 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_001, TestSize.Level0
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-1"));
     std::string loopPath;
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), BindBlockLoopDev(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     int32_t ret = provider.BindBlockLoopDev("disk-8-1", 2048, 1048576, loopPath);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(loopPath, "/dev/loop0");
@@ -2627,7 +2628,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
     MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-2"));
     std::string loopPath;
-    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), BindBlockLoopDev(_, _, _, _))
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.BindBlockLoopDev("disk-8-2", 2048, 4096, loopPath);
     EXPECT_EQ(ret, E_BIND_LOOP_DEV_FAILED);

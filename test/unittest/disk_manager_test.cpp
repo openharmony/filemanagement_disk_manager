@@ -4847,8 +4847,9 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-1"));
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, BindBlockLoopDev(_, _, _, _))
-        .WillOnce(DoAll(SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-1", 2048, 1048576, loopPath), E_OK);
     EXPECT_EQ(loopPath, "/dev/loop0");
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 End";
@@ -4867,7 +4868,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-2"));
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, BindBlockLoopDev(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-2", 2048, 1048576, loopPath), E_DAEMON_IPC_FAILED);
     EXPECT_TRUE(loopPath.empty());
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
@@ -4920,15 +4921,14 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
     std::string loopPath;
     const uint64_t inputOffset = 2048;
     const uint64_t inputSizeLimit = 1048576;
-    uint64_t capturedOffset = 0;
-    uint64_t capturedSizeLimit = 0;
+    std::vector<std::string> capturedCmd;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, BindBlockLoopDev(_, _, _, _))
-        .WillOnce(DoAll(SaveArg<1>(&capturedOffset), SaveArg<2>(&capturedSizeLimit),
-                        SetArgReferee<3>("/dev/loop0"), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SaveArg<0>(&capturedCmd), SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-5", inputOffset, inputSizeLimit, loopPath), E_OK);
-    EXPECT_EQ(capturedOffset, inputOffset);
-    EXPECT_EQ(capturedSizeLimit, inputSizeLimit);
+    EXPECT_EQ(capturedCmd[4], std::to_string(inputOffset));
+    EXPECT_EQ(capturedCmd[6], std::to_string(inputSizeLimit));
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_005 End";
 }
 
@@ -5437,7 +5437,7 @@ HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_003, TestSize.Level0)
 
 /**
  * @tc.name: InitAndMountVolume_TestCase_004
- * @tc.desc: InitVolume sets description to "加密区" when label empty and MapperPath set.
+ * @tc.desc: InitVolume sets description to "MyUSB" when label empty and MapperPath set.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5453,13 +5453,13 @@ HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_004, TestSize.Level0)
         SetArgReferee<1>("uuid-imv-4"), SetArgReferee<2>("vfat"), SetArgReferee<3>(""), Return(ERR_OK)));
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/mapper/mapper-imv-4", 0), E_OK);
-    EXPECT_EQ(vol.GetDescription(), "加密区");
+    EXPECT_EQ(vol.GetDescription(), "MyUSB");
     GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_004 End";
 }
 
 /**
  * @tc.name: InitAndMountVolume_TestCase_005
- * @tc.desc: InitVolume sets description to "公共区" when label empty and only LoopPath set.
+ * @tc.desc: InitVolume sets description to "MyUSB" when label empty and only LoopPath set.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5475,7 +5475,7 @@ HWTEST_F(DiskManagerTest, InitAndMountVolume_TestCase_005, TestSize.Level0)
         SetArgReferee<1>("uuid-imv-5"), SetArgReferee<2>("vfat"), SetArgReferee<3>(""), Return(ERR_OK)));
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.InitAndMountVolume(vol, "/dev/block/dm-imv-5", 0), E_OK);
-    EXPECT_EQ(vol.GetDescription(), "公共区");
+    EXPECT_EQ(vol.GetDescription(), "MyUSB");
     GTEST_LOG_(INFO) << "InitAndMountVolume_TestCase_005 End";
 }
 

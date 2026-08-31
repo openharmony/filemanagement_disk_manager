@@ -2627,17 +2627,27 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
-    int32_t ret = StorageDaemonAdapter::GetInstance().BindBlockLoopDev("/dev/block/" + diskId, offset,
-        sizeLimit, loopPath);
+    std::vector<std::string> cmd = {"losetup", "--oh", "-f", "-o", std::to_string(offset), "--sizelimit",
+                                    std::to_string(sizeLimit), "--show", "/dev/block/" + diskId};
+    std::vector<std::string> output;
+    int32_t execRet = 0;
+    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != E_OK) {
         LOGE("BindBlockLoopDev failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
         return dfx.Finish(ret);
     }
-    if (loopPath.empty()) {
-        LOGE("BindBlockLoopDev: loopPath is empty.");
+    for (const auto &item: output) {
+        LOGE("BindBlockLoopDev exec output: %{public}s", item.c_str());
+    }
+    if (execRet != E_OK) {
+        LOGE("BindBlockLoopDev command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
-    std::vector<std::string> tempInfo = SplitRawDumpToLines(loopPath);
+    if (output.empty()) {
+        LOGE("BindBlockLoopDev: output is empty.");
+        return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
+    }
+    std::vector<std::string> tempInfo = SplitRawDumpToLines(output[0]);
     loopPath = tempInfo[0];
     std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
     VolumeCore vc(volId, 0, diskId);
@@ -2865,13 +2875,7 @@ int32_t DiskManager::InitVolume(VolumeExternal &volExternal, const std::string &
     }
     volExternal.SetFsUuid(uuid);
     if (label.empty()) {
-        if (!volExternal.GetMapperPath().empty()) {
-            volExternal.SetDescription("加密区");
-        } else if (!volExternal.GetLoopPath().empty()) {
-            volExternal.SetDescription("公共区");
-        } else {
-            volExternal.SetDescription("MyUSB");
-        }
+        volExternal.SetDescription("MyUSB");
     } else {
         volExternal.SetDescription(label);
     }
