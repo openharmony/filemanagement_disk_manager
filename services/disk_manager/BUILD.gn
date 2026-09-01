@@ -66,10 +66,18 @@ ohos_shared_library("disk_manager_server") {
     "src/adapter/pc_encryption_adapter.cpp",
   ]
 
+  if (disk_manager_edm_enable) {
+    sources += [ "src/adapter/edm_adapter.cpp" ]
+  }
+
   defines = [
     "DISK_MANAGER_LOG_TAG = \"DiskManager\"",
     "LOG_DOMAIN = 0xD00430F",
   ]
+
+  if (disk_manager_edm_enable) {
+    defines += [ "EDM_ADAPTER_ENABLE" ]
+  }
 
   if (car_device_enable) {
     defines += [ "CDC_STORAGE" ]
@@ -104,6 +112,10 @@ ohos_shared_library("disk_manager_server") {
     "security_guard:libsg_collect_sdk",
     "hisysevent:libhisysevent",
   ]
+
+  if (disk_manager_edm_enable) {
+    external_deps += [ "enterprise_device_management:edmservice_kits" ]
+  }
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"

@@ -25,6 +25,9 @@
 
 #include "storage_daemon_adapter.h"
 #include "usb_fuse_adapter.h"
+#ifdef EDM_ADAPTER_ENABLE
+#include "adapter/edm_adapter.h"
+#endif
 #include "adapter/pc_encryption_adapter.h"
 
 #include "errors.h"
@@ -1759,6 +1762,7 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
     std::string blockVolId;
     std::string fsType;
     std::string mountPath;
+    std::string diskId;
     int32_t volState = UNMOUNTED;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
@@ -1768,6 +1772,7 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
             return E_PARAMS_INVALID;
         }
         blockVolId = it->second.GetId();
+        diskId = it->second.GetDiskId();
         fsType = it->second.GetFsTypeString();
         mountPath = it->second.GetPath();
         volState = it->second.GetState();
@@ -1780,6 +1785,12 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         LOGE("Burn: burnOptions is empty");
         return E_PARAMS_INVALID;
     }
+#ifdef EDM_ADAPTER_ENABLE
+    if (!EdmAdapter::GetInstance().IsEdmEnableOddBurn(diskId, callerUserId)) {
+        LOGE("TestBbrn Burn EDM policy denied, diskId=%{public}s", diskId.c_str());
+        return E_NOT_SUPPORT;
+    }
+#endif
     // Only mounted volumes need unmounting before burn; skip when already unmounted.
     if ((volState == VolumeState::MOUNTED || volState == VolumeState::DAMAGED_MOUNTED) && !mountPath.empty()) {
         int32_t umountErr = StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, true);
@@ -1791,8 +1802,6 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         LOGI("Burn: unmount before burn succeeded volumeId=%{public}s", volumeId.c_str());
     }
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
-    LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
-        callerBundle.c_str(), callerUserId, fsType.c_str());
     int32_t reportRet = ReportBurnSecurityInfo(callerUserId, callerBundle, fsType);
     LOGI("Burn result: reportResult=%{public}d", reportRet);
     if (err != ERR_OK) {

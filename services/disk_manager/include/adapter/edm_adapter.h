@@ -12,24 +12,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef OHOS_FILEMANAGEMENT_DISK_MANAGER_EDM_ADAPTER_H
+#define OHOS_FILEMANAGEMENT_DISK_MANAGER_EDM_ADAPTER_H
 
-#ifndef OHOS_DISK_MANAGER_MOCK_PARAMETERS_H
-#define OHOS_DISK_MANAGER_MOCK_PARAMETERS_H
-
+#include <cstdint>
 #include <string>
 
+#include "nocopyable.h"
+
 namespace OHOS {
-namespace system {
+namespace DiskManager {
 
-extern bool g_mockGetBoolParameterResult;
+class EdmAdapter : public NoCopyable {
+public:
+    static EdmAdapter &GetInstance();
 
-bool MockGetBoolParameter(const std::string &key, bool defaultValue);
+    bool IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUserId);
 
-extern std::string g_mockGetParameterResult;
+private:
+    EdmAdapter();
+    ~EdmAdapter();
 
-std::string MockGetParameter(const std::string &key, const std::string &def);
+    bool IsExternalOddBurnAllowed(int32_t userId, const std::string &pid, const std::string &vid,
+                                 const std::string &sn);
+};
 
-} // namespace system
+} // namespace DiskManager
 } // namespace OHOS
 
-#endif // OHOS_DISK_MANAGER_MOCK_PARAMETERS_H
+#endif // OHOS_FILEMANAGEMENT_DISK_MANAGER_EDM_ADAPTER_H
