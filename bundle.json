@@ -28,6 +28,7 @@
         "common_event_service",
         "c_utils",
         "dfs_service",
+        "enterprise_device_management",
         "file_api",
         "hilog",
         "hisysevent",

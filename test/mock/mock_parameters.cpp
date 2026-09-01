@@ -25,5 +25,14 @@ bool MockGetBoolParameter(const std::string &key, bool defaultValue)
     return g_mockGetBoolParameterResult;
 }
 
+std::string g_mockGetParameterResult;
+
+std::string MockGetParameter(const std::string &key, const std::string &def)
+{
+    (void)key;
+    (void)def;
+    return g_mockGetParameterResult;
+}
+
 } // namespace system
 } // namespace OHOS

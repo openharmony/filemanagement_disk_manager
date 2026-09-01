@@ -13,6 +13,7 @@
 
 import("//build/config/components/idl_tool/idl.gni")
 import("//build/ohos.gni")
+import("//foundation/filemanagement/disk_manager/disk_manager.gni")
 
 idl_gen_interface("disk_manager_interface_native") {
   sources = [ "IDiskManager.idl" ]
@@ -113,6 +114,7 @@ ohos_shared_library("disk_manager_innerkits") {
     "c_utils:utils",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",

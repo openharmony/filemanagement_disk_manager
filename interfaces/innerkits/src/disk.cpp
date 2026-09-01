@@ -164,6 +164,56 @@ std::string Disk::GetVendor() const
     return vendor_;
 }
 
+void Disk::SetVendorId(const std::string &vendorId)
+{
+    vendorId_ = vendorId;
+}
+
+std::string Disk::GetVendorId() const
+{
+    return vendorId_;
+}
+
+void Disk::SetProductId(const std::string &productId)
+{
+    productId_ = productId;
+}
+
+std::string Disk::GetProductId() const
+{
+    return productId_;
+}
+
+void Disk::SetSerialNumber(const std::string &serialNumber)
+{
+    serialNumber_ = serialNumber;
+}
+
+std::string Disk::GetSerialNumber() const
+{
+    return serialNumber_;
+}
+
+void Disk::SetBusnum(const std::string &busnum)
+{
+    busnum_ = busnum;
+}
+
+std::string Disk::GetBusnum() const
+{
+    return busnum_;
+}
+
+void Disk::SetDevAddress(const std::string &devAddress)
+{
+    devAddress_ = devAddress;
+}
+
+std::string Disk::GetDevAddress() const
+{
+    return devAddress_;
+}
+
 CdromState Disk::GetCdromState() const
 {
     return cdromState_;
@@ -260,6 +310,21 @@ bool Disk::Marshalling(Parcel &parcel) const
     if (!parcel.WriteString(extraInfo_)) {
         return false;
     }
+    if (!parcel.WriteString(vendorId_)) {
+        return false;
+    }
+    if (!parcel.WriteString(productId_)) {
+        return false;
+    }
+    if (!parcel.WriteString(serialNumber_)) {
+        return false;
+    }
+    if (!parcel.WriteString(busnum_)) {
+        return false;
+    }
+    if (!parcel.WriteString(devAddress_)) {
+        return false;
+    }
     return true;
 }
 
@@ -294,6 +359,31 @@ Disk *Disk::Unmarshalling(Parcel &parcel)
     }
     obj->extraInfo_ = parcel.ReadString();
     if (obj->extraInfo_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
+    obj->vendorId_ = parcel.ReadString();
+    if (obj->vendorId_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
+    obj->productId_ = parcel.ReadString();
+    if (obj->productId_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
+    obj->serialNumber_ = parcel.ReadString();
+    if (obj->serialNumber_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
+    obj->busnum_ = parcel.ReadString();
+    if (obj->busnum_.size() > PARCEL_STRING_MAX_LEN) {
+        delete obj;
+        return nullptr;
+    }
+    obj->devAddress_ = parcel.ReadString();
+    if (obj->devAddress_.size() > PARCEL_STRING_MAX_LEN) {
         delete obj;
         return nullptr;
     }

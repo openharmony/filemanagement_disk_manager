@@ -14,6 +14,8 @@
 declare_args() {
   disk_manager_dfs_filemanager = defined(global_parts_info) &&
                                  defined(global_parts_info.filemanagement_dfs_service)
+  disk_manager_edm_enable = defined(global_parts_info) &&
+                                 defined(global_parts_info.customization_enterprise_device_management)
 }
 
 if ("${target_platform}" == "car") {

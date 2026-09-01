@@ -63,6 +63,16 @@ public:
     const std::string &GetExtraInfo() const;
     void SetVendor(const std::string &vendor);
     std::string GetVendor() const;
+    void SetVendorId(const std::string &vendorId);
+    std::string GetVendorId() const;
+    void SetProductId(const std::string &productId);
+    std::string GetProductId() const;
+    void SetSerialNumber(const std::string &serialNumber);
+    std::string GetSerialNumber() const;
+    void SetBusnum(const std::string &busnum);
+    std::string GetBusnum() const;
+    void SetDevAddress(const std::string &devAddress);
+    std::string GetDevAddress() const;
     CdromState GetCdromState() const;
     void SetCdromState(CdromState cdromState);
     void SetPartitionType(const std::string &partitionType);
@@ -96,6 +106,11 @@ private:
     std::string devName_;
     std::string vendor_;
     std::string partitionType_;
+    std::string vendorId_;
+    std::string productId_;
+    std::string serialNumber_;
+    std::string busnum_;
+    std::string devAddress_;
 };
 } // namespace DiskManager
 } // namespace OHOS
