@@ -1756,11 +1756,9 @@ std::string DiskManager::GetDriverType(const std::string &extraInfo)
     return driverType;
 }
 
-int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions,
-                          const std::string &callerBundle, int32_t callerUserId)
+int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string &burnOptions,
+                                 int32_t callerUserId, std::string &blockVolId, std::string &fsType)
 {
-    std::string blockVolId;
-    std::string fsType;
     std::string mountPath;
     std::string diskId;
     int32_t volState = UNMOUNTED;
@@ -1801,10 +1799,26 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         }
         LOGI("Burn: unmount before burn succeeded volumeId=%{public}s", volumeId.c_str());
     }
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions,
+                          const std::string &callerBundle, int32_t callerUserId)
+{
+    std::string blockVolId;
+    std::string fsType;
+    int32_t prepErr = PrepareBurn(volumeId, burnOptions, callerUserId, blockVolId, fsType);
+    if (prepErr != DiskManagerErrNo::E_OK) {
+        return prepErr;
+    }
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
     int32_t reportRet = ReportBurnSecurityInfo(callerUserId, callerBundle, fsType);
     LOGI("Burn result: reportResult=%{public}d", reportRet);
     if (err != ERR_OK) {
+        if (err == E_BURN_NOSPC) {
+            LOGE("Burn vol %{public}s no space left on device", blockVolId.c_str());
+            return E_BURN_NOSPC;
+        }
         LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), E_BURN_FAILED);
         return E_BURN_FAILED;
     }

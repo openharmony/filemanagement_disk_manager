@@ -2734,6 +2734,27 @@ HWTEST_F(DiskManagerTest, Burn_TestCase_002, TestSize.Level0)
     EXPECT_NE(dm.Burn("vol-36-2", "dao", "test.bundle", 0), DiskManagerErrNo::E_OK);
 }
 
+/**
+ * @tc.name: Burn_TestCase_011
+ * @tc.desc: Verify Burn returns E_BURN_NOSPC when adapter.Burn returns E_BURN_NOSPC
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DiskManagerTest, Burn_TestCase_011, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_TestCase_011 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-9-21"));
+    VolumeExternal vol = MakeUdfVolume("vol-36-3", "disk-9-21", "uuid-bn-3");
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(E_BURN_NOSPC));
+    EXPECT_EQ(dm.Burn("vol-36-3", "dao", "test.bundle", 0), E_BURN_NOSPC);
+    GTEST_LOG_(INFO) << "Burn_TestCase_011 End";
+}
+
 HWTEST_F(DiskManagerTest, CreateIsoImage_TestCase_002, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
