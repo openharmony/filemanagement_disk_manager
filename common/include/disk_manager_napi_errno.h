@@ -74,6 +74,7 @@ enum class DiskManagerNativeErr : int32_t {
     E_ERASE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1803,
     E_EJECT_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1804,
     E_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1805,
+    E_BURN_NOSPC = STORAGE_SERVICE_SYS_CAP_TAG + 1806,
 };
 
 /** JS / Taihe 业务错误码（与 storage_service 原 JsErrCode 数值一致） */
@@ -108,6 +109,7 @@ enum class DiskManagerJsErr : int32_t {
     E_JS_ERASE_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 26,
     E_JS_EJECT_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 27,
     E_JS_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 28,
+    E_JS_BURN_NOSPC = 13900025,  // FILEIO_SYS_CAP_TAG + E_NOSPC, aligned with n_error.h ENOSPC
     E_JS_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 32,
     E_JS_QUERY_VOLUME_IN_USE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 33,
 };
@@ -165,6 +167,7 @@ constexpr int32_t E_ISO_WRITE_FAILED = static_cast<int32_t>(DiskManagerNativeErr
 constexpr int32_t E_ERASE_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_ERASE_FAILED);
 constexpr int32_t E_EJECT_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_EJECT_FAILED);
 constexpr int32_t E_BURN_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_BURN_FAILED);
+constexpr int32_t E_BURN_NOSPC = static_cast<int32_t>(DiskManagerNativeErr::E_BURN_NOSPC);
 
 constexpr int32_t E_PERMISSION = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION);
 constexpr int32_t E_PERMISSION_SYS = static_cast<int32_t>(DiskManagerJsErr::E_PERMISSION_SYS);
@@ -205,6 +208,7 @@ constexpr int32_t E_JS_ISO_WRITE_FAILED = static_cast<int32_t>(DiskManagerJsErr:
 constexpr int32_t E_JS_ERASE_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_ERASE_FAILED);
 constexpr int32_t E_JS_EJECT_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_EJECT_FAILED);
 constexpr int32_t E_JS_BURN_FAILED = static_cast<int32_t>(DiskManagerJsErr::E_JS_BURN_FAILED);
+constexpr int32_t E_JS_BURN_NOSPC = static_cast<int32_t>(DiskManagerJsErr::E_JS_BURN_NOSPC);
 } // namespace OHOS
 
 #endif // DISK_MANAGER_NAPI_ERRNO_H

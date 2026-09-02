@@ -180,6 +180,10 @@ private:
     /** 调用方已持 diskMapMutex_（读锁）。优先父盘 diskType，否则兜底 USB。 */
     int32_t ResolveVolumeFlagsUnlocked(const std::string &diskId) const;
 
+    /** 刻录前查找卷、校验 fsType/burnOptions、EDM 策略检查并在需要时卸载。 */
+    int32_t PrepareBurn(const std::string &volumeId, const std::string &burnOptions,
+                        int32_t callerUserId, std::string &blockVolId, std::string &fsType);
+
     /** PC 标准数据盘格式化后，同步 voldata_uuid_store 中 fsUuid 映射。 */
     void UpdateVoldataMappingAfterFormat(const std::string &diskId,
                                          const std::string &oldFsUuid,

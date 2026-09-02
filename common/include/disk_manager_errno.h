@@ -75,6 +75,7 @@ enum DiskManagerErrNo : int32_t {
     E_ERASE_FAILED = 13600000 + 1803,
     E_EJECT_FAILED = 13600000 + 1804,
     E_BURN_FAILED = 13600000 + 1805,
+    E_BURN_NOSPC = 13600000 + 1806,
 
     // crypto device errno
     E_BIND_LOOP_DEV_FAILED = 13600000 + 1901,

@@ -73,6 +73,7 @@ static const std::unordered_map<int32_t, int32_t> errCodeTable {
     { E_ERASE_FAILED, E_JS_ERASE_FAILED },
     { E_EJECT_FAILED, E_JS_EJECT_FAILED },
     { E_BURN_FAILED, E_JS_BURN_FAILED },
+    { E_BURN_NOSPC, E_JS_BURN_NOSPC },
     { E_QUERY_VOLUME_IN_USE_ERROR, E_JS_QUERY_VOLUME_IN_USE_ERROR }
 };
 

@@ -14,6 +14,7 @@
  */
 
 #include <cstdint>
+#include <functional>
 #include <random>
 #include <vector>
 
@@ -271,10 +272,10 @@ bool IsUuidValid(const std::string &uuid)
     return true;
 }
 
-std::string GenerateRandomUuid()
+std::string GenerateRandomUuid(const std::string &diskId)
 {
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
+    uint64_t seed = static_cast<uint64_t>(std::hash<std::string>{}(diskId));
+    std::mt19937_64 gen(seed);
     std::uniform_int_distribution<uint64_t> dist;
     uint64_t a = dist(gen);
     uint64_t b = dist(gen);

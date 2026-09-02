@@ -37,7 +37,7 @@ bool IsMountPathValid(const std::string &mountPath);
 bool IsVolumeIdValid(const std::string &volumeId);
 bool IsDiskIdValid(const std::string &diskId);
 bool IsUuidValid(const std::string &uuid);
-std::string GenerateRandomUuid();
+std::string GenerateRandomUuid(const std::string &diskId);
 
 } // namespace DiskManager
 } // namespace OHOS
