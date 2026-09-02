@@ -16,7 +16,9 @@
 #include "pc_encryption_adapter.h"
 
 #include <dlfcn.h>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 #include "disk_manager_hilog.h"
 
@@ -45,6 +47,16 @@ PcEncryptionAdapter::PcEncryptionAdapter()
 
 PcEncryptionAdapter::~PcEncryptionAdapter()
 {
+    std::vector<std::thread> toJoin;
+    {
+        std::lock_guard<std::mutex> lk(mutex_);
+        toJoin.swap(workers_);
+    }
+    for (auto &t : toJoin) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
     UnInit();
     LOGI("PcEncryptionAdapter destroyed");
 }
@@ -95,22 +107,25 @@ void PcEncryptionAdapter::NotifyVolumeMounted(const std::string &diskId,
 {
     LOGI("NotifyVolumeMounted enter diskId=%{public}s volumeId=%{public}s volPath=%{public}s",
          diskId.c_str(), volumeId.c_str(), volPath.c_str());
-    std::thread([this, diskId, volumeId, volPath]() {
-        if (handler_ == nullptr) {
-            LOGE("NotifyVolumeMounted: handler is nullptr");
-            return;
-        }
-        FuncNotifyMounted func = reinterpret_cast<FuncNotifyMounted>(
-            dlsym(handler_, PC_ENC_NOTIFY_MOUNTED_FUNC_NAME));
-        if (func == nullptr) {
-            LOGE("NotifyVolumeMounted: dlsym %{public}s failed, error: %{public}s",
-                 PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, dlerror());
-            return;
-        }
-        int32_t ret = func(diskId, volumeId, volPath);
-        LOGI("NotifyVolumeMounted: %{public}s returned %{public}d, diskId: %{public}s, volumeId: %{public}s",
-             PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, ret, diskId.c_str(), volumeId.c_str());
-    }).detach();
+    {
+        std::lock_guard<std::mutex> lk(mutex_);
+        workers_.emplace_back([this, diskId, volumeId, volPath]() {
+            if (handler_ == nullptr) {
+                LOGE("NotifyVolumeMounted: handler is nullptr");
+                return;
+            }
+            FuncNotifyMounted func = reinterpret_cast<FuncNotifyMounted>(
+                dlsym(handler_, PC_ENC_NOTIFY_MOUNTED_FUNC_NAME));
+            if (func == nullptr) {
+                LOGE("NotifyVolumeMounted: dlsym %{public}s failed, error: %{public}s",
+                     PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, dlerror());
+                return;
+            }
+            int32_t ret = func(diskId, volumeId, volPath);
+            LOGI("NotifyVolumeMounted: %{public}s returned %{public}d, diskId: %{public}s, volumeId: %{public}s",
+                 PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, ret, diskId.c_str(), volumeId.c_str());
+        });
+    }
     LOGI("NotifyVolumeMounted: async task started");
 }
 
