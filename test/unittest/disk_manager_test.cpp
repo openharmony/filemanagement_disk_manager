@@ -4518,6 +4518,60 @@ HWTEST_F(DiskManagerTest, NotifyVolumeEjecting_TestCase_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: NotifyVolumeEjecting_UmountResult_TestCase_001
+ * @tc.desc: NotifyVolumeEjecting 带空 umountResult 参数，volExternal 和 map 条目的 umountResult 为空
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, NotifyVolumeEjecting_UmountResult_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyVolumeEjecting_UmountResult_TestCase_001 Start";
+ 
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-80-1"));
+    VolumeExternal vol = MakeUsbVolume("vol-80-1", "disk-80-1", "uuid-nvr-1", MOUNTED);
+    dm.OnVolumeCreated(vol);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-80-1", volOut);
+    EXPECT_EQ(dm.NotifyVolumeEjecting("vol-80-1", volOut), MOUNTED);
+    EXPECT_EQ(volOut.GetState(), EJECTING);
+    EXPECT_EQ(volOut.GetUmountResult(), "");
+    VolumeExternal volCheck;
+    dm.GetVolumeById("vol-80-1", volCheck);
+    EXPECT_EQ(volCheck.GetState(), EJECTING);
+    EXPECT_EQ(volCheck.GetUmountResult(), "");
+ 
+    GTEST_LOG_(INFO) << "NotifyVolumeEjecting_UmountResult_TestCase_001 End";
+}
+ 
+/**
+ * @tc.name: NotifyVolumeEjecting_UmountResult_TestCase_002
+ * @tc.desc: NotifyVolumeEjecting 带 umountFail 参数，volExternal 和 map 条目均设置 umountResult
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, NotifyVolumeEjecting_UmountResult_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyVolumeEjecting_UmountResult_TestCase_002 Start";
+ 
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-80-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-80-2", "disk-80-2", "uuid-nvr-2", MOUNTED);
+    dm.OnVolumeCreated(vol);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-80-2", volOut);
+    EXPECT_EQ(dm.NotifyVolumeEjecting("vol-80-2", volOut, "umountFail"), MOUNTED);
+    EXPECT_EQ(volOut.GetState(), EJECTING);
+    EXPECT_EQ(volOut.GetUmountResult(), "umountFail");
+    VolumeExternal volCheck;
+    dm.GetVolumeById("vol-80-2", volCheck);
+    EXPECT_EQ(volCheck.GetState(), EJECTING);
+    EXPECT_EQ(volCheck.GetUmountResult(), "umountFail");
+ 
+    GTEST_LOG_(INFO) << "NotifyVolumeEjecting_UmountResult_TestCase_002 End";
+}
+
+/**
  * @tc.name: RestoreVolumeState_TestCase_001
  * @tc.desc: RestoreVolumeState 恢复卷先前状态
  * @tc.type: FUNC

@@ -435,5 +435,38 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_009, TestSize.Le
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_009 End";
 }
 
+/**
+ * @tc.name: PublishVolumeChange_TestCase_010
+ * @tc.desc: EJECTING + 默认空 umountResult 覆盖 SetEjectEventParams 空串路径。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_010, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_010 Start";
+ 
+    VolumeExternal vEject = MakeSampleVolume();
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(EJECTING, vEject));
+ 
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_010 End";
+}
+ 
+/**
+ * @tc.name: PublishVolumeChange_TestCase_011
+ * @tc.desc: EJECTING + umountResult="umountFail" 覆盖 SetEjectEventParams 携带卸载失败信息路径。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_011, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_011 Start";
+ 
+    VolumeExternal vEjectFail = MakeSampleVolume();
+    vEjectFail.SetUmountResult("umountFail");
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(EJECTING, vEjectFail));
+ 
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_011 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

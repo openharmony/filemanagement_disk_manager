@@ -122,6 +122,16 @@ void VolumeExternal::Reset()
     path_ = "";
 }
 
+void VolumeExternal::SetUmountResult(const std::string &umountResult)
+{
+    umountResult_ = umountResult;
+}
+
+std::string VolumeExternal::GetUmountResult() const
+{
+    return umountResult_;
+}
+
 int32_t VolumeExternal::GetPartitionNum() const
 {
     return partitionNum_;

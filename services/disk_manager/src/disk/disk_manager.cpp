@@ -58,6 +58,7 @@
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 #include <sys/xattr.h>
+#include <thread>
 
 #include "parameter.h"
 #include "parameters.h"
@@ -944,16 +945,30 @@ int32_t DiskManager::DoUnmountVolume(VolumeExternal &volExternal)
 {
     SaveVolumeFreeSize(volExternal);
     bool forceUnmount = true;
+    const int32_t previousState = NotifyVolumeEjecting(volExternal.GetId(), volExternal);
+ 
+    bool isInternalDataDisk = false;
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        const auto dit = diskMap_.find(volExternal.GetDiskId());
+        isInternalDataDisk = dit != diskMap_.end() && dit->second.IsInternalDataDisk();
+    }
+    if (isInternalDataDisk) {
+        LOGI("Unmount: wait 1s after eject for data disk volumeId=%{public}s", volExternal.GetId().c_str());
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+ 
     const int32_t prepErr = ResolveUnmountForceFlag(volExternal, forceUnmount);
     if (prepErr != DiskManagerErrNo::E_OK) {
+        (void)NotifyVolumeEjecting(volExternal.GetId(), volExternal, "umountFail");
+        RestoreVolumeState(volExternal.GetId(), volExternal, previousState);
         return prepErr;
     }
-
-    const int32_t previousState = NotifyVolumeEjecting(volExternal.GetId(), volExternal);
 
     const int32_t err = UnmountVolumeMountPoints(volExternal, forceUnmount);
     if (err != ERR_OK) {
         LOGE("Unmount vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
+        (void)NotifyVolumeEjecting(volExternal.GetId(), volExternal, "umountFail");
         RestoreVolumeState(volExternal.GetId(), volExternal, previousState);
         return err;
     }
@@ -2486,15 +2501,19 @@ int32_t DiskManager::RepairAndCheckVolume(VolumeExternal &volExternal, const std
     return E_OK;
 }
 
-int32_t DiskManager::NotifyVolumeEjecting(const std::string &volumeId, VolumeExternal &volExternal)
+int32_t DiskManager::NotifyVolumeEjecting(const std::string &volumeId,
+                                          VolumeExternal &volExternal,
+                                          const std::string &umountResult)
 {
     const int32_t previousState = volExternal.GetState();
     volExternal.SetState(EJECTING);
+    volExternal.SetUmountResult(umountResult);
     {
         std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
         if (it != volumeMap_.end()) {
             it->second.SetState(EJECTING);
+            it->second.SetUmountResult(umountResult);
         }
     }
     CommonEventPublisher::PublishVolumeChange(EJECTING, volExternal);
