@@ -17,7 +17,10 @@
 #define OHOS_FILEMANAGEMENT_DISK_MANAGER_PC_ENCRYPTION_ADAPTER_H
 
 #include <cstdint>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include "nocopyable.h"
 
@@ -58,6 +61,8 @@ private:
     void UnInit();  // dlclose 关闭 so
 
     void *handler_{nullptr};
+    std::mutex mutex_;
+    std::vector<std::thread> workers_;
 };
 
 } // namespace DiskManager
