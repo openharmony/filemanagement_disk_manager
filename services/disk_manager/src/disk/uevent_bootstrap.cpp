@@ -578,7 +578,7 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
             {volId, diskId, volDevPath, type, uuid, AUTO_MOUNT_EXTERNAL_VOLUMES});
         return;
     }
-    int32_t err = DiskManager::GetInstance().Mount(volId);
+    int32_t err = DiskManager::GetInstance().Mount(volId, MountParam());
     if (err != ERR_OK) {
         LOGE("DiscoverSinglePartitionVolume Mount failed volId=%{public}s", volId.c_str());
         return;
@@ -629,7 +629,7 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
         return;
     }
 
-    int32_t err = DiskManager::GetInstance().Mount(volId);
+    int32_t err = DiskManager::GetInstance().Mount(volId, MountParam());
     if (err != ERR_OK) {
         LOGE("DiscoverWholeDiskVolume Mount failed volId=%{public}s", volId.c_str());
         return;
@@ -675,7 +675,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
         return;
     }
 
-    int32_t err = DiskManager::GetInstance().Mount(volId);
+    int32_t err = DiskManager::GetInstance().Mount(volId, MountParam());
     if (err != ERR_OK) {
         LOGE("Mount failed volId=%{public}s", volId.c_str());
         return;

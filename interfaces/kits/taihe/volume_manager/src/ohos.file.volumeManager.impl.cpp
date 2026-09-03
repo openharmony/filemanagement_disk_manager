@@ -16,6 +16,7 @@
 #include "ohos.file.volumeManager.impl.h"
 #include "disk_manager_client.h"
 #include "disk_manager_hilog.h"
+#include "mount_param.h"
 #include "disk_manager_napi_errno.h"
 #include "disk_manager_napi_utils.h"
 #include "ipc_caller_auth.h"
@@ -129,7 +130,8 @@ void MountSync(::taihe::string_view volumeId)
         return;
     }
 
-    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Mount(volumeIdString);
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().Mount(volumeIdString,
+        OHOS::DiskManager::MountParam());
     if (errNum != OHOS::E_OK) {
         OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
         return;

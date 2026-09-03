@@ -206,7 +206,7 @@ bool DiskManagerProvider::IsStorageManagerCaller() const
     return IpcCallerAuth::VerifyNativeCallerMatches("storage_manager", STORAGE_MANAGER_UID);
 }
 
-int32_t DiskManagerProvider::Mount(const std::string &volumeId)
+int32_t DiskManagerProvider::Mount(const std::string &volumeId, const MountParam &mountParam)
 {
     LOGI("Mount volumeId=%{public}s", volumeId.c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
@@ -221,7 +221,7 @@ int32_t DiskManagerProvider::Mount(const std::string &volumeId)
         LOGE("Mount: volumeId is invalid");
         return E_NON_EXIST;
     }
-    const int32_t err = DiskManager::GetInstance().Mount(volumeId);
+    const int32_t err = DiskManager::GetInstance().Mount(volumeId, mountParam);
     LOGI("Mount volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
     return err;
 }

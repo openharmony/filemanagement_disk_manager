@@ -30,9 +30,19 @@ void MountParam::SetReadOnly(bool readOnly)
     readOnly_ = readOnly;
 }
 
+bool MountParam::IsFromEdmMount() const
+{
+    return fromEdmMount_;
+}
+ 
+void MountParam::SetFromEdmMount(bool fromEdmMount)
+{
+    fromEdmMount_ = fromEdmMount;
+}
+
 bool MountParam::Marshalling(Parcel &parcel) const
 {
-    if (!parcel.WriteBool(readOnly_)) {
+    if (!parcel.WriteBool(readOnly_) || !parcel.WriteBool(fromEdmMount_)) {
         return false;
     }
     return true;
@@ -45,6 +55,7 @@ MountParam *MountParam::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     obj->readOnly_ = parcel.ReadBool();
+    obj->fromEdmMount_ = parcel.ReadBool();
     return obj;
 }
 

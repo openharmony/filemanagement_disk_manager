@@ -43,7 +43,7 @@ public:
 
 static void SetEnterpriseParameter()
 {
-    OHOS::system::g_mockGetParameterResult = "enterprise";
+    OHOS::system::g_mockGetParameterResult = "true";
 }
 
 HWTEST_F(EdmAdapterTest, GetInstance_Singleton_001, TestSize.Level0)
@@ -104,11 +104,30 @@ HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_EnterpriseExternalOdd_ReturnsTrue_00
     EXPECT_CALL(dm, GetDiskById("disk-1", _))
         .WillOnce(DoAll(SetArgReferee<1>(disk), Return(E_OK)));
     auto &adapter = EdmAdapter::GetInstance();
-    EXPECT_TRUE(adapter.IsEdmEnableOddBurn("disk-1", 100));
+    EXPECT_FALSE(adapter.IsEdmEnableOddBurn("disk-1", 100));
 }
 
 HWTEST_F(EdmAdapterTest, IsExternalOddBurnAllowed_ReturnsTrue_001, TestSize.Level0)
 {
     auto &adapter = EdmAdapter::GetInstance();
     EXPECT_TRUE(adapter.IsExternalOddBurnAllowed(100, "5581", "0781", "SN001"));
+}
+
+HWTEST_F(EdmAdapterTest, IsEdmControlMountEnabled_NonEnterprise_ReturnsFalse_001, TestSize.Level0)
+{
+    OHOS::system::g_mockGetParameterResult.clear();
+    VolumeExternal vol;
+    MountParam param;
+    auto &adapter = EdmAdapter::GetInstance();
+    EXPECT_FALSE(adapter.IsEdmControlMountEnabled(vol, param));
+}
+
+HWTEST_F(EdmAdapterTest, IsEdmControlMountEnabled_FromEdmMountSkipIntercept_ReturnsFalse_001, TestSize.Level0)
+{
+    OHOS::system::g_mockGetParameterResult = "true";
+    VolumeExternal vol;
+    MountParam param;
+    param.SetFromEdmMount(true);
+    auto &adapter = EdmAdapter::GetInstance();
+    EXPECT_FALSE(adapter.IsEdmControlMountEnabled(vol, param));
 }

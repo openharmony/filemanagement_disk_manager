@@ -42,7 +42,7 @@ class DiskManager {
 public:
     static DiskManager &GetInstance();
 
-    int32_t Mount(const std::string &volumeId);
+    int32_t Mount(const std::string &volumeId, const MountParam &mountParam = MountParam());
     int32_t Unmount(const std::string &volumeId);
     int32_t ForceUnmount(const std::string &volumeId);
     int32_t Format(const std::string &volumeId, const std::string &fsType);
@@ -139,6 +139,7 @@ private:
         std::string dataMountPath;
         bool fuseMounted = false;
         int32_t diskFlag = 0;
+        bool readOnly = false;
     };
 
     /** 调用方已持 volumeMapMutex_（读锁）。 */
@@ -168,7 +169,8 @@ private:
                                                   const std::string &fsNormLower) const;
     VolumeMountPolicy ComputeVolumeMountPolicy(const std::string &diskId, const std::string &fsType) const;
 
-    int32_t MountVolumeFilesystem(VolumeExternal &volExternal, const std::string &fsType, const std::string &fsUuid);
+    int32_t MountVolumeFilesystem(VolumeExternal &volExternal, const std::string &fsType,
+                                  const std::string &fsUuid, bool readOnly = false);
     int32_t ExecuteVolumeDataMount(VolumeExternal &volExternal, const std::string &fsType, MountDataPathParams &params);
 
     std::string BuildMountDataPath(const MountDataPathParams &params);
@@ -191,7 +193,7 @@ private:
                                          const std::string &fsType);
 
     /** 不持 map 锁；挂载完成后由 Mount 写回 volumeMap_。 */
-    int32_t MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId);
+    int32_t MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId, bool readOnly = false);
     bool SetSectorSize(std::vector<std::string> &content, PartitionTableInfo &info);
     bool SetAlignSector(std::vector<std::string> &content, PartitionTableInfo &info);
     bool SetUsableSector(std::vector<std::string> &content, PartitionTableInfo &info);

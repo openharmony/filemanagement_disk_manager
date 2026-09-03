@@ -30,6 +30,7 @@
 #undef protected
 
 #include "disk.h"
+#include "mount_param.h"
 #include "volume_external.h"
 #include "volume_core.h"
 #include "disk_manager_utils.h"
@@ -1120,6 +1121,27 @@ HWTEST_F(DiskManagerTest, Mount_TestCase_005, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_NE(dm.Mount("vol-26-4"), E_OK);
     GTEST_LOG_(INFO) << "Mount_TestCase_005 End";
+}
+
+/**
+ * @tc.name: Mount_TestCase_006
+ * @tc.desc: Mount with readOnly MountParam forces read-only mount and returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Mount_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-26-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-26-5", "disk-26-5", "uuid-mt-6", UNMOUNTED);
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    MountParam param;
+    param.SetReadOnly(true);
+    EXPECT_EQ(dm.Mount("vol-26-5", param), E_OK);
+    GTEST_LOG_(INFO) << "Mount_TestCase_006 End";
 }
 
 /**

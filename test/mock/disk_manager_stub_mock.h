@@ -27,7 +27,7 @@ namespace DiskManager {
 
 class DiskManagerStubMock : public DiskManagerStub {
 public:
-    MOCK_METHOD(int32_t, Mount, (const std::string &volumeId));
+    MOCK_METHOD(int32_t, Mount, (const std::string &volumeId, const MountParam &mountParam));
     MOCK_METHOD(int32_t, Unmount, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Format, (const std::string &volumeId, const std::string &fsType));
     MOCK_METHOD(int32_t, TryToFix, (const std::string &volumeId));

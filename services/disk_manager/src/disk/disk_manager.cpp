@@ -693,7 +693,7 @@ DiskManager &DiskManager::GetInstance()
     return instance;
 }
 
-int32_t DiskManager::Mount(const std::string &volumeId)
+int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountParam)
 {
     IpcDfxScope dfx("DiskManager::Mount", DFX_STAGE_MOUNT, VolumeOpType::MOUNT,
                     VolumeReportInfo().WithVolumeId(volumeId));
@@ -720,13 +720,18 @@ int32_t DiskManager::Mount(const std::string &volumeId)
         volExternal = it->second;
     }
     std::string devPath = CheckVolId(volumeId);
+#ifdef EDM_ADAPTER_ENABLE
+    if (EdmAdapter::GetInstance().IsEdmControlMountEnabled(volExternal, mountParam)) {
+        LOGI("Mount: EDM intercept enabled, skip mount for volumeId=%{public}s", volumeId.c_str());
+        return dfx.Finish(E_OK);
+    }
+#endif
     if (!devPath.empty() && volumeId.find("vol-crypt-") == 0) {
-        MountParam param;
+        MountParam param = mountParam;
         param.SetReadOnly(volExternal.GetMountFlag());
         return MountVolumeByPath(volExternal.GetDiskId(), devPath, param);
     }
-    const int32_t mountErr = MountVolumeEntry(volExternal, volumeId);
-
+    const int32_t mountErr = MountVolumeEntry(volExternal, volumeId, mountParam.GetReadOnly());
     {
         std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -745,7 +750,7 @@ int32_t DiskManager::Mount(const std::string &volumeId)
     return dfx.Finish(mountErr);
 }
 
-int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId)
+int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::string &volumeId, bool readOnly)
 {
     std::string fsUuid;
     int32_t uuidErr = EnsureFsUuidReady(volExternal, fsUuid);
@@ -773,7 +778,7 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
         SetVolumeStateLocked(volumeId, UNMOUNTED);
     }
 
-    int32_t mountErr = MountVolumeFilesystem(volExternal, fsType, fsUuid);
+    int32_t mountErr = MountVolumeFilesystem(volExternal, fsType, fsUuid, readOnly);
     if (mountErr != DiskManagerErrNo::E_OK) {
         volExternal.SetState(VolumeState::UNMOUNTED);
     }
@@ -811,10 +816,13 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
                                             MountDataPathParams &params)
 {
     uint64_t mountFlag = ReadPersistUsbReadonlyMountFlagBits(params.policy.useFuseData);
+    // MDM精细化管控：readOnly=true时强制只读挂载
+    if (params.readOnly) {
+        mountFlag |= static_cast<uint64_t>(MS_RDONLY);
+    }
     if ((fsType == "hmfs" || fsType == "f2fs") && (volExternal.GetUserData() || !params.policy.useVoldataPath)) {
         mountFlag = HMFS_FLAG;
     }
-
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(),
                                                             params.dataMountPath, fsType, mountFlag, "");
     if (err != ERR_OK) {
@@ -856,11 +864,13 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
 
 int32_t DiskManager::MountVolumeFilesystem(VolumeExternal &volExternal,
                                            const std::string &fsType,
-                                           const std::string &fsUuid)
+                                           const std::string &fsUuid,
+                                           bool readOnly)
 {
     const VolumeMountPolicy policy = ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType);
 
     MountDataPathParams params {volExternal, fsUuid, policy, nullptr};
+    params.readOnly = readOnly;
     int32_t fuseErr = MountUsbFuseIfNeeded(volExternal.GetId(), fsType, fsUuid, policy.useFuseData,
                                            &params.fuseMounted);
     if (fuseErr != DiskManagerErrNo::E_OK) {

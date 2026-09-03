@@ -26,7 +26,7 @@ sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
 
 interface OHOS.DiskManager.IDiskManager {
     /* ---------- 应用 / Connect：卷与磁盘 ---------- */
-    [ipccode 1] void Mount([in] String volumeId);
+    [ipccode 1] void Mount([in] String volumeId, [in] MountParam mountParam);
     [ipccode 2] void Unmount([in] String volumeId);
     [ipccode 3] void Format([in] String volumeId, [in] String fsType);
     [ipccode 4] void TryToFix([in] String volumeId);

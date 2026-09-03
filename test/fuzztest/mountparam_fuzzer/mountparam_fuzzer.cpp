@@ -28,6 +28,8 @@ void FuzzMountParam(const bool flag, Parcel &parcel)
     MountParam mountParam(flag);
     mountParam.SetReadOnly(flag);
     mountParam.GetReadOnly();
+    mountParam.SetFromEdmMount(flag);
+    mountParam.IsFromEdmMount();
     mountParam.Marshalling(parcel);
     auto unmarshallingMountParam = std::unique_ptr<MountParam>(MountParam::Unmarshalling(parcel));
 }

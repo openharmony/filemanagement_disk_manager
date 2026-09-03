@@ -204,7 +204,7 @@ int32_t DiskManagerClient::ResetProxy()
     return E_OK;
 }
 
-int32_t DiskManagerClient::Mount(const std::string &volumeId)
+int32_t DiskManagerClient::Mount(const std::string &volumeId, const MountParam &mountParam)
 {
     LOGI("Mount volumeId=%{public}s", volumeId.c_str());
     sptr<IDiskManager> proxy;
@@ -213,7 +213,8 @@ int32_t DiskManagerClient::Mount(const std::string &volumeId)
         return err;
     }
     IDiskManager &dm = *proxy;
-    return dm.Mount(volumeId);
+    int32_t ret = dm.Mount(volumeId, mountParam);
+    return ret;
 }
 
 int32_t DiskManagerClient::Unmount(const std::string &volumeId)
