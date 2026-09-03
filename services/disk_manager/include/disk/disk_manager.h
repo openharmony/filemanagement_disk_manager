@@ -209,8 +209,15 @@ private:
     void WaitForPartitionDone(const std::string &diskId, int32_t timeoutMs);
 
     void SaveVolumeFreeSize(VolumeExternal &volume);
-    /** 卸载前置 EJECTING 状态并发送 COMMON_EVENT_VOLUME_EJECT，返回操作前状态。 */
-    int32_t NotifyVolumeEjecting(const std::string &volumeId, VolumeExternal &volExternal);
+    /**
+     * @brief 卸载前置 EJECTING 状态并发送 COMMON_EVENT_VOLUME_EJECT
+     * @param volumeId 卷ID
+     * @param volExternal 卷外部对象引用
+     * @param umountResult 卸载结果信息，默认为空字符串
+     * @return 返回操作前状态
+     */
+    int32_t NotifyVolumeEjecting(const std::string &volumeId,
+                                 VolumeExternal &volExternal, const std::string &umountResult = "");
     void RestoreVolumeState(const std::string &volumeId, VolumeExternal &volExternal, int32_t state);
     void SetVolumeStateLocked(const std::string &volumeId, VolumeState state);
     void PublishFormatFailEvent(const std::string &volumeId);

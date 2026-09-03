@@ -71,6 +71,10 @@ public:
     std::string GetDescription() const;
     int32_t GetFsTypeByStr(const std::string &fsTypeStr) const;
     void Reset();
+    /* 获取umount的结果，可以通过eject公共事件进行传递 */
+    void SetUmountResult(const std::string &umountResult);
+    std::string GetUmountResult() const;
+
     int32_t GetPartitionNum() const;
     void SetPartitionNum(int32_t partitionNum);
     void SetLoopPath(const std::string &loopPath);
@@ -90,6 +94,8 @@ private:
     std::string path_;
     std::string description_;
     bool isUserData_ = false;
+    /* umountResult_用于存放umount的结果，默认为空 */
+    std::string umountResult_{""};
     int32_t partitionNum_ = 0;
     int64_t freeSize_ { 0 };
     std::string loopPath_;

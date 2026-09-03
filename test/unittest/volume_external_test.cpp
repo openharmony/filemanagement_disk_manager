@@ -44,6 +44,7 @@ HWTEST_F(VolumeExternalTest, DefaultConstructor_TestCase_001, TestSize.Level0)
     EXPECT_EQ(ve.GetPath(), "");
     EXPECT_EQ(ve.GetDescription(), "");
     EXPECT_EQ(ve.GetExtraInfo(), "");
+    EXPECT_EQ(ve.GetUmountResult(), "");
     EXPECT_EQ(ve.GetPartitionNum(), 0);
     EXPECT_EQ(ve.GetFreeSize(), 0);
     EXPECT_FALSE(ve.GetUserData());
@@ -243,6 +244,26 @@ HWTEST_F(VolumeExternalTest, SetExtraInfo_TestCase_001, TestSize.Level0)
     VolumeExternal ve;
     ve.SetExtraInfo("extra-info");
     EXPECT_EQ(ve.GetExtraInfo(), "extra-info");
+}
+
+/**
+ * @tc.name: SetUmountResult_GetUmountResult_TestCase_001
+ * @tc.desc: SetUmountResult/GetUmountResult 读写卸载结果
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetUmountResult_GetUmountResult_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetUmountResult_GetUmountResult_TestCase_001 Start";
+ 
+    VolumeExternal ve;
+    EXPECT_EQ(ve.GetUmountResult(), "");
+    ve.SetUmountResult("umountFail");
+    EXPECT_EQ(ve.GetUmountResult(), "umountFail");
+    ve.SetUmountResult("");
+    EXPECT_EQ(ve.GetUmountResult(), "");
+ 
+    GTEST_LOG_(INFO) << "SetUmountResult_GetUmountResult_TestCase_001 End";
 }
 
 HWTEST_F(VolumeExternalTest, SetPartitionNum_TestCase_001, TestSize.Level0)

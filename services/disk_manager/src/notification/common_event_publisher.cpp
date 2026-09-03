@@ -114,6 +114,14 @@ void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal
         }
     }
 }
+
+void SetEjectEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
+{
+    wantParams.SetParam("fsType", AAFwk::Integer::Box(volume.GetFsType()));
+    wantParams.SetParam("umountResult", AAFwk::String::Box(volume.GetUmountResult()));
+    LOGI("Volume ejecting: id=%{public}s, fsType=%{public}d, umountResult=%{public}s",
+        volume.GetId().c_str(), volume.GetFsType(), volume.GetUmountResult().c_str());
+}
 } // namespace
 
 void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume)
@@ -147,6 +155,9 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
     }
     if (notifyCode == UNMOUNTED) {
         SetUnmountedEventParams(wantParams, volume);
+    }
+    if (notifyCode == EJECTING) {
+        SetEjectEventParams(wantParams, volume);
     }
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
