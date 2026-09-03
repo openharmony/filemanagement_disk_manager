@@ -159,6 +159,27 @@ HWTEST_F(DiskManagerClientTest, MountTest002, TestSize.Level1)
 }
 
 /**
+ * @tc.name: MountTest003
+ * @tc.desc: 测试 Mount 方法在 SA 可用时转发到 stub 两参 Mount，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, MountTest003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "MountTest003 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, Mount(_, _)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.Mount(TEST_VOLUME_ID);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "MountTest003 End";
+}
+
+/**
  * @tc.name: UnmountTest001
  * @tc.desc: 测试 Unmount 方法传入空 volumeId，预期返回连接错误码。
  * @tc.type: FUNC

@@ -17,6 +17,7 @@
 #define OHOS_DISK_MANAGER_DISK_DISK_MANAGER_MOCK_H
 
 #include "disk.h"
+#include "mount_param.h"
 #include "volume_external.h"
 #include "partition_types.h"
 #include "disk/storage_spec_models.h"
@@ -34,7 +35,7 @@ class DiskManager {
 public:
     static DiskManager &GetInstance();
 
-    MOCK_METHOD(int32_t, Mount, (const std::string &volumeId));
+    MOCK_METHOD(int32_t, Mount, (const std::string &volumeId, const MountParam &mountParam));
     MOCK_METHOD(int32_t, Unmount, (const std::string &volumeId));
     MOCK_METHOD(int32_t, ForceUnmount, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Format, (const std::string &volumeId, const std::string &fsType));

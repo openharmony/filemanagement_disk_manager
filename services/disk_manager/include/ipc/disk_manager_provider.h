@@ -42,7 +42,7 @@ public:
     void OnStart() override;
     void OnStop() override;
 
-    int32_t Mount(const std::string &volumeId) override;
+    int32_t Mount(const std::string &volumeId, const MountParam &mountParam = MountParam()) override;
     int32_t Unmount(const std::string &volumeId) override;
     int32_t Format(const std::string &volumeId, const std::string &fsType) override;
     int32_t TryToFix(const std::string &volumeId) override;

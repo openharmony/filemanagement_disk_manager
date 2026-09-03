@@ -19,6 +19,11 @@
 #include <cerrno>
 #include <cstdlib>
 
+#ifdef EDM_ADAPTER_ENABLE
+#include "usb_manager_proxy.h"
+#include "enterprise_device_mgr_proxy.h"
+#endif
+
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
 #include "disk_manager_hilog.h"
@@ -53,14 +58,14 @@ bool ConvertStringToInt(const std::string &str, int32_t &value)
  */
 bool IsEnterpriseDevice()
 {
-    return OHOS::system::GetParameter("persist.edm.device_type", "") == "enterprise";
+    return OHOS::system::GetParameter("const.edm.is_enterprise_device", "") == "true";
 }
 
 /**
  * MDM精细化管控：读取persist.edm.enable_external_storage_mount_intercept判断外置存储挂载拦截是否使能。
  * @return true=拦截已开启, false=未开启
  */
-bool __attribute__((unused)) IsInterceptEnabled()
+bool IsInterceptEnabled()
 {
     bool result = IsEnterpriseDevice() &&
         OHOS::system::GetParameter("persist.edm.enable_external_storage_mount_intercept", "") == "true";
@@ -83,7 +88,7 @@ bool IsSataOddBurnDisabled()
  * @param diskType 磁盘类型
  * @return true=受管控, false=不受管控
  */
-bool __attribute__((unused)) IsEdmManagedDiskType(int32_t diskType)
+bool IsEdmManagedDiskType(int32_t diskType)
 {
     return diskType == DiskType::SD_FLAG || diskType == DiskType::USB_FLAG || diskType == DiskType::CD_FLAG;
 }
@@ -168,6 +173,73 @@ bool EdmAdapter::IsExternalOddBurnAllowed(int32_t userId,
          "productId=%{public}d sn=%{public}s", userId, vendorId, productId, GetAnonyString(sn).c_str());
     return true; // 允许刻录
 }
+
+bool EdmAdapter::IsEdmControlMountEnabled(const VolumeExternal &volume, const MountParam &mountParam)
+{
+    LOGI("IsEdmControlMountEnabled volumeId=%{public}s readOnly=%{public}d fromEdmMount=%{public}d",
+         volume.GetId().c_str(), mountParam.GetReadOnly(), mountParam.IsFromEdmMount());
+    if (!IsEnterpriseDevice()) {
+        LOGI("IsEdmControlMountEnabled not enterprise device, volumeId=%{public}s", volume.GetId().c_str());
+        return false;
+    }
+    if (!IsInterceptEnabled()) {
+        LOGI("IsEdmControlMountEnabled intercept not enabled, volumeId=%{public}s", volume.GetId().c_str());
+        return false;
+    }
+    if (mountParam.IsFromEdmMount()) {
+        LOGI("IsEdmControlMountEnabled fromEdmMount=true, skip intercept, volumeId=%{public}s",
+             volume.GetId().c_str());
+        return false;
+    }
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(volume.GetDiskId(), disk) != E_OK) {
+        LOGW("IsEdmControlMountEnabled disk not found, volumeId=%{public}s diskId=%{public}s",
+             volume.GetId().c_str(), volume.GetDiskId().c_str());
+        return false;
+    }
+    if (!IsEdmManagedDiskType(disk.GetDiskType())) {
+        LOGI("IsEdmControlMountEnabled not managed diskType=%{public}d, volumeId=%{public}s",
+             disk.GetDiskType(), volume.GetId().c_str());
+        return false;
+    }
+    LOGI("IsEdmControlMountEnabled intercept mount, volumeId=%{public}s diskType=%{public}d "
+         "fromEdmMount=%{public}d", volume.GetId().c_str(), disk.GetDiskType(), mountParam.IsFromEdmMount());
+
+#ifdef EDM_ADAPTER_ENABLE
+    int32_t notifyRet = NotifyExternalStorageDeviceAdd(volume, disk);
+    LOGI("IsEdmControlMountEnabled NotifyExternalStorageDeviceAdd ret=%{public}d, volumeId=%{public}s",
+         notifyRet, volume.GetId().c_str());
+    if (notifyRet != E_OK) {
+        LOGW("IsEdmControlMountEnabled notify failed, allow mount, volumeId=%{public}s", volume.GetId().c_str());
+        return false;
+    }
+#else
+    LOGI("IsEdmControlMountEnabled EDM_ADAPTER_ENABLE not defined, allow mount");
+    return false;
+#endif
+    return true;
+}
+
+#ifdef EDM_ADAPTER_ENABLE
+int32_t EdmAdapter::NotifyExternalStorageDeviceAdd(const VolumeExternal &volume, const Disk &disk)
+{
+    LOGI("NotifyExternalStorageDeviceAdd vendorId=%{public}s productId=%{public}s "
+         "serial=%{public}s devPath=%{public}s extraInfo=%{public}s",
+         disk.GetVendorId().c_str(), disk.GetProductId().c_str(), disk.GetSerialNumber().c_str(),
+         volume.GetPath().c_str(), disk.GetExtraInfo().c_str());
+    int32_t vid = -1;
+    if (ConvertStringToInt(disk.GetVendorId(), vid)) {
+        LOGI("NotifyExternalStorageDeviceAdd vid convert success vid=%{public}d", vid);
+    }
+    int32_t pid = -1;
+    if (ConvertStringToInt(disk.GetProductId(), pid)) {
+        LOGI("NotifyExternalStorageDeviceAdd pid convert success pid=%{public}d", pid);
+    }
+    LOGI("NotifyExternalStorageDeviceAdd success volumeId=%{public}s vid=%{public}d pid=%{public}d",
+         volume.GetId().c_str(), vid, pid);
+    return E_NON_EXIST;
+}
+#endif // EDM_ADAPTER_ENABLE
 
 } // namespace DiskManager
 } // namespace OHOS

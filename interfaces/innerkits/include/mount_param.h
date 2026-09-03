@@ -32,11 +32,15 @@ public:
     bool GetReadOnly() const;
     void SetReadOnly(bool readOnly);
 
+    bool IsFromEdmMount() const;
+    void SetFromEdmMount(bool fromEdmMount);
+
     bool Marshalling(Parcel &parcel) const override;
     static MountParam *Unmarshalling(Parcel &parcel);
 
 private:
     bool readOnly_ {false};
+    bool fromEdmMount_ {false};
 };
 
 } // namespace DiskManager

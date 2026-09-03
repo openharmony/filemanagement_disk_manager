@@ -678,7 +678,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_TestCase_004, TestSize.Lev
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), Mount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
         .WillOnce(Return(E_OK));
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
@@ -708,7 +708,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_EmptyDisc_TestCase_005, TestSize.Level0
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), Mount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
         .WillOnce(Return(E_OK));
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
@@ -798,7 +798,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_NonEmptyDisc_MountFail_TestCase_008, Te
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .WillOnce(Return(E_OK))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), Mount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
         .WillOnce(Return(-1));
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
@@ -908,7 +908,7 @@ HWTEST_F(UeventBootstrapTest, Discover_WithNormalPartition_MountSuccess_TestCase
                         Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), Mount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
         .WillOnce(Return(E_OK));
     int32_t ret = UeventBootstrap::HandleDiskAdd(env);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
@@ -1095,7 +1095,7 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_MountFail_TestCase_011, Tes
                         Return(E_OK)));
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
         .WillOnce(Return(E_OK));
-    EXPECT_CALL(DiskManager::GetInstance(), Mount(_))
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
         .WillOnce(Return(-1));
     int32_t ret = UeventBootstrap::HandleDiskAdd(env);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);

@@ -28,6 +28,7 @@
 #include "disk_manager_napi_errno.h"
 #include "disk_manager_napi_utils.h"
 #include "ipc_caller_auth.h"
+#include "mount_param.h"
 #include "n_async/n_async_work_callback.h"
 #include "n_async/n_async_work_promise.h"
 #include "n_func_arg.h"
@@ -343,7 +344,8 @@ napi_value Mount(napi_env env, napi_callback_info info)
 
     std::string volumeIdString(volumeId.get());
     auto cbExec = [volumeIdString]() -> NError {
-        int32_t result = OHOS::DiskManager::DiskManagerClient::GetInstance().Mount(volumeIdString);
+        int32_t result = OHOS::DiskManager::DiskManagerClient::GetInstance().Mount(volumeIdString,
+            OHOS::DiskManager::MountParam());
         if (result != E_OK) {
             return NError(Convert2JsErrNum(result));
         }

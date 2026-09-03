@@ -40,7 +40,7 @@ public:
     static DiskManagerClient &GetInstance();
     virtual ~DiskManagerClient();
     /* ---------- Volume（@ohos.file.volumeManager） ---------- */
-    int32_t Mount(const std::string &volumeId);
+    int32_t Mount(const std::string &volumeId, const MountParam &mountParam = MountParam());
     int32_t Unmount(const std::string &volumeId);
     int32_t Format(const std::string &volumeId, const std::string &fsType);
     int32_t SetVolumeDescription(const std::string &fsUuid, const std::string &description);
