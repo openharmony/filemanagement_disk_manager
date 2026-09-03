@@ -43,7 +43,7 @@ extern std::string g_nativeProcessName;
 constexpr int32_t MOCK_PERMISSION_GRANTED = 0;
 constexpr int32_t MOCK_PERMISSION_DENIED = -1;
 #ifdef PC_MANAGER
-constexpr int32_t FILE_GUARD_UID = 6266;
+constexpr int32_t CRYPTO_USB_MGR_SERVICE = 7060;
 #endif
 
 namespace OHOS {
@@ -2486,7 +2486,7 @@ HWTEST_F(DiskManagerProviderTest, ValidateBurnOptionsSubfields_TestCase_008, Tes
 #ifdef PC_MANAGER
 /**
  * @tc.name: BindBlockLoopDev_PermissionDenied_001
- * @tc.desc: BindBlockLoopDev returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.desc: BindBlockLoopDev returns E_PERMISSION_DENIED when caller uid is not CRYPTO_USB_MGR_SERVICE.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2510,7 +2510,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_PermissionDenied_002, TestSiz
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("disk-8-1", 2048, 4096, loopPath), E_PERMISSION_DENIED);
@@ -2530,7 +2530,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidOffset_001, TestSize.L
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidOffset_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("disk-8-1", 0, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
@@ -2548,7 +2548,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidSizeLimit_001, TestSiz
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidSizeLimit_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("disk-8-1", 2048, 0, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
@@ -2566,7 +2566,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidDiskId_001, TestSize.L
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidDiskId_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("/dev/block/sda1", 2048, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
@@ -2584,7 +2584,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_InvalidDiskId_002, TestSize.L
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_InvalidDiskId_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     std::string loopPath;
     EXPECT_EQ(provider.BindBlockLoopDev("", 2048, 4096, loopPath), E_PARAMS_INVALID);
     EXPECT_TRUE(loopPath.empty());
@@ -2602,7 +2602,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_001, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-1"));
     std::string loopPath;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
@@ -2625,7 +2625,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_002, TestSize.Level0
 {
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-2"));
     std::string loopPath;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
@@ -2657,7 +2657,7 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_NotSupport_001, TestSize.Leve
 #ifdef PC_MANAGER
 /**
  * @tc.name: MountVolumeByPath_PermissionDenied_001
- * @tc.desc: MountVolumeByPath returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.desc: MountVolumeByPath returns E_PERMISSION_DENIED when caller uid is not CRYPTO_USB_MGR_SERVICE.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2680,7 +2680,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_PermissionDenied_002, TestSi
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     MountParam param;
     EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/dev/mapper/mvp1", param), E_PERMISSION_DENIED);
@@ -2699,7 +2699,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidDiskId_001, TestSize.
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidDiskId_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     MountParam param;
     EXPECT_EQ(provider.MountVolumeByPath("disk-8", "/dev/mapper/mvp1", param), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2716,7 +2716,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidVolPath_001, TestSize
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     MountParam param;
     EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "", param), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2733,7 +2733,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidVolPath_002, TestSize
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     MountParam param;
     EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/dev/block/../mvp1", param), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2750,7 +2750,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_InvalidVolPath_003, TestSize
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_InvalidVolPath_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     MountParam param;
     EXPECT_EQ(provider.MountVolumeByPath("disk-8-1", "/mnt/data/mvp1", param), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -2767,7 +2767,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_TestCase_001, TestSize.Level
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-77"));
     VolumeExternal mvpVol = MakeUsbVolume("vol-mvp-1", "disk-8-77", "uuid-mvp-1", UNMOUNTED);
     mvpVol.SetMapperPath("/dev/mapper/mvp1");
@@ -2792,7 +2792,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_TestCase_002, TestSize.Level
 {
     GTEST_LOG_(INFO) << "MountVolumeByPath_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     MountParam param;
     EXPECT_EQ(provider.MountVolumeByPath("disk-99-99", "/dev/mapper/mvp2", param),
               E_MOUNT_VOL_BY_PATH_FAILED);
@@ -2819,7 +2819,7 @@ HWTEST_F(DiskManagerProviderTest, MountVolumeByPath_NotSupport_001, TestSize.Lev
 #ifdef PC_MANAGER
 /**
  * @tc.name: UmountVolumeByPath_PermissionDenied_001
- * @tc.desc: UmountVolumeByPath returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.desc: UmountVolumeByPath returns E_PERMISSION_DENIED when caller uid is not CRYPTO_USB_MGR_SERVICE.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2841,7 +2841,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_PermissionDenied_002, TestS
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     EXPECT_EQ(provider.UmountVolumeByPath("disk-8-1", "/dev/mapper/uvp1"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
@@ -2859,7 +2859,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_InvalidDiskId_001, TestSize
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidDiskId_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UmountVolumeByPath("disk-8", "/dev/mapper/uvp1"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidDiskId_001 End";
@@ -2875,7 +2875,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_InvalidVolPath_001, TestSiz
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidVolPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UmountVolumeByPath("disk-8-1", ""), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidVolPath_001 End";
@@ -2891,7 +2891,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_InvalidVolPath_002, TestSiz
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidVolPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UmountVolumeByPath("disk-8-1", "/dev/block/../uvp1"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidVolPath_002 End";
@@ -2907,7 +2907,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_InvalidVolPath_003, TestSiz
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidVolPath_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UmountVolumeByPath("disk-8-1", "/mnt/data/uvp1"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UmountVolumeByPath_InvalidVolPath_003 End";
@@ -2923,7 +2923,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_TestCase_001, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-91"));
     VolumeExternal vol = MakeUsbVolume("vol-u1", "disk-8-91", "uuid-u1", MOUNTED);
     vol.SetMapperPath("/dev/mapper/uvp1");
@@ -2944,7 +2944,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_TestCase_002, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UmountVolumeByPath("disk-99-99", "/dev/mapper/uvp2"), E_UMOUNT_VOL_BY_PATH_FAILED);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_002 End";
@@ -2968,7 +2968,7 @@ HWTEST_F(DiskManagerProviderTest, UmountVolumeByPath_NotSupport_001, TestSize.Le
 #ifdef PC_MANAGER
 /**
  * @tc.name: CreateDmCryptVolume_PermissionDenied_001
- * @tc.desc: CreateDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.desc: CreateDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not CRYPTO_USB_MGR_SERVICE.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -2991,7 +2991,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_PermissionDenied_002, Test
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper0"), E_PERMISSION_DENIED);
@@ -3010,7 +3010,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidLoopPath_001, TestS
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "", "mapper0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -3027,7 +3027,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidLoopPath_002, TestS
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidLoopPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/mnt/data/sda1", "mapper0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -3044,7 +3044,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_001, Tes
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", ""), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -3061,7 +3061,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_002, Tes
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", "mapper-0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -3078,7 +3078,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_InvalidMapperName_003, Tes
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_InvalidMapperName_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     CryptParam param("luks", "aes", 256, "/keyfile");
     EXPECT_EQ(provider.CreateDmCryptVolume(param, "/dev/block/sda1", std::string(129, 'a')), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
@@ -3095,7 +3095,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_001, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-51"));
     VolumeExternal cryptVol = MakeUsbVolume("vol-crypt-sda1", "disk-8-51", "uuid-crypt-1", UNMOUNTED);
     cryptVol.SetLoopPath("/dev/block/sda1");
@@ -3118,7 +3118,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_TestCase_002, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     DiskManager::GetInstance().OnDiskCreated(MakeUsbDisk("disk-8-52"));
     VolumeExternal cryptVol = MakeUsbVolume("vol-crypt-sda1", "disk-8-52", "uuid-crypt-2", UNMOUNTED);
     cryptVol.SetLoopPath("/dev/block/sda1");
@@ -3151,7 +3151,7 @@ HWTEST_F(DiskManagerProviderTest, CreateDmCryptVolume_NotSupport_001, TestSize.L
 #ifdef PC_MANAGER
 /**
  * @tc.name: DestroyDmCryptVolume_PermissionDenied_001
- * @tc.desc: DestroyDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.desc: DestroyDmCryptVolume returns E_PERMISSION_DENIED when caller uid is not CRYPTO_USB_MGR_SERVICE.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -3173,7 +3173,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_PermissionDenied_002, Tes
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     EXPECT_EQ(provider.DestroyDmCryptVolume("mapper0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
@@ -3191,7 +3191,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_InvalidMapperName_001, Te
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.DestroyDmCryptVolume(""), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_001 End";
@@ -3207,7 +3207,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_InvalidMapperName_002, Te
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.DestroyDmCryptVolume("mapper-0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_002 End";
@@ -3223,7 +3223,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_InvalidMapperName_003, Te
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_003 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.DestroyDmCryptVolume(std::string(129, 'a')), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_InvalidMapperName_003 End";
@@ -3239,7 +3239,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_TestCase_001, TestSize.Le
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _)).WillOnce(Return(E_OK));
     int32_t ret = provider.DestroyDmCryptVolume("mapper0");
     EXPECT_EQ(ret, E_OK);
@@ -3257,7 +3257,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_TestCase_002, TestSize.Le
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
         .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.DestroyDmCryptVolume("mapper0");
@@ -3268,7 +3268,7 @@ HWTEST_F(DiskManagerProviderTest, DestroyDmCryptVolume_TestCase_002, TestSize.Le
 
 /**
  * @tc.name: UnbindBlockLoopDev_PermissionDenied_001
- * @tc.desc: UnbindBlockLoopDev returns E_PERMISSION_DENIED when caller uid is not FILE_GUARD_UID.
+ * @tc.desc: UnbindBlockLoopDev returns E_PERMISSION_DENIED when caller uid is not CRYPTO_USB_MGR_SERVICE.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -3290,7 +3290,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_PermissionDenied_002, TestS
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_PermissionDenied_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     g_permissionGranted = MOCK_PERMISSION_DENIED;
     EXPECT_EQ(provider.UnbindBlockLoopDev("/dev/block/loop0"), E_PERMISSION_DENIED);
     g_permissionGranted = MOCK_PERMISSION_GRANTED;
@@ -3308,7 +3308,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_EmptyPath_001, TestSize.Lev
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_EmptyPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UnbindBlockLoopDev(""), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_EmptyPath_001 End";
@@ -3324,7 +3324,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_InvalidPath_001, TestSize.L
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UnbindBlockLoopDev("/dev/block/../loop0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_001 End";
@@ -3340,7 +3340,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_InvalidPath_002, TestSize.L
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_EQ(provider.UnbindBlockLoopDev("/mnt/data/loop0"), E_PARAMS_INVALID);
     MockIPCSkeleton::mockCallingUid_ = 0;
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_InvalidPath_002 End";
@@ -3356,7 +3356,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_TestCase_001, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(E_OK), Return(E_OK)));
     int32_t ret = provider.UnbindBlockLoopDev("/dev/block/loop0");
@@ -3375,7 +3375,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_TestCase_002, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_002 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-    MockIPCSkeleton::mockCallingUid_ = FILE_GUARD_UID;
+    MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
     int32_t ret = provider.UnbindBlockLoopDev("/dev/block/loop0");

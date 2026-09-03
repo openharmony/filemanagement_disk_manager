@@ -262,6 +262,9 @@ HWTEST_F(VolumeExternalTest, Marshalling_Success_TestCase_001, TestSize.Level0)
     ve.SetDescription("desc");
     ve.SetExtraInfo("extra");
     ve.SetPartitionNum(2);
+    ve.SetLoopPath("/dev/loop0");
+    ve.SetMapperPath("/dev/mapper/mvp0");
+    ve.SetMountFlag(true);
     Parcel parcel;
     EXPECT_TRUE(ve.Marshalling(parcel));
 }
@@ -276,6 +279,9 @@ HWTEST_F(VolumeExternalTest, Unmarshalling_Success_TestCase_001, TestSize.Level0
     ve.SetDescription("desc");
     ve.SetExtraInfo("extra");
     ve.SetPartitionNum(2);
+    ve.SetLoopPath("/dev/loop0");
+    ve.SetMapperPath("/dev/mapper/mvp0");
+    ve.SetMountFlag(true);
     Parcel parcel;
     EXPECT_TRUE(ve.Marshalling(parcel));
     VolumeExternal *result = VolumeExternal::Unmarshalling(parcel);
@@ -287,6 +293,9 @@ HWTEST_F(VolumeExternalTest, Unmarshalling_Success_TestCase_001, TestSize.Level0
     EXPECT_EQ(result->GetDescription(), "desc");
     EXPECT_EQ(result->GetExtraInfo(), "extra");
     EXPECT_EQ(result->GetPartitionNum(), 2);
+    EXPECT_EQ(result->GetLoopPath(), "/dev/loop0");
+    EXPECT_EQ(result->GetMapperPath(), "/dev/mapper/mvp0");
+    EXPECT_TRUE(result->GetMountFlag());
     delete result;
 }
 
