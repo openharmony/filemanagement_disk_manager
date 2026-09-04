@@ -26,6 +26,7 @@ extern bool g_mockGetBoolParameterResult;
 bool MockGetBoolParameter(const std::string &key, bool defaultValue);
 
 extern std::string g_mockGetParameterResult;
+extern std::string g_mockSataOddBurnDisabledResult;
 
 std::string MockGetParameter(const std::string &key, const std::string &def);
 
