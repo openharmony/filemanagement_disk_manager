@@ -74,9 +74,13 @@ constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
+constexpr int64_t BURN_EDM_CONTROL_EVENT_ID = 0x00F000008;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
+// PrepareBurn 内部标记：EDM 策略禁止刻录；非错误码，仅 Burn 层据此上报审计事件后对外映射为 E_NOT_SUPPORT。
+constexpr int32_t EDM_BURN_DENIED_MARK = -2;
 
-int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType)
+int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType,
+                               int64_t eventId = BURN_REPORT_EVENT_ID)
 {
     LOGI("ReportBurnSecurityInfo start");
     auto now = std::chrono::system_clock::now();
@@ -91,9 +95,9 @@ int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const s
 
     std::string content = contentJson.dump();
 
-    OHOS::Security::SecurityGuard::EventInfo eventInfo(BURN_REPORT_EVENT_ID, BURN_REPORT_VERSION, content);
+    OHOS::Security::SecurityGuard::EventInfo eventInfo(eventId, BURN_REPORT_VERSION, content);
     LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " version=%{public}s content=%{public}s",
-        BURN_REPORT_EVENT_ID, BURN_REPORT_VERSION, content.c_str());
+        eventId, BURN_REPORT_VERSION, content.c_str());
     auto wrappedInfo = std::make_shared<OHOS::Security::SecurityGuard::EventInfo>(eventInfo);
     OHOS::Security::SecurityGuard::NativeDataCollectKit nativeDataCollectKit;
     int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
@@ -1811,7 +1815,7 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
 #ifdef EDM_ADAPTER_ENABLE
     if (!EdmAdapter::GetInstance().IsEdmEnableOddBurn(diskId, callerUserId)) {
         LOGE("TestBbrn Burn EDM policy denied, diskId=%{public}s", diskId.c_str());
-        return E_NOT_SUPPORT;
+        return EDM_BURN_DENIED_MARK;
     }
 #endif
     // Only mounted volumes need unmounting before burn; skip when already unmounted.
@@ -1833,6 +1837,10 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
     std::string blockVolId;
     std::string fsType;
     int32_t prepErr = PrepareBurn(volumeId, burnOptions, callerUserId, blockVolId, fsType);
+    if (prepErr == EDM_BURN_DENIED_MARK) {
+        ReportBurnSecurityInfo(callerUserId, callerBundle, fsType, BURN_EDM_CONTROL_EVENT_ID);
+        return E_NOT_SUPPORT;
+    }
     if (prepErr != DiskManagerErrNo::E_OK) {
         return prepErr;
     }
