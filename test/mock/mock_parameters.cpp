@@ -26,11 +26,14 @@ bool MockGetBoolParameter(const std::string &key, bool defaultValue)
 }
 
 std::string g_mockGetParameterResult;
+std::string g_mockSataOddBurnDisabledResult;
 
 std::string MockGetParameter(const std::string &key, const std::string &def)
 {
-    (void)key;
     (void)def;
+    if (key == "persist.edm.disable_sata_odd_burn") {
+        return g_mockSataOddBurnDisabledResult;
+    }
     return g_mockGetParameterResult;
 }
 
