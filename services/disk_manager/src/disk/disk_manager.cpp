@@ -74,7 +74,7 @@ constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
-constexpr int64_t BURN_EDM_CONTROL_EVENT_ID = 0x00F00000;
+constexpr int64_t BURN_EDM_CONTROL_EVENT_ID = 0x00F000008;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
 // PrepareBurn 内部标记：EDM 策略禁止刻录；非错误码，仅 Burn 层据此上报审计事件后对外映射为 E_NOT_SUPPORT。
 constexpr int32_t EDM_BURN_DENIED_MARK = -2;
