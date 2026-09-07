@@ -42,6 +42,8 @@ bool VolumeExternalFuzzTest(const uint8_t *data, size_t size)
     vol.SetFreeSize(static_cast<int64_t>(flag));
     vol.SetPartitionNum(flag);
     vol.SetMountFlag(flag != 0);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetMapperPath("/dev/mapper/dm-0");
 
     vol.GetFlags();
     vol.GetFsType();
@@ -53,6 +55,8 @@ bool VolumeExternalFuzzTest(const uint8_t *data, size_t size)
     vol.GetFreeSize();
     vol.GetPartitionNum();
     vol.GetMountFlag();
+    vol.GetLoopPath();
+    vol.GetMapperPath();
     vol.GetFsTypeByStr("ext4");
     vol.Reset();
 

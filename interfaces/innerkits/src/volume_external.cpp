@@ -189,6 +189,9 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->path_ = parcel.ReadString();
     obj->description_ = parcel.ReadString();
     obj->partitionNum_ = parcel.ReadInt32();
+    obj->loopPath_ = parcel.ReadString();
+    obj->mapperPath_ = parcel.ReadString();
+    obj->mountFlag_ = parcel.ReadBool();
     return obj;
 }
 
@@ -219,6 +222,18 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
     }
 
     if (!parcel.WriteInt32(partitionNum_)) {
+        return false;
+    }
+
+    if (!parcel.WriteString(loopPath_)) {
+        return false;
+    }
+
+    if (!parcel.WriteString(mapperPath_)) {
+        return false;
+    }
+
+    if (!parcel.WriteBool(mountFlag_)) {
         return false;
     }
 
