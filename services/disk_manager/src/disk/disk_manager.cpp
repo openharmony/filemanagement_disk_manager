@@ -2781,27 +2781,14 @@ int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
         return dfx.Finish(E_DESTROY_DM_CRYPT_VOLUME_FAILED);
     }
     std::string mapperPath = "/dev/mapper/" + mapperName;
-    VolumeExternal volumeExternal;
-    bool found = false;
     {
-        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
-        for (const auto &item : volumeMap_) {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        for (auto &item : volumeMap_) {
             if (item.second.GetMapperPath() == mapperPath) {
-                volumeExternal = item.second;
-                found = true;
+                item.second.SetMapperPath("");
                 break;
             }
         }
-    }
-    if (found) {
-        volumeExternal.SetMapperPath("");
-        int32_t updateErr = UpdateVolumeExternal(volumeExternal);
-        if (updateErr != E_OK) {
-            LOGE("DestroyDmCryptVolume: failed to clear mapperPath, err=%{public}d", updateErr);
-            return dfx.Finish(updateErr);
-        }
-    } else {
-        LOGW("DestroyDmCryptVolume: volume not found by mapperPath=%{public}s", mapperPath.c_str());
     }
     LOGI("DestroyDmCryptVolume success");
     return dfx.Finish(E_OK);
