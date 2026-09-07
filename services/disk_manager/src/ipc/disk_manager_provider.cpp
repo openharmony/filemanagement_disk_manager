@@ -882,7 +882,7 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
         LOGE("CreateDmCryptVolume: loopPath is invalid");
         return E_PARAMS_INVALID;
     }
-    static const std::regex mapperNamePattern(R"(^[A-Za-z0-9]{1,128}$)");
+    static const std::regex mapperNamePattern(R"(^[A-Za-z0-9]{1,127}$)");
     if (!std::regex_match(mapperName, mapperNamePattern)) {
         LOGE("CreateDmCryptVolume: mapperName is invalid");
         return E_PARAMS_INVALID;
