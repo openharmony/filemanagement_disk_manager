@@ -102,6 +102,10 @@ private:
     uint32_t idleTimerId_ = 0;
     std::atomic<bool> idleMonitorStopped_{false};
     std::atomic<int32_t> pendingStorageDaemonCallbackCount_{0};
+
+    // mutex to serialize CheckAndUnloadIfIdle and OnBlockDiskUevent to prevent race condition
+    std::mutex unloadUeventMutex_;
+    std::atomic<bool> isUnloading_{false};
 };
 } // namespace DiskManager
 } // namespace OHOS
