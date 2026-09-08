@@ -97,7 +97,6 @@ void DiskManagerProvider::OnStop()
 {
     LOGI("OnStop begin");
     StopIdleMonitor();
-    isUnloading_.store(false);
     LOGI("OnStop end");
 }
 
