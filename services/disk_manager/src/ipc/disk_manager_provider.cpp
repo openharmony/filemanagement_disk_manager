@@ -48,7 +48,7 @@ constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr size_t OP_DIAG_RAW_MAX_LEN = 8192;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
-constexpr uint32_t EPOLL_INTERVAL_MS = 100;
+constexpr uint32_t EPOLL_INTERVAL_MS = 10;
 #ifdef PC_MANAGER
 constexpr pid_t FILE_GUARD_UID = 6266;
 #endif
