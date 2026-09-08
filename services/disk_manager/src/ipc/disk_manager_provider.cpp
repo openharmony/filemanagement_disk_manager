@@ -48,6 +48,7 @@ constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr size_t OP_DIAG_RAW_MAX_LEN = 8192;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
+constexpr uint32_t EPOLL_INTERVAL_MS = 100;
 #ifdef PC_MANAGER
 constexpr pid_t FILE_GUARD_UID = 6266;
 #endif
@@ -110,7 +111,7 @@ void DiskManagerProvider::StartIdleMonitor()
             LOGI("StartIdleMonitor: timer already running, skip");
             return;
         }
-        idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle");
+        idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle", EPOLL_INTERVAL_MS);
         idleTimer_->Setup();
         idleTimerId_ = idleTimer_->Register([this]() { CheckAndUnloadIfIdle(); }, IDLE_CHECK_INTERVAL_MS);
         LOGI("StartIdleMonitor intervalMs=%{public}u", IDLE_CHECK_INTERVAL_MS);
