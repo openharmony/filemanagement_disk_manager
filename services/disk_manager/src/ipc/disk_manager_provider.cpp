@@ -434,6 +434,10 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
         return E_SA_IS_NULLPTR;
     }
     std::lock_guard<std::mutex> lock(unloadUeventMutex_);
+    if (isUnloading_.load()) {
+        LOGW("OnBlockDiskUevent: SA is unloading, skip event");
+        return E_SA_IS_NULLPTR;
+    }
 
     VolumeReportInfo info;
     info.extra = DfxTruncate(rawUeventMsg);
