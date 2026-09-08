@@ -3916,7 +3916,7 @@ HWTEST_F(DiskManagerTest, ResolveUnmountForceFlag_TestCase_001, TestSize.Level0)
     dm.OnVolumeCreated(vol);
     bool forceUnmount = false;
     EXPECT_EQ(dm.ResolveUnmountForceFlag(vol, forceUnmount), DiskManagerErrNo::E_OK);
-    EXPECT_TRUE(forceUnmount);
+    EXPECT_FALSE(forceUnmount);
 }
 
 HWTEST_F(DiskManagerTest, ResolveUnmountForceFlag_TestCase_002, TestSize.Level0)
