@@ -2762,10 +2762,11 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
 int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
 {
     VolumeReportInfo reportInfo;
-    reportInfo.WithDevPath("/dev/mapper/" + mapperName);
+    std::string mapperPath = "/dev/mapper/" + mapperName;
+    reportInfo.WithDevPath(mapperPath);
     IpcDfxScope dfx("DiskManager::DestroyDmCryptVolume", DFX_STAGE_DESTROY_DM_CRYPT_VOLUME,
                     VolumeOpType::DESTROY_DM_CRYPT_VOLUME, reportInfo);
-    std::vector<std::string> cmd = {"cryptsetup", "close", "/dev/mapper/" + mapperName};
+    std::vector<std::string> cmd = {"cryptsetup", "close", mapperPath};
     std::vector<std::string> output;
     int32_t execRet = 0;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
@@ -2779,6 +2780,15 @@ int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
     if (execRet != E_OK) {
         LOGE("DestroyDmCryptVolume command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_DESTROY_DM_CRYPT_VOLUME_FAILED);
+    }
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        for (auto &item : volumeMap_) {
+            if (item.second.GetMapperPath() == mapperPath) {
+                item.second.SetMapperPath("");
+                break;
+            }
+        }
     }
     LOGI("DestroyDmCryptVolume success");
     return dfx.Finish(E_OK);
@@ -2805,6 +2815,8 @@ int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
         LOGE("UnbindBlockLoopDev command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_UNBIND_LOOP_DEV_FAILED);
     }
+    std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
+    OnVolumeDestroyed(volId);
     LOGI("UnbindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
     return dfx.Finish(E_OK);
 }
