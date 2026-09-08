@@ -48,6 +48,7 @@ constexpr pid_t STORAGE_MANAGER_UID = 1090;
 constexpr size_t UEVENT_RAW_MAX_LEN = 4096;
 constexpr size_t OP_DIAG_RAW_MAX_LEN = 8192;
 constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
+constexpr uint32_t EPOLL_INTERVAL_MS = 10;
 #ifdef PC_MANAGER
 constexpr pid_t CRYPTO_USB_MGR_SERVICE_UID = 7060;
 #endif
@@ -95,8 +96,9 @@ void DiskManagerProvider::OnStart()
 
 void DiskManagerProvider::OnStop()
 {
-    LOGI("OnStop");
+    LOGI("OnStop begin");
     StopIdleMonitor();
+    LOGI("OnStop end");
 }
 
 void DiskManagerProvider::StartIdleMonitor()
@@ -109,7 +111,7 @@ void DiskManagerProvider::StartIdleMonitor()
             LOGI("StartIdleMonitor: timer already running, skip");
             return;
         }
-        idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle");
+        idleTimer_ = std::make_unique<Utils::Timer>("DiskManagerIdle", EPOLL_INTERVAL_MS);
         idleTimer_->Setup();
         idleTimerId_ = idleTimer_->Register([this]() { CheckAndUnloadIfIdle(); }, IDLE_CHECK_INTERVAL_MS);
         LOGI("StartIdleMonitor intervalMs=%{public}u", IDLE_CHECK_INTERVAL_MS);
@@ -145,6 +147,7 @@ void DiskManagerProvider::EndPendingStorageDaemonCallback()
 
 void DiskManagerProvider::CheckAndUnloadIfIdle()
 {
+    std::lock_guard<std::mutex> lock(unloadUeventMutex_);
     if (idleMonitorStopped_.load(std::memory_order_acquire)) {
         return;
     }
@@ -158,15 +161,18 @@ void DiskManagerProvider::CheckAndUnloadIfIdle()
              pendingCallbacks);
         return;
     }
+    isUnloading_.store(true);
     LOGI("CheckAndUnloadIfIdle: unloading SA");
     auto samgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (samgr == nullptr) {
         LOGE("CheckAndUnloadIfIdle: GetSystemAbilityManager failed");
+        isUnloading_.store(false);
         return;
     }
     const int32_t ret = samgr->UnloadSystemAbility(DISK_MANAGER_SA_ID);
     if (ret != ERR_OK) {
         LOGE("CheckAndUnloadIfIdle: UnloadSystemAbility failed ret=%{public}d", ret);
+        isUnloading_.store(false);
         return;
     }
     LOGI("CheckAndUnloadIfIdle: UnloadSystemAbility success");
@@ -423,6 +429,17 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
 
 int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
 {
+    // skip event if SA is unloading to avoid blocking storage_daemon
+    if (isUnloading_.load()) {
+        LOGW("OnBlockDiskUevent: SA is unloading, skip event");
+        return E_SA_IS_NULLPTR;
+    }
+    std::lock_guard<std::mutex> lock(unloadUeventMutex_);
+    if (isUnloading_.load()) {
+        LOGW("OnBlockDiskUevent: SA is unloading, skip event");
+        return E_SA_IS_NULLPTR;
+    }
+
     VolumeReportInfo info;
     info.extra = DfxTruncate(rawUeventMsg);
     IpcDfxScope dfx("DiskManagerProvider::OnBlockDiskUevent", DFX_STAGE_UEVENT_PARSE, VolumeOpType::OTHER, info);
