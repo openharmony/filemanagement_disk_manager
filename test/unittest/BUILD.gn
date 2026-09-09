@@ -513,6 +513,7 @@ ohos_unittest("pc_encryption_adapter_test") {
   sources = [
     "pc_encryption_adapter_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
   ]
 
