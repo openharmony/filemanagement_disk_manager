@@ -2666,6 +2666,8 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
     BlockInfo blockInfo;
     if (BlockInfoTable::GetInstance().TryCopyByDiskId(disk.GetDiskId(), blockInfo)) {
         disk.SetExtraInfo(BlockInfoTable::ToJsonStringWithExtras(blockInfo, extraKV));
+        LOGI("QueryAndAppendEncryptionStatusUnlocked: encryptionStatus=%{public}d appended to disk extra info, "
+             "diskId=%{public}s", encStatus, GetAnonyString(disk.GetDiskId()).c_str());
     }
 }
 

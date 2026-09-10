@@ -16,11 +16,9 @@
 #include "pc_encryption_adapter.h"
 
 #include <dlfcn.h>
-#include <mutex>
-#include <thread>
-#include <vector>
 
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -42,21 +40,13 @@ PcEncryptionAdapter &PcEncryptionAdapter::GetInstance()
 PcEncryptionAdapter::PcEncryptionAdapter()
 {
     Init();
+    threadPool_.Start(PC_ENC_THREAD_POOL_COUNT);
     LOGI("PcEncryptionAdapter created");
 }
 
 PcEncryptionAdapter::~PcEncryptionAdapter()
 {
-    std::vector<std::thread> toJoin;
-    {
-        std::lock_guard<std::mutex> lk(mutex_);
-        toJoin.swap(workers_);
-    }
-    for (auto &t : toJoin) {
-        if (t.joinable()) {
-            t.join();
-        }
-    }
+    threadPool_.Stop();
     UnInit();
     LOGI("PcEncryptionAdapter destroyed");
 }
@@ -79,7 +69,7 @@ void PcEncryptionAdapter::UnInit()
 
 bool PcEncryptionAdapter::QueryEncryptionStatus(const std::string &volPath, int32_t &encStatus)
 {
-    LOGI("QueryEncryptionStatus enter volPath=%{public}s", volPath.c_str());
+    LOGI("QueryEncryptionStatus enter volPath=%{public}s", GetAnonyString(volPath).c_str());
     if (handler_ == nullptr) {
         LOGE("QueryEncryptionStatus: handler is nullptr");
         return false;
@@ -94,7 +84,7 @@ bool PcEncryptionAdapter::QueryEncryptionStatus(const std::string &volPath, int3
     int32_t ret = func(volPath, encStatus);
     if (ret != 0) {
         LOGE("QueryEncryptionStatus: %{public}s returned %{public}d for path %{public}s",
-             PC_ENC_QUERY_FUNC_NAME, ret, volPath.c_str());
+             PC_ENC_QUERY_FUNC_NAME, ret, GetAnonyString(volPath).c_str());
         return false;
     }
     LOGI("QueryEncryptionStatus success encStatus=%{public}d", encStatus);
@@ -106,26 +96,24 @@ void PcEncryptionAdapter::NotifyVolumeMounted(const std::string &diskId,
                                               const std::string &volPath)
 {
     LOGI("NotifyVolumeMounted enter diskId=%{public}s volumeId=%{public}s volPath=%{public}s",
-         diskId.c_str(), volumeId.c_str(), volPath.c_str());
-    {
-        std::lock_guard<std::mutex> lk(mutex_);
-        workers_.emplace_back([this, diskId, volumeId, volPath]() {
-            if (handler_ == nullptr) {
-                LOGE("NotifyVolumeMounted: handler is nullptr");
-                return;
-            }
-            FuncNotifyMounted func = reinterpret_cast<FuncNotifyMounted>(
-                dlsym(handler_, PC_ENC_NOTIFY_MOUNTED_FUNC_NAME));
-            if (func == nullptr) {
-                LOGE("NotifyVolumeMounted: dlsym %{public}s failed, error: %{public}s",
-                     PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, dlerror());
-                return;
-            }
-            int32_t ret = func(diskId, volumeId, volPath);
-            LOGI("NotifyVolumeMounted: %{public}s returned %{public}d, diskId: %{public}s, volumeId: %{public}s",
-                 PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, ret, diskId.c_str(), volumeId.c_str());
-        });
-    }
+         GetAnonyString(diskId).c_str(), GetAnonyString(volumeId).c_str(), GetAnonyString(volPath).c_str());
+    threadPool_.AddTask([this, diskId, volumeId, volPath]() {
+        if (handler_ == nullptr) {
+            LOGE("NotifyVolumeMounted: handler is nullptr");
+            return;
+        }
+        FuncNotifyMounted func = reinterpret_cast<FuncNotifyMounted>(
+            dlsym(handler_, PC_ENC_NOTIFY_MOUNTED_FUNC_NAME));
+        if (func == nullptr) {
+            LOGE("NotifyVolumeMounted: dlsym %{public}s failed, error: %{public}s",
+                 PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, dlerror());
+            return;
+        }
+        int32_t ret = func(diskId, volumeId, volPath);
+        LOGI("NotifyVolumeMounted: %{public}s returned %{public}d, diskId: %{public}s, volumeId: %{public}s",
+             PC_ENC_NOTIFY_MOUNTED_FUNC_NAME, ret, GetAnonyString(diskId).c_str(),
+             GetAnonyString(volumeId).c_str());
+    });
     LOGI("NotifyVolumeMounted: async task started");
 }
 

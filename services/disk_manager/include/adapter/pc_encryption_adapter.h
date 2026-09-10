@@ -17,15 +17,15 @@
 #define OHOS_FILEMANAGEMENT_DISK_MANAGER_PC_ENCRYPTION_ADAPTER_H
 
 #include <cstdint>
-#include <mutex>
 #include <string>
-#include <thread>
-#include <vector>
 
 #include "nocopyable.h"
+#include "thread_pool.h"
 
 namespace OHOS {
 namespace DiskManager {
+
+constexpr int32_t PC_ENC_THREAD_POOL_COUNT = 1;
 
 /**
  * 动态加载 libpc_encryption_ext_volume_user_api.z.so，查询数据盘加密状态。
@@ -61,8 +61,7 @@ private:
     void UnInit();  // dlclose 关闭 so
 
     void *handler_{nullptr};
-    std::mutex mutex_;
-    std::vector<std::thread> workers_;
+    ThreadPool threadPool_;
 };
 
 } // namespace DiskManager
