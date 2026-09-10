@@ -660,7 +660,6 @@ int32_t DiskManager::UnmountVolumeMountPoints(const VolumeExternal &volExternal,
 
 int32_t DiskManager::ResolveUnmountForceFlag(const VolumeExternal &volExternal, bool &forceUnmount)
 {
-    forceUnmount = true;
     std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
     const auto dit = diskMap_.find(volExternal.GetDiskId());
     if (dit == diskMap_.end() || !dit->second.IsInternalDataDisk()) {
@@ -935,7 +934,7 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-    return dfx.Finish(DoUnmountVolume(volExternal));
+    return dfx.Finish(DoUnmountVolume(volExternal, false));
 }
 
 int32_t DiskManager::ForceUnmount(const std::string &volumeId)
@@ -952,13 +951,12 @@ int32_t DiskManager::ForceUnmount(const std::string &volumeId)
         }
         volExternal = it->second;
     }
-    return dfx.Finish(DoUnmountVolume(volExternal));
+    return dfx.Finish(DoUnmountVolume(volExternal, true));
 }
 
-int32_t DiskManager::DoUnmountVolume(VolumeExternal &volExternal)
+int32_t DiskManager::DoUnmountVolume(VolumeExternal &volExternal, bool forceUnmount)
 {
     SaveVolumeFreeSize(volExternal);
-    bool forceUnmount = true;
     const int32_t previousState = NotifyVolumeEjecting(volExternal.GetId(), volExternal);
  
     bool isInternalDataDisk = false;
@@ -2893,7 +2891,7 @@ int32_t DiskManager::UmountVolumeByPath(const std::string &diskId, const std::st
         LOGE("UmountVolumeByPath: volume has unmounted");
         return dfx.Finish(E_VOL_STATE);
     }
-    int32_t res = DoUnmountVolume(volExternal);
+    int32_t res = DoUnmountVolume(volExternal, false);
     if (res != E_OK) {
         LOGE("UmountVolumeByPath: umount failed, err=%{public}d", res);
         return dfx.Finish(res);
