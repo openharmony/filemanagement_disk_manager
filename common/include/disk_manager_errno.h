@@ -41,6 +41,7 @@ enum DiskManagerErrNo : int32_t {
     E_DISK_HAS_EXIST = 24,
     E_DESTROY_DEVICE_NODE = 25,
     E_STORAGE_VALID_NODE = 26,
+    E_SA_IS_UNLOADING = 27,
 
     /** 与 storage_service_errno.h / VolumeStorageStatusService 数值一致（13600000 基址）。 */
     E_PERMISSION_DENIED = 13600000 + 1,

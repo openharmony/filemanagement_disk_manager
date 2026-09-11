@@ -432,12 +432,12 @@ int32_t DiskManagerProvider::OnBlockDiskUevent(const std::string &rawUeventMsg)
     // skip event if SA is unloading to avoid blocking storage_daemon
     if (isUnloading_.load()) {
         LOGW("OnBlockDiskUevent: SA is unloading, skip event");
-        return E_SA_IS_NULLPTR;
+        return E_SA_IS_UNLOADING;
     }
     std::lock_guard<std::mutex> lock(unloadUeventMutex_);
     if (isUnloading_.load()) {
         LOGW("OnBlockDiskUevent: SA is unloading, skip event");
-        return E_SA_IS_NULLPTR;
+        return E_SA_IS_UNLOADING;
     }
 
     VolumeReportInfo info;
