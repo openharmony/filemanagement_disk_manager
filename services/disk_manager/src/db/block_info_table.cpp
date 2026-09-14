@@ -255,7 +255,7 @@ std::string BlockInfoTable::ToJsonStringWithExtras(
     for (const auto &[key, value] : extraKeyValues) {
         jsonObject[key] = value;
     }
-    return jsonObject.dump();
+    return jsonObject.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 }
 
 int32_t BlockInfoTable::ReadExtDiskInfoFromDaemon(const std::string &devName, BlockInfo &info)

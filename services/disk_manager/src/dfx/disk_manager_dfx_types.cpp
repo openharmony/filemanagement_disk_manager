@@ -87,7 +87,7 @@ std::string VolumeReportInfo::ToExtraData() const
     if (!extra.empty()) {
         js["extra"] = extra;
     }
-    return js.empty() ? "" : js.dump();
+    return js.empty() ? "" : js.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 }
 
 std::string DfxTruncate(const std::string &text, size_t maxLen)
@@ -115,7 +115,7 @@ static void FillReportInfoFromJson(const nlohmann::json &js, VolumeReportInfo &i
     if (js.contains("extra") && js["extra"].is_string()) {
         info.extra = js["extra"].get<std::string>();
     } else if (js.contains("tools")) {
-        info.extra = DfxTruncate(js["tools"].dump());
+        info.extra = DfxTruncate(js["tools"].dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     }
 }
 

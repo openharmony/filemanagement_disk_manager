@@ -449,7 +449,7 @@ HWTEST_F(VoldataUuidStoreTest, LoadFromFile_TestCase_002, TestSize.Level0)
     obj2["slotIndex"] = 2;
     arr.push_back(obj1);
     arr.push_back(obj2);
-    WriteRawFile(JSON_FILE, arr.dump());
+    WriteRawFile(JSON_FILE, arr.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     EXPECT_EQ(store.Init(), DiskManagerErrNo::E_OK);
     std::string path1, path2;
     EXPECT_TRUE(store.TryGetMountPath("pre-uuid-1", path1));
