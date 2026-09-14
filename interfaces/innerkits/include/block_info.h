@@ -76,7 +76,7 @@ struct BlockInfo {
         for (const auto &info : infos) {
             j.push_back(info.ToJson());
         }
-        return j.dump();
+        return j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 };
 

@@ -93,7 +93,7 @@ int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const s
     contentJson["burningType"] = fsType;
     contentJson["happenTime"] = happenTime;
 
-    std::string content = contentJson.dump();
+    std::string content = contentJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 
     OHOS::Security::SecurityGuard::EventInfo eventInfo(eventId, BURN_REPORT_VERSION, content);
     LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " version=%{public}s content=%{public}s",
@@ -1513,7 +1513,7 @@ int32_t DiskManager::SetVolumeDiscState(const std::string &volumeId, CdromState 
         root["ODD_INFO"] = json::object();
     }
     root["ODD_INFO"]["DISC_STATE"] = static_cast<int32_t>(discState);
-    volExternal.SetExtraInfo(root.dump());
+    volExternal.SetExtraInfo(root.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     LOGI("SetVolumeDiscState: volumeId=%{public}s discState=%{public}d", volumeId.c_str(),
          static_cast<int32_t>(discState));
     return DiskManagerErrNo::E_OK;
