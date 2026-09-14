@@ -1575,6 +1575,10 @@ int32_t DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::str
     LOGI("GetOddFreeSize startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
          ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
          startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
+    if (discType.find("CD") != std::string::npos) {
+        LOGI("GetOddFreeSize discType=%{public}s, CD type, return oddRet directly", discType.c_str());
+        return oddRet;
+    }
     if (freeSize != 0) {
         return oddRet;
     }

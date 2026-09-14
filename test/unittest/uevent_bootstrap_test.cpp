@@ -817,7 +817,7 @@ HWTEST_F(UeventBootstrapTest, DiscoverCD_EjectFail_TestCase_003, TestSize.Level0
         .WillOnce(Return(E_OK));
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
         .Times(1);
-    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
         .WillOnce(Return(-1));
@@ -1454,6 +1454,8 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_CD_Eject_TestCase_002
         .WillOnce(Return(E_OK));
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
         .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
@@ -2295,5 +2297,231 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_FallbackIsUserData_006, 
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: TryEjectCdrom_NonEmptyDiscNoMountedVol_TestCase_009
+ * @tc.desc: NON_EMPTY_DISC + 无 MOUNTED 卷 → FindMountedVolumePath 返回空 → 直接弹出
+ *           覆盖 TryEjectCdrom 的 NON_EMPTY_DISC 分支、FindMountedVolumePath 循环不匹配返回空、
+ *           EjectAndDestroyCdrom 成功路径。
+ */
+HWTEST_F(UeventBootstrapTest, TryEjectCdrom_NonEmptyDiscNoMountedVol_TestCase_009, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Invoke([](const std::string &diskId, Disk &out) {
+            out = Disk(diskId, 1024, "/dev/block/" + diskId, CD_FLAG);
+            out.SetCdromState(CdromState::NON_EMPTY_DISC);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
+        .WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: TryEjectCdrom_QueryUsbIsInUseFails_TestCase_010
+ * @tc.desc: NON_EMPTY_DISC + 有 MOUNTED 卷 + QueryUsbIsInUse 返回失败 → CanEjectMountedCdrom 返回 false → 不弹出
+ *           覆盖 FindMountedVolumePath 找到路径返回、CanEjectMountedCdrom 查询失败返回 false。
+ */
+HWTEST_F(UeventBootstrapTest, TryEjectCdrom_QueryUsbIsInUseFails_TestCase_010, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .Times(2)
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            out = Disk(diskId, 1024, "/dev/block/" + diskId, CD_FLAG);
+            out.SetCdromState(CdromState::NON_EMPTY_DISC);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            VolumeCore vc("vol-11-1", EXTERNAL, "disk-11-0", MOUNTED, "udf");
+            VolumeExternal vol(vc);
+            vol.SetPath("/mnt/data/external");
+            out.push_back(vol);
+            return E_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryCDStatus(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateDisk(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
+        .Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: TryEjectCdrom_UsbInUse_TestCase_011
+ * @tc.desc: NON_EMPTY_DISC + 有 MOUNTED 卷 + QueryUsbIsInUse 成功但 isInUse=true → 不弹出
+ *           覆盖 CanEjectMountedCdrom isInUse=true 返回 false。
+ */
+HWTEST_F(UeventBootstrapTest, TryEjectCdrom_UsbInUse_TestCase_011, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .Times(2)
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            out = Disk(diskId, 1024, "/dev/block/" + diskId, CD_FLAG);
+            out.SetCdromState(CdromState::NON_EMPTY_DISC);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            VolumeCore vc("vol-11-1", EXTERNAL, "disk-11-0", MOUNTED, "udf");
+            VolumeExternal vol(vc);
+            vol.SetPath("/mnt/data/external");
+            out.push_back(vol);
+            return E_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(true), Return(E_OK)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryCDStatus(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateDisk(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
+        .Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: TryEjectCdrom_UsbNotInUse_TestCase_012
+ * @tc.desc: NON_EMPTY_DISC + 有 MOUNTED 卷 + QueryUsbIsInUse 成功且 isInUse=false → 弹出
+ *           覆盖 CanEjectMountedCdrom 返回 true、EjectAndDestroyCdrom 成功。
+ */
+HWTEST_F(UeventBootstrapTest, TryEjectCdrom_UsbNotInUse_TestCase_012, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Invoke([](const std::string &diskId, Disk &out) {
+            out = Disk(diskId, 1024, "/dev/block/" + diskId, CD_FLAG);
+            out.SetCdromState(CdromState::NON_EMPTY_DISC);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            VolumeCore vc("vol-11-1", EXTERNAL, "disk-11-0", MOUNTED, "udf");
+            VolumeExternal vol(vc);
+            vol.SetPath("/mnt/data/external");
+            out.push_back(vol);
+            return E_OK;
+        }))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(false), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
+        .WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: TryEjectCdrom_MultiVolumeMatch_TestCase_013
+ * @tc.desc: NON_EMPTY_DISC + 多种不匹配卷(diskId不匹配/id=="0"/状态非MOUNTED/path为空) + 最终匹配 → 弹出
+ *           覆盖 FindMountedVolumePath 所有 continue 分支 + 成功返回路径。
+ */
+HWTEST_F(UeventBootstrapTest, TryEjectCdrom_MultiVolumeMatch_TestCase_013, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 11, 0, "/devices/sr0", "disk", "block", "sr0", true);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Invoke([](const std::string &diskId, Disk &out) {
+            out = Disk(diskId, 1024, "/dev/block/" + diskId, CD_FLAG);
+            out.SetCdromState(CdromState::NON_EMPTY_DISC);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), GetAllVolumes(_))
+        .WillOnce(Invoke([](std::vector<VolumeExternal> &out) {
+            // 1. diskId 不匹配 → continue (vol.GetDiskId() != diskId)
+            VolumeCore vc1("vol-99-1", EXTERNAL, "disk-99-0", MOUNTED, "udf");
+            VolumeExternal v1(vc1);
+            v1.SetPath("/mnt/data/other");
+            out.push_back(v1);
+            // 2. id == "0" → continue (vol.GetId() == "0")
+            VolumeCore vc2("0", EXTERNAL, "disk-11-0", MOUNTED, "udf");
+            VolumeExternal v2(vc2);
+            v2.SetPath("/mnt/data/zero");
+            out.push_back(v2);
+            // 3. 状态非 MOUNTED → continue (vol.GetState() != MOUNTED)
+            VolumeCore vc3("vol-11-2", EXTERNAL, "disk-11-0", UNMOUNTED, "udf");
+            VolumeExternal v3(vc3);
+            v3.SetPath("/mnt/data/unmounted");
+            out.push_back(v3);
+            // 4. MOUNTED 但 path 为空 → continue (vol.GetPath().empty())
+            VolumeCore vc4("vol-11-3", EXTERNAL, "disk-11-0", MOUNTED, "udf");
+            VolumeExternal v4(vc4);
+            out.push_back(v4);
+            // 5. MOUNTED 且 path 非空、diskId 匹配、id!="0" → return path
+            VolumeCore vc5("vol-11-1", EXTERNAL, "disk-11-0", MOUNTED, "udf");
+            VolumeExternal v5(vc5);
+            v5.SetPath("/mnt/data/external");
+            out.push_back(v5);
+            return E_OK;
+        }))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), QueryUsbIsInUse(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(false), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), Eject(_))
+        .WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }

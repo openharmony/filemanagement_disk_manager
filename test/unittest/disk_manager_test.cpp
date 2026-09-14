@@ -4932,6 +4932,59 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Leve
 }
 
 /**
+ * @tc.name: GetOddFreeSize_CdTypeSuccess_TestCase_005
+ * @tc.desc: CD 类型(CD-R) + GetOddCapacity 成功时直接返回 oddRet(=ERR_OK)，不走 fallback
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_CdTypeSuccess_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeSuccess_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t mockTotal = 409600;
+    const int64_t mockFree = 2048;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"CD-R"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-5", diskInfo, freeSize), ERR_OK);
+    EXPECT_EQ(freeSize, mockFree);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeSuccess_TestCase_005 End";
+}
+
+/**
+ * @tc.name: GetOddFreeSize_CdTypeFail_TestCase_006
+ * @tc.desc: CD 类型(CD-RW) + GetOddCapacity 失败时直接返回错误码，不走 fallback
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetOddFreeSize_CdTypeFail_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeFail_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    struct statvfs diskInfo {};
+    diskInfo.f_bsize = 4096;
+    diskInfo.f_blocks = 100;
+    diskInfo.f_bfree = 50;
+    const int64_t mockTotal = 0;
+    const int64_t mockFree = 0;
+    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree),
+                        Return(DiskManagerErrNo::DISK_MGR_ERR)));
+    int64_t freeSize = 0;
+    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"CD-RW"}})";
+    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-6", diskInfo, freeSize), DiskManagerErrNo::DISK_MGR_ERR);
+    EXPECT_EQ(freeSize, mockFree);
+    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeFail_TestCase_006 End";
+}
+
+/**
  * @tc.name: BindBlockLoopDev_TestCase_001
  * @tc.desc: BindBlockLoopDev returns E_OK when disk exists(USB) and adapter succeeds, forwards loopPath.
  * @tc.type: FUNC
