@@ -683,17 +683,100 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     LOGI("HandleAddCD EXIT SUCCESS");
 }
 
+bool EjectAndDestroyCdrom(const std::string &diskId)
+{
+    const int32_t ret = DiskManager::GetInstance().Eject(diskId);
+    if (ret != ERR_OK) {
+        LOGE("TryEjectCdrom diskId %{public}s Eject err=%{public}d", diskId.c_str(), ret);
+        return false;
+    }
+    DestroyALLVolume(diskId);
+    LOGI("TryEjectCdrom diskId %{public}s ejected", diskId.c_str());
+    return true;
+}
+
+std::string FindMountedVolumePath(const std::string &diskId)
+{
+    std::vector<VolumeExternal> vols;
+    (void)DiskManager::GetInstance().GetAllVolumes(vols);
+    for (const VolumeExternal &vol : vols) {
+        if (vol.GetDiskId() != diskId || vol.GetId() == "0") {
+            continue;
+        }
+        if (vol.GetState() != VolumeState::MOUNTED) {
+            LOGD("TryEjectCdrom diskId %{public}s volumeId %{public}s state=%{public}d, not MOUNTED, skip",
+                 diskId.c_str(), vol.GetId().c_str(), vol.GetState());
+            continue;
+        }
+        if (vol.GetPath().empty()) {
+            LOGD("TryEjectCdrom diskId %{public}s volumeId %{public}s is MOUNTED but path is empty",
+                 diskId.c_str(), vol.GetId().c_str());
+            continue;
+        }
+        LOGI("TryEjectCdrom diskId %{public}s found MOUNTED volumeId %{public}s, will query in-use",
+             diskId.c_str(), vol.GetId().c_str());
+        return vol.GetPath();
+    }
+    return "";
+}
+
+bool CanEjectMountedCdrom(const std::string &diskId, const std::string &mountPath)
+{
+    bool isInUse = false;
+    LOGI("TryEjectCdrom diskId %{public}s QueryUsbIsInUse mountPath=%{public}s", diskId.c_str(),
+         GetAnonyString(mountPath).c_str());
+    int32_t queryErr = StorageDaemonAdapter::GetInstance().QueryUsbIsInUse(mountPath, isInUse);
+    if (queryErr != ERR_OK) {
+        LOGE("TryEjectCdrom diskId %{public}s QueryUsbIsInUse failed mountPath=%{public}s err=%{public}d",
+             diskId.c_str(), GetAnonyString(mountPath).c_str(), queryErr);
+        return false;
+    }
+    LOGI("TryEjectCdrom diskId %{public}s QueryUsbIsInUse result isInUse=%{public}d", diskId.c_str(),
+         static_cast<int32_t>(isInUse));
+    if (isInUse) {
+        LOGI("TryEjectCdrom diskId %{public}s mountPath is in use, eject not allowed", diskId.c_str());
+        return false;
+    }
+    return true;
+}
+
+void TryEjectCdrom(const std::string &diskId)
+{
+    LOGI("TryEjectCdrom enter diskId=%{public}s", diskId.c_str());
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != DiskManagerErrNo::E_OK) {
+        LOGE("TryEjectCdrom diskId %{public}s not found", diskId.c_str());
+        return;
+    }
+    if (disk.GetCdromState() != CdromState::NON_EMPTY_DISC) {
+        LOGI("TryEjectCdrom diskId %{public}s cdromState=%{public}d, not NON_EMPTY_DISC, eject directly",
+             diskId.c_str(), static_cast<int32_t>(disk.GetCdromState()));
+        (void)EjectAndDestroyCdrom(diskId);
+        return;
+    }
+    std::string mountPath = FindMountedVolumePath(diskId);
+    if (!mountPath.empty()) {
+        if (!CanEjectMountedCdrom(diskId, mountPath)) {
+            LOGI("TryEjectCdrom diskId %{public}s eject blocked, refresh cdrom state", diskId.c_str());
+            CdromState state = QueryCdromState(BlockPathForId(diskId));
+            Disk latestDisk;
+            if (DiskManager::GetInstance().GetDiskById(diskId, latestDisk) == DiskManagerErrNo::E_OK) {
+                latestDisk.SetCdromState(state);
+                (void)DiskManager::GetInstance().UpdateDisk(latestDisk);
+            }
+            return;
+        }
+    } else {
+        LOGI("TryEjectCdrom diskId %{public}s no MOUNTED volume with valid path, eject directly", diskId.c_str());
+    }
+    (void)EjectAndDestroyCdrom(diskId);
+}
+
 void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &diskId)
 {
     LOGI("Diskid=%{public}s, ejectRequest=%{public}d", diskId.c_str(), env.ejectRequest);
     if (env.ejectRequest == true) {
-        DestroyALLVolume(diskId);
-        const int32_t ret = DiskManager::GetInstance().Eject(diskId);
-        if (ret != ERR_OK) {
-            LOGE("Eject err=%{public}d", ret);
-            return;
-        }
-        LOGI("Disk ejected");
+        TryEjectCdrom(diskId);
         return;
     }
 
