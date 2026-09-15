@@ -2351,8 +2351,7 @@ int32_t DiskManager::DeletePartition(const std::string &diskId, int32_t partitio
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
-int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params,
-                                     const std::vector<std::string> &cmd)
+int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params)
 {
     VolumeReportInfo reportInfo;
     reportInfo.WithDiskId(diskId).WithFsType(params.GetFsType());
@@ -2390,6 +2389,18 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
             return dfx.Finish(E_NON_EXIST);
         }
     }
+    std::string typeIdentifier;
+    std::string type = params.GetFsType();
+    std::string diskPath = "/dev/block/" + diskId;
+    if (type == "ext4") {
+        typeIdentifier = std::to_string(partitionNum) + ":" + "0x8300";
+    } else if (type == "exfat" || type == "vfat") {
+        typeIdentifier = std::to_string(partitionNum) + ":" + "0x0700";
+    } else {
+        LOGE("FormatPartition: type=%{public}s is not support", type.c_str());
+        return E_PARAMS_INVALID;
+    }
+    std::vector<std::string> cmd = {"sgdisk", "-t", typeIdentifier, diskPath};
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
                                                                       params.GetVolumeName(), cmd,
                                                                       params.GetQuickFormat());
