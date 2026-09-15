@@ -1,0 +1,42 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+1.0 {
+  global:
+    # Taihe ANI entry point
+    ANI_Constructor;
+
+    # C++ exception handling runtime (libunwind)
+    _Unwind_*;
+    unw_local_addr_space;
+
+    # __cfi_check is exported by build/config/sanitizers/cfi.versionscript
+    # (cfi_cross_dso = true), do not redeclare here to avoid version conflict.
+
+    extern "C++" {
+      # std libc++ RTTI - vtable/VTT/construction vtable only (quoted patterns
+      # to avoid matching basic_stringbuf::str/overflow/seekoff/... methods)
+      "vtable for std::__h::basic_stringbuf*";
+      "vtable for std::__h::basic_ostringstream*";
+      "VTT for std::__h::basic_ostringstream*";
+      "construction vtable for*-in-std::__h::basic_ostringstream*";
+
+      # Taihe from_ani_t/into_ani_t local static guard variables
+      *taihe::from_ani_t*field_2_from_ani*;
+      *taihe::into_ani_t*field_4_into_ani*;
+      *taihe::into_ani_t*item_into_ani_inner*;
+    };
+
+  local:
+    *;
+};

@@ -49,6 +49,7 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
   ]
 
@@ -443,6 +444,7 @@ ohos_unittest("storage_daemon_adapter_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/hi_audit.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
@@ -585,6 +587,7 @@ ohos_unittest("voldata_uuid_store_test") {
   sources = [
     "voldata_uuid_store_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
@@ -782,6 +785,7 @@ ohos_unittest("uevent_bootstrap_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_config.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/partition_table_parser.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/sysfs_reader.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_disk_manager.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_block_info_table.cpp",

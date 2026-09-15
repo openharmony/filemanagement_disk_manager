@@ -127,6 +127,8 @@ ohos_shared_library("disk_manager_innerkits") {
     ":disk_manager_ipc_native",
   ]
 
+  version_script = "libdisk_manager_innerkits.map"
+
   part_name = "disk_manager"
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "filemanagement"
