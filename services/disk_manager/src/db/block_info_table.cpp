@@ -82,12 +82,12 @@ uint32_t ReadUInt32OrZero(const json &jsonObject, const char *key)
 int32_t ReadInt32OrZero(const json &jsonObject, const char *key)
 {
     if (!jsonObject.contains(key) || jsonObject[key].is_null()) {
-        return 0;
+        return -1;
     }
     if (jsonObject[key].is_number_integer()) {
         return jsonObject[key].get<int32_t>();
     }
-    return 0;
+    return -1;
 }
 
 bool ReadBoolLikeOrFalse(const json &jsonObject, const char *key)
