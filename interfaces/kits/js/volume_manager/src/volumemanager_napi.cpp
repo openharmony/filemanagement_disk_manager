@@ -52,6 +52,9 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("deletePartition", DeletePartition),
         DECLARE_NAPI_FUNCTION("formatPartition", FormatPartition),
         DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
+        // Public API：外置存储设备信息查询（三方应用可用，normal 权限）
+        DECLARE_NAPI_FUNCTION("getExternalDiskInfos", GetExternalDiskInfos),
+        DECLARE_NAPI_FUNCTION("getExternalVolumeInfos", GetExternalVolumeInfos),
 #ifdef HMDFS_FILE_MANAGER
         DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
         DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),

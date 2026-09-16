@@ -24,6 +24,8 @@
 #include "volume_core.h"
 #include "volume_external.h"
 #include "mount_param.h"
+#include "external_disk_info.h"
+#include "external_volume_info.h"
 #include "adapter/pc_encryption_adapter.h"
 
 #include <cstdint>
@@ -76,6 +78,10 @@ public:
     int32_t GetAllVolumes(std::vector<VolumeExternal> &out);
     int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &out);
     int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &out);
+
+    /* Public API：外置存储设备信息查询（三方应用可用，normal 权限） */
+    int32_t GetExternalDiskInfos(std::vector<ExternalDiskInfo> &out);
+    int32_t GetExternalVolumeInfos(std::vector<ExternalVolumeInfo> &out);
 
     int32_t UpdateVolumeMetadata(const std::string &volumeId,
                                  const std::string &fsUuid,
@@ -153,6 +159,8 @@ private:
     std::string GetVolumePath(const std::string &volumeUuid);
     bool IsOddFsType(const std::string &fsType);
     int32_t GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
+    /** 将内部 VolumeState 映射为 Public API 公开状态：0=unmounted, 1=checking, 2=mounted, 3=ejecting。 */
+    static int32_t MapToPublicVolumeState(int32_t internalState);
     int32_t GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
                            const struct statvfs &diskInfo, int64_t &freeSize);
     bool IsPathMounted(std::string path);

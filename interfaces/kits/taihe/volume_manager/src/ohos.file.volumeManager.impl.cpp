@@ -19,6 +19,8 @@
 #include "mount_param.h"
 #include "disk_manager_napi_errno.h"
 #include "disk_manager_napi_utils.h"
+#include "external_disk_info.h"
+#include "external_volume_info.h"
 #include "ipc_caller_auth.h"
 #include "partition_types.h"
 #include "storageStatistics_taihe_error.h"
@@ -535,6 +537,70 @@ bool IsVolumeInUseSync(::taihe::string_view volumePath)
     return isInUse;
 }
 
+// ---------- Public API：外置存储设备信息查询（三方应用可用，normal 权限） ----------
+
+taihe::array<ohos::file::volumeManager::ExternalDiskInfo> GetExternalDiskInfosSync()
+{
+    if (!OHOS::DiskManager::VerifyCallerPermission(
+        OHOS::DiskManager::PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return taihe::array<ohos::file::volumeManager::ExternalDiskInfo>::make(
+            0, ohos::file::volumeManager::ExternalDiskInfo{});
+    }
+    auto diskInfos = std::make_shared<std::vector<OHOS::DiskManager::ExternalDiskInfo>>();
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetExternalDiskInfos(*diskInfos);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return taihe::array<ohos::file::volumeManager::ExternalDiskInfo>::make(
+            0, ohos::file::volumeManager::ExternalDiskInfo{});
+    }
+    std::vector<ohos::file::volumeManager::ExternalDiskInfo> taiheDisks;
+    for (const auto &disk : *diskInfos) {
+        const auto &volIds = disk.GetVolumeIds();
+        std::vector<taihe::string> volIdStrs;
+        volIdStrs.reserve(volIds.size());
+        for (const auto &id : volIds) {
+            volIdStrs.push_back(taihe::string(id));
+        }
+        auto volIdArray = taihe::array<taihe::string>(taihe::copy_data_t{}, volIdStrs.data(), volIdStrs.size());
+        ohos::file::volumeManager::ExternalDiskInfo taiheDisk{
+            taihe::string(disk.GetDiskId()), disk.GetDiskType(), volIdArray,
+            disk.GetVendorId(), disk.GetProductId()};
+        taiheDisks.push_back(taiheDisk);
+    }
+    return taihe::array<ohos::file::volumeManager::ExternalDiskInfo>(
+        taihe::copy_data_t{}, taiheDisks.data(), taiheDisks.size());
+}
+
+taihe::array<ohos::file::volumeManager::ExternalVolumeInfo> GetExternalVolumeInfosSync()
+{
+    if (!OHOS::DiskManager::VerifyCallerPermission(
+        OHOS::DiskManager::PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return taihe::array<ohos::file::volumeManager::ExternalVolumeInfo>::make(
+            0, ohos::file::volumeManager::ExternalVolumeInfo{});
+    }
+    auto volInfos = std::make_shared<std::vector<OHOS::DiskManager::ExternalVolumeInfo>>();
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetExternalVolumeInfos(*volInfos);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return taihe::array<ohos::file::volumeManager::ExternalVolumeInfo>::make(
+            0, ohos::file::volumeManager::ExternalVolumeInfo{});
+    }
+    std::vector<ohos::file::volumeManager::ExternalVolumeInfo> taiheVols;
+    for (const auto &vol : *volInfos) {
+        ohos::file::volumeManager::ExternalVolumeInfo taiheVol{
+            taihe::string(vol.GetVolumeId()),   taihe::string(vol.GetUuid()),
+            taihe::string(vol.GetDiskId()),     taihe::string(vol.GetDescription()),
+            vol.GetState(),                     vol.GetTotalSize(),
+            vol.GetFreeSize(),                  taihe::string(vol.GetPath()),
+            taihe::string(vol.GetFsType())};
+        taiheVols.push_back(taiheVol);
+    }
+    return taihe::array<ohos::file::volumeManager::ExternalVolumeInfo>(
+        taihe::copy_data_t{}, taiheVols.data(), taiheVols.size());
+}
+
 } // namespace ANI::VolumeManager
 
 // Since these macros are auto-generate, lint will cause false positive.
@@ -565,4 +631,8 @@ TH_EXPORT_CPP_API_CreateIsoImageSync(ANI::VolumeManager::CreateIsoImageSync);
 TH_EXPORT_CPP_API_BurnSync(ANI::VolumeManager::BurnSync);
 TH_EXPORT_CPP_API_GetOpProcessSync(ANI::VolumeManager::GetOpProcessSync);
 TH_EXPORT_CPP_API_IsVolumeInUseSync(ANI::VolumeManager::IsVolumeInUseSync);
+
+// Public API exports（三方应用可用，normal 权限）
+TH_EXPORT_CPP_API_GetExternalDiskInfosSync(ANI::VolumeManager::GetExternalDiskInfosSync);
+TH_EXPORT_CPP_API_GetExternalVolumeInfosSync(ANI::VolumeManager::GetExternalVolumeInfosSync);
 // NOLINTEND

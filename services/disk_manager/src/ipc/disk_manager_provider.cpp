@@ -835,6 +835,30 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
     return ret;
 }
 
+int32_t DiskManagerProvider::GetExternalDiskInfos(std::vector<ExternalDiskInfo> &vecOfDiskInfo)
+{
+    LOGI("GetExternalDiskInfos");
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        LOGE("GetExternalDiskInfos: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    const int32_t err = DiskManager::GetInstance().GetExternalDiskInfos(vecOfDiskInfo);
+    LOGI("GetExternalDiskInfos count=%{public}zu err=%{public}d", vecOfDiskInfo.size(), err);
+    return err;
+}
+
+int32_t DiskManagerProvider::GetExternalVolumeInfos(std::vector<ExternalVolumeInfo> &vecOfVolInfo)
+{
+    LOGI("GetExternalVolumeInfos");
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        LOGE("GetExternalVolumeInfos: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+    const int32_t err = DiskManager::GetInstance().GetExternalVolumeInfos(vecOfVolInfo);
+    LOGI("GetExternalVolumeInfos count=%{public}zu err=%{public}d", vecOfVolInfo.size(), err);
+    return err;
+}
+
 int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                                               std::string &loopPath)
 {

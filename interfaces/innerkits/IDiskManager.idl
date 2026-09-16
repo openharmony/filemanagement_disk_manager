@@ -23,6 +23,8 @@ sequenceable MountParam..OHOS.DiskManager.MountParam;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeCore;
 sequenceable VolumeExternal..OHOS.DiskManager.VolumeExternal;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
+sequenceable ExternalDiskInfo..OHOS.DiskManager.ExternalDiskInfo;
+sequenceable ExternalVolumeInfo..OHOS.DiskManager.ExternalVolumeInfo;
 
 interface OHOS.DiskManager.IDiskManager {
     /* ---------- 应用 / Connect：卷与磁盘 ---------- */
@@ -71,4 +73,8 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 47] void CreatePartition([in] String diskId, [in] PartitionParams params);
     [ipccode 48] void DeletePartition([in] String diskId, [in] int partitionNum);
     [ipccode 49] void FormatPartition([in] String diskId, [in] int partitionNum, [in] FormatParams params);
+
+    /* ---------- Public API：外置存储设备信息查询（三方应用可用，normal 权限） ---------- */
+    [ipccode 51] void GetExternalDiskInfos([out] ExternalDiskInfo[] vecOfDiskInfo);
+    [ipccode 52] void GetExternalVolumeInfos([out] ExternalVolumeInfo[] vecOfVolInfo);
 }

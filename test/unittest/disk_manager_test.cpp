@@ -5732,5 +5732,349 @@ HWTEST_F(DiskManagerTest, UmountVolumeByPath_TestCase_005, TestSize.Level0)
     EXPECT_EQ(dm.UmountVolumeByPath("disk-8-uvb-5", "/dev/block/dm-uvb-5"), E_VOL_STATE);
     GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_005 End";
 }
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_001
+ * @tc.desc: MapToPublicVolumeState maps MOUNTED to MOUNTED (2).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::MOUNTED), VolumeState::MOUNTED);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_001 End";
+}
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_002
+ * @tc.desc: MapToPublicVolumeState maps DAMAGED_MOUNTED to MOUNTED (2).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::DAMAGED_MOUNTED), VolumeState::MOUNTED);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_002 End";
+}
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_003
+ * @tc.desc: MapToPublicVolumeState maps CHECKING to CHECKING (1).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::CHECKING), VolumeState::CHECKING);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_003 End";
+}
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_004
+ * @tc.desc: MapToPublicVolumeState maps ENCRYPTING to CHECKING (1).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::ENCRYPTING), VolumeState::CHECKING);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_004 End";
+}
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_005
+ * @tc.desc: MapToPublicVolumeState maps DECRYPTING to CHECKING (1).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::DECRYPTING), VolumeState::CHECKING);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_005 End";
+}
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_006
+ * @tc.desc: MapToPublicVolumeState maps EJECTING to EJECTING (3).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::EJECTING), VolumeState::EJECTING);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_006 End";
+}
+
+/**
+ * @tc.name: MapToPublicVolumeState_TestCase_007
+ * @tc.desc: MapToPublicVolumeState maps UNMOUNTED/REMOVED/DAMAGED to UNMOUNTED (0).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::UNMOUNTED), VolumeState::UNMOUNTED);
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::REMOVED), VolumeState::UNMOUNTED);
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::DAMAGED), VolumeState::UNMOUNTED);
+    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::FUSE_REMOVED), VolumeState::UNMOUNTED);
+    EXPECT_EQ(dm.MapToPublicVolumeState(-1), VolumeState::UNMOUNTED);
+    EXPECT_EQ(dm.MapToPublicVolumeState(999), VolumeState::UNMOUNTED);
+    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_007 End";
+}
+
+/**
+ * @tc.name: GetExternalDiskInfos_TestCase_001
+ * @tc.desc: GetExternalDiskInfos returns empty when no disks exist.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    std::vector<ExternalDiskInfo> out;
+    EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);
+    EXPECT_TRUE(out.empty());
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetExternalDiskInfos_TestCase_002
+ * @tc.desc: GetExternalDiskInfos returns external disks and excludes internal data disks (SSD/HDD).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-edi-2"));
+    dm.OnDiskCreated(MakeSdDisk("disk-77-edi-2"));
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-ssd-2"));
+    dm.OnDiskCreated(MakeHddDisk("disk-77-hdd-2"));
+    std::vector<ExternalDiskInfo> out;
+    EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);
+    EXPECT_EQ(out.size(), 2u);
+    bool hasUsb = false;
+    bool hasSd = false;
+    for (const auto &info : out) {
+        if (info.GetDiskId() == "disk-8-edi-2") {
+            hasUsb = true;
+            EXPECT_EQ(info.GetDiskType(), USB_FLAG);
+        }
+        if (info.GetDiskId() == "disk-77-edi-2") {
+            hasSd = true;
+            EXPECT_EQ(info.GetDiskType(), SD_FLAG);
+        }
+    }
+    EXPECT_TRUE(hasUsb);
+    EXPECT_TRUE(hasSd);
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetExternalDiskInfos_TestCase_003
+ * @tc.desc: GetExternalDiskInfos parses hex vendorId/productId strings to int32_t.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-8-edi-3");
+    disk.SetVendorId("0781");
+    disk.SetProductId("5580");
+    dm.OnDiskCreated(disk);
+    std::vector<ExternalDiskInfo> out;
+    EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].GetDiskId(), "disk-8-edi-3");
+    EXPECT_EQ(out[0].GetVendorId(), 0x0781);
+    EXPECT_EQ(out[0].GetProductId(), 0x5580);
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetExternalDiskInfos_TestCase_004
+ * @tc.desc: GetExternalDiskInfos returns 0 for empty/invalid vendorId/productId strings.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-8-edi-4");
+    disk.SetVendorId("");
+    disk.SetProductId("xyz");
+    dm.OnDiskCreated(disk);
+    std::vector<ExternalDiskInfo> out;
+    EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].GetVendorId(), 0);
+    EXPECT_EQ(out[0].GetProductId(), 0);
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_004 End";
+}
+
+/**
+ * @tc.name: GetExternalDiskInfos_TestCase_005
+ * @tc.desc: GetExternalDiskInfos associates volumeIds from volumeMap_.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-edi-5"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-edi-5a", "disk-8-edi-5", "uuid-edi-5a"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-edi-5b", "disk-8-edi-5", "uuid-edi-5b"));
+    std::vector<ExternalDiskInfo> out;
+    EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].GetVolumeIds().size(), 2u);
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_005 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfos_TestCase_001
+ * @tc.desc: GetExternalVolumeInfos returns empty when no disks/volumes exist.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalVolumeInfos_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    std::vector<ExternalVolumeInfo> out;
+    EXPECT_EQ(dm.GetExternalVolumeInfos(out), E_OK);
+    EXPECT_TRUE(out.empty());
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_001 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfos_TestCase_002
+ * @tc.desc: GetExternalVolumeInfos excludes volumes on internal data disks (SSD/HDD).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalVolumeInfos_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-evi-2"));
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-ssd-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-evi-2", "disk-8-evi-2", "uuid-evi-2"));
+    VolumeCore ssdCore("vol-ssd-2", EXTERNAL, "disk-77-ssd-2", UNMOUNTED);
+    VolumeExternal ssdVol(ssdCore);
+    dm.OnVolumeCreated(ssdVol);
+    std::vector<ExternalVolumeInfo> out;
+    EXPECT_EQ(dm.GetExternalVolumeInfos(out), E_OK);
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].GetVolumeId(), "vol-evi-2");
+    EXPECT_EQ(out[0].GetDiskId(), "disk-8-evi-2");
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_002 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfos_TestCase_003
+ * @tc.desc: GetExternalVolumeInfos maps fields correctly for UNMOUNTED volume (size=0, state=0).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalVolumeInfos_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-evi-3"));
+    VolumeExternal vol = MakeUsbVolume("vol-evi-3", "disk-8-evi-3", "uuid-evi-3", UNMOUNTED);
+    vol.SetDescription("MyUSB");
+    dm.OnVolumeCreated(vol);
+    std::vector<ExternalVolumeInfo> out;
+    EXPECT_EQ(dm.GetExternalVolumeInfos(out), E_OK);
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].GetVolumeId(), "vol-evi-3");
+    EXPECT_EQ(out[0].GetUuid(), "uuid-evi-3");
+    EXPECT_EQ(out[0].GetDiskId(), "disk-8-evi-3");
+    EXPECT_EQ(out[0].GetDescription(), "MyUSB");
+    EXPECT_EQ(out[0].GetState(), VolumeState::UNMOUNTED);
+    EXPECT_EQ(out[0].GetTotalSize(), 0);
+    EXPECT_EQ(out[0].GetFreeSize(), 0);
+    EXPECT_EQ(out[0].GetFsType(), "vfat");
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_003 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfos_TestCase_004
+ * @tc.desc: GetExternalVolumeInfos maps MOUNTED state; statvfs fails on fake path so size=0.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalVolumeInfos_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-evi-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-evi-4", "disk-8-evi-4", "uuid-evi-4", MOUNTED);
+    vol.SetDescription("USB Drive");
+    vol.SetPath("/mnt/data/external/uuid-evi-4");
+    dm.OnVolumeCreated(vol);
+    std::vector<ExternalVolumeInfo> out;
+    EXPECT_EQ(dm.GetExternalVolumeInfos(out), E_OK);
+    ASSERT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0].GetState(), VolumeState::MOUNTED);
+    EXPECT_EQ(out[0].GetPath(), "/mnt/data/external/uuid-evi-4");
+    EXPECT_EQ(out[0].GetDescription(), "USB Drive");
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_004 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfos_TestCase_005
+ * @tc.desc: GetExternalVolumeInfos maps non-MOUNTED states (EJECTING/CHECKING) correctly, size=0.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, GetExternalVolumeInfos_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    const int32_t testStates[] = {VolumeState::EJECTING, VolumeState::CHECKING};
+    const int32_t expectedStates[] = {VolumeState::EJECTING, VolumeState::CHECKING};
+    for (size_t i = 0; i < sizeof(testStates) / sizeof(testStates[0]); ++i) {
+        std::string suffix = std::to_string(i);
+        dm.OnDiskCreated(MakeUsbDisk("disk-8-evi-5-" + suffix));
+        VolumeExternal vol = MakeUsbVolume("vol-evi-5-" + suffix, "disk-8-evi-5-" + suffix,
+                                           "uuid-evi-5-" + suffix, testStates[i]);
+        dm.OnVolumeCreated(vol);
+        std::vector<ExternalVolumeInfo> out;
+        EXPECT_EQ(dm.GetExternalVolumeInfos(out), E_OK);
+        bool found = false;
+        for (const auto &info : out) {
+            if (info.GetVolumeId() == "vol-evi-5-" + suffix) {
+                found = true;
+                EXPECT_EQ(info.GetState(), expectedStates[i]);
+                EXPECT_EQ(info.GetTotalSize(), 0);
+                EXPECT_EQ(info.GetFreeSize(), 0);
+            }
+        }
+        EXPECT_TRUE(found);
+    }
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_005 End";
+}
 } // namespace DiskManager
 } // namespace OHOS
