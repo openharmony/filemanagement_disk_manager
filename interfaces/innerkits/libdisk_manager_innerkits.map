@@ -1,0 +1,111 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+1.0 {
+  global:
+    extern "C++" {
+      # DiskManagerClient - public API methods (method-name prefixes exclude
+      # R4 private methods: Connect, ConnectIfPresent, InitProxyLocked,
+      # ResetProxy, ~DiskManagerClient)
+      *OHOS::DiskManager::DiskManagerClient::Get*;
+      *OHOS::DiskManager::DiskManagerClient::Create*;
+      *OHOS::DiskManager::DiskManagerClient::Delete*;
+      *OHOS::DiskManager::DiskManagerClient::Format*;
+      *OHOS::DiskManager::DiskManagerClient::Query*;
+      *OHOS::DiskManager::DiskManagerClient::Bind*;
+      *OHOS::DiskManager::DiskManagerClient::Notify*;
+      *OHOS::DiskManager::DiskManagerClient::Mount*;
+      *OHOS::DiskManager::DiskManagerClient::On*;
+      *OHOS::DiskManager::DiskManagerClient::Umount*;
+      *OHOS::DiskManager::DiskManagerClient::Unmount*;
+      *OHOS::DiskManager::DiskManagerClient::Unbind*;
+      *OHOS::DiskManager::DiskManagerClient::Set*;
+      *OHOS::DiskManager::DiskManagerClient::Burn*;
+      *OHOS::DiskManager::DiskManagerClient::Eject*;
+      *OHOS::DiskManager::DiskManagerClient::Erase*;
+      *OHOS::DiskManager::DiskManagerClient::TryToFix*;
+      *OHOS::DiskManager::DiskManagerClient::Partition*;
+      *OHOS::DiskManager::DiskManagerClient::Report*;
+      *OHOS::DiskManager::DiskManagerClient::Destroy*;
+
+      # DiskManagerClient RTTI (vtable only, no trailing *)
+      *OHOS::DiskManager::DiskManagerClient;
+
+      # DiskManagerProxy - RTTI only (all methods hidden)
+      *OHOS::DiskManager::DiskManagerProxy;
+
+      # VolumeInfoStr - RTTI only (Marshalling/Unmarshalling hidden)
+      *OHOS::DiskManager::VolumeInfoStr;
+
+      # IDiskManager - RTTI + LABEL (specific patterns avoid matching
+      # IDiskManager as parameter type in DiskManagerClient methods)
+      *IDiskManager::LABEL;
+      *IDiskManager-in-*;
+      *IRemoteStub*IDiskManager*;
+      *IRemoteProxy*IDiskManager*;
+
+      # DiskManagerStub - all symbols kept
+      *OHOS::DiskManager::DiskManagerStub*;
+
+      # Disk - public data type (broad wildcard)
+      *OHOS::DiskManager::Disk::*;
+      *OHOS::DiskManager::Disk;
+
+      # VolumeCore - public data type (broad wildcard)
+      *OHOS::DiskManager::VolumeCore::*;
+      *OHOS::DiskManager::VolumeCore;
+
+      # VolumeExternal - public data type (broad wildcard)
+      *OHOS::DiskManager::VolumeExternal::*;
+      *OHOS::DiskManager::VolumeExternal;
+
+      # ExternalDiskInfo - public data type (broad wildcard)
+      *OHOS::DiskManager::ExternalDiskInfo::*;
+      *OHOS::DiskManager::ExternalDiskInfo;
+
+      # ExternalVolumeInfo - public data type (broad wildcard)
+      *OHOS::DiskManager::ExternalVolumeInfo::*;
+      *OHOS::DiskManager::ExternalVolumeInfo;
+
+      # CryptParam - public data type (broad wildcard)
+      *OHOS::DiskManager::CryptParam::*;
+      *OHOS::DiskManager::CryptParam;
+
+      # MountParam - public data type (broad wildcard)
+      *OHOS::DiskManager::MountParam::*;
+      *OHOS::DiskManager::MountParam;
+
+      # PartitionInfo - public data type (broad wildcard)
+      *OHOS::DiskManager::PartitionInfo::*;
+      *OHOS::DiskManager::PartitionInfo;
+
+      # PartitionParams - public data type (broad wildcard)
+      *OHOS::DiskManager::PartitionParams::*;
+      *OHOS::DiskManager::PartitionParams;
+
+      # PartitionTableInfo - public data type (broad wildcard)
+      *OHOS::DiskManager::PartitionTableInfo::*;
+      *OHOS::DiskManager::PartitionTableInfo;
+
+      # FormatParams - public data type (broad wildcard)
+      *OHOS::DiskManager::FormatParams::*;
+      *OHOS::DiskManager::FormatParams;
+    };
+
+    # C runtime symbols
+    _init;
+    _fini;
+
+  local:
+    *;
+};
