@@ -19,6 +19,8 @@
 #include <gmock/gmock.h>
 
 #include "crypt_param.h"
+#include "external_disk_info.h"
+#include "external_volume_info.h"
 #include "mount_param.h"
 #include "disk_manager_stub.h"
 
@@ -57,6 +59,8 @@ public:
     MOCK_METHOD(int32_t, DeletePartition, (const std::string &diskId, int32_t partitionNum));
     MOCK_METHOD(int32_t, FormatPartition,
         (const std::string &diskId, int32_t partitionNum, const FormatParams &params));
+    MOCK_METHOD(int32_t, GetExternalDiskInfos, (std::vector<ExternalDiskInfo> &vecOfDiskInfo));
+    MOCK_METHOD(int32_t, GetExternalVolumeInfos, (std::vector<ExternalVolumeInfo> &vecOfVolInfo));
     MOCK_METHOD(int32_t, BindBlockLoopDev,
         (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit, std::string &loopPath));
     MOCK_METHOD(int32_t, CreateDmCryptVolume,

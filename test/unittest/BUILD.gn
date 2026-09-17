@@ -129,6 +129,8 @@ ohos_unittest("disk_manager_client_test") {
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/crypt_param.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk_manager_client.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/external_disk_info.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/external_volume_info.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/partition_types.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
@@ -352,6 +354,50 @@ ohos_unittest("volume_external_test") {
     "volume_external_test.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("external_disk_info_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "external_disk_info_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/external_disk_info.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("external_volume_info_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "external_volume_info_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/external_volume_info.cpp",
   ]
 
   configs = [ ":disk_manager_unittest_common" ]
@@ -941,6 +987,8 @@ group("disk_manager_ut") {
     ":disk_test",
     ":volume_core_test",
     ":volume_external_test",
+    ":external_disk_info_test",
+    ":external_volume_info_test",
     ":crypt_param_test",
     ":mount_param_test",
     ":partition_types_test",

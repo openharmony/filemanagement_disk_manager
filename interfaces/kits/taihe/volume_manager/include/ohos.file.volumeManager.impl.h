@@ -49,5 +49,9 @@ void CreateIsoImageSync(taihe::string_view volumeId, taihe::string_view path);
 void BurnSync(taihe::string_view volumeId, uintptr_t want);
 int32_t GetOpProcessSync(taihe::string_view volumeId);
 bool IsVolumeInUseSync(taihe::string_view volumePath);
+
+// Public API：外置存储设备信息查询（三方应用可用，normal 权限）
+taihe::array<ohos::file::volumeManager::ExternalDiskInfo> GetExternalDiskInfosSync();
+taihe::array<ohos::file::volumeManager::ExternalVolumeInfo> GetExternalVolumeInfosSync();
 } // namespace ANI::VolumeManager
 #endif // OHOS_FILE_VOLUMEMANAGER_IMPL_H

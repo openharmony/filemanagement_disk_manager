@@ -119,6 +119,7 @@ constexpr int32_t RD_ENABLE_LENGTH = 255;
 const int32_t MTP_DEVICE_NAME_LEN = 512;
 constexpr uint64_t HMFS_FLAG = 0x8000;
 constexpr uint32_t BASE_DECIMAL = 10;
+constexpr uint32_t BASE_HEX = 16;
 constexpr int64_t VFAT_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int64_t EXFAT_TYPECODE_MIN_SIZE = 32 * 1024 * 1024;
 constexpr int64_t NTFS_TYPECODE_MIN_SIZE = 4 * 1024 * 1024;
@@ -468,6 +469,23 @@ std::string DiskManager::GetVolumePath(const std::string &volumeUuid)
         return "";
     }
     return vol.GetPath();
+}
+
+int32_t DiskManager::MapToPublicVolumeState(int32_t internalState)
+{
+    switch (internalState) {
+        case VolumeState::MOUNTED:
+        case VolumeState::DAMAGED_MOUNTED:
+            return VolumeState::MOUNTED; // mounted
+        case VolumeState::CHECKING:
+        case VolumeState::ENCRYPTING:
+        case VolumeState::DECRYPTING:
+            return VolumeState::CHECKING; // checking
+        case VolumeState::EJECTING:
+            return VolumeState::EJECTING; // ejecting
+        default:
+            return VolumeState::UNMOUNTED; // unmounted
+    }
 }
 
 bool DiskManager::IsOddFsType(const std::string &fsType)
@@ -1452,6 +1470,102 @@ int32_t DiskManager::GetAllVolumes(std::vector<VolumeExternal> &out)
     }
     out = result;
     LOGI("GetAllVolumes - Found %{public}zu volumes:", out.size());
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::GetExternalDiskInfos(std::vector<ExternalDiskInfo> &out)
+{
+    std::vector<ExternalDiskInfo> result;
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        for (const auto &kv : diskMap_) {
+            const Disk &disk = kv.second;
+            if (disk.IsInternalDataDisk()) {
+                continue;
+            }
+            ExternalDiskInfo info;
+            info.SetDiskId(disk.GetDiskId());
+            info.SetDiskType(disk.GetDiskType());
+            const std::string &vidStr = disk.GetVendorId();
+            const std::string &pidStr = disk.GetProductId();
+            int32_t vid = 0;
+            int32_t pid = 0;
+            if (!vidStr.empty()) {
+                errno = 0;
+                char *endPtr = nullptr;
+                long vidVal = std::strtol(vidStr.c_str(), &endPtr, BASE_HEX);
+                if (endPtr != vidStr.c_str() && *endPtr == '\0' && errno == 0) {
+                    vid = static_cast<int32_t>(vidVal);
+                }
+            }
+            if (!pidStr.empty()) {
+                errno = 0;
+                char *endPtr = nullptr;
+                long pidVal = std::strtol(pidStr.c_str(), &endPtr, BASE_HEX);
+                if (endPtr != pidStr.c_str() && *endPtr == '\0' && errno == 0) {
+                    pid = static_cast<int32_t>(pidVal);
+                }
+            }
+            info.SetVendorId(vid);
+            info.SetProductId(pid);
+            std::vector<std::string> volIds;
+            for (const auto &volKv : volumeMap_) {
+                if (volKv.second.GetDiskId() == disk.GetDiskId()) {
+                    volIds.push_back(volKv.second.GetId());
+                }
+            }
+            info.SetVolumeIds(std::move(volIds));
+            result.push_back(std::move(info));
+        }
+    }
+    out = std::move(result);
+    LOGI("GetExternalDiskInfos - Found %{public}zu external disks", out.size());
+    return DiskManagerErrNo::E_OK;
+}
+
+int32_t DiskManager::GetExternalVolumeInfos(std::vector<ExternalVolumeInfo> &out)
+{
+    std::vector<ExternalVolumeInfo> result;
+    std::set<std::string> externalDiskIds;
+    {
+        std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
+        for (const auto &kv : diskMap_) {
+            if (!kv.second.IsInternalDataDisk()) {
+                externalDiskIds.insert(kv.second.GetDiskId());
+            }
+        }
+    }
+    std::vector<VolumeExternal> candidates;
+    {
+        std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
+        for (const auto &kv : volumeMap_) {
+            if (externalDiskIds.find(kv.second.GetDiskId()) != externalDiskIds.end()) {
+                candidates.push_back(kv.second);
+            }
+        }
+    }
+    for (const auto &vol : candidates) {
+        ExternalVolumeInfo info;
+        info.SetVolumeId(vol.GetId());
+        info.SetUuid(vol.GetUuid());
+        info.SetDiskId(vol.GetDiskId());
+        info.SetDescription(vol.GetDescription());
+        info.SetPath(vol.GetPath());
+        info.SetFsType(vol.GetFsTypeString());
+        info.SetState(MapToPublicVolumeState(vol.GetState()));
+        int64_t totalSize = 0;
+        int64_t freeSize = 0;
+        if (info.GetState() == VolumeState::MOUNTED) {
+            GetTotalSizeOfVolume(vol.GetUuid(), totalSize);
+            GetFreeSizeOfVolume(vol.GetUuid(), freeSize);
+        }
+        info.SetTotalSize(totalSize);
+        info.SetFreeSize(freeSize);
+        result.push_back(std::move(info));
+    }
+    out = std::move(result);
+    LOGI("GetExternalVolumeInfos - Found %{public}zu external volumes", out.size());
     return DiskManagerErrNo::E_OK;
 }
 

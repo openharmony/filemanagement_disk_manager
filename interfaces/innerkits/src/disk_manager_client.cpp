@@ -363,6 +363,38 @@ int32_t DiskManagerClient::GetDiskById(const std::string &diskId, Disk &disk)
     return dm.GetDiskById(diskId, disk);
 }
 
+int32_t DiskManagerClient::GetExternalDiskInfos(std::vector<ExternalDiskInfo> &vecOfDiskInfo)
+{
+    LOGI("GetExternalDiskInfos enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        vecOfDiskInfo.clear();
+        return E_OK;
+    }
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetExternalDiskInfos(vecOfDiskInfo);
+}
+
+int32_t DiskManagerClient::GetExternalVolumeInfos(std::vector<ExternalVolumeInfo> &vecOfVolInfo)
+{
+    LOGI("GetExternalVolumeInfos enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        vecOfVolInfo.clear();
+        return E_OK;
+    }
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetExternalVolumeInfos(vecOfVolInfo);
+}
+
 int32_t DiskManagerClient::Erase(const std::string &volumeId)
 {
     LOGI("Erase volumeId=%{public}s", volumeId.c_str());

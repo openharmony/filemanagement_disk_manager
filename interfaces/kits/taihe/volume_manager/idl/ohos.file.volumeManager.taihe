@@ -85,6 +85,28 @@ struct FormatParams {
     volumeName: Optional<String>;
 }
 
+// Public API structs (normal permission, third-party apps)
+
+struct ExternalDiskInfo {
+    diskId: String;
+    diskType: i32;
+    volumeIds: Array<String>;
+    vendorId: i32;
+    productId: i32;
+}
+
+struct ExternalVolumeInfo {
+    volumeId: String;
+    uuid: String;
+    diskId: String;
+    description: String;
+    state: i32;
+    totalSize: i64;
+    freeSize: i64;
+    path: String;
+    fsType: String;
+}
+
 @gen_async("getVolumeByUuid")
 @gen_promise("getVolumeByUuid")
 function GetVolumeByUuidSync(uuid: String): Volume;
@@ -166,3 +188,11 @@ function GetOpProcessSync(volumeId: String): i32;
 @gen_async("isVolumeInUse")
 @gen_promise("isVolumeInUse")
 function IsVolumeInUseSync(volumePath: String): bool;
+
+// Public API：外置存储设备信息查询（三方应用可用，normal 权限）
+
+@gen_promise("getExternalDiskInfos")
+function GetExternalDiskInfosSync(): Array<ExternalDiskInfo>;
+
+@gen_promise("getExternalVolumeInfos")
+function GetExternalVolumeInfosSync(): Array<ExternalVolumeInfo>;

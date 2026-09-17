@@ -44,6 +44,10 @@ napi_value CreatePartition(napi_env env, napi_callback_info info);
 napi_value DeletePartition(napi_env env, napi_callback_info info);
 napi_value FormatPartition(napi_env env, napi_callback_info info);
 
+// Public API：外置存储设备信息查询（三方应用可用，normal 权限）
+napi_value GetExternalDiskInfos(napi_env env, napi_callback_info info);
+napi_value GetExternalVolumeInfos(napi_env env, napi_callback_info info);
+
 // 枚举导出函数
 napi_value CreateDiskTypeEnum(napi_env env);
 napi_value CreateVerifyTypeEnum(napi_env env);

@@ -91,6 +91,8 @@ ohos_shared_library("disk_manager_innerkits") {
     "src/partition_types.cpp",
     "src/volume_core.cpp",
     "src/volume_external.cpp",
+    "src/external_disk_info.cpp",
+    "src/external_volume_info.cpp",
   ]
 
   defines = [

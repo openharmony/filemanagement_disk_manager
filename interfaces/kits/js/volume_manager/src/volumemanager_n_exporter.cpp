@@ -27,6 +27,8 @@
 #include "disk_manager_client.h"
 #include "disk_manager_napi_errno.h"
 #include "disk_manager_napi_utils.h"
+#include "external_disk_info.h"
+#include "external_volume_info.h"
 #include "ipc_caller_auth.h"
 #include "mount_param.h"
 #include "n_async/n_async_work_callback.h"
@@ -1210,6 +1212,148 @@ napi_value FormatPartition(napi_env env, napi_callback_info info)
     });
 }
 
+// ========== Public API：外置存储设备信息查询（三方应用可用，normal 权限） ==========
+
+static napi_value BuildExternalDiskJSObject(napi_env env, const ExternalDiskInfo &disk)
+{
+    NVal obj = NVal::CreateObject(env);
+    obj.AddProp("diskId", NVal::CreateUTF8String(env, disk.GetDiskId()).val_);
+    obj.AddProp("diskType", NVal::CreateInt32(env, disk.GetDiskType()).val_);
+    napi_value volIdsArr = nullptr;
+    napi_status status = napi_create_array(env, &volIdsArr);
+    if (status != napi_ok) {
+        return nullptr;
+    }
+    const auto &volIds = disk.GetVolumeIds();
+    for (size_t j = 0; j < volIds.size(); j++) {
+        status = napi_set_element(env, volIdsArr, static_cast<uint32_t>(j),
+                                  NVal::CreateUTF8String(env, volIds[j]).val_);
+        if (status != napi_ok) {
+            return nullptr;
+        }
+    }
+    obj.AddProp("volumeIds", volIdsArr);
+    obj.AddProp("vendorId", NVal::CreateInt32(env, disk.GetVendorId()).val_);
+    obj.AddProp("productId", NVal::CreateInt32(env, disk.GetProductId()).val_);
+    return obj.val_;
+}
+
+static NVal MakeExternalDiskJsArray(napi_env env, const std::vector<ExternalDiskInfo> &disks)
+{
+    napi_value arr = nullptr;
+    napi_status status = napi_create_array(env, &arr);
+    if (status != napi_ok) {
+        return {env, NError(status).GetNapiErr(env)};
+    }
+    for (size_t i = 0; i < disks.size(); i++) {
+        napi_value obj = BuildExternalDiskJSObject(env, disks[i]);
+        if (obj == nullptr) {
+            return {env, NError(napi_generic_failure).GetNapiErr(env)};
+        }
+        status = napi_set_element(env, arr, static_cast<uint32_t>(i), obj);
+        if (status != napi_ok) {
+            return {env, NError(status).GetNapiErr(env)};
+        }
+    }
+    return {NVal(env, arr)};
+}
+
+napi_value GetExternalDiskInfos(napi_env env, napi_callback_info info)
+{
+    if (!VerifyCallerPermission(PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        NError(E_PERMISSION).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ZERO)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    auto diskInfos = std::make_shared<std::vector<ExternalDiskInfo>>();
+    auto cbExec = [diskInfos]() -> NError {
+        int32_t errNum = DiskManagerClient::GetInstance().GetExternalDiskInfos(*diskInfos);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [diskInfos](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return MakeExternalDiskJsArray(env, *diskInfos);
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetExternalDiskInfos", cbExec, cbComplete).val_;
+}
+
+static napi_value BuildExternalVolumeJSObject(napi_env env, const ExternalVolumeInfo &vol)
+{
+    NVal obj = NVal::CreateObject(env);
+    if (obj.val_ == nullptr) {
+        return nullptr;
+    }
+    obj.AddProp("volumeId", NVal::CreateUTF8String(env, vol.GetVolumeId()).val_);
+    obj.AddProp("uuid", NVal::CreateUTF8String(env, vol.GetUuid()).val_);
+    obj.AddProp("diskId", NVal::CreateUTF8String(env, vol.GetDiskId()).val_);
+    obj.AddProp("description", NVal::CreateUTF8String(env, vol.GetDescription()).val_);
+    obj.AddProp("state", NVal::CreateInt32(env, vol.GetState()).val_);
+    obj.AddProp("totalSize", NVal::CreateInt64(env, vol.GetTotalSize()).val_);
+    obj.AddProp("freeSize", NVal::CreateInt64(env, vol.GetFreeSize()).val_);
+    obj.AddProp("path", NVal::CreateUTF8String(env, vol.GetPath()).val_);
+    obj.AddProp("fsType", NVal::CreateUTF8String(env, vol.GetFsType()).val_);
+    return obj.val_;
+}
+
+static NVal MakeExternalVolumeJsArray(napi_env env, const std::vector<ExternalVolumeInfo> &volumes)
+{
+    napi_value arr = nullptr;
+    napi_status status = napi_create_array(env, &arr);
+    if (status != napi_ok) {
+        return {env, NError(status).GetNapiErr(env)};
+    }
+    for (size_t i = 0; i < volumes.size(); i++) {
+        napi_value obj = BuildExternalVolumeJSObject(env, volumes[i]);
+        if (obj == nullptr) {
+            return {env, NError(napi_generic_failure).GetNapiErr(env)};
+        }
+        status = napi_set_element(env, arr, static_cast<uint32_t>(i), obj);
+        if (status != napi_ok) {
+            return {env, NError(status).GetNapiErr(env)};
+        }
+    }
+    return {NVal(env, arr)};
+}
+
+napi_value GetExternalVolumeInfos(napi_env env, napi_callback_info info)
+{
+    if (!VerifyCallerPermission(PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        NError(E_PERMISSION).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ZERO)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    auto volInfos = std::make_shared<std::vector<ExternalVolumeInfo>>();
+    auto cbExec = [volInfos]() -> NError {
+        int32_t errNum = DiskManagerClient::GetInstance().GetExternalVolumeInfos(*volInfos);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [volInfos](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return MakeExternalVolumeJsArray(env, *volInfos);
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetExternalVolumeInfos", cbExec, cbComplete).val_;
+}
+
 // ========== 模块初始化 ==========
 
 // 模块导出的属性描述符
@@ -1237,6 +1381,9 @@ static napi_property_descriptor g_properties[] = {
     DECLARE_NAPI_FUNCTION("deletePartition", DeletePartition),
     DECLARE_NAPI_FUNCTION("formatPartition", FormatPartition),
     DECLARE_NAPI_FUNCTION("isVolumeInUse", IsVolumeInUse),
+    // Public API：外置存储设备信息查询（三方应用可用，normal 权限）
+    DECLARE_NAPI_FUNCTION("getExternalDiskInfos", GetExternalDiskInfos),
+    DECLARE_NAPI_FUNCTION("getExternalVolumeInfos", GetExternalVolumeInfos),
 #ifdef HMDFS_FILE_MANAGER
     DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
     DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),

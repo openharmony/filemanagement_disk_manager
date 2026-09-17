@@ -20,6 +20,8 @@
 #include "crypt_param.h"
 #include "mount_param.h"
 #include "partition_types.h"
+#include "external_disk_info.h"
+#include "external_volume_info.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
 #include "timer.h"
@@ -75,6 +77,11 @@ public:
     int32_t CreatePartition(const std::string &diskId, const PartitionParams &params) override;
     int32_t DeletePartition(const std::string &diskId, int32_t partitionNum) override;
     int32_t FormatPartition(const std::string &diskId, int32_t partitionNum, const FormatParams &params) override;
+
+    // Public API: external storage device info query (normal permission, no system app required)
+    int32_t GetExternalDiskInfos(std::vector<ExternalDiskInfo> &vecOfDiskInfo) override;
+    int32_t GetExternalVolumeInfos(std::vector<ExternalVolumeInfo> &vecOfVolInfo) override;
+
     // crypto disk inner APIs
     int32_t BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;

@@ -1355,5 +1355,89 @@ HWTEST_F(DiskManagerClientTest, UmountVolumeByPathTest002, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "UmountVolumeByPathTest002 End";
 }
+
+/**
+ * @tc.name: GetExternalDiskInfosTest001
+ * @tc.desc: 测试 GetExternalDiskInfos 在 ResetProxy 后 SA 未运行，预期返回空列表 + E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetExternalDiskInfosTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfosTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::vector<ExternalDiskInfo> diskInfos;
+    int32_t ret = client.GetExternalDiskInfos(diskInfos);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(diskInfos.empty());
+
+    GTEST_LOG_(INFO) << "GetExternalDiskInfosTest001 End";
+}
+
+/**
+ * @tc.name: GetExternalDiskInfosTest002
+ * @tc.desc: 测试 GetExternalDiskInfos 在 SA 可用时转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetExternalDiskInfosTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfosTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetExternalDiskInfos(_)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::vector<ExternalDiskInfo> diskInfos;
+    int32_t ret = client.GetExternalDiskInfos(diskInfos);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetExternalDiskInfosTest002 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfosTest001
+ * @tc.desc: 测试 GetExternalVolumeInfos 在 ResetProxy 后 SA 未运行，预期返回空列表 + E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetExternalVolumeInfosTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfosTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::vector<ExternalVolumeInfo> volInfos;
+    int32_t ret = client.GetExternalVolumeInfos(volInfos);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(volInfos.empty());
+
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfosTest001 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfosTest002
+ * @tc.desc: 测试 GetExternalVolumeInfos 在 SA 可用时转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetExternalVolumeInfosTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfosTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetExternalVolumeInfos(_)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::vector<ExternalVolumeInfo> volInfos;
+    int32_t ret = client.GetExternalVolumeInfos(volInfos);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfosTest002 End";
+}
 } // namespace DiskManager
 } // namespace OHOS
