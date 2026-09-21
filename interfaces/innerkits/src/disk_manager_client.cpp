@@ -601,7 +601,7 @@ int32_t DiskManagerClient::BindBlockLoopDev(const std::string &sysPath, uint64_t
 }
 
 int32_t DiskManagerClient::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                               const std::string &mapperName)
+                                               std::string &mapperName)
 {
     LOGI("CreateDmCryptVolume loopPath=%{public}s, mapperName=%{public}s", loopPath.c_str(), mapperName.c_str());
     sptr<IDiskManager> proxy;

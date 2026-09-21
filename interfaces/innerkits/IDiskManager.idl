@@ -46,7 +46,7 @@ interface OHOS.DiskManager.IDiskManager {
     /* ---------- 加密U盘相关操作 ---------- */
     [ipccode 15] void BindBlockLoopDev([in] String diskId, [in] unsigned long offset, [in] unsigned long sizeLimit,
                                        [out] String loopPath);
-    [ipccode 16] void CreateDmCryptVolume([in] CryptParam param, [in] String loopPath, [in] String mapperName);
+    [ipccode 16] void CreateDmCryptVolume([in] CryptParam param, [in] String loopPath, [in, out] String mapperName);
     [ipccode 17] void DestroyDmCryptVolume([in] String mapperName);
     [ipccode 18] void UnbindBlockLoopDev([in] String loopPath);
     [ipccode 19] void MountVolumeByPath([in] String diskId, [in] String volPath, [in] MountParam param);

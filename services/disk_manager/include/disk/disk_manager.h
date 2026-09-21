@@ -117,8 +117,7 @@ public:
     bool DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int32_t partNum);
     int32_t BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath);
-    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                const std::string &mapperName);
+    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath, std::string &mapperName);
     int32_t DestroyDmCryptVolume(const std::string &mapperName);
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
@@ -250,6 +249,7 @@ private:
     /** InitVolume + StorageDaemonAdapter::Mount，返回 errno（E_OK 表示成功），错误码由调用方经 IpcDfxScope 上报。 */
     int32_t InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag);
     std::string CheckVolId(const std::string &volId);
+    int32_t IsVolumeBind(const std::string &diskId, uint64_t offset, uint64_t sizeLimit, std::string &loopPath);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。

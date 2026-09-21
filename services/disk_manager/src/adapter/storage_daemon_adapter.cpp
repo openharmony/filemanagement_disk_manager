@@ -536,8 +536,19 @@ int32_t StorageDaemonAdapter::ExecuteCommand(const std::vector<std::string> &cmd
         return err;
     }
     const int32_t ret = storageDaemon_->ExecuteCommand(cmd, execRet, output);
-    LOGI("ExecuteCommand exit ret=%{public}d", ret);
-    return ret;
+    if (ret != E_OK) {
+        LOGE("ExecuteCommand: exec failed, ret=%{public}d", ret);
+        return DISK_MGR_ERR;
+    }
+    for (const auto &item: output) {
+        LOGE("ExecuteCommand exec output: %{public}s", item.c_str());
+    }
+    if (execRet != E_OK) {
+        LOGE("ExecuteCommand: command failed, execRet=%{public}d", execRet);
+        return DISK_MGR_ERR;
+    }
+    LOGI("ExecuteCommand success.");
+    return E_OK;
 }
 
 int32_t StorageDaemonAdapter::CreateDmLinear(const std::string &sourceDevPath,

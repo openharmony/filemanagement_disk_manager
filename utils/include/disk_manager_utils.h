@@ -38,7 +38,8 @@ bool IsVolumeIdValid(const std::string &volumeId);
 bool IsDiskIdValid(const std::string &diskId);
 bool IsUuidValid(const std::string &uuid);
 std::string GenerateRandomUuid(const std::string &diskId);
-
+std::vector<std::string> SplitLine(std::string &line, std::string &token);
+bool ConvertStringToInt(const std::string &str, int64_t &value, int32_t base = BASE_DECIMAL);
 } // namespace DiskManager
 } // namespace OHOS
 

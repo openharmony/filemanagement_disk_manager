@@ -33,6 +33,7 @@
 #include "mount_param.h"
 #include "volume_external.h"
 #include "volume_core.h"
+#include "disk_manager_client.h"
 #include "disk_manager_utils.h"
 #include "partition_types.h"
 #include "storage_spec_models.h"
@@ -4992,6 +4993,8 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
             SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-1", 2048, 1048576, loopPath), E_OK);
     EXPECT_EQ(loopPath, "/dev/loop0");
@@ -5000,7 +5003,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: BindBlockLoopDev_TestCase_002
- * @tc.desc: BindBlockLoopDev propagates adapter error code and keeps loopPath empty.
+ * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when adapter returns error and keeps loopPath empty.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5011,8 +5014,11 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-2"));
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-2", 2048, 1048576, loopPath), E_DAEMON_IPC_FAILED);
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-2", 2048, 1048576, loopPath), E_BIND_LOOP_DEV_FAILED);
     EXPECT_TRUE(loopPath.empty());
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
 }
@@ -5067,12 +5073,57 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
     std::vector<std::string> capturedCmd;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
         .WillOnce(DoAll(SaveArg<0>(&capturedCmd), SetArgReferee<1>(E_OK),
             SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-5", inputOffset, inputSizeLimit, loopPath), E_OK);
     EXPECT_EQ(capturedCmd[4], std::to_string(inputOffset));
     EXPECT_EQ(capturedCmd[6], std::to_string(inputSizeLimit));
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_005 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_006
+ * @tc.desc: BindBlockLoopDev returns VOLUME_HAS_BIND when IsVolumeBind finds an existing binding.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-6"));
+    std::string loopPath;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::string bindLine = "/dev/block/loop0: [5]:19108 (/dev/block/disk-8-bld-6), "
+                           "offset 2048, sizelimit 1048576";
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{bindLine}), Return(E_OK)));
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-6", 2048, 1048576, loopPath),
+        CryptVolumeErrno::VOLUME_HAS_BIND);
+    EXPECT_EQ(loopPath, "/dev/block/loop0");
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_007
+ * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when IsVolumeBind ExecuteCommand fails.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-7"));
+    std::string loopPath;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-7", 2048, 1048576, loopPath), E_BIND_LOOP_DEV_FAILED);
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 End";
 }
 
 /**
@@ -5094,7 +5145,8 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
     std::vector<std::string> capturedCmd;
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_OK);
     ASSERT_EQ(capturedCmd.size(), 12u);
     EXPECT_EQ(capturedCmd[0], "cryptsetup");
     EXPECT_EQ(capturedCmd[1], "open");
@@ -5113,7 +5165,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_002
- * @tc.desc: CreateDmCryptVolume propagates adapter error code.
+ * @tc.desc: CreateDmCryptVolume returns E_CREATE_DM_CRYPT_VOLUME_FAILED when adapter returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5128,13 +5180,14 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
     CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_DAEMON_IPC_FAILED);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_CREATE_DM_CRYPT_VOLUME_FAILED);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
 }
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_003
- * @tc.desc: CreateDmCryptVolume returns E_CREATE_DM_CRYPT_VOLUME_FAILED when command exec fails (execRet != E_OK).
+ * @tc.desc: CreateDmCryptVolume returns CRYPT_VOLUME_HAS_CREATED when mapperPath already set, fills mapperName.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5145,12 +5198,15 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_003, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-cdc-3"));
     VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-cdc-3", "uuid-cdc-3", UNMOUNTED);
     vol.SetLoopPath("/dev/block/loop0");
+    vol.SetMapperPath("/dev/mapper/mapper0");
     dm.OnVolumeCreated(vol);
     CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(E_DAEMON_IPC_FAILED), Return(E_OK)));
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_CREATE_DM_CRYPT_VOLUME_FAILED);
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName),
+        CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED);
+    EXPECT_EQ(mapperName, "/dev/mapper/mapper0");
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_003 End";
 }
 
@@ -5167,7 +5223,8 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_004, TestSize.Level0)
     CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_NON_EXIST);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_NON_EXIST);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_004 End";
 }
 

@@ -302,5 +302,45 @@ std::string GenerateRandomUuid(const std::string &diskId)
     return std::string(out);
 }
 
+std::vector<std::string> SplitLine(std::string &line, std::string &token)
+{
+    std::vector<std::string> result;
+    std::string::size_type start;
+    std::string::size_type end;
+    start = 0;
+    end = line.find(token);
+    while (std::string::npos != end) {
+        result.push_back(line.substr(start, end - start));
+        start = end + token.size();
+        end = line.find(token, start);
+    }
+    if (start != line.length()) {
+        result.push_back(line.substr(start));
+    }
+    return result;
+}
+
+bool ConvertStringToInt(const std::string &str, int64_t &value, int32_t base)
+{
+    if (str.empty()) {
+        return false;
+    }
+    errno = 0;
+    char* endptr = nullptr;
+
+    int64_t result = std::strtoll(str.c_str(), &endptr, base);
+
+    if (endptr == str.c_str()) {
+        return false;
+    }
+    if (errno == ERANGE && (result == LLONG_MAX || result == LLONG_MIN)) {
+        return false;
+    }
+    if (*endptr != '\0') {
+        return false;
+    }
+    value = result;
+    return true;
+}
 } // namespace DiskManager
 } // namespace OHOS

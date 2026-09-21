@@ -86,7 +86,7 @@ public:
     int32_t BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                              std::string &loopPath) override;
     int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                const std::string &mapperName) override;
+                                std::string &mapperName) override;
     int32_t DestroyDmCryptVolume(const std::string &mapperName) override;
     int32_t UnbindBlockLoopDev(const std::string &loopPath) override;
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath,
@@ -112,6 +112,7 @@ private:
 
     // mutex to serialize CheckAndUnloadIfIdle and OnBlockDiskUevent to prevent race condition
     std::mutex unloadUeventMutex_;
+    std::mutex cryptVolMutex_;
     std::atomic<bool> isUnloading_{false};
 };
 } // namespace DiskManager
