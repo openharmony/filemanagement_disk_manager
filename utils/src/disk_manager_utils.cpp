@@ -309,7 +309,7 @@ std::vector<std::string> SplitLine(std::string &line, std::string &token)
     std::string::size_type end;
     start = 0;
     end = line.find(token);
-    while (std::string::npos != end) {
+    while (end != std::string::npos) {
         result.push_back(line.substr(start, end - start));
         start = end + token.size();
         end = line.find(token, start);
