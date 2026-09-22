@@ -26,8 +26,8 @@ namespace OHOS {
 namespace DiskManager {
 
 constexpr size_t VOLUME_NAME_MAX_LEN = 64;
+
 constexpr const char *UUID_SEQ_SEPARATOR = "_";
-constexpr int32_t BASE_DECIMAL = 10;
 
 std::string GetAnonyString(const std::string &value);
 
@@ -38,6 +38,7 @@ bool IsVolumeIdValid(const std::string &volumeId);
 bool IsDiskIdValid(const std::string &diskId);
 bool IsUuidValid(const std::string &uuid);
 std::string GenerateRandomUuid(const std::string &diskId);
+
 } // namespace DiskManager
 } // namespace OHOS
 

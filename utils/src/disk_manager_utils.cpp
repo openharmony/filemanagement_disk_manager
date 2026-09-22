@@ -301,5 +301,6 @@ std::string GenerateRandomUuid(const std::string &diskId)
     }
     return std::string(out);
 }
+
 } // namespace DiskManager
 } // namespace OHOS
