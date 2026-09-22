@@ -72,6 +72,8 @@ constexpr const char *EXTERNAL_MOUNT_ROOT = "/mnt/data/external/";
 constexpr const char *EXTERNAL_FUSE_DATA_ROOT = "/mnt/data/external_fuse/";
 constexpr const char *EXTERNAL_DVR_ROOT = "/mnt/data/dvr/";
 constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
+/** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时需要添加的挂载参数 */
+constexpr const char *VOLDATA_MOUNT_CONTEXT = "bb_retry";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
 constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
 constexpr int64_t BURN_EDM_CONTROL_EVENT_ID = 0x00F000008;
@@ -325,6 +327,14 @@ std::string ResolveVoldataMountPath(const VolumeExternal &volExternal,
          GetAnonyString(dataMountPath).c_str(), volExternal.GetId().c_str(),
          GetAnonyString(fsUuid).c_str(), created ? 1 : 0);
     return dataMountPath;
+}
+
+std::string BuildMountDataOptions(bool useVoldataPath)
+{
+    if (useVoldataPath) {
+        return VOLDATA_MOUNT_CONTEXT;
+    }
+    return "";
 }
 
 std::string BuildSafeExternalMountPath(const std::string &suffix)
@@ -844,8 +854,9 @@ int32_t DiskManager::ExecuteVolumeDataMount(VolumeExternal &volExternal,
     if ((fsType == "hmfs" || fsType == "f2fs") && (volExternal.GetUserData() || !params.policy.useVoldataPath)) {
         mountFlag = HMFS_FLAG;
     }
+    const std::string mountData = BuildMountDataOptions(params.policy.useVoldataPath);
     int32_t err = StorageDaemonAdapter::GetInstance().Mount("/dev/block/" + volExternal.GetId(),
-                                                            params.dataMountPath, fsType, mountFlag, "");
+                                                            params.dataMountPath, fsType, mountFlag, mountData);
     if (err != ERR_OK) {
         LOGE("MountFs vol %{public}s err=%{public}d", volExternal.GetId().c_str(), err);
         if (params.policy.useVoldataPath && params.voldataMappingCreated != nullptr && *params.voldataMappingCreated) {
