@@ -565,7 +565,7 @@ HWTEST_F(StorageDaemonAdapterProxyTest, ExecuteCommand_ErrorReturn_001, TestSize
     std::vector<std::string> output;
     EXPECT_CALL(*mockRemote_, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(adapter.ExecuteCommand({"cryptsetup", "open", "/dev/block/sda1", "mapper0"}, execRet, output),
-              E_DAEMON_IPC_FAILED);
+              DISK_MGR_ERR);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, CreateDmLinear_Success_001, TestSize.Level0)
