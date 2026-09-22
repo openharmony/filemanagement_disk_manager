@@ -249,7 +249,7 @@ private:
     /** InitVolume + StorageDaemonAdapter::Mount，返回 errno（E_OK 表示成功），错误码由调用方经 IpcDfxScope 上报。 */
     int32_t InitAndMountVolume(VolumeExternal &volExternal, const std::string &volPath, uint64_t mountFlag);
     std::string CheckVolId(const std::string &volId);
-    int32_t IsVolumeBind(const std::string &diskId, uint64_t offset, uint64_t sizeLimit, std::string &loopPath);
+    bool IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeLimit, std::string &loopPath);
 
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。

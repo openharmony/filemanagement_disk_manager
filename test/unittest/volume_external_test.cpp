@@ -51,6 +51,8 @@ HWTEST_F(VolumeExternalTest, DefaultConstructor_TestCase_001, TestSize.Level0)
     EXPECT_EQ(ve.GetLoopPath(), "");
     EXPECT_EQ(ve.GetMapperPath(), "");
     EXPECT_FALSE(ve.GetMountFlag());
+    EXPECT_EQ(ve.GetOffset(), 0);
+    EXPECT_EQ(ve.GetSizeLimit(), 0);
 }
 
 HWTEST_F(VolumeExternalTest, ConstructorFromVolumeCore_TestCase_001, TestSize.Level0)
@@ -286,6 +288,8 @@ HWTEST_F(VolumeExternalTest, Marshalling_Success_TestCase_001, TestSize.Level0)
     ve.SetLoopPath("/dev/loop0");
     ve.SetMapperPath("/dev/mapper/mvp0");
     ve.SetMountFlag(true);
+    ve.SetOffset(2048);
+    ve.SetSizeLimit(1048576);
     Parcel parcel;
     EXPECT_TRUE(ve.Marshalling(parcel));
 }
@@ -303,6 +307,8 @@ HWTEST_F(VolumeExternalTest, Unmarshalling_Success_TestCase_001, TestSize.Level0
     ve.SetLoopPath("/dev/loop0");
     ve.SetMapperPath("/dev/mapper/mvp0");
     ve.SetMountFlag(true);
+    ve.SetOffset(2048);
+    ve.SetSizeLimit(1048576);
     Parcel parcel;
     EXPECT_TRUE(ve.Marshalling(parcel));
     VolumeExternal *result = VolumeExternal::Unmarshalling(parcel);
@@ -317,6 +323,8 @@ HWTEST_F(VolumeExternalTest, Unmarshalling_Success_TestCase_001, TestSize.Level0
     EXPECT_EQ(result->GetLoopPath(), "/dev/loop0");
     EXPECT_EQ(result->GetMapperPath(), "/dev/mapper/mvp0");
     EXPECT_TRUE(result->GetMountFlag());
+    EXPECT_EQ(result->GetOffset(), 2048);
+    EXPECT_EQ(result->GetSizeLimit(), 1048576);
     delete result;
 }
 
@@ -413,6 +421,44 @@ HWTEST_F(VolumeExternalTest, SetMountFlag_GetMountFlag_TestCase_001, TestSize.Le
     ve.SetMountFlag(false);
     EXPECT_FALSE(ve.GetMountFlag());
     GTEST_LOG_(INFO) << "SetMountFlag_GetMountFlag_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetOffset_GetOffset_TestCase_001
+ * @tc.desc: SetOffset/GetOffset 读写 offset
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetOffset_GetOffset_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetOffset_GetOffset_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_EQ(ve.GetOffset(), 0);
+    ve.SetOffset(2048);
+    EXPECT_EQ(ve.GetOffset(), 2048);
+    ve.SetOffset(0);
+    EXPECT_EQ(ve.GetOffset(), 0);
+    GTEST_LOG_(INFO) << "SetOffset_GetOffset_TestCase_001 End";
+}
+
+/**
+ * @tc.name: SetSizeLimit_GetSizeLimit_TestCase_001
+ * @tc.desc: SetSizeLimit/GetSizeLimit 读写 sizeLimit
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VolumeExternalTest, SetSizeLimit_GetSizeLimit_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetSizeLimit_GetSizeLimit_TestCase_001 Start";
+
+    VolumeExternal ve;
+    EXPECT_EQ(ve.GetSizeLimit(), 0);
+    ve.SetSizeLimit(1048576);
+    EXPECT_EQ(ve.GetSizeLimit(), 1048576);
+    ve.SetSizeLimit(0);
+    EXPECT_EQ(ve.GetSizeLimit(), 0);
+    GTEST_LOG_(INFO) << "SetSizeLimit_GetSizeLimit_TestCase_001 End";
 }
 
 /**

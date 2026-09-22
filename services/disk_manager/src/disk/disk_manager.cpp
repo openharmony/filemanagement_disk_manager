@@ -2817,12 +2817,7 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
-    std::string loopPathTmp;
-    if (IsVolumeBind(diskId, offset, sizeLimit, loopPathTmp) != E_OK) {
-        return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
-    }
-    if (!loopPathTmp.empty()) {
-        loopPath = loopPathTmp;
+    if (IsVolumeBind(disk, offset, sizeLimit, loopPath)) {
         return dfx.Finish(CryptVolumeErrno::VOLUME_HAS_BIND);
     }
     std::vector<std::string> cmd = {"losetup", "--oh", "-f", "-o", std::to_string(offset), "--sizelimit",
@@ -2840,6 +2835,8 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
     VolumeCore vc(volId, 0, diskId);
     VolumeExternal volumeExternal(vc);
     volumeExternal.SetLoopPath(loopPath);
+    volumeExternal.SetOffset(offset);
+    volumeExternal.SetSizeLimit(sizeLimit);
     volumeExternal.SetState(VolumeState::UNMOUNTED);
     OnVolumeCreated(volumeExternal);
     LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
@@ -2896,13 +2893,6 @@ int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != E_OK) {
         LOGE("DestroyDmCryptVolume failed, err=%{public}d", ret);
-        return dfx.Finish(ret);
-    }
-    for (const auto &item: output) {
-        LOGE("DestroyDmCryptVolume exec output: %{public}s", item.c_str());
-    }
-    if (execRet != E_OK) {
-        LOGE("DestroyDmCryptVolume command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_DESTROY_DM_CRYPT_VOLUME_FAILED);
     }
     {
@@ -2930,13 +2920,6 @@ int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != E_OK) {
         LOGE("UnbindBlockLoopDev failed, err=%{public}d", ret);
-        return dfx.Finish(ret);
-    }
-    for (const auto &item : output) {
-        LOGE("UnbindBlockLoopDev exec output: %{public}s", item.c_str());
-    }
-    if (execRet != E_OK) {
-        LOGE("UnbindBlockLoopDev command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_UNBIND_LOOP_DEV_FAILED);
     }
     std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
@@ -3102,48 +3085,25 @@ std::string DiskManager::CheckVolId(const std::string &volId)
     return "/dev/block/" + volId;
 }
 
-int32_t DiskManager::IsVolumeBind(const std::string &diskId, uint64_t offset, uint64_t sizeLimit, std::string &loopPath)
+bool DiskManager::IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeLimit, std::string &loopPath)
 {
-    std::vector<std::string> cmd = {"losetup", "-a", "--oh"};
-    std::vector<std::string> output;
-    int32_t execRet = 0;
-    int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
-    if (ret != E_OK) {
-        LOGE("IsVolumeBind: ExecuteCommand failed.");
-        return E_BIND_LOOP_DEV_FAILED;
+    std::vector<std::string> volumeIds = disk.GetVolumeIds();
+    if (volumeIds.empty()) {
+        return false;
     }
-    if (output.empty()) {
-        LOGE("IsVolumeBind: output is empty.");
-        return E_OK;
-    }
-    std::vector<std::string> tempInfo;
-    std::string bufToken = "\n";
-    for (auto &buf : output) {
-        auto split = SplitLine(buf, bufToken);
-        tempInfo.insert(tempInfo.end(), split.begin(), split.end());
-    }
-    std::regex pattern(R"((/dev/block/[^:]+):.*\(/dev/block/([^)]+)\).*offset\s+(\d+),\s*sizelimit\s+(\d+))");
-    std::smatch match;
-    for (const auto &item: tempInfo) {
-        if (!std::regex_search(item, match, pattern)) {
+    for (const auto &item: volumeIds) {
+        VolumeExternal vol;
+        if (GetVolumeById(item, vol) != E_OK) {
             continue;
         }
-        if (match[2].str() != diskId) {
-            continue;
+        if (vol.GetOffset() == offset && vol.GetSizeLimit() == sizeLimit) {
+            loopPath = vol.GetLoopPath();
+            LOGI("IsVolumeBind: found bind loopPath=%{public}s", loopPath.c_str());
+            return true;
         }
-        int64_t curOffset = 0, curSizeLimit = 0;
-        if (!ConvertStringToInt(match[3].str(), curOffset) || !ConvertStringToInt(match[4].str(), curSizeLimit)) {
-            continue;
-        }
-        if (static_cast<uint64_t>(curOffset) != offset || static_cast<uint64_t>(curSizeLimit) != sizeLimit) {
-            continue;
-        }
-        loopPath = match[1].str();
-        LOGI("IsVolumeBind: found bind loopPath=%{public}s", loopPath.c_str());
-        return E_OK;
     }
-    LOGD("IsVolumeBind: volume not bind");
-    return E_OK;
+    LOGI("IsVolumeBind: volume not bind");
+    return false;
 }
 } // namespace DiskManager
 } // namespace OHOS

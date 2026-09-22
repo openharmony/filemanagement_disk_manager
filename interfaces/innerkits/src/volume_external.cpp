@@ -172,6 +172,26 @@ void VolumeExternal::SetMountFlag(bool mountFlag)
     mountFlag_ = mountFlag;
 }
 
+uint64_t VolumeExternal::GetOffset() const
+{
+    return offset_;
+}
+
+void VolumeExternal::SetOffset(uint64_t offset)
+{
+    offset_ = offset;
+}
+
+uint64_t VolumeExternal::GetSizeLimit() const
+{
+    return sizeLimit_;
+}
+
+void VolumeExternal::SetSizeLimit(uint64_t sizeLimit)
+{
+    sizeLimit_ = sizeLimit;
+}
+
 VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
 {
     std::unique_ptr<VolumeCore> volumeCorePtr(VolumeCore::Unmarshalling(parcel));
@@ -192,6 +212,8 @@ VolumeExternal *VolumeExternal::Unmarshalling(Parcel &parcel)
     obj->loopPath_ = parcel.ReadString();
     obj->mapperPath_ = parcel.ReadString();
     obj->mountFlag_ = parcel.ReadBool();
+    obj->offset_ = parcel.ReadUint64();
+    obj->sizeLimit_ = parcel.ReadUint64();
     return obj;
 }
 
@@ -234,6 +256,14 @@ bool VolumeExternal::Marshalling(Parcel &parcel) const
     }
 
     if (!parcel.WriteBool(mountFlag_)) {
+        return false;
+    }
+
+    if (!parcel.WriteUint64(offset_)) {
+        return false;
+    }
+
+    if (!parcel.WriteUint64(sizeLimit_)) {
         return false;
     }
 

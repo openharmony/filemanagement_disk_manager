@@ -37,6 +37,9 @@
 #include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
+#ifdef PC_MANAGER
+#include "disk_manager_client.h"
+#endif
 
 namespace OHOS {
 namespace DiskManager {
@@ -884,6 +887,9 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_
     }
     const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(diskId, offset, sizeLimit, loopPath);
     LOGI("BindBlockLoopDev done ret=%{public}d", ret);
+    if (ret == CryptVolumeErrno::VOLUME_HAS_BIND) {
+        return ret;
+    }
     if (ret != E_OK) {
         return E_BIND_LOOP_DEV_FAILED;
     }
@@ -919,6 +925,9 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
     }
     const int32_t ret = DiskManager::GetInstance().CreateDmCryptVolume(param, loopPath, mapperName);
     LOGI("CreateDmCryptVolume done ret=%{public}d", ret);
+    if (ret == CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED) {
+        return ret;
+    }
     if (ret != E_OK) {
         return E_CREATE_DM_CRYPT_VOLUME_FAILED;
     }

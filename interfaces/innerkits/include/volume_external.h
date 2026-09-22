@@ -83,6 +83,10 @@ public:
     std::string GetMapperPath() const;
     void SetMountFlag(bool mountFlag);
     bool GetMountFlag() const;
+    void SetOffset(uint64_t offset);
+    uint64_t GetOffset() const;
+    void SetSizeLimit(uint64_t sizeLimit);
+    uint64_t GetSizeLimit() const;
 
     bool Marshalling(Parcel &parcel) const override;
     static VolumeExternal *Unmarshalling(Parcel &parcel);
@@ -98,9 +102,12 @@ private:
     std::string umountResult_{""};
     int32_t partitionNum_ = 0;
     int64_t freeSize_ { 0 };
+    bool mountFlag_ = false;
+    /* 加密U盘关键参数 */
     std::string loopPath_;
     std::string mapperPath_;
-    bool mountFlag_ = false;
+    uint64_t offset_{0};
+    uint64_t sizeLimit_{0};
 };
 } // namespace DiskManager
 } // namespace OHOS
