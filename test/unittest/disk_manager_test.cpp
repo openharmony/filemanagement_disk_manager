@@ -5123,6 +5123,171 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_007, TestSize.Level0)
 }
 
 /**
+ * @tc.name: IsVolumeBind_EmptyVolumeIds_TestCase_001
+ * @tc.desc: IsVolumeBind returns false when disk has no volumes.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_EmptyVolumeIds_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_EmptyVolumeIds_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-8-ivb-1");
+    std::string loopPath = "unchanged";
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_EQ(loopPath, "unchanged");
+    GTEST_LOG_(INFO) << "IsVolumeBind_EmptyVolumeIds_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_MatchFound_TestCase_001
+ * @tc.desc: IsVolumeBind returns true and sets loopPath when offset and sizeLimit both match.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_MatchFound_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchFound_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-2", "uuid-ivb-2", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(2048);
+    vol.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-2", disk), E_OK);
+    std::string loopPath;
+    EXPECT_TRUE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_EQ(loopPath, "/dev/loop0");
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchFound_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_OffsetMismatch_TestCase_001
+ * @tc.desc: IsVolumeBind returns false when offset does not match.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_OffsetMismatch_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_OffsetMismatch_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-3"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-3", "uuid-ivb-3", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(4096);
+    vol.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-3", disk), E_OK);
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_OffsetMismatch_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_SizeLimitMismatch_TestCase_001
+ * @tc.desc: IsVolumeBind returns false when offset matches but sizeLimit does not.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_SizeLimitMismatch_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_SizeLimitMismatch_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-4", "uuid-ivb-4", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(2048);
+    vol.SetSizeLimit(2097152);
+    dm.OnVolumeCreated(vol);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-4", disk), E_OK);
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_SizeLimitMismatch_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_VolumeNotInMap_TestCase_001
+ * @tc.desc: IsVolumeBind skips volume IDs not found in volumeMap_ and returns false.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_VolumeNotInMap_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_VolumeNotInMap_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-8-ivb-5");
+    disk.SetVolumeIds({"vol-crypt-nonexist"});
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_VolumeNotInMap_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_MatchInSecondVolume_TestCase_001
+ * @tc.desc: IsVolumeBind iterates multiple volumes and finds match in the second one.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_MatchInSecondVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchInSecondVolume_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-6"));
+    VolumeExternal vol1 = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-6", "uuid-ivb-6a", UNMOUNTED);
+    vol1.SetLoopPath("/dev/loop0");
+    vol1.SetOffset(4096);
+    vol1.SetSizeLimit(2097152);
+    dm.OnVolumeCreated(vol1);
+    VolumeExternal vol2 = MakeUsbVolume("vol-crypt-loop1", "disk-8-ivb-6", "uuid-ivb-6b", UNMOUNTED);
+    vol2.SetLoopPath("/dev/loop1");
+    vol2.SetOffset(2048);
+    vol2.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol2);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-6", disk), E_OK);
+    std::string loopPath;
+    EXPECT_TRUE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_EQ(loopPath, "/dev/loop1");
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchInSecondVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_MultipleVolumesNoMatch_TestCase_001
+ * @tc.desc: IsVolumeBind iterates all volumes without finding a match and returns false.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_MultipleVolumesNoMatch_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_MultipleVolumesNoMatch_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-7"));
+    VolumeExternal vol1 = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-7", "uuid-ivb-7a", UNMOUNTED);
+    vol1.SetLoopPath("/dev/loop0");
+    vol1.SetOffset(4096);
+    vol1.SetSizeLimit(2097152);
+    dm.OnVolumeCreated(vol1);
+    VolumeExternal vol2 = MakeUsbVolume("vol-crypt-loop1", "disk-8-ivb-7", "uuid-ivb-7b", UNMOUNTED);
+    vol2.SetLoopPath("/dev/loop1");
+    vol2.SetOffset(8192);
+    vol2.SetSizeLimit(4194304);
+    dm.OnVolumeCreated(vol2);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-7", disk), E_OK);
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_MultipleVolumesNoMatch_TestCase_001 End";
+}
+
+/**
  * @tc.name: CreateDmCryptVolume_TestCase_001
  * @tc.desc: CreateDmCryptVolume returns E_OK when bound volume exists and adapter succeeds.
  * @tc.type: FUNC
