@@ -2607,8 +2607,6 @@ HWTEST_F(DiskManagerProviderTest, BindBlockLoopDev_TestCase_001, TestSize.Level0
     std::string loopPath;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(E_OK),
-            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
-        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
             SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     int32_t ret = provider.BindBlockLoopDev("disk-8-1", 2048, 1048576, loopPath);
     EXPECT_EQ(ret, E_OK);

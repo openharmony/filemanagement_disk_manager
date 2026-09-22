@@ -4993,8 +4993,6 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(E_OK),
-            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
-        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
             SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-1", 2048, 1048576, loopPath), E_OK);
     EXPECT_EQ(loopPath, "/dev/loop0");
@@ -5014,10 +5012,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-2"));
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
-            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
-        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-2", 2048, 1048576, loopPath), E_BIND_LOOP_DEV_FAILED);
     EXPECT_TRUE(loopPath.empty());
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
@@ -5073,8 +5068,6 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
     std::vector<std::string> capturedCmd;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
-            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)))
         .WillOnce(DoAll(SaveArg<0>(&capturedCmd), SetArgReferee<1>(E_OK),
             SetArgReferee<2>(std::vector<std::string>{"/dev/loop0"}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-5", inputOffset, inputSizeLimit, loopPath), E_OK);
@@ -5094,22 +5087,23 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_006, TestSize.Level0)
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 Start";
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-bld-6", "uuid-bld-6", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(2048);
+    vol.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol);
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    std::string bindLine = "/dev/block/loop0: [5]:19108 (/dev/block/disk-8-bld-6), "
-                           "offset 2048, sizelimit 1048576";
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
-            SetArgReferee<2>(std::vector<std::string>{bindLine}), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-6", 2048, 1048576, loopPath),
         CryptVolumeErrno::VOLUME_HAS_BIND);
-    EXPECT_EQ(loopPath, "/dev/block/loop0");
+    EXPECT_EQ(loopPath, "/dev/loop0");
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 End";
 }
 
 /**
  * @tc.name: BindBlockLoopDev_TestCase_007
- * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when IsVolumeBind ExecuteCommand fails.
+ * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when adapter returns empty output.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5120,7 +5114,9 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_007, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-7"));
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)));
     EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-7", 2048, 1048576, loopPath), E_BIND_LOOP_DEV_FAILED);
     EXPECT_TRUE(loopPath.empty());
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 End";
