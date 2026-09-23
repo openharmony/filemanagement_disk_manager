@@ -37,6 +37,7 @@
 #include "disk_manager_napi_errno.h"
 #include "disk_manager_utils.h"
 #include "notification/common_event_publisher.h"
+#include "disk_manager_client.h"
 
 #include <nlohmann/json.hpp>
 #include <unordered_map>
@@ -2816,24 +2817,16 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         LOGE("BindBlockLoopDev: disk type not support, diskType=%{public}d.", disk.GetDiskType());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
+    if (IsVolumeBind(disk, offset, sizeLimit, loopPath)) {
+        return dfx.Finish(CryptVolumeErrno::VOLUME_HAS_BIND);
+    }
     std::vector<std::string> cmd = {"losetup", "--oh", "-f", "-o", std::to_string(offset), "--sizelimit",
                                     std::to_string(sizeLimit), "--show", "/dev/block/" + diskId};
     std::vector<std::string> output;
     int32_t execRet = 0;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
-    if (ret != E_OK) {
-        LOGE("BindBlockLoopDev failed, diskId=%{public}s, err=%{public}d", diskId.c_str(), ret);
-        return dfx.Finish(ret);
-    }
-    for (const auto &item: output) {
-        LOGE("BindBlockLoopDev exec output: %{public}s", item.c_str());
-    }
-    if (execRet != E_OK) {
-        LOGE("BindBlockLoopDev command failed, execRet=%{public}d", execRet);
-        return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
-    }
-    if (output.empty()) {
-        LOGE("BindBlockLoopDev: output is empty.");
+    if (ret != E_OK || output.empty()) {
+        LOGE("BindBlockLoopDev failed, output len %{public}zu", output.size());
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
     std::vector<std::string> tempInfo = SplitRawDumpToLines(output[0]);
@@ -2842,14 +2835,15 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
     VolumeCore vc(volId, 0, diskId);
     VolumeExternal volumeExternal(vc);
     volumeExternal.SetLoopPath(loopPath);
+    volumeExternal.SetOffset(offset);
+    volumeExternal.SetSizeLimit(sizeLimit);
     volumeExternal.SetState(VolumeState::UNMOUNTED);
     OnVolumeCreated(volumeExternal);
     LOGI("BindBlockLoopDev success, loopPath=%{public}s", loopPath.c_str());
     return dfx.Finish(E_OK);
 }
 
-int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                         const std::string &mapperName)
+int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath, std::string &mapperName)
 {
     VolumeReportInfo reportInfo;
     reportInfo.WithDevPath(loopPath);
@@ -2861,6 +2855,11 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
         LOGE("CreateDmCryptVolume failed, this loopPath not bind");
         return dfx.Finish(E_NON_EXIST);
     }
+    if (!volumeExternal.GetMapperPath().empty()) {
+        LOGE("CreateDmCryptVolume failed, this loopPath has created crypt volume");
+        mapperName = volumeExternal.GetMapperPath();
+        return dfx.Finish(CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED);
+    }
     std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
                                     "--cipher", param.GetCipher(),
                                     "--key-size", std::to_string(param.GetKeySize()),
@@ -2870,13 +2869,6 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != E_OK) {
         LOGE("CreateDmCryptVolume failed, err=%{public}d", ret);
-        return dfx.Finish(ret);
-    }
-    for (const auto &item: output) {
-        LOGE("CreateDmCryptVolume exec output: %{public}s", item.c_str());
-    }
-    if (execRet != E_OK) {
-        LOGE("CreateDmCryptVolume command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_CREATE_DM_CRYPT_VOLUME_FAILED);
     }
     volumeExternal.SetMapperPath("/dev/mapper/" + mapperName);
@@ -2901,13 +2893,6 @@ int32_t DiskManager::DestroyDmCryptVolume(const std::string &mapperName)
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != E_OK) {
         LOGE("DestroyDmCryptVolume failed, err=%{public}d", ret);
-        return dfx.Finish(ret);
-    }
-    for (const auto &item: output) {
-        LOGE("DestroyDmCryptVolume exec output: %{public}s", item.c_str());
-    }
-    if (execRet != E_OK) {
-        LOGE("DestroyDmCryptVolume command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_DESTROY_DM_CRYPT_VOLUME_FAILED);
     }
     {
@@ -2935,13 +2920,6 @@ int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (ret != E_OK) {
         LOGE("UnbindBlockLoopDev failed, err=%{public}d", ret);
-        return dfx.Finish(ret);
-    }
-    for (const auto &item : output) {
-        LOGE("UnbindBlockLoopDev exec output: %{public}s", item.c_str());
-    }
-    if (execRet != E_OK) {
-        LOGE("UnbindBlockLoopDev command failed, execRet=%{public}d", execRet);
         return dfx.Finish(E_UNBIND_LOOP_DEV_FAILED);
     }
     std::string volId = "vol-crypt-" + loopPath.substr(loopPath.find_last_of('/') + 1);
@@ -3105,6 +3083,27 @@ std::string DiskManager::CheckVolId(const std::string &volId)
         return "";
     }
     return "/dev/block/" + volId;
+}
+
+bool DiskManager::IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeLimit, std::string &loopPath)
+{
+    std::vector<std::string> volumeIds = disk.GetVolumeIds();
+    if (volumeIds.empty()) {
+        return false;
+    }
+    for (const auto &item: volumeIds) {
+        VolumeExternal vol;
+        if (GetVolumeById(item, vol) != E_OK) {
+            continue;
+        }
+        if (vol.GetOffset() == offset && vol.GetSizeLimit() == sizeLimit) {
+            loopPath = vol.GetLoopPath();
+            LOGI("IsVolumeBind: found bind loopPath=%{public}s", loopPath.c_str());
+            return true;
+        }
+    }
+    LOGI("IsVolumeBind: volume not bind");
+    return false;
 }
 } // namespace DiskManager
 } // namespace OHOS

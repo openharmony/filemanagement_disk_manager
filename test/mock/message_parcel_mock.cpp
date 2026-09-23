@@ -234,6 +234,14 @@ bool Parcel::ReadUint64(uint64_t &value)
     return MockMessageParcel::messageParcel->ReadUint64(value);
 }
 
+uint64_t Parcel::ReadUint64()
+{
+    if (MockMessageParcel::messageParcel == nullptr) {
+        return 0;
+    }
+    return MockMessageParcel::messageParcel->ReadUint64();
+}
+
 bool Parcel::WriteStringVector(const std::vector<std::string> &val)
 {
     if (MockMessageParcel::messageParcel == nullptr) {

@@ -34,6 +34,10 @@
 
 namespace OHOS {
 namespace DiskManager {
+enum CryptVolumeErrno : int32_t {
+    VOLUME_HAS_BIND = 40,
+    CRYPT_VOLUME_HAS_CREATED = 41
+};
 
 class IDiskManager;
 
@@ -92,7 +96,7 @@ public:
     int32_t OnBlockDiskUevent(const std::string &rawUeventMsg);
     int32_t ReportVolumeOpDiag(const std::string &opDiag);
     int32_t BindBlockLoopDev(const std::string &sysPath, uint64_t offset, uint64_t sizeLimit, std::string &loopPath);
-    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath, const std::string &mapperName);
+    int32_t CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath, std::string &mapperName);
     int32_t DestroyDmCryptVolume(const std::string &mapperName);
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);

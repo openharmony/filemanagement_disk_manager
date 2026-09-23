@@ -64,7 +64,7 @@ public:
     MOCK_METHOD(int32_t, BindBlockLoopDev,
         (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit, std::string &loopPath));
     MOCK_METHOD(int32_t, CreateDmCryptVolume,
-        (const CryptParam &param, const std::string &loopPath, const std::string &mapperName));
+        (const CryptParam &param, const std::string &loopPath, std::string &mapperName));
     MOCK_METHOD(int32_t, DestroyDmCryptVolume, (const std::string &mapperName));
     MOCK_METHOD(int32_t, UnbindBlockLoopDev, (const std::string &loopPath));
     MOCK_METHOD(int32_t, MountVolumeByPath,

@@ -33,6 +33,7 @@
 #include "mount_param.h"
 #include "volume_external.h"
 #include "volume_core.h"
+#include "disk_manager_client.h"
 #include "disk_manager_utils.h"
 #include "partition_types.h"
 #include "storage_spec_models.h"
@@ -5000,7 +5001,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: BindBlockLoopDev_TestCase_002
- * @tc.desc: BindBlockLoopDev propagates adapter error code and keeps loopPath empty.
+ * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when adapter returns error and keeps loopPath empty.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5012,7 +5013,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_002, TestSize.Level0)
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-2", 2048, 1048576, loopPath), E_DAEMON_IPC_FAILED);
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-2", 2048, 1048576, loopPath), E_BIND_LOOP_DEV_FAILED);
     EXPECT_TRUE(loopPath.empty());
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_002 End";
 }
@@ -5076,6 +5077,217 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
 }
 
 /**
+ * @tc.name: BindBlockLoopDev_TestCase_006
+ * @tc.desc: BindBlockLoopDev returns VOLUME_HAS_BIND when IsVolumeBind finds an existing binding.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-bld-6", "uuid-bld-6", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(2048);
+    vol.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol);
+    std::string loopPath;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-6", 2048, 1048576, loopPath),
+        CryptVolumeErrno::VOLUME_HAS_BIND);
+    EXPECT_EQ(loopPath, "/dev/loop0");
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 End";
+}
+
+/**
+ * @tc.name: BindBlockLoopDev_TestCase_007
+ * @tc.desc: BindBlockLoopDev returns E_BIND_LOOP_DEV_FAILED when adapter returns empty output.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_007, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-bld-7"));
+    std::string loopPath;
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK),
+            SetArgReferee<2>(std::vector<std::string>{}), Return(E_OK)));
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-7", 2048, 1048576, loopPath), E_BIND_LOOP_DEV_FAILED);
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_007 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_EmptyVolumeIds_TestCase_001
+ * @tc.desc: IsVolumeBind returns false when disk has no volumes.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_EmptyVolumeIds_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_EmptyVolumeIds_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-8-ivb-1");
+    std::string loopPath = "unchanged";
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_EQ(loopPath, "unchanged");
+    GTEST_LOG_(INFO) << "IsVolumeBind_EmptyVolumeIds_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_MatchFound_TestCase_001
+ * @tc.desc: IsVolumeBind returns true and sets loopPath when offset and sizeLimit both match.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_MatchFound_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchFound_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-2"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-2", "uuid-ivb-2", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(2048);
+    vol.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-2", disk), E_OK);
+    std::string loopPath;
+    EXPECT_TRUE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_EQ(loopPath, "/dev/loop0");
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchFound_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_OffsetMismatch_TestCase_001
+ * @tc.desc: IsVolumeBind returns false when offset does not match.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_OffsetMismatch_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_OffsetMismatch_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-3"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-3", "uuid-ivb-3", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(4096);
+    vol.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-3", disk), E_OK);
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_OffsetMismatch_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_SizeLimitMismatch_TestCase_001
+ * @tc.desc: IsVolumeBind returns false when offset matches but sizeLimit does not.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_SizeLimitMismatch_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_SizeLimitMismatch_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-4", "uuid-ivb-4", UNMOUNTED);
+    vol.SetLoopPath("/dev/loop0");
+    vol.SetOffset(2048);
+    vol.SetSizeLimit(2097152);
+    dm.OnVolumeCreated(vol);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-4", disk), E_OK);
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_SizeLimitMismatch_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_VolumeNotInMap_TestCase_001
+ * @tc.desc: IsVolumeBind skips volume IDs not found in volumeMap_ and returns false.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_VolumeNotInMap_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_VolumeNotInMap_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    Disk disk = MakeUsbDisk("disk-8-ivb-5");
+    disk.SetVolumeIds({"vol-crypt-nonexist"});
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_VolumeNotInMap_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_MatchInSecondVolume_TestCase_001
+ * @tc.desc: IsVolumeBind iterates multiple volumes and finds match in the second one.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_MatchInSecondVolume_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchInSecondVolume_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-6"));
+    VolumeExternal vol1 = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-6", "uuid-ivb-6a", UNMOUNTED);
+    vol1.SetLoopPath("/dev/loop0");
+    vol1.SetOffset(4096);
+    vol1.SetSizeLimit(2097152);
+    dm.OnVolumeCreated(vol1);
+    VolumeExternal vol2 = MakeUsbVolume("vol-crypt-loop1", "disk-8-ivb-6", "uuid-ivb-6b", UNMOUNTED);
+    vol2.SetLoopPath("/dev/loop1");
+    vol2.SetOffset(2048);
+    vol2.SetSizeLimit(1048576);
+    dm.OnVolumeCreated(vol2);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-6", disk), E_OK);
+    std::string loopPath;
+    EXPECT_TRUE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_EQ(loopPath, "/dev/loop1");
+    GTEST_LOG_(INFO) << "IsVolumeBind_MatchInSecondVolume_TestCase_001 End";
+}
+
+/**
+ * @tc.name: IsVolumeBind_MultipleVolumesNoMatch_TestCase_001
+ * @tc.desc: IsVolumeBind iterates all volumes without finding a match and returns false.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeBind_MultipleVolumesNoMatch_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsVolumeBind_MultipleVolumesNoMatch_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-ivb-7"));
+    VolumeExternal vol1 = MakeUsbVolume("vol-crypt-loop0", "disk-8-ivb-7", "uuid-ivb-7a", UNMOUNTED);
+    vol1.SetLoopPath("/dev/loop0");
+    vol1.SetOffset(4096);
+    vol1.SetSizeLimit(2097152);
+    dm.OnVolumeCreated(vol1);
+    VolumeExternal vol2 = MakeUsbVolume("vol-crypt-loop1", "disk-8-ivb-7", "uuid-ivb-7b", UNMOUNTED);
+    vol2.SetLoopPath("/dev/loop1");
+    vol2.SetOffset(8192);
+    vol2.SetSizeLimit(4194304);
+    dm.OnVolumeCreated(vol2);
+    Disk disk;
+    ASSERT_EQ(dm.GetDiskById("disk-8-ivb-7", disk), E_OK);
+    std::string loopPath;
+    EXPECT_FALSE(dm.IsVolumeBind(disk, 2048, 1048576, loopPath));
+    EXPECT_TRUE(loopPath.empty());
+    GTEST_LOG_(INFO) << "IsVolumeBind_MultipleVolumesNoMatch_TestCase_001 End";
+}
+
+/**
  * @tc.name: CreateDmCryptVolume_TestCase_001
  * @tc.desc: CreateDmCryptVolume returns E_OK when bound volume exists and adapter succeeds.
  * @tc.type: FUNC
@@ -5094,7 +5306,8 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
     std::vector<std::string> capturedCmd;
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
         .WillOnce(DoAll(SaveArg<0>(&capturedCmd), Return(E_OK)));
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_OK);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_OK);
     ASSERT_EQ(capturedCmd.size(), 12u);
     EXPECT_EQ(capturedCmd[0], "cryptsetup");
     EXPECT_EQ(capturedCmd[1], "open");
@@ -5113,7 +5326,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_002
- * @tc.desc: CreateDmCryptVolume propagates adapter error code.
+ * @tc.desc: CreateDmCryptVolume returns E_CREATE_DM_CRYPT_VOLUME_FAILED when adapter returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5128,13 +5341,14 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
     CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_DAEMON_IPC_FAILED);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_CREATE_DM_CRYPT_VOLUME_FAILED);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_002 End";
 }
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_003
- * @tc.desc: CreateDmCryptVolume returns E_CREATE_DM_CRYPT_VOLUME_FAILED when command exec fails (execRet != E_OK).
+ * @tc.desc: CreateDmCryptVolume returns CRYPT_VOLUME_HAS_CREATED when mapperPath already set, fills mapperName.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5145,12 +5359,15 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_003, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-8-cdc-3"));
     VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-cdc-3", "uuid-cdc-3", UNMOUNTED);
     vol.SetLoopPath("/dev/block/loop0");
+    vol.SetMapperPath("/dev/mapper/mapper0");
     dm.OnVolumeCreated(vol);
     CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(E_DAEMON_IPC_FAILED), Return(E_OK)));
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_CREATE_DM_CRYPT_VOLUME_FAILED);
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName),
+        CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED);
+    EXPECT_EQ(mapperName, "/dev/mapper/mapper0");
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_003 End";
 }
 
@@ -5167,7 +5384,8 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_004, TestSize.Level0)
     CryptParam param("luks", "aes", 256, "/keyfile");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", "mapper0"), E_NON_EXIST);
+    std::string mapperName = "mapper0";
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_NON_EXIST);
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_004 End";
 }
 
@@ -5194,7 +5412,7 @@ HWTEST_F(DiskManagerTest, DestroyDmCryptVolume_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: DestroyDmCryptVolume_TestCase_002
- * @tc.desc: DestroyDmCryptVolume propagates adapter error code.
+ * @tc.desc: DestroyDmCryptVolume returns E_DESTROY_DM_CRYPT_VOLUME_FAILED when adapter returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5204,13 +5422,13 @@ HWTEST_F(DiskManagerTest, DestroyDmCryptVolume_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_DAEMON_IPC_FAILED);
+    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_DESTROY_DM_CRYPT_VOLUME_FAILED);
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_002 End";
 }
 
 /**
  * @tc.name: DestroyDmCryptVolume_TestCase_003
- * @tc.desc: DestroyDmCryptVolume returns E_DESTROY_DM_CRYPT_VOLUME_FAILED when command exec fails (execRet != E_OK).
+ * @tc.desc: DestroyDmCryptVolume clears mapperPath in volumeMap_ on success.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5218,10 +5436,17 @@ HWTEST_F(DiskManagerTest, DestroyDmCryptVolume_TestCase_003, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_003 Start";
     auto &dm = DiskManager::GetInstance();
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ddc-3", "uuid-ddc-3", UNMOUNTED);
+    vol.SetLoopPath("/dev/block/loop0");
+    vol.SetMapperPath("/dev/mapper/mapper0");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(E_DAEMON_IPC_FAILED), Return(E_OK)));
-    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_DESTROY_DM_CRYPT_VOLUME_FAILED);
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK), Return(E_OK)));
+    EXPECT_EQ(dm.DestroyDmCryptVolume("mapper0"), E_OK);
+    VolumeExternal updated;
+    EXPECT_EQ(dm.GetVolumeById("vol-crypt-loop0", updated), E_OK);
+    EXPECT_TRUE(updated.GetMapperPath().empty());
     GTEST_LOG_(INFO) << "DestroyDmCryptVolume_TestCase_003 End";
 }
 
@@ -5243,7 +5468,7 @@ HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_001, TestSize.Level0)
 
 /**
  * @tc.name: UnbindBlockLoopDev_TestCase_002
- * @tc.desc: UnbindBlockLoopDev returns IPC error when ExecuteCommand fails.
+ * @tc.desc: UnbindBlockLoopDev returns E_UNBIND_LOOP_DEV_FAILED when ExecuteCommand fails.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5253,13 +5478,13 @@ HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_002, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_DAEMON_IPC_FAILED);
+    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_UNBIND_LOOP_DEV_FAILED);
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_002 End";
 }
 
 /**
  * @tc.name: UnbindBlockLoopDev_TestCase_003
- * @tc.desc: UnbindBlockLoopDev returns E_UNBIND_LOOP_DEV_FAILED when execRet is non-zero.
+ * @tc.desc: UnbindBlockLoopDev destroys the crypt volume from volumeMap_ on success.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5267,9 +5492,15 @@ HWTEST_F(DiskManagerTest, UnbindBlockLoopDev_TestCase_003, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_003 Start";
     auto &dm = DiskManager::GetInstance();
+    VolumeExternal vol = MakeUsbVolume("vol-crypt-loop0", "disk-8-ubd-3", "uuid-ubd-3", UNMOUNTED);
+    vol.SetLoopPath("/dev/block/loop0");
+    dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
-    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_UNBIND_LOOP_DEV_FAILED);
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_OK), Return(E_OK)));
+    EXPECT_EQ(dm.UnbindBlockLoopDev("/dev/block/loop0"), E_OK);
+    VolumeExternal removed;
+    EXPECT_EQ(dm.GetVolumeById("vol-crypt-loop0", removed), E_NON_EXIST);
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_TestCase_003 End";
 }
 

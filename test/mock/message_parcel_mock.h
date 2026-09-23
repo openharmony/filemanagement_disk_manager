@@ -55,6 +55,7 @@ public:
     virtual bool WriteUint64(uint64_t value) = 0;
     virtual bool WriteUint16(uint16_t value) = 0;
     virtual bool ReadUint64(uint64_t &value) = 0;
+    virtual uint64_t ReadUint64() = 0;
     virtual bool WriteStringVector(const std::vector<std::string> &val) = 0;
     virtual bool WriteUint32(uint32_t value) = 0;
     virtual bool WriteRawData(const void *data, size_t size) = 0;
@@ -94,6 +95,7 @@ public:
     MOCK_METHOD(bool, WriteUint64, (uint64_t value), (override));
     MOCK_METHOD(bool, WriteUint16, (uint16_t value), (override));
     MOCK_METHOD(bool, ReadUint64, (uint64_t & value), (override));
+    MOCK_METHOD(uint64_t, ReadUint64, (), (override));
     MOCK_METHOD(bool, WriteStringVector, (const std::vector<std::string> &val), (override));
     MOCK_METHOD(bool, WriteUint32, (uint32_t value), (override));
     MOCK_METHOD(bool, WriteRawData, (const void *data, size_t size), (override));

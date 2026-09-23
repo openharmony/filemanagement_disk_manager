@@ -37,6 +37,9 @@
 #include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
+#ifdef PC_MANAGER
+#include "disk_manager_client.h"
+#endif
 
 namespace OHOS {
 namespace DiskManager {
@@ -865,6 +868,7 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_
     LOGI("BindBlockLoopDev diskId=%{public}s offset=%{public}" PRIu64 " sizeLimit=%{public}" PRIu64,
          diskId.c_str(), offset, sizeLimit);
 #ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(cryptVolMutex_);
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
         LOGE("BindBlockLoopDev: call uid %{public}d is invalid", uid);
@@ -883,6 +887,9 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_
     }
     const int32_t ret = DiskManager::GetInstance().BindBlockLoopDev(diskId, offset, sizeLimit, loopPath);
     LOGI("BindBlockLoopDev done ret=%{public}d", ret);
+    if (ret == CryptVolumeErrno::VOLUME_HAS_BIND) {
+        return ret;
+    }
     if (ret != E_OK) {
         return E_BIND_LOOP_DEV_FAILED;
     }
@@ -894,10 +901,11 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_
 }
 
 int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const std::string &loopPath,
-                                                 const std::string &mapperName)
+                                                 std::string &mapperName)
 {
     LOGI("CreateDmCryptVolume loopPath=%{public}s mapperName=%{public}s", loopPath.c_str(), mapperName.c_str());
 #ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(cryptVolMutex_);
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
         LOGE("CreateDmCryptVolume: call uid %{public}d is invalid", uid);
@@ -917,6 +925,9 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
     }
     const int32_t ret = DiskManager::GetInstance().CreateDmCryptVolume(param, loopPath, mapperName);
     LOGI("CreateDmCryptVolume done ret=%{public}d", ret);
+    if (ret == CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED) {
+        return ret;
+    }
     if (ret != E_OK) {
         return E_CREATE_DM_CRYPT_VOLUME_FAILED;
     }
@@ -931,6 +942,7 @@ int32_t DiskManagerProvider::DestroyDmCryptVolume(const std::string &mapperName)
 {
     LOGI("DestroyDmCryptVolume mapperName=%{public}s", mapperName.c_str());
 #ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(cryptVolMutex_);
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
         LOGE("DestroyDmCryptVolume: call uid %{public}d is invalid", uid);
@@ -960,6 +972,7 @@ int32_t DiskManagerProvider::UnbindBlockLoopDev(const std::string &loopPath)
 {
     LOGI("UnbindBlockLoopDev loopPath=%{public}s", loopPath.c_str());
 #ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(cryptVolMutex_);
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
         LOGE("UnbindBlockLoopDev: call uid %{public}d is invalid", uid);
@@ -990,6 +1003,7 @@ int32_t DiskManagerProvider::MountVolumeByPath(const std::string &diskId, const 
     LOGI("MountVolumeByPath diskId=%{public}s volPath=%{public}s readOnly=%{public}d", diskId.c_str(), volPath.c_str(),
          param.GetReadOnly());
 #ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(cryptVolMutex_);
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
         LOGE("MountVolumeByPath: call uid %{public}d is invalid", uid);
@@ -1023,6 +1037,7 @@ int32_t DiskManagerProvider::UmountVolumeByPath(const std::string &diskId, const
 {
     LOGI("UmountVolumeByPath diskId=%{public}s volPath=%{public}s", diskId.c_str(), volPath.c_str());
 #ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(cryptVolMutex_);
     int32_t uid = IpcCallerAuth::GetCallingUid();
     if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
         LOGE("UmountVolumeByPath: call uid %{public}d is invalid", uid);
