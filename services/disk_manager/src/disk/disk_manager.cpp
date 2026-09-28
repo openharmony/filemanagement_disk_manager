@@ -2875,6 +2875,7 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     if (updateErr != E_OK) {
         return dfx.Finish(updateErr);
     }
+    mapperName = volumeExternal.GetMapperPath();
     LOGI("CreateDmCryptVolume success");
     return dfx.Finish(E_OK);
 }
