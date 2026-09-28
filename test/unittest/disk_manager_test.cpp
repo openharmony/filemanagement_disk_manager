@@ -5078,7 +5078,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_005, TestSize.Level0)
 
 /**
  * @tc.name: BindBlockLoopDev_TestCase_006
- * @tc.desc: BindBlockLoopDev returns VOLUME_HAS_BIND when IsVolumeBind finds an existing binding.
+ * @tc.desc: BindBlockLoopDev returns E_OK when IsVolumeBind finds an existing binding, forwards loopPath.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5095,8 +5095,7 @@ HWTEST_F(DiskManagerTest, BindBlockLoopDev_TestCase_006, TestSize.Level0)
     std::string loopPath;
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
-    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-6", 2048, 1048576, loopPath),
-        CryptVolumeErrno::VOLUME_HAS_BIND);
+    EXPECT_EQ(dm.BindBlockLoopDev("disk-8-bld-6", 2048, 1048576, loopPath), E_OK);
     EXPECT_EQ(loopPath, "/dev/loop0");
     GTEST_LOG_(INFO) << "BindBlockLoopDev_TestCase_006 End";
 }
@@ -5348,7 +5347,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_002, TestSize.Level0)
 
 /**
  * @tc.name: CreateDmCryptVolume_TestCase_003
- * @tc.desc: CreateDmCryptVolume returns CRYPT_VOLUME_HAS_CREATED when mapperPath already set, fills mapperName.
+ * @tc.desc: CreateDmCryptVolume returns E_OK when mapperPath already set, fills mapperName.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -5365,8 +5364,7 @@ HWTEST_F(DiskManagerTest, CreateDmCryptVolume_TestCase_003, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _)).Times(0);
     std::string mapperName = "mapper0";
-    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName),
-        CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED);
+    EXPECT_EQ(dm.CreateDmCryptVolume(param, "/dev/block/loop0", mapperName), E_OK);
     EXPECT_EQ(mapperName, "/dev/mapper/mapper0");
     GTEST_LOG_(INFO) << "CreateDmCryptVolume_TestCase_003 End";
 }

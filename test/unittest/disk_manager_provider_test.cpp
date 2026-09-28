@@ -3377,7 +3377,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_TestCase_001, TestSize.Leve
 
 /**
  * @tc.name: UnbindBlockLoopDev_TestCase_002
- * @tc.desc: UnbindBlockLoopDev returns E_UNBIND_LOOP_DEV_FAILED when ExecuteCommand execRet is non-zero.
+ * @tc.desc: UnbindBlockLoopDev returns E_UNBIND_LOOP_DEV_FAILED when ExecuteCommand returns error.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -3387,7 +3387,7 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_TestCase_002, TestSize.Leve
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = CRYPTO_USB_MGR_SERVICE_UID;
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(1), Return(E_OK)));
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
     int32_t ret = provider.UnbindBlockLoopDev("/dev/block/loop0");
     EXPECT_EQ(ret, E_UNBIND_LOOP_DEV_FAILED);
     MockIPCSkeleton::mockCallingUid_ = 0;
