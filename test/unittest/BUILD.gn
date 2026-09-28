@@ -190,6 +190,7 @@ ohos_unittest("sysfs_reader_test") {
   sources = [
     "sysfs_reader_test.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/sysfs_reader.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp"
   ]
  
   configs = [ ":disk_manager_unittest_common" ]

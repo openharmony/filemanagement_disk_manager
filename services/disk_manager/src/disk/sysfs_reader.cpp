@@ -16,6 +16,7 @@
 #include "sysfs_reader.h"
  
 #include "disk_manager_hilog.h"
+#include "disk_manager_utils.h"
  
 #include <fstream>
 #include <string>
@@ -160,7 +161,7 @@ UsbSysfsInfo SysfsReader::WalkUpAndReadUsbAttrs(const std::string &startPath)
  
         LOGI("SysfsReader: vid=%{public}s pid=%{public}s sn=%{public}s "
              "busnum=%{public}s devnum=%{public}s",
-             info.vid.c_str(), info.pid.c_str(), info.serialNumber.c_str(),
+             info.vid.c_str(), info.pid.c_str(), GetAnonyString(info.serialNumber).c_str(),
              info.busnum.c_str(), info.devnum.c_str());
  
         // 找到usb_device节点即停止，不再向上遍历，避免误读Hub层级属性
