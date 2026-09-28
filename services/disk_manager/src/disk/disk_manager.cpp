@@ -2855,8 +2855,8 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
         return dfx.Finish(E_NON_EXIST);
     }
     if (!volumeExternal.GetMapperPath().empty()) {
-        LOGE("CreateDmCryptVolume failed, this loopPath has created crypt volume");
         mapperName = volumeExternal.GetMapperPath();
+        LOGI("CreateDmCryptVolume success, loopPath has created, mapperPath=%{public}s", mapperName.c_str());
         return dfx.Finish(E_OK);
     }
     std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
