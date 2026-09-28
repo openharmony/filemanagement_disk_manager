@@ -37,7 +37,6 @@
 #include "disk_manager_napi_errno.h"
 #include "disk_manager_utils.h"
 #include "notification/common_event_publisher.h"
-#include "disk_manager_client.h"
 
 #include <nlohmann/json.hpp>
 #include <unordered_map>
@@ -2818,7 +2817,7 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
         return dfx.Finish(E_BIND_LOOP_DEV_FAILED);
     }
     if (IsVolumeBind(disk, offset, sizeLimit, loopPath)) {
-        return dfx.Finish(CryptVolumeErrno::VOLUME_HAS_BIND);
+        return dfx.Finish(E_OK);
     }
     std::vector<std::string> cmd = {"losetup", "--oh", "-f", "-o", std::to_string(offset), "--sizelimit",
                                     std::to_string(sizeLimit), "--show", "/dev/block/" + diskId};
@@ -2858,7 +2857,7 @@ int32_t DiskManager::CreateDmCryptVolume(const CryptParam &param, const std::str
     if (!volumeExternal.GetMapperPath().empty()) {
         LOGE("CreateDmCryptVolume failed, this loopPath has created crypt volume");
         mapperName = volumeExternal.GetMapperPath();
-        return dfx.Finish(CryptVolumeErrno::CRYPT_VOLUME_HAS_CREATED);
+        return dfx.Finish(E_OK);
     }
     std::vector<std::string> cmd = {"cryptsetup", "open", "--type", param.GetType(),
                                     "--cipher", param.GetCipher(),

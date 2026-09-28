@@ -34,11 +34,6 @@
 
 namespace OHOS {
 namespace DiskManager {
-enum CryptVolumeErrno : int32_t {
-    VOLUME_HAS_BIND = 40,
-    CRYPT_VOLUME_HAS_CREATED = 41
-};
-
 class IDiskManager;
 
 class DiskManagerClient : public NoCopyable {
