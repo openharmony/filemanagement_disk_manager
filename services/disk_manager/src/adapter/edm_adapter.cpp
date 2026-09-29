@@ -19,11 +19,9 @@
 #include <cerrno>
 #include <cstdlib>
 
-#ifdef EDM_ADAPTER_ENABLE
 #include "usb_manager_proxy.h"
 #include "enterprise_device_mgr_proxy.h"
 #include "external_storage_device_info.h"
-#endif
 
 #include "disk_manager.h"
 #include "disk_manager_errno.h"
@@ -141,7 +139,7 @@ bool EdmAdapter::IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUse
          "productId=%{public}s vendorId=%{public}s serialNumber=%{public}s extraInfo=%{public}s",
          diskId.c_str(), pid.c_str(), vid.c_str(), GetAnonyString(sn).c_str(), disk.GetExtraInfo().c_str());
     if (!IsExternalOddBurnAllowed(callerUserId, pid, vid, sn)) {
-        LOGI("IsEdmEnableOddBurn EDM whitelist denied, diskId=%{public}s", diskId.c_str());
+        LOGI("IsExternalOddBurnAllowed device in EDM whitelist, diskId=%{public}s", diskId.c_str());
         return false;
     }
     LOGI("IsEdmEnableOddBurn EDM whitelist allowed, diskId=%{public}s", diskId.c_str());
@@ -164,22 +162,17 @@ bool EdmAdapter::IsExternalOddBurnAllowed(int32_t userId,
     if (!ConvertStringToInt(pid, productId)) {
         LOGW("IsExternalOddBurnAllowed convert pid to int failed, pid=%{public}s", pid.c_str());
     }
-#ifdef EDM_ADAPTER_ENABLE
     auto usbProxy = EDM::UsbManagerProxy::GetUsbManagerProxy();
     if (usbProxy == nullptr) {
         LOGW("IsExternalOddBurnAllowed UsbManagerProxy is null, allow burn");
         return true;
     }
     bool allowed = usbProxy->IsAllowedOddBurn(userId, vendorId, productId, sn);
-    LOGI("IsExternalOddBurnAllowed EDM IsAllowedOddBurn returned, allowed=%{public}s",
-        allowed ? "true" : "false");
+    LOGI("IsExternalOddBurnAllowed EDM IsAllowedOddBurn returned, allowed=%{public}s", allowed ? "true" : "false");
     if (!allowed) {
-        LOGI("IsExternalOddBurnDenied device not in EDM whitelist, burn denied");
+        LOGI("IsExternalOddBurnAllowed device not in EDM whitelist, burn denied");
         return false; // 不在白名单，禁止刻录
     }
-    LOGI("IsExternalOddBurnAllowed call EDM IsAllowedOddBurn, userId=%{public}d vendorId=%{public}d "
-         "productId=%{public}d sn=%{public}s", userId, vendorId, productId, GetAnonyString(sn).c_str());
-#endif
     return true; // 允许刻录
 }
 
@@ -214,7 +207,6 @@ bool EdmAdapter::IsEdmControlMountEnabled(const VolumeExternal &volume, const Mo
     LOGI("IsEdmControlMountEnabled intercept mount, volumeId=%{public}s diskType=%{public}d "
          "fromEdmMount=%{public}d", volume.GetId().c_str(), disk.GetDiskType(), mountParam.IsFromEdmMount());
 
-#ifdef EDM_ADAPTER_ENABLE
     int32_t notifyRet = NotifyExternalStorageDeviceAdd(volume, disk);
     LOGI("IsEdmControlMountEnabled NotifyExternalStorageDeviceAdd ret=%{public}d, volumeId=%{public}s",
          notifyRet, volume.GetId().c_str());
@@ -222,14 +214,9 @@ bool EdmAdapter::IsEdmControlMountEnabled(const VolumeExternal &volume, const Mo
         LOGW("IsEdmControlMountEnabled notify failed, allow mount, volumeId=%{public}s", volume.GetId().c_str());
         return false;
     }
-#else
-    LOGI("IsEdmControlMountEnabled EDM_ADAPTER_ENABLE not defined, allow mount");
-    return false;
-#endif
     return true;
 }
 
-#ifdef EDM_ADAPTER_ENABLE
 int32_t EdmAdapter::NotifyExternalStorageDeviceAdd(const VolumeExternal &volume, const Disk &disk)
 {
     EDM::ExternalStorageDeviceInfo edmDeviceInfo;
@@ -268,7 +255,6 @@ int32_t EdmAdapter::NotifyExternalStorageDeviceAdd(const VolumeExternal &volume,
     LOGI("NotifyExternalStorageDeviceAdd success, volumeId=%{public}s", edmDeviceInfo.volumeId.c_str());
     return E_OK;
 }
-#endif // EDM_ADAPTER_ENABLE
 
 } // namespace DiskManager
 } // namespace OHOS

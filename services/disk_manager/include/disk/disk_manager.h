@@ -159,7 +159,7 @@ private:
     bool IsOddFsType(const std::string &fsType);
     int32_t GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
     /** 将内部 VolumeState 映射为 Public API 公开状态：0=unmounted, 1=checking, 2=mounted, 3=ejecting。 */
-    static int32_t MapToPublicVolumeState(int32_t internalState);
+    int32_t MapToPublicVolumeState(int32_t internalState);
     int32_t GetOddFreeSize(const std::string &extraInfo, const std::string &blockVolId,
                            const struct statvfs &diskInfo, int64_t &freeSize);
     bool IsPathMounted(std::string path);

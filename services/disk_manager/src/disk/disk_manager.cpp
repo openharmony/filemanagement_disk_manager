@@ -96,10 +96,9 @@ int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const s
     contentJson["happenTime"] = happenTime;
 
     std::string content = contentJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-
     OHOS::Security::SecurityGuard::EventInfo eventInfo(eventId, BURN_REPORT_VERSION, content);
     LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " version=%{public}s content=%{public}s",
-        eventId, BURN_REPORT_VERSION, content.c_str());
+         eventId, BURN_REPORT_VERSION, content.c_str());
     auto wrappedInfo = std::make_shared<OHOS::Security::SecurityGuard::EventInfo>(eventInfo);
     OHOS::Security::SecurityGuard::NativeDataCollectKit nativeDataCollectKit;
     int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
@@ -758,7 +757,7 @@ int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountP
     }
 #endif
     if (!devPath.empty() && volumeId.find("vol-crypt-") == 0) {
-        MountParam param = mountParam;
+        MountParam param;
         param.SetReadOnly(volExternal.GetMountFlag());
         return MountVolumeByPath(volExternal.GetDiskId(), devPath, param);
     }
@@ -987,7 +986,7 @@ int32_t DiskManager::DoUnmountVolume(VolumeExternal &volExternal, bool forceUnmo
 {
     SaveVolumeFreeSize(volExternal);
     const int32_t previousState = NotifyVolumeEjecting(volExternal.GetId(), volExternal);
- 
+
     bool isInternalDataDisk = false;
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
@@ -998,7 +997,7 @@ int32_t DiskManager::DoUnmountVolume(VolumeExternal &volExternal, bool forceUnmo
         LOGI("Unmount: wait 1s after eject for data disk volumeId=%{public}s", volExternal.GetId().c_str());
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
- 
+
     const int32_t prepErr = ResolveUnmountForceFlag(volExternal, forceUnmount);
     if (prepErr != DiskManagerErrNo::E_OK) {
         (void)NotifyVolumeEjecting(volExternal.GetId(), volExternal, "umountFail");
@@ -1941,7 +1940,7 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
     }
 #ifdef EDM_ADAPTER_ENABLE
     if (!EdmAdapter::GetInstance().IsEdmEnableOddBurn(diskId, callerUserId)) {
-        LOGE("TestBbrn Burn EDM policy denied, diskId=%{public}s", diskId.c_str());
+        LOGE("Burn EDM policy denied, diskId=%{public}s", diskId.c_str());
         return EDM_BURN_DENIED_MARK;
     }
 #endif
@@ -2773,7 +2772,7 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
              disk.GetDiskId().c_str());
         return;
     }
-    
+
     std::string volPath;
     for (const auto &volumeId : volumeIds) {
         auto it = volumeMap_.find(volumeId);
@@ -2786,19 +2785,19 @@ void DiskManager::QueryAndAppendEncryptionStatusUnlocked(Disk &disk)
             break;
         }
     }
-    
+
     if (volPath.empty()) {
         LOGE("QueryAndAppendEncryptionStatusUnlocked: no voldata mount path for disk %{public}s",
              disk.GetDiskId().c_str());
         return;
     }
-    
+
     int32_t encStatus = 0;
     if (!PcEncryptionAdapter::GetInstance().QueryEncryptionStatus(volPath, encStatus)) {
         LOGE("Query encryption status failed for disk %{public}s", disk.GetDiskId().c_str());
         return;
     }
-    
+
     LOGI("QueryAndAppendEncryptionStatusUnlocked encStatus=%{public}d for disk %{public}s",
          encStatus, disk.GetDiskId().c_str());
     std::unordered_map<std::string, std::string> extraKV;

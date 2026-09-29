@@ -48,10 +48,14 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
-    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp",
     "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
   ]
+
+  if (disk_manager_edm_enable) {
+    sources +=
+        [ "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp" ]
+  }
 
   configs = [ ":disk_manager_unittest_common" ]
 
@@ -85,6 +89,10 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "samgr:samgr_proxy",
     "security_guard:libsg_collect_sdk",
   ]
+
+  if (disk_manager_edm_enable) {
+    external_deps += [ "enterprise_device_management:edmservice_kits" ]
+  }
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
@@ -224,7 +232,6 @@ ohos_unittest("disk_manager_server_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
-    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp",
     "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
@@ -233,6 +240,11 @@ ohos_unittest("disk_manager_server_test") {
     "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
+
+  if (disk_manager_edm_enable) {
+    sources +=
+        [ "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp" ]
+  }
 
   configs = [
     "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
@@ -276,6 +288,10 @@ ohos_unittest("disk_manager_server_test") {
     "samgr:samgr_proxy",
     "security_guard:libsg_collect_sdk",
   ]
+
+  if (disk_manager_edm_enable) {
+    external_deps += [ "enterprise_device_management:edmservice_kits" ]
+  }
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
@@ -587,43 +603,49 @@ ohos_unittest("pc_encryption_adapter_test") {
   part_name = "disk_manager"
 }
 
-ohos_unittest("edm_adapter_test") {
-  module_out_path = "/disk_manager/disk_manager"
-  use_exceptions = true
+if (disk_manager_edm_enable) {
+  ohos_unittest("edm_adapter_test") {
+    module_out_path = "/disk_manager/disk_manager"
+    use_exceptions = true
 
-  sources = [
-    "edm_adapter_test.cpp",
-    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp",
-    "//foundation/filemanagement/disk_manager/test/mock/mock_disk_manager.cpp",
-    "//foundation/filemanagement/disk_manager/test/mock/mock_parameters.cpp",
-    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
-  ]
+    sources = [
+      "edm_adapter_test.cpp",
+      "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp",
+      "//foundation/filemanagement/disk_manager/test/mock/mock_disk_manager.cpp",
+      "//foundation/filemanagement/disk_manager/test/mock/mock_parameters.cpp",
+      "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
+    ]
 
-  configs = [
-    "//foundation/filemanagement/disk_manager/test/mock:uevent_bootstrap_mock_include",
-    ":disk_manager_unittest_common",
-  ]
+    configs = [
+      "//foundation/filemanagement/disk_manager/test/mock:uevent_bootstrap_mock_include",
+      ":disk_manager_unittest_common",
+    ]
 
-  defines = [
-    "GetParameter=MockGetParameter",
-    "private = public",
-  ]
+    defines = [
+      "GetParameter=MockGetParameter",
+      "private = public",
+    ]
 
-  deps = [
-    "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
-  ]
+    deps = [
+      "//foundation/filemanagement/disk_manager/interfaces/innerkits:disk_manager_innerkits",
+    ]
 
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "c_utils:utils",
-    "googletest:gmock_main",
-    "googletest:gtest_main",
-    "hilog:libhilog",
-    "init:libbegetutil",
-  ]
+    external_deps = [
+      "ability_base:base",
+      "ability_base:want",
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "enterprise_device_management:edmservice_kits",
+      "googletest:gmock_main",
+      "googletest:gtest_main",
+      "hilog:libhilog",
+      "init:libbegetutil",
+      "ipc:ipc_single",
+    ]
 
-  subsystem_name = "filemanagement"
-  part_name = "disk_manager"
+    subsystem_name = "filemanagement"
+    part_name = "disk_manager"
+  }
 }
 
 ohos_unittest("voldata_uuid_store_test") {
@@ -721,7 +743,6 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/db/voldata_uuid_store.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/notification/common_event_publisher.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/pc_encryption_adapter.cpp",
-    "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_storage_daemon_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_usb_fuse_adapter.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_uevent_bootstrap.cpp",
@@ -730,6 +751,11 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
+
+  if (disk_manager_edm_enable) {
+    sources +=
+        [ "//foundation/filemanagement/disk_manager/services/disk_manager/src/adapter/edm_adapter.cpp" ]
+  }
 
   configs = [
     "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
@@ -776,6 +802,10 @@ ohos_unittest("disk_manager_provider_test") {
     "samgr:samgr_proxy",
     "security_guard:libsg_collect_sdk",
   ]
+
+  if (disk_manager_edm_enable) {
+    external_deps += [ "enterprise_device_management:edmservice_kits" ]
+  }
 
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
@@ -999,7 +1029,6 @@ group("disk_manager_ut") {
     ":storage_daemon_adapter_test",
     ":usb_fuse_adapter_test",
     ":pc_encryption_adapter_test",
-    ":edm_adapter_test",
     ":voldata_uuid_store_test",
     ":disk_config_test",
     ":partition_table_parser_test",
@@ -1011,4 +1040,8 @@ group("disk_manager_ut") {
     ":hi_audit_test",
     ":disk_manager_dfx_test",
   ]
+
+  if (disk_manager_edm_enable) {
+    deps += [ ":edm_adapter_test" ]
+  }
 }
