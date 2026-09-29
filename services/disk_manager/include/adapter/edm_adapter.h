@@ -44,9 +44,7 @@ private:
 
     bool IsExternalOddBurnAllowed(int32_t userId, const std::string &pid, const std::string &vid,
                                  const std::string &sn);
-#ifdef EDM_ADAPTER_ENABLE
     int32_t NotifyExternalStorageDeviceAdd(const VolumeExternal &volume, const Disk &disk);
-#endif
 };
 
 } // namespace DiskManager
