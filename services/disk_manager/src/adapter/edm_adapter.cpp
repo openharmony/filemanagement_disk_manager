@@ -16,9 +16,6 @@
 
 #include "parameters.h"
 
-#include <cerrno>
-#include <cstdlib>
-
 #include "usb_manager_proxy.h"
 #include "enterprise_device_mgr_proxy.h"
 #include "external_storage_device_info.h"
@@ -32,24 +29,6 @@ namespace OHOS {
 namespace DiskManager {
 
 namespace {
-
-bool ConvertStringToInt(const std::string &str, int32_t &value)
-{
-    if (str.empty()) {
-        return false;
-    }
-    errno = 0;
-    char *endptr = nullptr;
-    long result = std::strtol(str.c_str(), &endptr, 16);
-    if (endptr == str.c_str() || *endptr != '\0' || errno == ERANGE) {
-        return false;
-    }
-    if (result < INT32_MIN || result > INT32_MAX) {
-        return false;
-    }
-    value = static_cast<int32_t>(result);
-    return true;
-}
 
 /**
  * MDM精细化管控：读取系统参数判断当前设备是否为2B企业设备。
@@ -119,12 +98,12 @@ bool EdmAdapter::IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUse
         LOGI("IsEdmEnableOddBurn not Odd, diskType=%{public}d diskId=%{public}s", disk.GetDiskType(), diskId.c_str());
         return true;
     }
-    // 内置SATA光驱刻录禁用：非USB光驱(vid为空)即为内置SATA光驱
+    // 内置SATA光驱刻录禁用：非USB光驱(vid为0)即为内置SATA光驱
     bool sataDisabled = IsSataOddBurnDisabled();
-    bool isSataOdd = disk.GetVendorId().empty();
-    LOGI("IsEdmEnableOddBurn disk found, diskType=%{public}d vid=%{public}s "
+    bool isSataOdd = disk.GetVendorId() == 0;
+    LOGI("IsEdmEnableOddBurn disk found, diskType=%{public}d vid=%{public}d "
          "sataDisabled=%{public}d isSataOdd=%{public}d",
-         disk.GetDiskType(), disk.GetVendorId().c_str(), sataDisabled, isSataOdd);
+         disk.GetDiskType(), disk.GetVendorId(), sataDisabled, isSataOdd);
     if (isSataOdd) {
         LOGI("IsEdmEnableOddBurn built-in SATA ODD sataDisabled=%{public}d diskId=%{public}s", sataDisabled,
              diskId.c_str());
@@ -132,12 +111,12 @@ bool EdmAdapter::IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUse
     }
 
     // 非SATA光驱即为外置光驱，查询EDM白名单；USB的vid/pid/sn仅在此时需要
-    std::string vid = disk.GetVendorId();
-    std::string pid = disk.GetProductId();
-    std::string sn = disk.GetSerialNumber();
+    int32_t vid = disk.GetVendorId();
+    int32_t pid = disk.GetProductId();
+    const std::string &sn = disk.GetSerialNumber();
     LOGI("IsEdmEnableOddBurn external ODD, query EDM whitelist, diskId=%{public}s "
-         "productId=%{public}s vendorId=%{public}s serialNumber=%{public}s extraInfo=%{public}s",
-         diskId.c_str(), pid.c_str(), vid.c_str(), GetAnonyString(sn).c_str(), disk.GetExtraInfo().c_str());
+         "vid=%{public}d pid=%{public}d serialNumber=%{public}s extraInfo=%{public}s",
+         diskId.c_str(), vid, pid, GetAnonyString(sn).c_str(), disk.GetExtraInfo().c_str());
     if (!IsExternalOddBurnAllowed(callerUserId, pid, vid, sn)) {
         LOGI("IsExternalOddBurnAllowed device in EDM whitelist, diskId=%{public}s", diskId.c_str());
         return false;
@@ -147,27 +126,19 @@ bool EdmAdapter::IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUse
 }
  
 bool EdmAdapter::IsExternalOddBurnAllowed(int32_t userId,
-                                          const std::string &pid,
-                                          const std::string &vid,
+                                          int32_t pid,
+                                          int32_t vid,
                                           const std::string &sn)
 {
-    LOGI("IsExternalOddBurnAllowed enter, userId=%{public}d pid=%{public}s vid=%{public}s sn=%{public}s",
-         userId, pid.c_str(), vid.c_str(), GetAnonyString(sn).c_str());
+    LOGI("IsExternalOddBurnAllowed enter, userId=%{public}d pid=%{public}d vid=%{public}d sn=%{public}s",
+         userId, pid, vid, GetAnonyString(sn).c_str());
 
-    int32_t vendorId = -1;
-    int32_t productId = -1;
-    if (!ConvertStringToInt(vid, vendorId)) {
-        LOGW("IsExternalOddBurnAllowed convert vid to int failed, vid=%{public}s", vid.c_str());
-    }
-    if (!ConvertStringToInt(pid, productId)) {
-        LOGW("IsExternalOddBurnAllowed convert pid to int failed, pid=%{public}s", pid.c_str());
-    }
     auto usbProxy = EDM::UsbManagerProxy::GetUsbManagerProxy();
     if (usbProxy == nullptr) {
         LOGW("IsExternalOddBurnAllowed UsbManagerProxy is null, allow burn");
         return true;
     }
-    bool allowed = usbProxy->IsAllowedOddBurn(userId, vendorId, productId, sn);
+    bool allowed = usbProxy->IsAllowedOddBurn(userId, vid, pid, sn);
     LOGI("IsExternalOddBurnAllowed EDM IsAllowedOddBurn returned, allowed=%{public}s", allowed ? "true" : "false");
     if (!allowed) {
         LOGI("IsExternalOddBurnAllowed device not in EDM whitelist, burn denied");
@@ -224,23 +195,13 @@ int32_t EdmAdapter::NotifyExternalStorageDeviceAdd(const VolumeExternal &volume,
     edmDeviceInfo.devicePath = volume.GetPath();
     edmDeviceInfo.volumeId = volume.GetId();
     edmDeviceInfo.mountStatus = (volume.GetState() == VolumeState::MOUNTED);
-    edmDeviceInfo.vendorId = -1;
-    edmDeviceInfo.productId = -1;
-    int32_t vid = -1;
-    if (ConvertStringToInt(disk.GetVendorId(), vid)) {
-        edmDeviceInfo.vendorId = vid;
-    }
-    int32_t pid = -1;
-    if (ConvertStringToInt(disk.GetProductId(), pid)) {
-        edmDeviceInfo.productId = pid;
-    }
+    edmDeviceInfo.vendorId = disk.GetVendorId();
+    edmDeviceInfo.productId = disk.GetProductId();
     edmDeviceInfo.serial = disk.GetSerialNumber();
- 
     LOGI("NotifyExternalStorageDeviceAdd volumeId=%{public}s type=%{public}d mountStatus=%{public}d "
          "devPath=%{public}s vid=%{public}d pid=%{public}d",
          edmDeviceInfo.volumeId.c_str(), edmDeviceInfo.type, edmDeviceInfo.mountStatus,
          GetAnonyString(edmDeviceInfo.devicePath).c_str(), edmDeviceInfo.vendorId, edmDeviceInfo.productId);
- 
     auto edmProxy = EDM::EnterpriseDeviceMgrProxy::GetInstance();
     if (edmProxy == nullptr) {
         LOGW("NotifyExternalStorageDeviceAdd EnterpriseDeviceMgrProxy is null");

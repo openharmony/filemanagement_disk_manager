@@ -6117,7 +6117,7 @@ HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_002, TestSize.Level0)
 
 /**
  * @tc.name: GetExternalDiskInfos_TestCase_003
- * @tc.desc: GetExternalDiskInfos parses hex vendorId/productId strings to int32_t.
+ * @tc.desc: GetExternalDiskInfos passes int32_t vendorId/productId through to ExternalDiskInfo.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -6126,8 +6126,8 @@ HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_003 Start";
     auto &dm = DiskManager::GetInstance();
     Disk disk = MakeUsbDisk("disk-8-edi-3");
-    disk.SetVendorId("0781");
-    disk.SetProductId("5580");
+    disk.SetVendorId(0x0781);
+    disk.SetProductId(0x5580);
     dm.OnDiskCreated(disk);
     std::vector<ExternalDiskInfo> out;
     EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);
@@ -6140,7 +6140,7 @@ HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_003, TestSize.Level0)
 
 /**
  * @tc.name: GetExternalDiskInfos_TestCase_004
- * @tc.desc: GetExternalDiskInfos returns 0 for empty/invalid vendorId/productId strings.
+ * @tc.desc: GetExternalDiskInfos returns 0 for zero vendorId/productId.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -6149,8 +6149,6 @@ HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "GetExternalDiskInfos_TestCase_004 Start";
     auto &dm = DiskManager::GetInstance();
     Disk disk = MakeUsbDisk("disk-8-edi-4");
-    disk.SetVendorId("");
-    disk.SetProductId("xyz");
     dm.OnDiskCreated(disk);
     std::vector<ExternalDiskInfo> out;
     EXPECT_EQ(dm.GetExternalDiskInfos(out), E_OK);

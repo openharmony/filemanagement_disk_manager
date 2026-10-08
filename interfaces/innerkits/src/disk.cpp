@@ -164,22 +164,22 @@ std::string Disk::GetVendor() const
     return vendor_;
 }
 
-void Disk::SetVendorId(const std::string &vendorId)
+void Disk::SetVendorId(int32_t vendorId)
 {
     vendorId_ = vendorId;
 }
 
-std::string Disk::GetVendorId() const
+int32_t Disk::GetVendorId() const
 {
     return vendorId_;
 }
 
-void Disk::SetProductId(const std::string &productId)
+void Disk::SetProductId(int32_t productId)
 {
     productId_ = productId;
 }
 
-std::string Disk::GetProductId() const
+int32_t Disk::GetProductId() const
 {
     return productId_;
 }
@@ -194,22 +194,22 @@ std::string Disk::GetSerialNumber() const
     return serialNumber_;
 }
 
-void Disk::SetBusnum(const std::string &busnum)
+void Disk::SetBusnum(int32_t busnum)
 {
     busnum_ = busnum;
 }
 
-std::string Disk::GetBusnum() const
+int32_t Disk::GetBusnum() const
 {
     return busnum_;
 }
 
-void Disk::SetDevAddress(const std::string &devAddress)
+void Disk::SetDevAddress(int32_t devAddress)
 {
     devAddress_ = devAddress;
 }
 
-std::string Disk::GetDevAddress() const
+int32_t Disk::GetDevAddress() const
 {
     return devAddress_;
 }
@@ -310,19 +310,19 @@ bool Disk::Marshalling(Parcel &parcel) const
     if (!parcel.WriteString(extraInfo_)) {
         return false;
     }
-    if (!parcel.WriteString(vendorId_)) {
+    if (!parcel.WriteInt32(vendorId_)) {
         return false;
     }
-    if (!parcel.WriteString(productId_)) {
+    if (!parcel.WriteInt32(productId_)) {
         return false;
     }
     if (!parcel.WriteString(serialNumber_)) {
         return false;
     }
-    if (!parcel.WriteString(busnum_)) {
+    if (!parcel.WriteInt32(busnum_)) {
         return false;
     }
-    if (!parcel.WriteString(devAddress_)) {
+    if (!parcel.WriteInt32(devAddress_)) {
         return false;
     }
     return true;
@@ -362,31 +362,15 @@ Disk *Disk::Unmarshalling(Parcel &parcel)
         delete obj;
         return nullptr;
     }
-    obj->vendorId_ = parcel.ReadString();
-    if (obj->vendorId_.size() > PARCEL_STRING_MAX_LEN) {
-        delete obj;
-        return nullptr;
-    }
-    obj->productId_ = parcel.ReadString();
-    if (obj->productId_.size() > PARCEL_STRING_MAX_LEN) {
-        delete obj;
-        return nullptr;
-    }
+    obj->vendorId_ = parcel.ReadInt32();
+    obj->productId_ = parcel.ReadInt32();
     obj->serialNumber_ = parcel.ReadString();
     if (obj->serialNumber_.size() > PARCEL_STRING_MAX_LEN) {
         delete obj;
         return nullptr;
     }
-    obj->busnum_ = parcel.ReadString();
-    if (obj->busnum_.size() > PARCEL_STRING_MAX_LEN) {
-        delete obj;
-        return nullptr;
-    }
-    obj->devAddress_ = parcel.ReadString();
-    if (obj->devAddress_.size() > PARCEL_STRING_MAX_LEN) {
-        delete obj;
-        return nullptr;
-    }
+    obj->busnum_ = parcel.ReadInt32();
+    obj->devAddress_ = parcel.ReadInt32();
     return obj;
 }
 } // namespace DiskManager
