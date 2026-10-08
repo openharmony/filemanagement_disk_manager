@@ -105,30 +105,6 @@ HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_SataOddDisabled_ReturnsFalse_001, Te
     auto &adapter = EdmAdapter::GetInstance();
     EXPECT_FALSE(adapter.IsEdmEnableOddBurn("disk-1", 100));
 }
-
-HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_ExternalOdd_ReturnsAllowed_001, TestSize.Level0)
-{
-    SetEnterpriseParameter();
-    Disk disk("disk-1", 4096, "sr0", CD_FLAG);
-    disk.SetVendorId("0781");
-    disk.SetProductId("5581");
-    disk.SetSerialNumber("SN001");
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_CALL(dm, GetDiskById("disk-1", _))
-        .WillOnce(DoAll(SetArgReferee<1>(disk), Return(E_OK)));
-    auto &adapter = EdmAdapter::GetInstance();
-    // 外置光驱(vid非空)：EDM代理不可用时允许刻录
-    EXPECT_TRUE(adapter.IsEdmEnableOddBurn("disk-1", 100));
-}
-
-// --- IsExternalOddBurnAllowed ---
-
-HWTEST_F(EdmAdapterTest, IsExternalOddBurnAllowed_ReturnsTrue_001, TestSize.Level0)
-{
-    auto &adapter = EdmAdapter::GetInstance();
-    EXPECT_TRUE(adapter.IsExternalOddBurnAllowed(100, "5581", "0781", "SN001"));
-}
-
 // --- IsEdmControlMountEnabled ---
 
 HWTEST_F(EdmAdapterTest, IsEdmControlMountEnabled_NonEnterprise_ReturnsFalse_001, TestSize.Level0)

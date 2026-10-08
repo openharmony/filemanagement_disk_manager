@@ -42,8 +42,7 @@ private:
     EdmAdapter();
     ~EdmAdapter();
 
-    bool IsExternalOddBurnAllowed(int32_t userId, const std::string &pid, const std::string &vid,
-                                 const std::string &sn);
+    bool IsExternalOddBurnAllowed(int32_t userId, int32_t pid, int32_t vid, const std::string &sn);
     int32_t NotifyExternalStorageDeviceAdd(const VolumeExternal &volume, const Disk &disk);
 };
 

@@ -35,6 +35,7 @@
 #include "volume_core.h"
 
 #include <cctype>
+#include <cerrno>
 #include <cinttypes>
 #include <cstdlib>
 #include <algorithm>
@@ -76,6 +77,22 @@ constexpr uint64_t BYTES_PER_MB = 1024 * 1024;
 constexpr uint64_t MIN_DISK_SIZE_MB = 4;
 
 const int32_t CONFIG_PARAM_NUM = 6;
+
+int32_t ParseSysfsInt(const std::string &str, int base)
+{
+    if (str.empty()) {
+        return 0;
+    }
+    errno = 0;
+    char *endptr = nullptr;
+    long result = std::strtol(str.c_str(), &endptr, base);
+    if (endptr == str.c_str() || *endptr != '\0' || errno == ERANGE ||
+        result < INT32_MIN || result > INT32_MAX) {
+        LOGW("ParseSysfsInt convert failed, str=%{public}s base=%{public}d", str.c_str(), base);
+        return 0;
+    }
+    return static_cast<int32_t>(result);
+}
 #ifdef CDC_STORAGE
 // it will be decoupled to the car odm
 const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
@@ -84,6 +101,7 @@ const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
 #endif
 constexpr const char *BLOCK_PATH = "/dev/block";
 constexpr int DEC_BASE = 10;
+constexpr int HEX_BASE = 16;
 
 CdromState QueryCdromState(const std::string &devPath)
 {
@@ -362,16 +380,18 @@ void UpsertDiskAndPublishEvent(const UeventEnv &env,
     }
     diskForEvent.SetVendor(blockInfo.vendor);
     diskForEvent.SetPartitionType(tableType);
-    diskForEvent.SetVendorId(usbInfo.vid);
-    diskForEvent.SetProductId(usbInfo.pid);
+    diskForEvent.SetVendorId(ParseSysfsInt(usbInfo.vid, HEX_BASE));
+    diskForEvent.SetProductId(ParseSysfsInt(usbInfo.pid, HEX_BASE));
     diskForEvent.SetSerialNumber(usbInfo.serialNumber);
-    diskForEvent.SetBusnum(usbInfo.busnum);
-    diskForEvent.SetDevAddress(usbInfo.devnum);
-    LOGW("UpsertDiskAndPublishEvent diskId=%{public}s vid=%{public}s pid=%{public}s "
-         "serialNumber=%{public}s busnum=%{public}s devnum=%{public}s extraInfo=%{public}s",
-         diskId.c_str(), diskForEvent.GetVendorId().c_str(), diskForEvent.GetProductId().c_str(),
-         GetAnonyString(diskForEvent.GetSerialNumber()).c_str(), diskForEvent.GetBusnum().c_str(),
-         diskForEvent.GetDevAddress().c_str(), diskForEvent.GetExtraInfo().c_str());
+    diskForEvent.SetBusnum(ParseSysfsInt(usbInfo.busnum, DEC_BASE));
+    diskForEvent.SetDevAddress(ParseSysfsInt(usbInfo.devnum, DEC_BASE));
+    LOGW("UpsertDiskAndPublishEvent diskId=%{public}s vid=0x%{public}s pid=0x%{public}s "
+         "vidDec=%{public}d pidDec=%{public}d serialNumber=%{public}s "
+         "busnum=%{public}d devnum=%{public}d extraInfo=%{public}s",
+         diskId.c_str(), usbInfo.vid.c_str(), usbInfo.pid.c_str(),
+         diskForEvent.GetVendorId(), diskForEvent.GetProductId(),
+         GetAnonyString(diskForEvent.GetSerialNumber()).c_str(), diskForEvent.GetBusnum(),
+         diskForEvent.GetDevAddress(), diskForEvent.GetExtraInfo().c_str());
     diskForEvent.RefreshClassificationFromSysfs(env.sysPath, blockInfo.rotational);
     CommonEventPublisher::PublishDiskChange(DiskEventKind::MOUNTED, diskForEvent);
     (void)DiskManager::GetInstance().OnDiskCreated(diskForEvent);

@@ -120,7 +120,6 @@ constexpr int32_t RD_ENABLE_LENGTH = 255;
 const int32_t MTP_DEVICE_NAME_LEN = 512;
 constexpr uint64_t HMFS_FLAG = 0x8000;
 constexpr uint32_t BASE_DECIMAL = 10;
-constexpr uint32_t BASE_HEX = 16;
 constexpr int64_t VFAT_TYPECODE_MIN_SIZE = 16 * 1024 * 1024;
 constexpr int64_t EXFAT_TYPECODE_MIN_SIZE = 32 * 1024 * 1024;
 constexpr int64_t NTFS_TYPECODE_MIN_SIZE = 4 * 1024 * 1024;
@@ -1427,11 +1426,11 @@ int32_t DiskManager::GetDiskById(const std::string &diskId, Disk &out)
     }
     out = diskMap_[diskId];
     AttachVolumeIdsToDisk(volumeMap_, out);
-    
+
     if (out.GetDiskType() == DATA_DISK_SSD || out.GetDiskType() == DATA_DISK_HDD) {
         QueryAndAppendEncryptionStatusUnlocked(out);
     }
-    
+
     return DiskManagerErrNo::E_OK;
 }
 
@@ -1497,28 +1496,8 @@ int32_t DiskManager::GetExternalDiskInfos(std::vector<ExternalDiskInfo> &out)
             ExternalDiskInfo info;
             info.SetDiskId(disk.GetDiskId());
             info.SetDiskType(disk.GetDiskType());
-            const std::string &vidStr = disk.GetVendorId();
-            const std::string &pidStr = disk.GetProductId();
-            int32_t vid = 0;
-            int32_t pid = 0;
-            if (!vidStr.empty()) {
-                errno = 0;
-                char *endPtr = nullptr;
-                long vidVal = std::strtol(vidStr.c_str(), &endPtr, BASE_HEX);
-                if (endPtr != vidStr.c_str() && *endPtr == '\0' && errno == 0) {
-                    vid = static_cast<int32_t>(vidVal);
-                }
-            }
-            if (!pidStr.empty()) {
-                errno = 0;
-                char *endPtr = nullptr;
-                long pidVal = std::strtol(pidStr.c_str(), &endPtr, BASE_HEX);
-                if (endPtr != pidStr.c_str() && *endPtr == '\0' && errno == 0) {
-                    pid = static_cast<int32_t>(pidVal);
-                }
-            }
-            info.SetVendorId(vid);
-            info.SetProductId(pid);
+            info.SetVendorId(disk.GetVendorId());
+            info.SetProductId(disk.GetProductId());
             std::vector<std::string> volIds;
             for (const auto &volKv : volumeMap_) {
                 if (volKv.second.GetDiskId() == disk.GetDiskId()) {
