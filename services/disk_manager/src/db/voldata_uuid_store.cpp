@@ -37,6 +37,8 @@ constexpr const char *VOLDATA_UUID_MAPPING_JSON = "voldata_uuid_mapping.json";
 constexpr const char *TMP_FILE_SUFFIX = ".tmp";
 constexpr const char *VOLDATA_MOUNT_PREFIX = "/mnt/data/voldata/data";
 constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 1000;
+#define FDSAN_TAG 1
+const uint64_t NEW_TAG = static_cast<uint64_t>(0xD00430F) << 32 | FDSAN_TAG;
 
 bool ParseVoldataSlotFromMountPath(const std::string &mountPath, uint32_t &outSlot)
 {
@@ -406,10 +408,11 @@ int32_t VoldataUuidStore::SaveJsonToFile(const std::string &filePath, const nloh
 
     int fd = open(tempFilePath.c_str(), O_RDONLY);
     if (fd >= 0) {
+        fdsan_exchange_owner_tag(fd, 0, NEW_TAG);
         if (fsync(fd) != 0) {
             LOGW("VoldataUuidStore fsync failed errno=%{public}d", errno);
         }
-        close(fd);
+        fdsan_close_with_tag(fd, NEW_TAG);
     }
 
     if (rename(tempFilePath.c_str(), filePath.c_str()) != 0) {
