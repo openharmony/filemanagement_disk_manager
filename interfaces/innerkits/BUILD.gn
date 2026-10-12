@@ -16,6 +16,11 @@ import("//build/ohos.gni")
 import("//foundation/filemanagement/disk_manager/disk_manager.gni")
 
 idl_gen_interface("disk_manager_interface_native") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+  }
   sources = [ "IDiskManager.idl" ]
   log_tag = "DiskManager"
   log_domainid = "0xD00430F"
