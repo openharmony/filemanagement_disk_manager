@@ -527,6 +527,30 @@ static bool ParseTwoStringArgs(napi_env env, NFuncArg &funcArg, std::string &out
     return true;
 }
 
+static napi_value PromiseVoidOpSkipParamsInvalid(napi_env env,
+                                                 NVal thisVar,
+                                                 const std::string &procName,
+                                                 const std::function<int32_t()> &ipcCall)
+{
+    auto cbExec = [ipcCall]() -> NError {
+        int32_t result = ipcCall();
+        if (result != E_OK) {
+            if (result == E_PARAMS_INVALID) {
+                return NError(result);
+            }
+            return NError(Convert2JsErrNum(result));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return {NVal::CreateUndefined(env)};
+    };
+    return NAsyncWorkPromise(env, thisVar).Schedule(procName, cbExec, cbComplete).val_;
+}
+
 static napi_value PromiseVoidOp(napi_env env,
                                 NVal thisVar,
                                 const std::string &procName,
@@ -759,7 +783,7 @@ napi_value Eject(napi_env env, napi_callback_info info)
     }
     std::string diskIdString(diskId.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "Eject", [diskIdString]() {
+    return PromiseVoidOpSkipParamsInvalid(env, thisVar, "Eject", [diskIdString]() {
         return OHOS::DiskManager::DiskManagerClient::GetInstance().Eject(diskIdString);
     });
 }
@@ -791,7 +815,7 @@ napi_value CreateIsoImage(napi_env env, napi_callback_info info)
     std::string volIdStr(volumeId.get());
     std::string filePathStr(filePath.get());
     NVal thisVar(env, funcArg.GetThisVar());
-    return PromiseVoidOp(env, thisVar, "CreateIsoImage", [volIdStr, filePathStr]() {
+    return PromiseVoidOpSkipParamsInvalid(env, thisVar, "CreateIsoImage", [volIdStr, filePathStr]() {
         return OHOS::DiskManager::DiskManagerClient::GetInstance().CreateIsoImage(volIdStr, filePathStr);
     });
 }
