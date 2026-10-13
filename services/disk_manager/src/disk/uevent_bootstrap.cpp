@@ -77,6 +77,8 @@ constexpr uint64_t BYTES_PER_MB = 1024 * 1024;
 constexpr uint64_t MIN_DISK_SIZE_MB = 4;
 
 const int32_t CONFIG_PARAM_NUM = 6;
+#define FDSAN_TAG 1
+const uint64_t NEW_TAG = static_cast<uint64_t>(0xD00430F) << 32 | FDSAN_TAG;
 
 int32_t ParseSysfsInt(const std::string &str, int base)
 {
@@ -501,9 +503,10 @@ static uint64_t GetDevSectorSize(const std::string &devName)
     if (fd < 0) {
         return 0;
     }
+    fdsan_exchange_owner_tag(fd, 0, NEW_TAG);
     char buf[32] = {};
     ssize_t n = read(fd, buf, sizeof(buf) - 1);
-    close(fd);
+    fdsan_close_with_tag(fd, NEW_TAG);
     if (n <= 0) {
         return 0;
     }
