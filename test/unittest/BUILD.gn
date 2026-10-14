@@ -750,6 +750,7 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/test/mock/mock_ipc_skeleton.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_accesstoken_kit.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/mock_dlfcn.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_parameters.cpp",
     "//foundation/filemanagement/disk_manager/test/mock/message_parcel_mock.cpp",
   ]
 
@@ -768,6 +769,8 @@ ohos_unittest("disk_manager_provider_test") {
     "UsbFuseAdapter=MockUsbFuseAdapter",
     "UeventBootstrap=MockUeventBootstrap",
     "IPCSkeleton=MockIPCSkeleton",
+    "GetParameter=MockGetParameter",
+    "AUTH_WAIT_TIMEOUT_SEC=1",
     "private = public",
     "dlopen=MockDlopen",
     "dlsym=MockDlsym",
@@ -799,6 +802,7 @@ ohos_unittest("disk_manager_provider_test") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "json:nlohmann_json_static",
+    "os_account:authorization_innerkits",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "security_guard:libsg_collect_sdk",

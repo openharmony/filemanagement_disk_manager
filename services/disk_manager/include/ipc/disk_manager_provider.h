@@ -27,6 +27,7 @@
 #include "timer.h"
 
 #include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -97,6 +98,11 @@ private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);
     bool CheckStorageDaemonPermission();
     bool IsStorageManagerCaller() const;
+    bool IsDataDisk(const std::string &volumeId) const;
+    bool IsDataDiskByDiskId(const std::string &diskId) const;
+    // 台式机数据盘格式化管理员鉴权：AcquireAuthorization 后用 condition_variable wait_for（带超时）等待回调，
+    // 成功返回 E_OK，失败/取消/超时返回 ERR_JS_AUTHORIZATION_DENIED。须在 IPC 线程中调用。
+    int32_t CheckAdminAuthorization();
 
     void StartIdleMonitor();
     void StopIdleMonitor();
@@ -114,6 +120,9 @@ private:
     std::mutex unloadUeventMutex_;
     std::mutex cryptVolMutex_;
     std::atomic<bool> isUnloading_{false};
+
+    // 全局防重入标志：台式机数据盘 Format/Partition 共享，CAS true 抢占，操作完成后重置。
+    std::atomic<bool> dataDiskFormatBusy_{false};
 };
 } // namespace DiskManager
 } // namespace OHOS

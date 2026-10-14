@@ -75,6 +75,9 @@ enum class DiskManagerNativeErr : int32_t {
     E_EJECT_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1804,
     E_BURN_FAILED = STORAGE_SERVICE_SYS_CAP_TAG + 1805,
     E_BURN_NOSPC = STORAGE_SERVICE_SYS_CAP_TAG + 1806,
+
+    // data disk format reentrancy errno
+    E_BUSY = STORAGE_SERVICE_SYS_CAP_TAG + 1907,
 };
 
 /** JS / Taihe 业务错误码（与 storage_service 原 JsErrCode 数值一致） */
@@ -112,6 +115,7 @@ enum class DiskManagerJsErr : int32_t {
     E_JS_BURN_NOSPC = 13900025,  // FILEIO_SYS_CAP_TAG + E_NOSPC, aligned with n_error.h ENOSPC
     E_JS_FORMAT_PARTITION_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 32,
     E_JS_QUERY_VOLUME_IN_USE_ERROR = STORAGE_SERVICE_SYS_CAP_TAG + 33,
+    E_JS_BUSY = STORAGE_SERVICE_SYS_CAP_TAG + 34,
 };
 
 constexpr int32_t E_OK = static_cast<int32_t>(DiskManagerNativeErr::E_OK);
@@ -162,6 +166,8 @@ constexpr int32_t E_FORMAT_PARTITION_NOT_SUPPORT =
 constexpr int32_t E_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_FORMAT_PARTITION_ERROR);
 constexpr int32_t E_QUERY_VOLUME_IN_USE_ERROR = static_cast<int32_t>(DiskManagerNativeErr::E_QUERY_VOLUME_IN_USE_ERROR);
 
+constexpr int32_t E_BUSY = static_cast<int32_t>(DiskManagerNativeErr::E_BUSY);
+
 constexpr int32_t E_EMPTY_DISC = static_cast<int32_t>(DiskManagerNativeErr::E_EMPTY_DISC);
 constexpr int32_t E_ISO_WRITE_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_ISO_WRITE_FAILED);
 constexpr int32_t E_ERASE_FAILED = static_cast<int32_t>(DiskManagerNativeErr::E_ERASE_FAILED);
@@ -201,6 +207,7 @@ constexpr int32_t E_JS_DELETE_PARTITION_ERROR = static_cast<int32_t>(DiskManager
 constexpr int32_t E_JS_FORMAT_PARTITION_ERROR = static_cast<int32_t>(DiskManagerJsErr::E_JS_FORMAT_PARTITION_ERROR);
 constexpr int32_t E_JS_QUERY_VOLUME_IN_USE_ERROR =
     static_cast<int32_t>(DiskManagerJsErr::E_JS_QUERY_VOLUME_IN_USE_ERROR);
+constexpr int32_t E_JS_BUSY = static_cast<int32_t>(DiskManagerJsErr::E_JS_BUSY);
 
 /** volumeManager 光盘/刻录扩展 JS 错误码 */
 constexpr int32_t E_JS_EMPTY_DISC = static_cast<int32_t>(DiskManagerJsErr::E_JS_EMPTY_DISC);

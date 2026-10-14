@@ -107,6 +107,7 @@ ohos_shared_library("disk_manager_server") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "json:nlohmann_json_static",
+    "os_account:authorization_innerkits",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "security_guard:libsg_collect_sdk",
