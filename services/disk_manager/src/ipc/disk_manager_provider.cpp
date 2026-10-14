@@ -15,8 +15,11 @@
 
 #include "disk_manager_provider.h"
 
+#include <atomic>
 #include <cinttypes>
 #include <climits>
+#include <condition_variable>
+#include <memory>
 #include <regex>
 #include <sstream>
 
@@ -37,6 +40,10 @@
 #include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
+#include "account_error_no.h"
+#include "authorization_client.h"
+#include "authorization_common.h"
+#include "authorization_callback.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -52,6 +59,52 @@ constexpr uint32_t EPOLL_INTERVAL_MS = 10;
 #ifdef PC_MANAGER
 constexpr pid_t CRYPTO_USB_MGR_SERVICE_UID = 7060;
 #endif
+// 台式机数据盘格式化鉴权权限名
+constexpr const char *FORMAT_DATA_DISK_PRIVILEGE = "ohos.privilege.format_data_disk";
+#ifndef AUTH_WAIT_TIMEOUT_SEC
+constexpr int32_t AUTH_WAIT_TIMEOUT_SEC = 3600;
+#endif
+/**
+ * @brief 格式化台式机数据盘时的管理员鉴权回调。
+ *
+ * OnResult 在 mutex 保护下写入结果码并 notify condition_variable，
+ * 供 CheckAdminAuthorization 的 wait_for 等待；OnConnectAbility 空实现。
+ */
+class FormatAuthCallback : public AccountSA::AuthorizationCallback {
+public:
+    FormatAuthCallback(std::mutex &mtx, std::condition_variable &cv, int32_t &resultCode, bool &completed)
+        : mtx_(mtx), cv_(cv), resultCode_(resultCode), completed_(completed) {}
+    ~FormatAuthCallback() override = default;
+
+    ErrCode OnResult(int32_t resultCode, const AccountSA::AuthorizationResult &result) override
+    {
+        {
+            std::lock_guard<std::mutex> lock(mtx_);
+            if (!completed_) {
+                resultCode_ = (resultCode != ERR_OK)
+                    ? resultCode
+                    : static_cast<int32_t>(result.resultCode);
+                completed_ = true;
+            }
+        }
+        cv_.notify_one();
+        return ERR_OK;
+    }
+
+    ErrCode OnConnectAbility(const AccountSA::ConnectAbilityInfo &info,
+                             const sptr<IRemoteObject> &callback) override
+    {
+        (void)info;
+        (void)callback;
+        return ERR_OK;
+    }
+
+private:
+    std::mutex &mtx_;
+    std::condition_variable &cv_;
+    int32_t &resultCode_;
+    bool &completed_;
+};
 
 inline int32_t IpcDfxRet(IpcDfxScope &dfx, int32_t ret)
 {
@@ -252,6 +305,68 @@ int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
     return err;
 }
 
+bool DiskManagerProvider::IsDataDisk(const std::string &volumeId) const
+{
+    // volumeId -> diskId -> Disk::IsInternalDataDisk()
+    VolumeExternal vol;
+    if (DiskManager::GetInstance().GetVolumeById(volumeId, vol) != E_OK) {
+        LOGE("IsDataDisk: volume %{public}s not found", volumeId.c_str());
+        return false;
+    }
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(vol.GetDiskId(), disk) != E_OK) {
+        LOGE("IsDataDisk: disk %{public}s not found", vol.GetDiskId().c_str());
+        return false;
+    }
+    return disk.IsInternalDataDisk();
+}
+
+bool DiskManagerProvider::IsDataDiskByDiskId(const std::string &diskId) const
+{
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
+        LOGE("IsDataDiskByDiskId: disk %{public}s not found", diskId.c_str());
+        return false;
+    }
+    return disk.IsInternalDataDisk();
+}
+
+int32_t DiskManagerProvider::CheckAdminAuthorization()
+{
+    std::mutex authMtx;
+    std::condition_variable authCv;
+    int32_t resultCode = 0;
+    bool completed = false;
+
+    auto callback = std::make_shared<FormatAuthCallback>(authMtx, authCv, resultCode, completed);
+    AccountSA::AcquireAuthorizationOptions options;
+    options.isReuseNeeded = false;
+    options.isInteractionAllowed = true;
+    options.subjectInfo.emplace();
+    options.subjectInfo->pid = IPCSkeleton::GetCallingPid();
+    options.subjectInfo->uid = IPCSkeleton::GetCallingUid();
+    options.subjectInfo->customName = "";
+    ErrCode acquireRet = AccountSA::AuthorizationClient::GetInstance().AcquireAuthorization(
+        FORMAT_DATA_DISK_PRIVILEGE, options, callback);
+    if (acquireRet != ERR_OK) {
+        LOGE("CheckAdminAuthorization: AcquireAuthorization failed, ret=%{public}d", acquireRet);
+        return ERR_JS_AUTHORIZATION_DENIED;
+    }
+
+    std::unique_lock<std::mutex> lock(authMtx);
+    bool notified = authCv.wait_for(lock, std::chrono::seconds(AUTH_WAIT_TIMEOUT_SEC),
+                                    [&completed]() { return completed; });
+    if (!notified) {
+        LOGE("CheckAdminAuthorization: wait timeout (%{public}ds)", AUTH_WAIT_TIMEOUT_SEC);
+        return ERR_JS_AUTHORIZATION_DENIED;
+    }
+    if (resultCode != AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS) {
+        LOGE("CheckAdminAuthorization: authorization denied, resultCode=%{public}d", resultCode);
+        return ERR_JS_AUTHORIZATION_DENIED;
+    }
+    return E_OK;
+}
+
 int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::string &fsType)
 {
     LOGI("Format volumeId=%{public}s fsType=%{public}s", volumeId.c_str(), fsType.c_str());
@@ -267,8 +382,29 @@ int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::stri
         LOGE("Format: volumeId is invalid");
         return E_PARAMS_INVALID;
     }
+    bool needAdminAuth = IsDataDisk(volumeId);
+    if (needAdminAuth) {
+        if (dataDiskFormatBusy_.exchange(true)) {
+            LOGE("Format: another data-disk format/partition operation in progress");
+            return E_BUSY;
+        }
+        int32_t authRet = CheckAdminAuthorization();
+        if (authRet != E_OK) {
+            LOGE("Format: admin authorization failed, ret=%{public}d", authRet);
+            dataDiskFormatBusy_.store(false);
+            return authRet;
+        }
+    }
     const int32_t err = DiskManager::GetInstance().Format(volumeId, fsType);
     LOGI("Format volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    if (needAdminAuth) {
+        ErrCode releaseRet = AccountSA::AuthorizationClient::GetInstance().ReleaseAuthorization(
+            FORMAT_DATA_DISK_PRIVILEGE);
+        if (releaseRet != ERR_OK) {
+            LOGE("Format: ReleaseAuthorization failed, ret=%{public}d", releaseRet);
+        }
+        dataDiskFormatBusy_.store(false);
+    }
     return err;
 }
 
@@ -421,9 +557,29 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
-
+    bool needAdminAuth = IsDataDiskByDiskId(diskId);
+    if (needAdminAuth) {
+        if (dataDiskFormatBusy_.exchange(true)) {
+            LOGE("Partition: another data-disk format/partition operation in progress");
+            return E_BUSY;
+        }
+        int32_t authRet = CheckAdminAuthorization();
+        if (authRet != E_OK) {
+            LOGE("Partition: admin authorization failed, ret=%{public}d", authRet);
+            dataDiskFormatBusy_.store(false);
+            return authRet;
+        }
+    }
     const int32_t err = DiskManager::GetInstance().Partition(diskId, type);
     LOGI("Partition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    if (needAdminAuth) {
+        ErrCode releaseRet = AccountSA::AuthorizationClient::GetInstance().ReleaseAuthorization(
+            FORMAT_DATA_DISK_PRIVILEGE);
+        if (releaseRet != ERR_OK) {
+            LOGE("Partition: ReleaseAuthorization failed, ret=%{public}d", releaseRet);
+        }
+        dataDiskFormatBusy_.store(false);
+    }
     return err;
 }
 

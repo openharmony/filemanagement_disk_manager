@@ -31,9 +31,11 @@
 #include "mock_usb_fuse_adapter.h"
 #include "mock_uevent_bootstrap.h"
 #include "mock_ipc_skeleton.h"
+#include "mock_parameters.h"
 #include "disk_manager_hilog.h"
 #include "system_ability_definition.h"
 #include "errors.h"
+
 
 extern int32_t g_accessTokenType;
 extern bool g_isSystemApp;
@@ -60,6 +62,11 @@ Disk MakeUsbDisk(const std::string &diskId = "disk-8-1")
     return Disk(diskId, SIZE, "/dev/block/" + diskId, USB_FLAG);
 }
 
+Disk MakeDataDisk(const std::string &diskId = "disk-data-1")
+{
+    return Disk(diskId, SIZE, "/dev/block/" + diskId, DATA_DISK_HDD);
+}
+
 VolumeExternal MakeUsbVolume(const std::string &volId = "vol-8-1",
                              const std::string &diskId = "disk-8-1",
                              const std::string &fsUuid = "uuid-ut-1",
@@ -69,6 +76,21 @@ VolumeExternal MakeUsbVolume(const std::string &volId = "vol-8-1",
     VolumeCore core(volId, EXTERNAL, diskId, state);
     VolumeExternal v(core);
     v.SetFlags(USB_FLAG);
+    v.SetFsUuid(fsUuid);
+    v.SetFsType(fsType);
+    v.SetPath("/mnt/data/external/" + fsUuid);
+    return v;
+}
+
+VolumeExternal MakeDataVolume(const std::string &volId = "vol-data-1",
+                              const std::string &diskId = "disk-data-1",
+                              const std::string &fsUuid = "uuid-data-1",
+                              int32_t state = UNMOUNTED,
+                              int32_t fsType = EXT4)
+{
+    VolumeCore core(volId, EXTERNAL, diskId, state);
+    VolumeExternal v(core);
+    v.SetFlags(DATA_DISK_HDD);
     v.SetFsUuid(fsUuid);
     v.SetFsType(fsType);
     v.SetPath("/mnt/data/external/" + fsUuid);
@@ -3422,6 +3444,86 @@ HWTEST_F(DiskManagerProviderTest, UnbindBlockLoopDev_NotSupport_001, TestSize.Le
     GTEST_LOG_(INFO) << "UnbindBlockLoopDev_NotSupport_001 End";
 }
 #endif
+
+/**
+ * @tc.name: IsDataDisk_DataDisk_ReturnsTrue_001
+ * @tc.desc: IsDataDisk returns true when disk is internal data disk (DATA_DISK_HDD).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, IsDataDisk_DataDisk_ReturnsTrue_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsDataDisk_DataDisk_ReturnsTrue_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-data-1"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-data-1", "disk-data-1", "uuid-dd-1"));
+    EXPECT_TRUE(provider.IsDataDisk("vol-data-1"));
+    GTEST_LOG_(INFO) << "IsDataDisk_DataDisk_ReturnsTrue_001 End";
+}
+
+/**
+ * @tc.name: IsDataDisk_UsbDisk_ReturnsFalse_001
+ * @tc.desc: IsDataDisk returns false when disk is USB (non-data disk).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, IsDataDisk_UsbDisk_ReturnsFalse_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsDataDisk_UsbDisk_ReturnsFalse_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-usb-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-usb-1", "disk-usb-1", "uuid-usb-1"));
+    EXPECT_FALSE(provider.IsDataDisk("vol-usb-1"));
+    GTEST_LOG_(INFO) << "IsDataDisk_UsbDisk_ReturnsFalse_001 End";
+}
+
+/**
+ * @tc.name: IsDataDisk_VolumeNotFound_ReturnsFalse_001
+ * @tc.desc: IsDataDisk returns false when volumeId does not exist.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, IsDataDisk_VolumeNotFound_ReturnsFalse_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsDataDisk_VolumeNotFound_ReturnsFalse_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_FALSE(provider.IsDataDisk("vol-not-exist-1"));
+    GTEST_LOG_(INFO) << "IsDataDisk_VolumeNotFound_ReturnsFalse_001 End";
+}
+
+/**
+ * @tc.name: IsDataDiskByDiskId_DataDisk_ReturnsTrue_001
+ * @tc.desc: IsDataDiskByDiskId returns true when disk is internal data disk.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, IsDataDiskByDiskId_DataDisk_ReturnsTrue_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsDataDiskByDiskId_DataDisk_ReturnsTrue_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-data-byid-1"));
+    EXPECT_TRUE(provider.IsDataDiskByDiskId("disk-data-byid-1"));
+    GTEST_LOG_(INFO) << "IsDataDiskByDiskId_DataDisk_ReturnsTrue_001 End";
+}
+
+/**
+ * @tc.name: IsDataDiskByDiskId_UsbDisk_ReturnsFalse_001
+ * @tc.desc: IsDataDiskByDiskId returns false when disk is USB (non-data disk).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, IsDataDiskByDiskId_UsbDisk_ReturnsFalse_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsDataDiskByDiskId_UsbDisk_ReturnsFalse_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-usb-byid-1"));
+    EXPECT_FALSE(provider.IsDataDiskByDiskId("disk-usb-byid-1"));
+    GTEST_LOG_(INFO) << "IsDataDiskByDiskId_UsbDisk_ReturnsFalse_001 End";
+}
 
 } // namespace DiskManager
 } // namespace OHOS

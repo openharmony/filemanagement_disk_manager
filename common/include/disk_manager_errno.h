@@ -86,6 +86,8 @@ enum DiskManagerErrNo : int32_t {
     E_MOUNT_VOL_BY_PATH_FAILED = 13600000 + 1905,
     E_UMOUNT_VOL_BY_PATH_FAILED = 13600000 + 1906,
 
+    // data disk format reentrancy errno
+    E_BUSY = 13600000 + 1907,
 };
 
 } // namespace DiskManager

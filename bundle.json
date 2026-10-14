@@ -39,6 +39,7 @@
         "libuv",
         "napi",
         "node",
+        "os_account",
         "runtime_core",
         "safwk",
         "samgr",
