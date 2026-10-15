@@ -100,12 +100,12 @@ public:
                  const std::string &callerBundle, int32_t callerUserId);
     int32_t GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct);
 
-    void NotifyMtpMounted(const std::string &id,
-                          const std::string &path,
-                          const std::string &desc,
-                          const std::string &uuid,
-                          const std::string &fsType);
-    void NotifyMtpUnmounted(const std::string &id, bool isBadRemove);
+    int32_t NotifyMtpMounted(const std::string &id,
+                             const std::string &path,
+                             const std::string &desc,
+                             const std::string &uuid,
+                             const std::string &fsType);
+    int32_t NotifyMtpUnmounted(const std::string &id, bool isBadRemove);
     int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out);
     int32_t CreatePartition(const std::string &diskId, const PartitionParams &params);
     int32_t DeletePartition(const std::string &diskId, int32_t partitionNum);

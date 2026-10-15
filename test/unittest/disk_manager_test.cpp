@@ -17,10 +17,14 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <cstring>
+#include <fstream>
 #include <securec.h>
+#include <sstream>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <thread>
+#include <unistd.h>
 #include <nlohmann/json.hpp>
 
 #define private public
@@ -3640,6 +3644,20 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_007, TestSize.Level0)
     dm.partitionTableMap_["disk-56-5"] = info;
     FormatParams params("vfat", true, "volume");
     EXPECT_NE(dm.FormatPartition("disk-56-5", 1, params), E_OK);
+}
+
+HWTEST_F(DiskManagerTest, FormatPartition_TestCase_008, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-56-6"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-56-6", "disk-56-6", "uuid-fp-8", UNMOUNTED));
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(1);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-56-6"] = info;
+    FormatParams params("nilfs2", true, "volume");
+    EXPECT_EQ(dm.FormatPartition("disk-56-6", 1, params), E_PARAMS_INVALID);
 }
 
 HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_001, TestSize.Level0)

@@ -584,10 +584,10 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
+    int32_t err = DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
     EndPendingStorageDaemonCallback();
-    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
-    return DiskManagerErrNo::E_OK;
+    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
@@ -604,10 +604,10 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
+    int32_t err = DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
     EndPendingStorageDaemonCallback();
-    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
-    return DiskManagerErrNo::E_OK;
+    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Erase(const std::string &volumeId)

@@ -751,6 +751,38 @@ HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: NotifyMtpMountedTest002
+ * @tc.desc: 测试 NotifyMtpMounted 透传服务侧非 E_OK 返回值。
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerClientTest, NotifyMtpMountedTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMountedTest002 Start";
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, NotifyMtpMounted(_, _, _, _, _)).WillOnce(Return(E_VOLUME_NOT_FOUND));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_EQ(client.NotifyMtpMounted("mtp-2", "/mnt/mtp", "desc", "uuid", "mtpfs"), E_VOLUME_NOT_FOUND);
+    GTEST_LOG_(INFO) << "NotifyMtpMountedTest002 End";
+}
+
+/**
+ * @tc.name: NotifyMtpUnmountedTest002
+ * @tc.desc: 测试 NotifyMtpUnmounted 在设备 SA 不可用时 Connect 失败返回错误。
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerClientTest, NotifyMtpUnmountedTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpUnmountedTest002 Start";
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_NE(client.NotifyMtpUnmounted("mtp-3", false), E_OK);
+    GTEST_LOG_(INFO) << "NotifyMtpUnmountedTest002 End";
+}
+
+/**
  * @tc.name: GetPartitionTableTest001
  * @tc.desc: 测试 GetPartitionTable 传入有效 diskId，SA 未运行时预期返回错误码。
  * @tc.type: FUNC
