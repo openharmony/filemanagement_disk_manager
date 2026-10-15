@@ -690,6 +690,7 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_001, TestSize.Leve
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = 0;
     g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("vol-61-1", "/mnt/data/external", "desc", "uuid", "mtpfs"), E_OK);
     EXPECT_EQ(provider.NotifyMtpUnmounted("vol-61-1", false), E_OK);
     g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_001 End";
@@ -707,9 +708,27 @@ HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_002, TestSize.Leve
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     MockIPCSkeleton::mockCallingUid_ = 0;
     g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpMounted("vol-61-1", "/mnt/data/external", "desc", "uuid", "mtpfs"), E_OK);
     EXPECT_EQ(provider.NotifyMtpUnmounted("vol-61-1", true), E_OK);
     g_nativeProcessName = "foundation";
     GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_002 End";
+}
+
+/**
+ * @tc.name: NotifyMtpUnmounted_TestCase_004
+ * @tc.desc: NotifyMtpUnmounted with unknown volume returns E_VOLUME_NOT_FOUND.
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpUnmounted_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_004 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_nativeProcessName = "storage_daemon";
+    EXPECT_EQ(provider.NotifyMtpUnmounted("vol-61-404", false), E_VOLUME_NOT_FOUND);
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "NotifyMtpUnmounted_TestCase_004 End";
 }
 
 /**

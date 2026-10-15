@@ -495,7 +495,7 @@ int32_t DiskManagerClient::ReportVolumeOpDiag(const std::string &opDiag)
 {
     LOGI("ReportVolumeOpDiag len=%{public}zu", opDiag.size());
     sptr<IDiskManager> proxy;
-    int32_t err = Connect(proxy);
+    int32_t err = ConnectIfPresent(proxy);
     if (err != E_OK) {
         LOGE("ReportVolumeOpDiag: connect failed err=%{public}d", err);
         return err;
@@ -507,8 +507,7 @@ int32_t DiskManagerClient::ReportVolumeOpDiag(const std::string &opDiag)
 int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::string &path, const std::string &desc,
                                             const std::string &uuid, const std::string &fsType)
 {
-    LOGI("[L1:DiskManagerClient] NotifyMtpMounted: >>> ENTER <<< id=%{public}s, "
-         "path=%{public}s, desc=%{public}s",
+    LOGI("NotifyMtpMounted id=%{public}s, path=%{public}s, desc=%{public}s",
          id.c_str(), GetAnonyString(path).c_str(), GetAnonyString(desc).c_str());
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
@@ -516,23 +515,30 @@ int32_t DiskManagerClient::NotifyMtpMounted(const std::string &id, const std::st
         return err;
     }
     IDiskManager &dm = *proxy;
-    dm.NotifyMtpMounted(id, path, desc, uuid, fsType);
-    LOGI("[L1:DiskManagerClient] NotifyMtpMounted: <<< EXIT SUCCESS <<< id=%{public}s", id.c_str());
+    err = dm.NotifyMtpMounted(id, path, desc, uuid, fsType);
+    if (err != E_OK) {
+        LOGE("NotifyMtpMounted failed, id=%{public}s, ret=%{public}d", id.c_str(), err);
+        return err;
+    }
+    LOGI("NotifyMtpMounted success, id=%{public}s", id.c_str());
     return E_OK;
 }
 
 int32_t DiskManagerClient::NotifyMtpUnmounted(const std::string &id, const bool isBadRemove)
 {
-    LOGI("[L1:DiskManagerClient] NotifyMtpUnmounted: >>> ENTER <<< id=%{public}s, isBadRemove=%{public}d",
-         id.c_str(), isBadRemove);
+    LOGI("NotifyMtpUnmounted id=%{public}s, isBadRemove=%{public}d", id.c_str(), isBadRemove);
     sptr<IDiskManager> proxy;
     int32_t err = Connect(proxy);
     if (err != E_OK) {
         return err;
     }
     IDiskManager &dm = *proxy;
-    dm.NotifyMtpUnmounted(id, isBadRemove);
-    LOGI("[L1:DiskManagerClient] NotifyMtpUnmounted: <<< EXIT SUCCESS <<< id=%{public}s", id.c_str());
+    err = dm.NotifyMtpUnmounted(id, isBadRemove);
+    if (err != E_OK) {
+        LOGE("NotifyMtpUnmounted failed, id=%{public}s, ret=%{public}d", id.c_str(), err);
+        return err;
+    }
+    LOGI("NotifyMtpUnmounted success, id=%{public}s", id.c_str());
     return E_OK;
 }
 

@@ -1991,13 +1991,15 @@ int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &pr
     return DiskManagerErrNo::E_OK;
 }
 
-void DiskManager::NotifyMtpMounted(const std::string &id,
-                                   const std::string &path,
-                                   const std::string &desc,
-                                   const std::string &uuid,
-                                   const std::string &fsType)
+int32_t DiskManager::NotifyMtpMounted(const std::string &id,
+                                      const std::string &path,
+                                      const std::string &desc,
+                                      const std::string &uuid,
+                                      const std::string &fsType)
 {
     LOGI("DiskManager NotifyMtpMounted");
+    IpcDfxScope dfx("DiskManager::NotifyMtpMounted", DFX_STAGE_NOTIFY_MTP_MOUNTED,
+                    VolumeOpType::NOTIFY_MTP_MOUNTED, VolumeReportInfo().WithVolumeId(id).WithFsType(fsType));
     std::string key = "user.getfriendlyname";
     char *value = (char *)malloc(sizeof(char) * (MTP_DEVICE_NAME_LEN + 1));
     int32_t len = 0;
@@ -2006,6 +2008,8 @@ void DiskManager::NotifyMtpMounted(const std::string &id,
         if (len >= 0 && len <= MTP_DEVICE_NAME_LEN) {
             value[len] = '\0';
             LOGI("MTP get namelen=%{public}d, name=%{public}s", len, value);
+        } else {
+            LOGW("MTP get friendly name failed, len=%{public}d", len);
         }
     }
 
@@ -2016,7 +2020,7 @@ void DiskManager::NotifyMtpMounted(const std::string &id,
     } else if (fsType == "gphotofs") {
         volExternal.SetFsType(volExternal.GetFsTypeByStr("ptp"));
     } else {
-        LOGI("Unknown type:%{public}s", fsType.c_str());
+        LOGW("Unknown type:%{public}s", fsType.c_str());
     }
     volExternal.SetDescription(desc);
     if (len > 0) {
@@ -2034,17 +2038,20 @@ void DiskManager::NotifyMtpMounted(const std::string &id,
         volumeMap_.insert(make_pair(volExternal.GetId(), volExternal));
     }
     CommonEventPublisher::PublishVolumeChange(VolumeState::MOUNTED, volExternal);
+    return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
-void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemove)
+int32_t DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemove)
 {
-    LOGI("DiskManager NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", id.c_str(),
+    LOGI("DiskManager NotifyMtpUnmounted id=%{public}s isBadRemove=%{public}d", GetAnonyString(id).c_str(),
          static_cast<int>(isBadRemove));
+    IpcDfxScope dfx("DiskManager::NotifyMtpUnmounted", DFX_STAGE_NOTIFY_MTP_UNMOUNTED,
+                    VolumeOpType::NOTIFY_MTP_UNMOUNTED, VolumeReportInfo().WithVolumeId(id));
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(id);
     if (it == volumeMap_.end()) {
-        LOGI("NotifyMtpUnmounted: volume %{public}s not in map, skip", id.c_str());
-        return;
+        LOGE("NotifyMtpUnmounted: volume %{public}s not in map, skip", GetAnonyString(id).c_str());
+        return dfx.Finish(E_VOLUME_NOT_FOUND);
     }
     VolumeExternal volExternal = it->second;
     if (!isBadRemove) {
@@ -2053,6 +2060,7 @@ void DiskManager::NotifyMtpUnmounted(const std::string &id, const bool isBadRemo
         CommonEventPublisher::PublishVolumeChange(VolumeState::BAD_REMOVAL, volExternal);
     }
     volumeMap_.erase(it);
+    return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
 int32_t DiskManager::GetPartitionTable(const std::string &diskId, PartitionTableInfo &info)
@@ -2505,7 +2513,7 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         typeIdentifier = std::to_string(partitionNum) + ":" + "0x0700";
     } else {
         LOGE("FormatPartition: type=%{public}s is not support", type.c_str());
-        return E_PARAMS_INVALID;
+        return dfx.Finish(E_PARAMS_INVALID);
     }
     std::vector<std::string> cmd = {"sgdisk", "-t", typeIdentifier, diskPath};
     int32_t ret = StorageDaemonAdapter::GetInstance().FormatPartition(devPath, params.GetFsType(),
