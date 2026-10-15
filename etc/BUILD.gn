@@ -21,3 +21,12 @@ ohos_prebuilt_etc("disk_manager_disk_config") {
   part_name = "disk_manager"
   subsystem_name = "filemanagement"
 }
+
+## Install cdc_dvrdisk_config to /system/etc/disk_manager/cdc_dvrdisk_config (car only)
+ohos_prebuilt_etc("disk_manager_cdc_dvrdisk_config") {
+  source = "cdc_dvrdisk_config"
+  relative_install_dir = "disk_manager"
+  part_name = "disk_manager"
+  subsystem_name = "filemanagement"
+  install_enable = car_device_enable
+}

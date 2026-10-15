@@ -1,0 +1,1 @@
+sysPattern /devices/platform/hiusb/hiusb_port/hiusb-port0/ea100000.hiusbc/xhci-hcd.*.auto/* label disk flag 6

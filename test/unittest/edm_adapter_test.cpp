@@ -105,6 +105,7 @@ HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_SataOddDisabled_ReturnsFalse_001, Te
     auto &adapter = EdmAdapter::GetInstance();
     EXPECT_FALSE(adapter.IsEdmEnableOddBurn("disk-1", 100));
 }
+
 // --- IsEdmControlMountEnabled ---
 
 HWTEST_F(EdmAdapterTest, IsEdmControlMountEnabled_NonEnterprise_ReturnsFalse_001, TestSize.Level0)

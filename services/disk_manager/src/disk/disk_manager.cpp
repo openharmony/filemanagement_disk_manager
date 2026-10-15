@@ -1161,14 +1161,17 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
         fsTypeStr = volExternal.GetFsTypeString();
         diskId = volExternal.GetDiskId();
     }
+
     if (description.empty() || description.size() > VOLUME_DESCRIPTION_MAX_LEN) {
         LOGE("SetVolumeDescription: description empty or exceeds %{public}zu", VOLUME_DESCRIPTION_MAX_LEN);
         return dfx.Finish(E_PARAMS_INVALID);
     }
+
     if (IsDiskSupported(diskId) != E_OK) {
         LOGE("SetVolumeDescription: disk not support, diskId=%{public}s", diskId.c_str());
         return dfx.Finish(E_NOT_SUPPORT);
     }
+
     if (LABEL_SUPPORTED_FS_TYPES.count(fsTypeStr) == 0) {
         LOGE("SetVolumeDescription: fsType not support, fsType=%{public}s", fsTypeStr.c_str());
         return dfx.Finish(E_NOT_SUPPORT);
@@ -1183,6 +1186,7 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
         LOGE("SetLabel vol %{public}s err=%{public}d", blockVolId.c_str(), err);
         return dfx.Finish(err);
     }
+
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     const auto it = volumeMap_.find(blockVolId);
     if (it == volumeMap_.end()) {
@@ -1670,11 +1674,7 @@ int32_t DiskManager::GetOddFreeSize(const std::string &extraInfo, const std::str
     int64_t startTotalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
     int64_t startFreeSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_bfree);
     std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
-    std::string devPath = CheckVolId(blockVolId);
-    if (devPath.empty()) {
-        return E_NON_EXIST;
-    }
-    const int32_t oddRet = GetOddCapacity(devPath, totalSize, freeSize);
+    const int32_t oddRet = GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
     LOGI("GetOddFreeSize startTotalSize=%{public}" PRId64 ", startFreeSize=%{public}" PRId64
          ", totalSize=%{public}" PRId64 ", freeSize=%{public}" PRId64 ", oddRet=%{public}d",
          startTotalSize, startFreeSize, totalSize, freeSize, oddRet);
@@ -1722,11 +1722,7 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
     if (IsOddFsType(fsType)) {
         int64_t freeSize = 0;
         std::unique_lock<std::shared_mutex> volWriteLock(oddMutex_);
-        std::string devPath = CheckVolId(blockVolId);
-        if (devPath.empty()) {
-            return E_NON_EXIST;
-        }
-        (void)GetOddCapacity(devPath, totalSize, freeSize);
+        (void)GetOddCapacity("/dev/block/" + blockVolId, totalSize, freeSize);
         return DiskManagerErrNo::E_OK;
     }
     totalSize = static_cast<int64_t>(diskInfo.f_bsize) * static_cast<int64_t>(diskInfo.f_blocks);
@@ -1950,6 +1946,8 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
         return prepErr;
     }
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
+    LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
+        callerBundle.c_str(), callerUserId, fsType.c_str());
     int32_t reportRet = ReportBurnSecurityInfo(callerUserId, callerBundle, fsType);
     LOGI("Burn result: reportResult=%{public}d", reportRet);
     if (err != ERR_OK) {
@@ -3074,7 +3072,8 @@ std::string DiskManager::CheckVolId(const std::string &volId)
     if (volId.find("vol-crypt-") == 0) {
         if (!external.GetMapperPath().empty()) {
             return external.GetMapperPath();
-        } else if (!external.GetLoopPath().empty()) {
+        }
+        if (!external.GetLoopPath().empty()) {
             return external.GetLoopPath();
         }
         return "";

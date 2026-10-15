@@ -37,6 +37,7 @@
 #include <cctype>
 #include <cerrno>
 #include <cinttypes>
+#include <cstdint>
 #include <cstdlib>
 #include <algorithm>
 #include <dirent.h>
@@ -75,11 +76,18 @@ constexpr int32_t MAX_SCSI_VOLUMES = 15;
 constexpr int32_t VOL_LENGTH = 3;
 constexpr uint64_t BYTES_PER_MB = 1024 * 1024;
 constexpr uint64_t MIN_DISK_SIZE_MB = 4;
-
 const int32_t CONFIG_PARAM_NUM = 6;
+const std::string CONFIG_PATH = "/system/etc/disk_manager/disk_config";
 #define FDSAN_TAG 1
 const uint64_t NEW_TAG = static_cast<uint64_t>(0xD00430F) << 32 | FDSAN_TAG;
 
+/**
+ * 将 sysfs 读出的字符串安全转为 int32_t。
+ * @param str sysfs 属性原始字符串
+ * @param base 进制：vid/pid 用 16（idVendor/idProduct 为十六进制 ASCII），
+ *             busnum/devnum 用 10（sysfs 中为十进制 ASCII）
+ * @return 转换后的 int32_t 值；空串或非法格式返回 0
+ */
 int32_t ParseSysfsInt(const std::string &str, int base)
 {
     if (str.empty()) {
@@ -97,9 +105,7 @@ int32_t ParseSysfsInt(const std::string &str, int base)
 }
 #ifdef CDC_STORAGE
 // it will be decoupled to the car odm
-const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
-#else
-const std::string CONFIG_PTAH = "/system/etc/disk_manager/disk_config";
+const std::string CDC_DVRDISK_CONFIG_PATH = "/system/etc/disk_manager/cdc_dvrdisk_config";
 #endif
 constexpr const char *BLOCK_PATH = "/dev/block";
 constexpr int DEC_BASE = 10;
@@ -305,39 +311,37 @@ int32_t BuildAndSyncPartitions(const UeventEnv &env,
             LOGI("Disk size=%{public}" PRIu64 " bytes (>4MB), treat as valid storage device, disk=%{public}s",
                  diskSize, diskId.c_str());
             return E_STORAGE_VALID_NODE;
-        } else {
-            LOGE("GetDiskSize failed or size too small (size=%{public}" PRIu64 "), abandon disk=%{public}s",
-                 diskSize, diskId.c_str());
-            (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
-            return err;
         }
-    } else {
-        std::vector<std::string> lines = SplitRawDumpToLines(rawDump);
-        if (lines.size() > MIN_LINES) {
-            auto userdataIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
-                return str.find("userdata") != std::string::npos;
+        LOGE("GetDiskSize failed or size too small (size=%{public}" PRIu64 "), abandon disk=%{public}s",
+                diskSize, diskId.c_str());
+        (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
+        return err;
+    }
+    std::vector<std::string> lines = SplitRawDumpToLines(rawDump);
+    if (lines.size() > MIN_LINES) {
+        auto userdataIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
+            return str.find("userdata") != std::string::npos;
+        });
+        if (userdataIt != lines.end()) {
+            isUserData = true;
+            LOGI("BuildAndSyncPartitions: detected userdata partition in disk=%{public}s lines=%{public}zu",
+                 diskId.c_str(), lines.size());
+            auto diskIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
+                return str.find("DISK") != std::string::npos;
             });
-            if (userdataIt != lines.end()) {
-                isUserData = true;
-                LOGI("BuildAndSyncPartitions: detected userdata partition in disk=%{public}s lines=%{public}zu",
-                     diskId.c_str(), lines.size());
-                auto diskIt = std::find_if(lines.begin(), lines.end(), [](const std::string &str) {
-                    return str.find("DISK") != std::string::npos;
-                });
-                rawDump.clear();
-                rawDump += (diskIt != lines.end() ? *diskIt : "") + "\n";
-                rawDump += *userdataIt;
-            }
+            rawDump.clear();
+            rawDump += (diskIt != lines.end() ? *diskIt : "") + "\n";
+            rawDump += *userdataIt;
         }
-        bool hasDiskLine = false;
-        if (!rawDump.empty()) {
-            hasDiskLine = PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
-        }
-        if (!hasDiskLine && env.major != DISK_CD_MAJOR) {
-            LOGE("ReadPartitionTable output has no DISK line, abandon disk=%{public}s", diskId.c_str());
-            (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
-            return DiskManagerErrNo::DISK_MGR_ERR;
-        }
+    }
+    bool hasDiskLine = false;
+    if (!rawDump.empty()) {
+        hasDiskLine = PartitionTableParser::ParseSgdiskDump(rawDump, diskId, tableType, parts);
+    }
+    if (!hasDiskLine && env.major != DISK_CD_MAJOR) {
+        LOGE("ReadPartitionTable output has no DISK line, abandon disk=%{public}s", diskId.c_str());
+        (void)StorageDaemonAdapter::GetInstance().DestroyBlockDeviceNode(diskDevPath);
+        return DiskManagerErrNo::DISK_MGR_ERR;
     }
     (void)DiskManager::GetInstance().ReplacePartitionsForDisk(diskId, parts);
     return DiskManagerErrNo::E_OK;
@@ -1090,11 +1094,9 @@ std::vector<std::string> UeventBootstrap::SplitLine(std::string &line, std::stri
     return result;
 }
 
-bool UeventBootstrap::ParasConfig()
+bool UeventBootstrap::ParasConfigFile(const std::string &configPath)
 {
-    LOGI("UeventBootstrap::ParasConfig enter");
-    std::ifstream infile;
-    infile.open(CONFIG_PTAH);
+    std::ifstream infile(configPath);
     if (!infile) {
         LOGE("Cannot open config");
         return false;
@@ -1145,6 +1147,18 @@ bool UeventBootstrap::ParasConfig()
     infile.close();
     return true;
 }
+
+bool UeventBootstrap::ParasConfig()
+{
+    LOGI("UeventBootstrap::ParasConfig enter");
+#ifdef CDC_STORAGE
+    if (!ParasConfigFile(CDC_DVRDISK_CONFIG_PATH)) {
+        LOGE("ParasConfigFile failed: %{public}s", CDC_DVRDISK_CONFIG_PATH.c_str());
+    }
+#endif
+    return ParasConfigFile(CONFIG_PATH);
+}
+
 
 uint32_t UeventBootstrap::MatchConfig(const UeventEnv &env)
 {

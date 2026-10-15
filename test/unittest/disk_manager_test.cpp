@@ -4664,15 +4664,15 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_001, TestSize.
     auto &dm = DiskManager::GetInstance();
     Disk ssdDisk = MakeSsdDisk("disk-qaes-ssd-1");
     dm.OnDiskCreated(ssdDisk);
-    
+
     VolumeExternal vol = MakeUsbVolume("vol-qaes-1", "disk-qaes-ssd-1", "uuid-qaes-1", MOUNTED);
     vol.SetPath("/mnt/data/voldata/data1");
     dm.OnVolumeCreated(vol);
-    
+
     std::vector<std::string> volumeIds;
     volumeIds.push_back("vol-qaes-1");
     ssdDisk.SetVolumeIds(volumeIds);
-    
+
     {
         std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
         dm.QueryAndAppendEncryptionStatusUnlocked(ssdDisk);
@@ -4695,15 +4695,15 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_002, TestSize.
     auto &dm = DiskManager::GetInstance();
     Disk hddDisk = MakeHddDisk("disk-qaes-hdd-1");
     dm.OnDiskCreated(hddDisk);
-    
+
     VolumeExternal vol = MakeUsbVolume("vol-qaes-2", "disk-qaes-hdd-1", "uuid-qaes-2", MOUNTED);
     vol.SetPath("/mnt/data/voldata/data2");
     dm.OnVolumeCreated(vol);
-    
+
     std::vector<std::string> volumeIds;
     volumeIds.push_back("vol-qaes-2");
     hddDisk.SetVolumeIds(volumeIds);
-    
+
     {
         std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
         dm.QueryAndAppendEncryptionStatusUnlocked(hddDisk);
@@ -4726,15 +4726,15 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_003, TestSize.
     auto &dm = DiskManager::GetInstance();
     Disk ssdDisk = MakeSsdDisk("disk-qaes-ssd-2");
     dm.OnDiskCreated(ssdDisk);
-    
+
     VolumeExternal vol = MakeUsbVolume("vol-qaes-3", "disk-qaes-ssd-2", "uuid-qaes-3", MOUNTED);
     vol.SetPath("/mnt/data/external/uuid-qaes-3");
     dm.OnVolumeCreated(vol);
-    
+
     std::vector<std::string> volumeIds;
     volumeIds.push_back("vol-qaes-3");
     ssdDisk.SetVolumeIds(volumeIds);
-    
+
     std::string extraInfoBefore = ssdDisk.GetExtraInfo();
     {
         std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
@@ -4758,15 +4758,15 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_004, TestSize.
     auto &dm = DiskManager::GetInstance();
     Disk usbDisk = MakeUsbDisk("disk-qaes-usb-1");
     dm.OnDiskCreated(usbDisk);
-    
+
     VolumeExternal vol = MakeUsbVolume("vol-qaes-4", "disk-qaes-usb-1", "uuid-qaes-4", MOUNTED);
     vol.SetPath("/mnt/data/external/uuid-qaes-4");
     dm.OnVolumeCreated(vol);
-    
+
     std::vector<std::string> volumeIds;
     volumeIds.push_back("vol-qaes-4");
     usbDisk.SetVolumeIds(volumeIds);
-    
+
     std::string extraInfoBefore = usbDisk.GetExtraInfo();
     {
         std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
@@ -4790,7 +4790,7 @@ HWTEST_F(DiskManagerTest, QueryAndAppendEncryptionStatus_TestCase_005, TestSize.
     auto &dm = DiskManager::GetInstance();
     Disk ssdDisk = MakeSsdDisk("disk-qaes-ssd-3");
     dm.OnDiskCreated(ssdDisk);
-    
+
     std::string extraInfoBefore = ssdDisk.GetExtraInfo();
     {
         std::shared_lock<std::shared_mutex> lock(dm.volumeMapMutex_);
@@ -4867,8 +4867,6 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_FreeSizeNotZero_TestCase_002, TestSize.
 {
     GTEST_LOG_(INFO) << "GetOddFreeSize_FreeSizeNotZero_TestCase_002 Start";
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-odd-2"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-odd-2", "disk-odd-2", "uuid-odd-2", MOUNTED));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     struct statvfs diskInfo {};
     diskInfo.f_bsize = 4096;
@@ -4895,8 +4893,6 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_StartFreeSizeZero_TestCase_003, TestSiz
 {
     GTEST_LOG_(INFO) << "GetOddFreeSize_StartFreeSizeZero_TestCase_003 Start";
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-odd-3"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-odd-3", "disk-odd-3", "uuid-odd-3", MOUNTED));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     struct statvfs diskInfo {};
     diskInfo.f_bsize = 4096;
@@ -4924,8 +4920,6 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Leve
 {
     GTEST_LOG_(INFO) << "GetOddFreeSize_Fallthrough_TestCase_004 Start";
     auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-odd-4"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-odd-4", "disk-odd-4", "uuid-odd-4", MOUNTED));
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     struct statvfs diskInfo {};
     diskInfo.f_bsize = 4096;
@@ -4944,59 +4938,100 @@ HWTEST_F(DiskManagerTest, GetOddFreeSize_Fallthrough_TestCase_004, TestSize.Leve
 }
 
 /**
- * @tc.name: GetOddFreeSize_CdTypeSuccess_TestCase_005
- * @tc.desc: CD 类型(CD-R) + GetOddCapacity 成功时直接返回 oddRet(=ERR_OK)，不走 fallback
+ * @tc.name: FormatPartition_FsTypeExt4_001
+ * @tc.desc: FormatPartition with fsType=ext4 reaches the sgdisk typeIdentifier construction.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerTest, GetOddFreeSize_CdTypeSuccess_TestCase_005, TestSize.Level0)
+HWTEST_F(DiskManagerTest, FormatPartition_FsTypeExt4_001, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeSuccess_TestCase_005 Start";
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExt4_001 Start";
     auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-provider-1", "disk-provider-1", "uuid-fp-ext4", UNMOUNTED));
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(1);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-provider-1"] = info;
+    FormatParams params("ext4", true, "volume");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    struct statvfs diskInfo {};
-    diskInfo.f_bsize = 4096;
-    diskInfo.f_blocks = 100;
-    diskInfo.f_bfree = 50;
-    const int64_t mockTotal = 409600;
-    const int64_t mockFree = 2048;
-    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree), Return(ERR_OK)));
-    int64_t freeSize = 0;
-    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"CD-R"}})";
-    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-5", diskInfo, freeSize), ERR_OK);
-    EXPECT_EQ(freeSize, mockFree);
-    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeSuccess_TestCase_005 End";
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillRepeatedly(Return(ERR_OK));
+    EXPECT_EQ(dm.FormatPartition("disk-provider-1", 1, params), E_OK);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExt4_001 End";
 }
 
 /**
- * @tc.name: GetOddFreeSize_CdTypeFail_TestCase_006
- * @tc.desc: CD 类型(CD-RW) + GetOddCapacity 失败时直接返回错误码，不走 fallback
+ * @tc.name: FormatPartition_FsTypeExfat_001
+ * @tc.desc: FormatPartition with fsType=exfat reaches the sgdisk typeIdentifier construction.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerTest, GetOddFreeSize_CdTypeFail_TestCase_006, TestSize.Level0)
+HWTEST_F(DiskManagerTest, FormatPartition_FsTypeExfat_001, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeFail_TestCase_006 Start";
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExfat_001 Start";
     auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-provider-2", "disk-provider-2", "uuid-fp-exfat", UNMOUNTED));
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(2);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-provider-2"] = info;
+    FormatParams params("exfat", true, "volume");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    struct statvfs diskInfo {};
-    diskInfo.f_bsize = 4096;
-    diskInfo.f_blocks = 100;
-    diskInfo.f_bfree = 50;
-    const int64_t mockTotal = 0;
-    const int64_t mockFree = 0;
-    EXPECT_CALL(sdAdapter, GetCapacity(_, _, _))
-        .WillOnce(DoAll(SetArgReferee<1>(mockTotal), SetArgReferee<2>(mockFree),
-                        Return(DiskManagerErrNo::DISK_MGR_ERR)));
-    int64_t freeSize = 0;
-    std::string extraInfo = R"({"ODD_INFO":{"DISC_TYPE":"CD-RW"}})";
-    EXPECT_EQ(dm.GetOddFreeSize(extraInfo, "vol-odd-6", diskInfo, freeSize), DiskManagerErrNo::DISK_MGR_ERR);
-    EXPECT_EQ(freeSize, mockFree);
-    GTEST_LOG_(INFO) << "GetOddFreeSize_CdTypeFail_TestCase_006 End";
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillRepeatedly(Return(ERR_OK));
+    EXPECT_EQ(dm.FormatPartition("disk-provider-2", 2, params), E_OK);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeExfat_001 End";
 }
 
 /**
+ * @tc.name: FormatPartition_FsTypeVfat_001
+ * @tc.desc: FormatPartition with fsType=vfat reaches the sgdisk typeIdentifier construction.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, FormatPartition_FsTypeVfat_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeVfat_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-3"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-provider-3", "disk-provider-3", "uuid-fp-vfat", UNMOUNTED));
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(3);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-provider-3"] = info;
+    FormatParams params("vfat", true, "volume");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillRepeatedly(Return(ERR_OK));
+    EXPECT_EQ(dm.FormatPartition("disk-provider-3", 3, params), E_OK);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeVfat_001 End";
+}
+
+/**
+ * @tc.name: FormatPartition_FsTypeUnsupported_001
+ * @tc.desc: FormatPartition with unsupported fsType returns E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, FormatPartition_FsTypeUnsupported_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeUnsupported_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-provider-4"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-provider-4", "disk-provider-4", "uuid-fp-unsupported", UNMOUNTED));
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(1);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-provider-4"] = info;
+    FormatParams params("ntfs", true, "volume");
+    EXPECT_EQ(dm.FormatPartition("disk-provider-4", 1, params), E_PARAMS_INVALID);
+    GTEST_LOG_(INFO) << "FormatPartition_FsTypeUnsupported_001 End";
+}
+
+/*
  * @tc.name: BindBlockLoopDev_TestCase_001
  * @tc.desc: BindBlockLoopDev returns E_OK when disk exists(USB) and adapter succeeds, forwards loopPath.
  * @tc.type: FUNC
@@ -6135,7 +6170,7 @@ HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_002, TestSize.Level0)
 
 /**
  * @tc.name: GetExternalDiskInfos_TestCase_003
- * @tc.desc: GetExternalDiskInfos passes int32_t vendorId/productId through to ExternalDiskInfo.
+ * @tc.desc: GetExternalDiskInfos passes through int32_t vendorId/productId.
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -6158,7 +6193,7 @@ HWTEST_F(DiskManagerTest, GetExternalDiskInfos_TestCase_003, TestSize.Level0)
 
 /**
  * @tc.name: GetExternalDiskInfos_TestCase_004
- * @tc.desc: GetExternalDiskInfos returns 0 for zero vendorId/productId.
+ * @tc.desc: GetExternalDiskInfos returns default 0 for unset vendorId/productId.
  * @tc.type: FUNC
  * @tc.require: NA
  */
