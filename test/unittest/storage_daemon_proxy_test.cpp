@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1010,7 +1010,11 @@ HWTEST_F(StorageDaemonProxyTest, FormatVolume_TestCase_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatVolume_TestCase_003 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(false));
     int32_t ret = proxy_->FormatVolume("/dev/block/sda1", "ext4", "/dev/disk", "gpt", 1);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
 
@@ -1027,7 +1031,8 @@ HWTEST_F(StorageDaemonProxyTest, FormatVolume_TestCase_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatVolume_TestCase_004 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_FORMAT_VOLUME), _, _, _))
         .WillOnce(Return(IPC_FAILED));
@@ -1047,7 +1052,8 @@ HWTEST_F(StorageDaemonProxyTest, FormatVolume_TestCase_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "FormatVolume_TestCase_005 Start";
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(4).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_FORMAT_VOLUME), _, _, _))
         .WillOnce(Return(ERR_OK));
@@ -2904,20 +2910,20 @@ HWTEST_F(StorageDaemonProxyTest, ExecuteCommand_TestCase_005, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_001 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
     uint64_t dmDev = 0;
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
     EXPECT_EQ(dmDev, 0);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_001 End";
 }
- 
+
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_002 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
@@ -2932,7 +2938,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_002, TestSize.Level0)
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(dmDev, static_cast<uint64_t>(makedev(253, 13)));
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_002 End";
 }
 
@@ -2944,7 +2950,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_002, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_003, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_003 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
@@ -2955,10 +2961,10 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_003, TestSize.Level0)
     uint64_t dmDev = 0;
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, IPC_FAILED);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_003 End";
 }
- 
+
 /**
  * @tc.name: CreateDmLinear_TestCase_004
  * @tc.desc: CreateDmLinear: reply ReadInt32 is not ERR_OK.
@@ -2967,7 +2973,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_003, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_004, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_004 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
@@ -2976,10 +2982,10 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_004, TestSize.Level0)
     uint64_t dmDev = 0;
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, REMOTE_FAILED);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_004 End";
 }
- 
+
 /**
  * @tc.name: CreateDmLinear_TestCase_005
  * @tc.desc: CreateDmLinear: ReadUint64(dmDev) returns false.
@@ -2988,7 +2994,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_004, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_005, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_005 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteUint64(_)).Times(2).WillRepeatedly(Return(true));
@@ -2998,10 +3004,10 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_005, TestSize.Level0)
     uint64_t dmDev = 0;
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_005 End";
 }
- 
+
 /**
  * @tc.name: CreateDmLinear_TestCase_006
  * @tc.desc: CreateDmLinear: WriteString16 returns false (short-circuit branch 1).
@@ -3010,7 +3016,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_005, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_006, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_006 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
     // WriteUint64 should NOT be called due to short-circuit
@@ -3019,10 +3025,10 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_006, TestSize.Level0)
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
     EXPECT_EQ(dmDev, 0);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_006 End";
 }
- 
+
 /**
  * @tc.name: CreateDmLinear_TestCase_007
  * @tc.desc: CreateDmLinear: WriteString16 succeeds, first WriteUint64 fails (short-circuit branch 2).
@@ -3031,7 +3037,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_006, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_007, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_007 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     // First WriteUint64 (startSector) fails, second WriteUint64 should NOT be called
@@ -3040,10 +3046,10 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_007, TestSize.Level0)
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
     EXPECT_EQ(dmDev, 0);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_007 End";
 }
- 
+
 /**
  * @tc.name: CreateDmLinear_TestCase_008
  * @tc.desc: CreateDmLinear: WriteString16 and first WriteUint64 succeed, second WriteUint64 fails
@@ -3053,7 +3059,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_007, TestSize.Level0)
 HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_008, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_008 Start";
- 
+
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
     // First WriteUint64 (startSector) succeeds, second WriteUint64 (sectorCount) fails
@@ -3064,7 +3070,7 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_008, TestSize.Level0)
     int32_t ret = proxy_->CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev);
     EXPECT_EQ(ret, ERR_INVALID_DATA);
     EXPECT_EQ(dmDev, 0);
- 
+
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_008 End";
 }
 } // namespace DiskManager

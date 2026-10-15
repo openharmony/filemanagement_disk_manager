@@ -66,8 +66,8 @@ public:
     MOCK_METHOD(std::string, GetDiscType, (const std::string &extraInfo));
     MOCK_METHOD(std::string, GetDriverType, (const std::string &extraInfo));
     MOCK_METHOD(bool, DestroyVolumeByDiskIdAndPartNum, (const std::string &diskId, int32_t partNum));
-    MOCK_METHOD(std::string, DestroyDmCryptVolume, (const std::string &mapperName));
-    MOCK_METHOD(std::string, UnbindBlockLoopDev, (const std::string &loopPath));
+    MOCK_METHOD(int32_t, DestroyDmCryptVolume, (const std::string &mapperName));
+    MOCK_METHOD(int32_t, UnbindBlockLoopDev, (const std::string &loopPath));
 
     static DiskManager *mockInstance_;
 };

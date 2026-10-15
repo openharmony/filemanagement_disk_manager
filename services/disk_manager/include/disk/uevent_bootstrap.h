@@ -53,6 +53,7 @@ private:
     static int32_t DiscoverPartitionsAndVolumes(const UeventEnv &env, bool publishNewDiskEvent);
     static std::vector<std::string> SplitLine(std::string &line, std::string &token);
     static bool ParasConfig();
+    static bool ParasConfigFile(const std::string &configPath);
 
     static void ComputePartitionDiff(const std::string &diskId,
                                      const std::vector<PartitionRecord> &newParts,

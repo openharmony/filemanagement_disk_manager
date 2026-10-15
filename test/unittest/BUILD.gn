@@ -632,9 +632,7 @@ if (disk_manager_edm_enable) {
     ]
 
     external_deps = [
-      "ability_base:base",
       "ability_base:want",
-      "bounds_checking_function:libsec_shared",
       "c_utils:utils",
       "enterprise_device_management:edmservice_kits",
       "googletest:gmock_main",

@@ -15,7 +15,6 @@
 #include "edm_adapter.h"
 
 #include "parameters.h"
-
 #include "usb_manager_proxy.h"
 #include "enterprise_device_mgr_proxy.h"
 #include "external_storage_device_info.h"
@@ -124,15 +123,14 @@ bool EdmAdapter::IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUse
     LOGI("IsEdmEnableOddBurn EDM whitelist allowed, diskId=%{public}s", diskId.c_str());
     return true;
 }
- 
+
 bool EdmAdapter::IsExternalOddBurnAllowed(int32_t userId,
                                           int32_t pid,
                                           int32_t vid,
                                           const std::string &sn)
 {
-    LOGI("IsExternalOddBurnAllowed enter, userId=%{public}d pid=%{public}d vid=%{public}d sn=%{public}s",
-         userId, pid, vid, GetAnonyString(sn).c_str());
-
+    LOGI("IsExternalOddBurnAllowed call EDM IsAllowedOddBurn, userId=%{public}d vid=%{public}d "
+         "pid=%{public}d sn=%{public}s", userId, vid, pid, GetAnonyString(sn).c_str());
     auto usbProxy = EDM::UsbManagerProxy::GetUsbManagerProxy();
     if (usbProxy == nullptr) {
         LOGW("IsExternalOddBurnAllowed UsbManagerProxy is null, allow burn");

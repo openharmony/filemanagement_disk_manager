@@ -560,7 +560,7 @@ HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_MissingKey_TestCase_001, TestSize.L
     EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
     BlockInfo info;
     EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
-    EXPECT_EQ(info.rotational, 0);
+    EXPECT_EQ(info.rotational, -1);
 }
 
 HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_NullValue_TestCase_002, TestSize.Level0)
@@ -573,7 +573,7 @@ HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_NullValue_TestCase_002, TestSize.Le
     EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
     BlockInfo info;
     EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
-    EXPECT_EQ(info.rotational, 0);
+    EXPECT_EQ(info.rotational, -1);
 }
 
 HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_IntegerValue_TestCase_003, TestSize.Level0)
@@ -612,5 +612,5 @@ HWTEST_F(BlockInfoTableTest, ReadInt32OrZero_NonIntegerType_TestCase_005, TestSi
     EXPECT_EQ(table.ReloadFromDaemon(), E_OK);
     BlockInfo info;
     EXPECT_TRUE(table.TryCopyByDiskId("d1", info));
-    EXPECT_EQ(info.rotational, 0);
+    EXPECT_EQ(info.rotational, -1);
 }
