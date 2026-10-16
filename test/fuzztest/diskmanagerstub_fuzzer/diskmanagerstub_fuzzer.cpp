@@ -31,6 +31,8 @@ constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
     39, 40, 41, 42, 43, 44, 45,
     // Partition management APIs (@since 26.0.0)
     46, 47, 48, 49,
+    // Public API: external storage device info query (@since 27.0.0)
+    51, 52,
 };
 
 } // namespace
