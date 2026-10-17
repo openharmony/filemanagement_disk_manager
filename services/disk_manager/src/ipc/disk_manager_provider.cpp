@@ -64,30 +64,30 @@ constexpr const char *FORMAT_DATA_DISK_PRIVILEGE = "ohos.privilege.format_data_d
 #ifndef AUTH_WAIT_TIMEOUT_SEC
 constexpr int32_t AUTH_WAIT_TIMEOUT_SEC = 3600;
 #endif
-/**
- * @brief 格式化台式机数据盘时的管理员鉴权回调。
- *
- * OnResult 在 mutex 保护下写入结果码并 notify condition_variable，
- * 供 CheckAdminAuthorization 的 wait_for 等待；OnConnectAbility 空实现。
- */
+struct AuthState {
+    std::mutex mtx;
+    std::condition_variable cv;
+    int32_t resultCode = 0;
+    bool completed = false;
+};
+
 class FormatAuthCallback : public AccountSA::AuthorizationCallback {
 public:
-    FormatAuthCallback(std::mutex &mtx, std::condition_variable &cv, int32_t &resultCode, bool &completed)
-        : mtx_(mtx), cv_(cv), resultCode_(resultCode), completed_(completed) {}
+    explicit FormatAuthCallback(std::shared_ptr<AuthState> state) : state_(std::move(state)) {}
     ~FormatAuthCallback() override = default;
 
     ErrCode OnResult(int32_t resultCode, const AccountSA::AuthorizationResult &result) override
     {
         {
-            std::lock_guard<std::mutex> lock(mtx_);
-            if (!completed_) {
-                resultCode_ = (resultCode != ERR_OK)
+            std::lock_guard<std::mutex> lock(state_->mtx);
+            if (!state_->completed) {
+                state_->resultCode = (resultCode != ERR_OK)
                     ? resultCode
                     : static_cast<int32_t>(result.resultCode);
-                completed_ = true;
+                state_->completed = true;
             }
         }
-        cv_.notify_one();
+        state_->cv.notify_one();
         return ERR_OK;
     }
 
@@ -100,10 +100,7 @@ public:
     }
 
 private:
-    std::mutex &mtx_;
-    std::condition_variable &cv_;
-    int32_t &resultCode_;
-    bool &completed_;
+    std::shared_ptr<AuthState> state_;
 };
 
 inline int32_t IpcDfxRet(IpcDfxScope &dfx, int32_t ret)
@@ -333,12 +330,8 @@ bool DiskManagerProvider::IsDataDiskByDiskId(const std::string &diskId) const
 
 int32_t DiskManagerProvider::CheckAdminAuthorization()
 {
-    std::mutex authMtx;
-    std::condition_variable authCv;
-    int32_t resultCode = 0;
-    bool completed = false;
-
-    auto callback = std::make_shared<FormatAuthCallback>(authMtx, authCv, resultCode, completed);
+    auto state = std::make_shared<AuthState>();
+    auto callback = std::make_shared<FormatAuthCallback>(state);
     AccountSA::AcquireAuthorizationOptions options;
     options.isReuseNeeded = false;
     options.isInteractionAllowed = true;
@@ -353,15 +346,15 @@ int32_t DiskManagerProvider::CheckAdminAuthorization()
         return ERR_JS_AUTHORIZATION_DENIED;
     }
 
-    std::unique_lock<std::mutex> lock(authMtx);
-    bool notified = authCv.wait_for(lock, std::chrono::seconds(AUTH_WAIT_TIMEOUT_SEC),
-                                    [&completed]() { return completed; });
+    std::unique_lock<std::mutex> lock(state->mtx);
+    auto authTimeout = std::chrono::seconds(AUTH_WAIT_TIMEOUT_SEC);
+    bool notified = state->cv.wait_for(lock, authTimeout, [&state]() { return state->completed; });
     if (!notified) {
         LOGE("CheckAdminAuthorization: wait timeout (%{public}ds)", AUTH_WAIT_TIMEOUT_SEC);
         return ERR_JS_AUTHORIZATION_DENIED;
     }
-    if (resultCode != AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS) {
-        LOGE("CheckAdminAuthorization: authorization denied, resultCode=%{public}d", resultCode);
+    if (state->resultCode != AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS) {
+        LOGE("CheckAdminAuthorization: authorization denied, resultCode=%{public}d", state->resultCode);
         return ERR_JS_AUTHORIZATION_DENIED;
     }
     return E_OK;
