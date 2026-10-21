@@ -15,7 +15,11 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <unistd.h>
+#include <fstream>
+#include <sstream>
 
 #include "disk_manager_errno.h"
 #include "storage_daemon_adapter.h"
@@ -26,6 +30,44 @@ namespace DiskManager {
 
 using namespace testing;
 using namespace testing::ext;
+
+namespace {
+constexpr const char *DFX_AUDIT_FILE = "/data/log/hiaudit/disk_manager/disk_manager_audit.csv";
+
+void EnsureDfxAuditDir()
+{
+    if (access("/data/log", F_OK) != 0) {
+        mkdir("/data/log", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+    if (access("/data/log/hiaudit", F_OK) != 0) {
+        mkdir("/data/log/hiaudit", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+    if (access("/data/log/hiaudit/disk_manager/", F_OK) != 0) {
+        mkdir("/data/log/hiaudit/disk_manager/", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+}
+
+int64_t GetAuditFileSize()
+{
+    std::ifstream ifs(DFX_AUDIT_FILE, std::ios::ate);
+    if (!ifs.is_open()) {
+        return 0;
+    }
+    return static_cast<int64_t>(ifs.tellg());
+}
+
+std::string ReadAuditSince(int64_t offset)
+{
+    std::ifstream ifs(DFX_AUDIT_FILE);
+    if (!ifs.is_open()) {
+        return "";
+    }
+    ifs.seekg(offset, std::ios::beg);
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return ss.str();
+}
+} // namespace
 
 class StorageDaemonAdapterTest : public testing::Test {
 public:
@@ -584,5 +626,50 @@ HWTEST_F(StorageDaemonAdapterTest, CreateDmLinear_ErrorPath_001, TestSize.Level0
     uint64_t dmDev = 0;
     EXPECT_NE(adapter.CreateDmLinear("/dev/block/sda1", 0, 1000, dmDev), E_OK);
 }
+
+HWTEST_F(StorageDaemonAdapterTest, Erase_ProxyNotReadyDfx_001, TestSize.Level0)
+{
+    EnsureDfxAuditDir();
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    adapter.storageDaemon_ = nullptr;
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_NE(adapter.Erase("/dev/block/disk-11-0"), E_OK);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("StorageDaemonAdapter::Erase"), std::string::npos);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Eject_ProxyNotReadyDfx_001, TestSize.Level0)
+{
+    EnsureDfxAuditDir();
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    adapter.storageDaemon_ = nullptr;
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_NE(adapter.Eject("sr0"), E_OK);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("StorageDaemonAdapter::Eject"), std::string::npos);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, CreateIsoImage_ProxyNotReadyDfx_001, TestSize.Level0)
+{
+    EnsureDfxAuditDir();
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    adapter.storageDaemon_ = nullptr;
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_NE(adapter.CreateIsoImage("/dev/block/disk-11-0", "/data/iso.img", "udf", "/mnt/udf"), E_OK);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("StorageDaemonAdapter::CreateIsoImage"), std::string::npos);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, Burn_ProxyNotReadyDfx_001, TestSize.Level0)
+{
+    EnsureDfxAuditDir();
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    adapter.storageDaemon_ = nullptr;
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_NE(adapter.Burn("/dev/block/disk-11-0", "{}", "udf"), E_OK);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("StorageDaemonAdapter::Burn"), std::string::npos);
+}
+
 } // namespace DiskManager
 } // namespace OHOS
