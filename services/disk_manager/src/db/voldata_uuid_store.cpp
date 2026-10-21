@@ -366,18 +366,14 @@ int32_t VoldataUuidStore::LoadJsonFromPath(const std::string &filePath)
 int32_t VoldataUuidStore::LoadFromFile()
 {
     uuidMap_.clear();
-
     const std::string backupFilePath = jsonFilePath_ + BACKUP_FILE_SUFFIX;
-
     std::error_code errorCode;
     const bool mainExists = std::filesystem::exists(jsonFilePath_, errorCode);
-
     // Case 1: main file does not exist (first run), create empty main + backup
     if (!mainExists) {
         LOGI("VoldataUuidStore JSON not exists, create empty: %{public}s", jsonFilePath_.c_str());
         return SaveToFile();
     }
-
     // Case 2: main file is valid, load succeeded
     int32_t loadRet = LoadJsonFromPath(jsonFilePath_);
     if (loadRet == DiskManagerErrNo::E_OK) {
@@ -390,7 +386,6 @@ int32_t VoldataUuidStore::LoadFromFile()
         }
         return DiskManagerErrNo::E_OK;
     }
-
     // Case 3: main file corrupted, try backup
     LOGW("VoldataUuidStore main file corrupted, trying backup: %{public}s", backupFilePath.c_str());
     const bool backupExists = std::filesystem::exists(backupFilePath, errorCode);
@@ -403,7 +398,6 @@ int32_t VoldataUuidStore::LoadFromFile()
         }
         LOGW("VoldataUuidStore backup also corrupted");
     }
-
     // Case 4: both corrupted (or no backup), start fresh from empty
     LOGW("VoldataUuidStore starting fresh from empty");
     return SaveToFile();
