@@ -131,7 +131,7 @@ void ApplyVolumeOpDiagReport(const OpDiagReport &report)
         report.info);
 }
 } // namespace
- 
+
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
 DiskManagerProvider::DiskManagerProvider(int32_t saId, bool runOnCreate) : SystemAbility(saId, runOnCreate) {}
@@ -330,7 +330,7 @@ bool DiskManagerProvider::IsDataDisk(const std::string &volumeId) const
     }
     return disk.IsInternalDataDisk();
 }
- 
+
 bool DiskManagerProvider::IsDataDiskByDiskId(const std::string &diskId) const
 {
     Disk disk;
@@ -340,7 +340,7 @@ bool DiskManagerProvider::IsDataDiskByDiskId(const std::string &diskId) const
     }
     return disk.IsInternalDataDisk();
 }
- 
+
 int32_t DiskManagerProvider::CheckAdminAuthorization()
 {
     auto state = std::make_shared<AuthState>();
@@ -358,7 +358,7 @@ int32_t DiskManagerProvider::CheckAdminAuthorization()
         LOGE("CheckAdminAuthorization: AcquireAuthorization failed, ret=%{public}d", acquireRet);
         return ERR_JS_AUTHORIZATION_DENIED;
     }
- 
+
     std::unique_lock<std::mutex> lock(state->mtx);
     auto authTimeout = std::chrono::seconds(AUTH_WAIT_TIMEOUT_SEC);
     bool notified = state->cv.wait_for(lock, authTimeout, [&state]() { return state->completed; });
@@ -388,8 +388,29 @@ int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::stri
         LOGE("Format: volumeId is invalid");
         return E_PARAMS_INVALID;
     }
+    bool needAdminAuth = IsDataDisk(volumeId);
+    if (needAdminAuth) {
+        if (dataDiskFormatBusy_.exchange(true)) {
+            LOGE("Format: another data-disk format/partition operation in progress");
+            return E_BUSY;
+        }
+        int32_t authRet = CheckAdminAuthorization();
+        if (authRet != E_OK) {
+            LOGE("Format: admin authorization failed, ret=%{public}d", authRet);
+            dataDiskFormatBusy_.store(false);
+            return authRet;
+        }
+    }
     const int32_t err = DiskManager::GetInstance().Format(volumeId, fsType);
     LOGI("Format volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
+    if (needAdminAuth) {
+        ErrCode releaseRet = AccountSA::AuthorizationClient::GetInstance().ReleaseAuthorization(
+            FORMAT_DATA_DISK_PRIVILEGE);
+        if (releaseRet != ERR_OK) {
+            LOGE("Format: ReleaseAuthorization failed, ret=%{public}d", releaseRet);
+        }
+        dataDiskFormatBusy_.store(false);
+    }
     return err;
 }
 
@@ -542,9 +563,29 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
-
+    bool needAdminAuth = IsDataDiskByDiskId(diskId);
+    if (needAdminAuth) {
+        if (dataDiskFormatBusy_.exchange(true)) {
+            LOGE("Partition: another data-disk format/partition operation in progress");
+            return E_BUSY;
+        }
+        int32_t authRet = CheckAdminAuthorization();
+        if (authRet != E_OK) {
+            LOGE("Partition: admin authorization failed, ret=%{public}d", authRet);
+            dataDiskFormatBusy_.store(false);
+            return authRet;
+        }
+    }
     const int32_t err = DiskManager::GetInstance().Partition(diskId, type);
     LOGI("Partition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
+    if (needAdminAuth) {
+        ErrCode releaseRet = AccountSA::AuthorizationClient::GetInstance().ReleaseAuthorization(
+            FORMAT_DATA_DISK_PRIVILEGE);
+        if (releaseRet != ERR_OK) {
+            LOGE("Partition: ReleaseAuthorization failed, ret=%{public}d", releaseRet);
+        }
+        dataDiskFormatBusy_.store(false);
+    }
     return err;
 }
 
@@ -715,10 +756,10 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
+    int32_t err = DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
     EndPendingStorageDaemonCallback();
-    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
-    return DiskManagerErrNo::E_OK;
+    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
@@ -739,10 +780,10 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
+    int32_t err = DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
     EndPendingStorageDaemonCallback();
-    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
-    return DiskManagerErrNo::E_OK;
+    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), err);
+    return err;
 }
 
 int32_t DiskManagerProvider::Erase(const std::string &volumeId)
