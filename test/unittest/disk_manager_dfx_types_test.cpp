@@ -223,5 +223,23 @@ HWTEST_F(DiskManagerDfxTypesTest, ParseOpDiagText_ExtraAndIds_001, TestSize.Leve
     EXPECT_EQ(noStage.bizStage, 0);
 }
 
+HWTEST_F(DiskManagerDfxTypesTest, DfxStage_OpticalDriveAndMtp_001, TestSize.Level0)
+{
+    EXPECT_EQ(DFX_STAGE_ERASE, 56);
+    EXPECT_EQ(DFX_STAGE_EJECT, 57);
+    EXPECT_EQ(DFX_STAGE_BURN, 58);
+    EXPECT_EQ(DFX_STAGE_CREATE_ISO_IMAGE, 59);
+    EXPECT_EQ(DFX_STAGE_CDROM_DISCOVER, 61);
+    EXPECT_EQ(DFX_STAGE_MTP_NOTIFY, 62);
+}
+ 
+HWTEST_F(DiskManagerDfxTypesTest, VolumeOpType_OpticalDrive_001, TestSize.Level0)
+{
+    EXPECT_EQ(static_cast<int32_t>(VolumeOpType::ERASE), 20);
+    EXPECT_EQ(static_cast<int32_t>(VolumeOpType::EJECT), 21);
+    EXPECT_EQ(static_cast<int32_t>(VolumeOpType::BURN), 22);
+    EXPECT_EQ(static_cast<int32_t>(VolumeOpType::CREATE_ISO_IMAGE), 23);
+}
+
 } // namespace DiskManager
 } // namespace OHOS
