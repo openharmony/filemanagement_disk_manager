@@ -15,6 +15,10 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fstream>
+#include <sstream>
 
 #include "ipc/disk_manager_provider.h"
 #include "disk_manager.h"
@@ -3930,6 +3934,146 @@ HWTEST_F(DiskManagerProviderTest, Format_Busy_Then_Partition_Busy_001, TestSize.
     EXPECT_EQ(provider.Partition("disk-83-2", 0), E_BUSY);
     provider.dataDiskFormatBusy_.store(false);
     GTEST_LOG_(INFO) << "Format_Busy_Then_Partition_Busy_001 End";
+}
+
+namespace {
+constexpr const char *DFX_AUDIT_FILE = "/data/log/hiaudit/disk_manager/disk_manager_audit.csv";
+ 
+void EnsureDfxAuditDir()
+{
+    if (access("/data/log", F_OK) != 0) {
+        mkdir("/data/log", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+    if (access("/data/log/hiaudit", F_OK) != 0) {
+        mkdir("/data/log/hiaudit", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+    if (access("/data/log/hiaudit/disk_manager/", F_OK) != 0) {
+        mkdir("/data/log/hiaudit/disk_manager/", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+}
+ 
+int64_t GetAuditFileSize()
+{
+    std::ifstream ifs(DFX_AUDIT_FILE, std::ios::ate);
+    if (!ifs.is_open()) {
+        return 0;
+    }
+    return static_cast<int64_t>(ifs.tellg());
+}
+ 
+std::string ReadAuditSince(int64_t offset)
+{
+    std::ifstream ifs(DFX_AUDIT_FILE);
+    if (!ifs.is_open()) {
+        return "";
+    }
+    ifs.seekg(offset, std::ios::beg);
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return ss.str();
+}
+} // namespace
+ 
+/**
+ * @tc.name: Erase_PermissionDeniedDfx_001
+ * @tc.desc: Erase with denied permission reports provider fault with E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerProviderTest, Erase_PermissionDeniedDfx_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_PermissionDeniedDfx_001 Start";
+    EnsureDfxAuditDir();
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(provider.Erase("vol-1"), E_PERMISSION_DENIED);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManagerProvider::Erase"), std::string::npos);
+    EXPECT_NE(tail.find("failStage:permission"), std::string::npos);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "Erase_PermissionDeniedDfx_001 End";
+}
+ 
+/**
+ * @tc.name: GetPartitionTable_PermissionDeniedDfx_001
+ * @tc.desc: GetPartitionTable with denied permission reports provider fault.
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerProviderTest, GetPartitionTable_PermissionDeniedDfx_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDeniedDfx_001 Start";
+    EnsureDfxAuditDir();
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    PartitionTableInfo out;
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(provider.GetPartitionTable("disk-8-0", out), E_PERMISSION_DENIED);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManagerProvider::GetPartitionTable"), std::string::npos);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetPartitionTable_PermissionDeniedDfx_001 End";
+}
+ 
+/**
+ * @tc.name: CreatePartition_ParamsInvalidDfx_001
+ * @tc.desc: CreatePartition with invalid params reports provider fault with E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerProviderTest, CreatePartition_ParamsInvalidDfx_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalidDfx_001 Start";
+    EnsureDfxAuditDir();
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    PartitionParams params(0, 1024, 2048, "0700");
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(provider.CreatePartition("disk-8-0", params), E_PARAMS_INVALID);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManagerProvider::CreatePartition"), std::string::npos);
+    EXPECT_NE(tail.find("failStage:invalidPartitionNum"), std::string::npos);
+    GTEST_LOG_(INFO) << "CreatePartition_ParamsInvalidDfx_001 End";
+}
+ 
+/**
+ * @tc.name: FormatPartition_ParamsInvalidDfx_001
+ * @tc.desc: FormatPartition with empty fsType reports provider fault with E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerProviderTest, FormatPartition_ParamsInvalidDfx_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "FormatPartition_ParamsInvalidDfx_001 Start";
+    EnsureDfxAuditDir();
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    FormatParams params("", true, "volume");
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(provider.FormatPartition("disk-8-0", 1, params), E_PARAMS_INVALID);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManagerProvider::FormatPartition"), std::string::npos);
+    EXPECT_NE(tail.find("failStage:emptyFsType"), std::string::npos);
+    GTEST_LOG_(INFO) << "FormatPartition_ParamsInvalidDfx_001 End";
+}
+ 
+/**
+ * @tc.name: NotifyMtpMounted_ParamsInvalidDfx_001
+ * @tc.desc: NotifyMtpMounted with invalid id reports MTP_NOTIFY fault with E_PARAMS_INVALID.
+ * @tc.type: FUNC
+ * @tc.require: RR-30093408
+ */
+HWTEST_F(DiskManagerProviderTest, NotifyMtpMounted_ParamsInvalidDfx_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_ParamsInvalidDfx_001 Start";
+    EnsureDfxAuditDir();
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(provider.NotifyMtpMounted("invalid##id", "/mnt/data/external/ptp-1", "desc", "uuid-1", "gphotofs"),
+              E_PARAMS_INVALID);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManagerProvider::NotifyMtpMounted"), std::string::npos);
+    EXPECT_NE(tail.find("failStage:invalidId"), std::string::npos);
+    GTEST_LOG_(INFO) << "NotifyMtpMounted_ParamsInvalidDfx_001 End";
 }
 
 } // namespace DiskManager
