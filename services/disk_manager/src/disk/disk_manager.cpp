@@ -1941,15 +1941,17 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
 int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions,
                           const std::string &callerBundle, int32_t callerUserId)
 {
+    IpcDfxScope dfx("DiskManager::Burn", DFX_STAGE_BURN, VolumeOpType::BURN,
+                    VolumeReportInfo().WithVolumeId(volumeId));
     std::string blockVolId;
     std::string fsType;
     int32_t prepErr = PrepareBurn(volumeId, burnOptions, callerUserId, blockVolId, fsType);
     if (prepErr == EDM_BURN_DENIED_MARK) {
         ReportBurnSecurityInfo(callerUserId, callerBundle, fsType, BURN_EDM_CONTROL_EVENT_ID);
-        return E_NOT_SUPPORT;
+        return dfx.Finish(E_NOT_SUPPORT);
     }
     if (prepErr != DiskManagerErrNo::E_OK) {
-        return prepErr;
+        return dfx.Finish(prepErr);
     }
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
     LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
@@ -1959,12 +1961,12 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
     if (err != ERR_OK) {
         if (err == E_BURN_NOSPC) {
             LOGE("Burn vol %{public}s no space left on device", blockVolId.c_str());
-            return E_BURN_NOSPC;
+            return  dfx.Finish(E_BURN_NOSPC);
         }
         LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), E_BURN_FAILED);
-        return E_BURN_FAILED;
+        return  dfx.Finish(E_BURN_FAILED);
     }
-    return DiskManagerErrNo::E_OK;
+    return  dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
 int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)
