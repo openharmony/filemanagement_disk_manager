@@ -15,11 +15,8 @@
 
 #include "disk_manager_provider.h"
 
-#include <atomic>
 #include <cinttypes>
 #include <climits>
-#include <condition_variable>
-#include <memory>
 #include <regex>
 #include <sstream>
 
@@ -40,10 +37,6 @@
 #include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
-#include "account_error_no.h"
-#include "authorization_client.h"
-#include "authorization_common.h"
-#include "authorization_callback.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -59,53 +52,23 @@ constexpr uint32_t EPOLL_INTERVAL_MS = 10;
 #ifdef PC_MANAGER
 constexpr pid_t CRYPTO_USB_MGR_SERVICE_UID = 7060;
 #endif
-// 台式机数据盘格式化鉴权权限名
-constexpr const char *FORMAT_DATA_DISK_PRIVILEGE = "ohos.privilege.format_data_disk";
-#ifndef AUTH_WAIT_TIMEOUT_SEC
-constexpr int32_t AUTH_WAIT_TIMEOUT_SEC = 3600;
-#endif
-struct AuthState {
-    std::mutex mtx;
-    std::condition_variable cv;
-    int32_t resultCode = 0;
-    bool completed = false;
-};
-
-class FormatAuthCallback : public AccountSA::AuthorizationCallback {
-public:
-    explicit FormatAuthCallback(std::shared_ptr<AuthState> state) : state_(std::move(state)) {}
-    ~FormatAuthCallback() override = default;
-
-    ErrCode OnResult(int32_t resultCode, const AccountSA::AuthorizationResult &result) override
-    {
-        {
-            std::lock_guard<std::mutex> lock(state_->mtx);
-            if (!state_->completed) {
-                state_->resultCode = (resultCode != ERR_OK)
-                    ? resultCode
-                    : static_cast<int32_t>(result.resultCode);
-                state_->completed = true;
-            }
-        }
-        state_->cv.notify_one();
-        return ERR_OK;
-    }
-
-    ErrCode OnConnectAbility(const AccountSA::ConnectAbilityInfo &info,
-                             const sptr<IRemoteObject> &callback) override
-    {
-        (void)info;
-        (void)callback;
-        return ERR_OK;
-    }
-
-private:
-    std::shared_ptr<AuthState> state_;
-};
 
 inline int32_t IpcDfxRet(IpcDfxScope &dfx, int32_t ret)
 {
     return dfx.Finish(ret);
+}
+
+void ReportProviderFault(const std::string &funcName, int32_t stage, int32_t err,
+                         const std::string &id, bool isDiskId, const std::string &failStage)
+{
+    VolumeReportInfo info;
+    if (isDiskId) {
+        info.WithDiskId(id);
+    } else {
+        info.WithVolumeId(id);
+    }
+    info.extra = "failStage:" + failStage;
+    DiskManagerRadar::GetInstance().ReportVolumeFault(funcName, stage, VolumeOpType::OTHER, err, info);
 }
 
 void ApplyVolumeOpDiagReport(const OpDiagReport &report)
@@ -302,64 +265,6 @@ int32_t DiskManagerProvider::Unmount(const std::string &volumeId)
     return err;
 }
 
-bool DiskManagerProvider::IsDataDisk(const std::string &volumeId) const
-{
-    // volumeId -> diskId -> Disk::IsInternalDataDisk()
-    VolumeExternal vol;
-    if (DiskManager::GetInstance().GetVolumeById(volumeId, vol) != E_OK) {
-        LOGE("IsDataDisk: volume %{public}s not found", volumeId.c_str());
-        return false;
-    }
-    Disk disk;
-    if (DiskManager::GetInstance().GetDiskById(vol.GetDiskId(), disk) != E_OK) {
-        LOGE("IsDataDisk: disk %{public}s not found", vol.GetDiskId().c_str());
-        return false;
-    }
-    return disk.IsInternalDataDisk();
-}
-
-bool DiskManagerProvider::IsDataDiskByDiskId(const std::string &diskId) const
-{
-    Disk disk;
-    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
-        LOGE("IsDataDiskByDiskId: disk %{public}s not found", diskId.c_str());
-        return false;
-    }
-    return disk.IsInternalDataDisk();
-}
-
-int32_t DiskManagerProvider::CheckAdminAuthorization()
-{
-    auto state = std::make_shared<AuthState>();
-    auto callback = std::make_shared<FormatAuthCallback>(state);
-    AccountSA::AcquireAuthorizationOptions options;
-    options.isReuseNeeded = false;
-    options.isInteractionAllowed = true;
-    options.subjectInfo.emplace();
-    options.subjectInfo->pid = IPCSkeleton::GetCallingPid();
-    options.subjectInfo->uid = IPCSkeleton::GetCallingUid();
-    options.subjectInfo->customName = "";
-    ErrCode acquireRet = AccountSA::AuthorizationClient::GetInstance().AcquireAuthorization(
-        FORMAT_DATA_DISK_PRIVILEGE, options, callback);
-    if (acquireRet != ERR_OK) {
-        LOGE("CheckAdminAuthorization: AcquireAuthorization failed, ret=%{public}d", acquireRet);
-        return ERR_JS_AUTHORIZATION_DENIED;
-    }
-
-    std::unique_lock<std::mutex> lock(state->mtx);
-    auto authTimeout = std::chrono::seconds(AUTH_WAIT_TIMEOUT_SEC);
-    bool notified = state->cv.wait_for(lock, authTimeout, [&state]() { return state->completed; });
-    if (!notified) {
-        LOGE("CheckAdminAuthorization: wait timeout (%{public}ds)", AUTH_WAIT_TIMEOUT_SEC);
-        return ERR_JS_AUTHORIZATION_DENIED;
-    }
-    if (state->resultCode != AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS) {
-        LOGE("CheckAdminAuthorization: authorization denied, resultCode=%{public}d", state->resultCode);
-        return ERR_JS_AUTHORIZATION_DENIED;
-    }
-    return E_OK;
-}
-
 int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::string &fsType)
 {
     LOGI("Format volumeId=%{public}s fsType=%{public}s", volumeId.c_str(), fsType.c_str());
@@ -375,29 +280,8 @@ int32_t DiskManagerProvider::Format(const std::string &volumeId, const std::stri
         LOGE("Format: volumeId is invalid");
         return E_PARAMS_INVALID;
     }
-    bool needAdminAuth = IsDataDisk(volumeId);
-    if (needAdminAuth) {
-        if (dataDiskFormatBusy_.exchange(true)) {
-            LOGE("Format: another data-disk format/partition operation in progress");
-            return E_BUSY;
-        }
-        int32_t authRet = CheckAdminAuthorization();
-        if (authRet != E_OK) {
-            LOGE("Format: admin authorization failed, ret=%{public}d", authRet);
-            dataDiskFormatBusy_.store(false);
-            return authRet;
-        }
-    }
     const int32_t err = DiskManager::GetInstance().Format(volumeId, fsType);
     LOGI("Format volumeId=%{public}s err=%{public}d", volumeId.c_str(), err);
-    if (needAdminAuth) {
-        ErrCode releaseRet = AccountSA::AuthorizationClient::GetInstance().ReleaseAuthorization(
-            FORMAT_DATA_DISK_PRIVILEGE);
-        if (releaseRet != ERR_OK) {
-            LOGE("Format: ReleaseAuthorization failed, ret=%{public}d", releaseRet);
-        }
-        dataDiskFormatBusy_.store(false);
-    }
     return err;
 }
 
@@ -550,29 +434,9 @@ int32_t DiskManagerProvider::Partition(const std::string &diskId, int32_t type)
         LOGE("Partition: diskId is invalid");
         return E_PARAMS_INVALID;
     }
-    bool needAdminAuth = IsDataDiskByDiskId(diskId);
-    if (needAdminAuth) {
-        if (dataDiskFormatBusy_.exchange(true)) {
-            LOGE("Partition: another data-disk format/partition operation in progress");
-            return E_BUSY;
-        }
-        int32_t authRet = CheckAdminAuthorization();
-        if (authRet != E_OK) {
-            LOGE("Partition: admin authorization failed, ret=%{public}d", authRet);
-            dataDiskFormatBusy_.store(false);
-            return authRet;
-        }
-    }
+
     const int32_t err = DiskManager::GetInstance().Partition(diskId, type);
     LOGI("Partition diskId=%{public}s err=%{public}d", diskId.c_str(), err);
-    if (needAdminAuth) {
-        ErrCode releaseRet = AccountSA::AuthorizationClient::GetInstance().ReleaseAuthorization(
-            FORMAT_DATA_DISK_PRIVILEGE);
-        if (releaseRet != ERR_OK) {
-            LOGE("Partition: ReleaseAuthorization failed, ret=%{public}d", releaseRet);
-        }
-        dataDiskFormatBusy_.store(false);
-    }
     return err;
 }
 
@@ -709,34 +573,44 @@ int32_t DiskManagerProvider::NotifyMtpMounted(const std::string &id,
     BeginPendingStorageDaemonCallback();
     if (!CheckStorageDaemonPermission()) {
         LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
+        ReportProviderFault("DiskManagerProvider::NotifyMtpMounted", DFX_STAGE_MTP_NOTIFY, E_PERMISSION_DENIED,
+                            id, false, "permission");
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
     if (!IsVolumeIdValid(id)) {
         LOGE("id is invalid");
+        ReportProviderFault("DiskManagerProvider::NotifyMtpMounted", DFX_STAGE_MTP_NOTIFY, E_PARAMS_INVALID,
+                            id, false, "invalidId");
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
     if (!IsUuidValid(uuid)) {
         LOGE("uuid is invalid");
+        ReportProviderFault("DiskManagerProvider::NotifyMtpMounted", DFX_STAGE_MTP_NOTIFY, E_PARAMS_INVALID,
+                            id, false, "invalidUuid");
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
     if (!IsMountPathValid(path)) {
         LOGE("mountPath is invalid.");
+        ReportProviderFault("DiskManagerProvider::NotifyMtpMounted", DFX_STAGE_MTP_NOTIFY, E_PARAMS_INVALID,
+                            id, false, "invalidMountPath");
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
     char realPath[PATH_MAX] = {0};
     if (realpath(path.c_str(), realPath) == nullptr) {
         LOGE("DiskManagerProvider::NotifyMtpMounted realpath failed, errno=%{public}d", errno);
+        ReportProviderFault("DiskManagerProvider::NotifyMtpMounted", DFX_STAGE_MTP_NOTIFY, E_PARAMS_INVALID,
+                            id, false, "realpathFailed");
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    int32_t err = DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
+    DiskManager::GetInstance().NotifyMtpMounted(id, realPath, desc, uuid, fsType);
     EndPendingStorageDaemonCallback();
-    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), err);
-    return err;
+    LOGI("NotifyMtpMounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBadRemove)
@@ -745,18 +619,22 @@ int32_t DiskManagerProvider::NotifyMtpUnmounted(const std::string &id, bool isBa
     BeginPendingStorageDaemonCallback();
     if (!CheckStorageDaemonPermission()) {
         LOGE("DiskManagerProvider CheckStorageDaemonPermission error");
+        ReportProviderFault("DiskManagerProvider::NotifyMtpUnmounted", DFX_STAGE_MTP_NOTIFY, E_PERMISSION_DENIED,
+                            id, false, "permission");
         EndPendingStorageDaemonCallback();
         return E_PERMISSION_DENIED;
     }
     if (!IsVolumeIdValid(id)) {
         LOGE("id is invalid");
+        ReportProviderFault("DiskManagerProvider::NotifyMtpUnmounted", DFX_STAGE_MTP_NOTIFY, E_PARAMS_INVALID,
+                            id, false, "invalidId");
         EndPendingStorageDaemonCallback();
         return E_PARAMS_INVALID;
     }
-    int32_t err = DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
+    DiskManager::GetInstance().NotifyMtpUnmounted(id, isBadRemove);
     EndPendingStorageDaemonCallback();
-    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), err);
-    return err;
+    LOGI("NotifyMtpUnmounted id=%{public}s err=%{public}d", id.c_str(), DiskManagerErrNo::E_OK);
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t DiskManagerProvider::Erase(const std::string &volumeId)
@@ -764,14 +642,20 @@ int32_t DiskManagerProvider::Erase(const std::string &volumeId)
     LOGI("Erase volumeId=%{public}s", volumeId.c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("Erase: caller is not system app");
+        ReportProviderFault("DiskManagerProvider::Erase", DFX_STAGE_ERASE, E_SYS_APP_PERMISSION_DENIED,
+                            volumeId, false, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         LOGE("Erase: permission denied");
+        ReportProviderFault("DiskManagerProvider::Erase", DFX_STAGE_ERASE, E_PERMISSION_DENIED,
+                            volumeId, false, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsVolumeIdValid(volumeId)) {
         LOGE("Erase: volumeId is invalid");
+        ReportProviderFault("DiskManagerProvider::Erase", DFX_STAGE_ERASE, E_PARAMS_INVALID,
+                            volumeId, false, "invalidVolumeId");
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().Erase(volumeId);
@@ -784,14 +668,20 @@ int32_t DiskManagerProvider::Eject(const std::string &diskId)
     LOGI("Eject diskId=%{public}s", diskId.c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("Eject: caller is not system app");
+        ReportProviderFault("DiskManagerProvider::Eject", DFX_STAGE_EJECT, E_SYS_APP_PERMISSION_DENIED,
+                            diskId, true, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         LOGE("Eject: permission denied");
+        ReportProviderFault("DiskManagerProvider::Eject", DFX_STAGE_EJECT, E_PERMISSION_DENIED,
+                            diskId, true, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {
         LOGE("Eject: diskId is invalid");
+        ReportProviderFault("DiskManagerProvider::Eject", DFX_STAGE_EJECT, E_PARAMS_INVALID,
+                            diskId, true, "invalidDiskId");
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().Eject(diskId);
@@ -804,18 +694,26 @@ int32_t DiskManagerProvider::CreateIsoImage(const std::string &volumeId, const s
     LOGI("CreateIsoImage volumeId=%{public}s pathLen=%{public}zu", volumeId.c_str(), filePath.size());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("CreateIsoImage: caller is not system app");
+        ReportProviderFault("DiskManagerProvider::CreateIsoImage", DFX_STAGE_CREATE_ISO_IMAGE,
+                            E_SYS_APP_PERMISSION_DENIED, volumeId, false, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         LOGE("CreateIsoImage: permission denied");
+        ReportProviderFault("DiskManagerProvider::CreateIsoImage", DFX_STAGE_CREATE_ISO_IMAGE,
+                            E_PERMISSION_DENIED, volumeId, false, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsVolumeIdValid(volumeId)) {
         LOGE("CreateIsoImage: volumeId is invalid");
+        ReportProviderFault("DiskManagerProvider::CreateIsoImage", DFX_STAGE_CREATE_ISO_IMAGE,
+                            E_PARAMS_INVALID, volumeId, false, "invalidVolumeId");
         return E_PARAMS_INVALID;
     }
     if (IsFilePathInvalid(filePath)) {
         LOGE("CreateIsoImage: filePath is invalid, path traversal detected");
+        ReportProviderFault("DiskManagerProvider::CreateIsoImage", DFX_STAGE_CREATE_ISO_IMAGE,
+                            E_PARAMS_INVALID, volumeId, false, "invalidFilePath");
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().CreateIsoImage(volumeId, filePath);
@@ -828,18 +726,26 @@ int32_t DiskManagerProvider::Burn(const std::string &volumeId, const std::string
     LOGI("Burn volumeId=%{public}s optsLen=%{public}zu", volumeId.c_str(), burnOptions.size());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("Burn: caller is not system app");
+        ReportProviderFault("DiskManagerProvider::Burn", DFX_STAGE_BURN, E_SYS_APP_PERMISSION_DENIED,
+                            volumeId, false, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
         LOGE("Burn: permission denied");
+        ReportProviderFault("DiskManagerProvider::Burn", DFX_STAGE_BURN, E_PERMISSION_DENIED,
+                            volumeId, false, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsVolumeIdValid(volumeId)) {
         LOGE("Burn: volumeId is invalid");
+        ReportProviderFault("DiskManagerProvider::Burn", DFX_STAGE_BURN, E_PARAMS_INVALID,
+                            volumeId, false, "invalidVolumeId");
         return E_PARAMS_INVALID;
     }
     if (!ValidateBurnOptionsSubfields(burnOptions)) {
         LOGE("Burn: burnOptions subfield validation failed");
+        ReportProviderFault("DiskManagerProvider::Burn", DFX_STAGE_BURN, E_PARAMS_INVALID,
+                            volumeId, false, "invalidBurnOptions");
         return E_PARAMS_INVALID;
     }
     std::string callerBundle = IpcCallerAuth::GetCallingBundleOrNativeProcessName();
@@ -874,18 +780,26 @@ int32_t DiskManagerProvider::GetPartitionTable(const std::string &diskId, Partit
     LOGI("GetPartitionTable diskId=%{public}s.", diskId.c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
+        ReportProviderFault("DiskManagerProvider::GetPartitionTable", DFX_STAGE_GET_PARTITION_TABLE,
+                            E_SYS_APP_PERMISSION_DENIED, diskId, true, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
         LOGE("GetPartitionTable: permission denied");
+        ReportProviderFault("DiskManagerProvider::GetPartitionTable", DFX_STAGE_GET_PARTITION_TABLE,
+                            E_PERMISSION_DENIED, diskId, true, "permission");
         return E_PERMISSION_DENIED;
     }
     if (diskId.empty()) {
         LOGI("diskId is empty.");
+        ReportProviderFault("DiskManagerProvider::GetPartitionTable", DFX_STAGE_GET_PARTITION_TABLE,
+                            E_PARAMS_INVALID, diskId, true, "emptyDiskId");
         return E_PARAMS_INVALID;
     }
     if (!IsDiskIdValid(diskId)) {
         LOGE("GetPartitionTable: diskId is invalid");
+        ReportProviderFault("DiskManagerProvider::GetPartitionTable", DFX_STAGE_GET_PARTITION_TABLE,
+                            E_NON_EXIST, diskId, true, "invalidDiskId");
         return E_NON_EXIST;
     }
     const int32_t err = DiskManager::GetInstance().GetPartitionTable(diskId, out);
@@ -898,27 +812,39 @@ int32_t DiskManagerProvider::CreatePartition(const std::string &diskId, const Pa
     LOGI("CreatePartition diskId=%{public}s partitionNum=%{public}d.", diskId.c_str(), params.GetPartitionNum());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
+        ReportProviderFault("DiskManagerProvider::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                            E_SYS_APP_PERMISSION_DENIED, diskId, true, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
         LOGE("CreatePartition: permission denied");
+        ReportProviderFault("DiskManagerProvider::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                            E_PERMISSION_DENIED, diskId, true, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {
         LOGE("CreatePartition: diskId is invalid");
+        ReportProviderFault("DiskManagerProvider::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidDiskId");
         return E_PARAMS_INVALID;
     }
     if (params.GetPartitionNum() <= 0) {
         LOGE("CreatePartition: invalid partitionNum=%{public}d", params.GetPartitionNum());
+        ReportProviderFault("DiskManagerProvider::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidPartitionNum");
         return E_PARAMS_INVALID;
     }
     if (params.GetStartSector() <= 0 || params.GetEndSector() <= 0 ||
         params.GetStartSector() >= params.GetEndSector()) {
         LOGE("CreatePartition: invalid sector range");
+        ReportProviderFault("DiskManagerProvider::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidSectorRange");
         return E_PARAMS_INVALID;
     }
     if (params.GetTypeCode().empty()) {
         LOGE("CreatePartition: typeCode is empty");
+        ReportProviderFault("DiskManagerProvider::CreatePartition", DFX_STAGE_CREATE_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "emptyTypeCode");
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().CreatePartition(diskId, params);
@@ -931,18 +857,26 @@ int32_t DiskManagerProvider::DeletePartition(const std::string &diskId, int32_t 
     LOGI("DeletePartition diskId=%{public}s partitionNum=%{public}d", diskId.c_str(), partitionNum);
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
+        ReportProviderFault("DiskManagerProvider::DeletePartition", DFX_STAGE_DELETE_PARTITION,
+                            E_SYS_APP_PERMISSION_DENIED, diskId, true, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
         LOGE("DeletePartition: permission denied");
+        ReportProviderFault("DiskManagerProvider::DeletePartition", DFX_STAGE_DELETE_PARTITION,
+                            E_PERMISSION_DENIED, diskId, true, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {
         LOGE("DeletePartition: diskId is invalid");
+        ReportProviderFault("DiskManagerProvider::DeletePartition", DFX_STAGE_DELETE_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidDiskId");
         return E_PARAMS_INVALID;
     }
     if (partitionNum <= 0) {
         LOGE("DeletePartition: invalid partitionNum=%{public}d", partitionNum);
+        ReportProviderFault("DiskManagerProvider::DeletePartition", DFX_STAGE_DELETE_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidPartitionNum");
         return E_PARAMS_INVALID;
     }
     const int32_t err = DiskManager::GetInstance().DeletePartition(diskId, partitionNum);
@@ -957,26 +891,38 @@ int32_t DiskManagerProvider::FormatPartition(const std::string &diskId, int32_t 
          partitionNum, params.GetFsType().c_str());
     if (!IpcCallerAuth::IsCallingSystemApp()) {
         LOGE("the caller is not sysapp");
+        ReportProviderFault("DiskManagerProvider::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                            E_SYS_APP_PERMISSION_DENIED, diskId, true, "notSystemApp");
         return E_SYS_APP_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
         LOGE("FormatPartition: permission denied");
+        ReportProviderFault("DiskManagerProvider::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                            E_PERMISSION_DENIED, diskId, true, "permission");
         return E_PERMISSION_DENIED;
     }
     if (!IsDiskIdValid(diskId)) {
         LOGE("FormatPartition: diskId is invalid");
+        ReportProviderFault("DiskManagerProvider::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidDiskId");
         return E_PARAMS_INVALID;
     }
     if (partitionNum <= 0) {
         LOGE("FormatPartition: invalid partitionNum=%{public}d", partitionNum);
+        ReportProviderFault("DiskManagerProvider::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidPartitionNum");
         return E_PARAMS_INVALID;
     }
     if (params.GetFsType().empty()) {
         LOGE("FormatPartition: fsType is empty");
+        ReportProviderFault("DiskManagerProvider::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "emptyFsType");
         return E_PARAMS_INVALID;
     }
     if (!params.GetQuickFormat()) {
         LOGE("FormatPartition: quickFormat is invalid");
+        ReportProviderFault("DiskManagerProvider::FormatPartition", DFX_STAGE_FORMAT_PARTITION,
+                            E_PARAMS_INVALID, diskId, true, "invalidQuickFormat");
         return E_PARAMS_INVALID;
     }
     int32_t ret = DiskManager::GetInstance().FormatPartition(diskId, partitionNum, params);
