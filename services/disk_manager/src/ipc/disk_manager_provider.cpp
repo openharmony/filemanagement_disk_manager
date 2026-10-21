@@ -15,8 +15,11 @@
 
 #include "disk_manager_provider.h"
 
+#include <atomic>
 #include <cinttypes>
 #include <climits>
+#include <condition_variable>
+#include <memory>
 #include <regex>
 #include <sstream>
 
@@ -37,6 +40,10 @@
 #include "disk_manager_radar.h"
 #include "uevent_bootstrap.h"
 #include "voldata_uuid_store.h"
+#include "account_error_no.h"
+#include "authorization_client.h"
+#include "authorization_common.h"
+#include "authorization_callback.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -52,6 +59,49 @@ constexpr uint32_t EPOLL_INTERVAL_MS = 10;
 #ifdef PC_MANAGER
 constexpr pid_t CRYPTO_USB_MGR_SERVICE_UID = 7060;
 #endif
+// 台式机数据盘格式化鉴权权限名
+constexpr const char *FORMAT_DATA_DISK_PRIVILEGE = "ohos.privilege.format_data_disk";
+#ifndef AUTH_WAIT_TIMEOUT_SEC
+constexpr int32_t AUTH_WAIT_TIMEOUT_SEC = 3600;
+#endif
+struct AuthState {
+    std::mutex mtx;
+    std::condition_variable cv;
+    int32_t resultCode = 0;
+    bool completed = false;
+};
+
+class FormatAuthCallback : public AccountSA::AuthorizationCallback {
+public:
+    explicit FormatAuthCallback(std::shared_ptr<AuthState> state) : state_(std::move(state)) {}
+    ~FormatAuthCallback() override = default;
+
+    ErrCode OnResult(int32_t resultCode, const AccountSA::AuthorizationResult &result) override
+    {
+        {
+            std::lock_guard<std::mutex> lock(state_->mtx);
+            if (!state_->completed) {
+                state_->resultCode = (resultCode != ERR_OK)
+                    ? resultCode
+                    : static_cast<int32_t>(result.resultCode);
+                state_->completed = true;
+            }
+        }
+        state_->cv.notify_one();
+        return ERR_OK;
+    }
+
+    ErrCode OnConnectAbility(const AccountSA::ConnectAbilityInfo &info,
+                             const sptr<IRemoteObject> &callback) override
+    {
+        (void)info;
+        (void)callback;
+        return ERR_OK;
+    }
+
+private:
+    std::shared_ptr<AuthState> state_;
+};
 
 inline int32_t IpcDfxRet(IpcDfxScope &dfx, int32_t ret)
 {
@@ -82,6 +132,65 @@ void ApplyVolumeOpDiagReport(const OpDiagReport &report)
 }
 } // namespace
 
+bool DiskManagerProvider::IsDataDisk(const std::string &volumeId) const
+{
+    // volumeId -> diskId -> Disk::IsInternalDataDisk()
+    VolumeExternal vol;
+    if (DiskManager::GetInstance().GetVolumeById(volumeId, vol) != E_OK) {
+        LOGE("IsDataDisk: volume %{public}s not found", volumeId.c_str());
+        return false;
+    }
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(vol.GetDiskId(), disk) != E_OK) {
+        LOGE("IsDataDisk: disk %{public}s not found", vol.GetDiskId().c_str());
+        return false;
+    }
+    return disk.IsInternalDataDisk();
+}
+ 
+bool DiskManagerProvider::IsDataDiskByDiskId(const std::string &diskId) const
+{
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
+        LOGE("IsDataDiskByDiskId: disk %{public}s not found", diskId.c_str());
+        return false;
+    }
+    return disk.IsInternalDataDisk();
+}
+ 
+int32_t DiskManagerProvider::CheckAdminAuthorization()
+{
+    auto state = std::make_shared<AuthState>();
+    auto callback = std::make_shared<FormatAuthCallback>(state);
+    AccountSA::AcquireAuthorizationOptions options;
+    options.isReuseNeeded = false;
+    options.isInteractionAllowed = true;
+    options.subjectInfo.emplace();
+    options.subjectInfo->pid = IPCSkeleton::GetCallingPid();
+    options.subjectInfo->uid = IPCSkeleton::GetCallingUid();
+    options.subjectInfo->customName = "";
+    ErrCode acquireRet = AccountSA::AuthorizationClient::GetInstance().AcquireAuthorization(
+        FORMAT_DATA_DISK_PRIVILEGE, options, callback);
+    if (acquireRet != ERR_OK) {
+        LOGE("CheckAdminAuthorization: AcquireAuthorization failed, ret=%{public}d", acquireRet);
+        return ERR_JS_AUTHORIZATION_DENIED;
+    }
+ 
+    std::unique_lock<std::mutex> lock(state->mtx);
+    auto authTimeout = std::chrono::seconds(AUTH_WAIT_TIMEOUT_SEC);
+    bool notified = state->cv.wait_for(lock, authTimeout, [&state]() { return state->completed; });
+    if (!notified) {
+        LOGE("CheckAdminAuthorization: wait timeout (%{public}ds)", AUTH_WAIT_TIMEOUT_SEC);
+        return ERR_JS_AUTHORIZATION_DENIED;
+    }
+    if (state->resultCode != AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS) {
+        LOGE("CheckAdminAuthorization: authorization denied, resultCode=%{public}d", state->resultCode);
+        return ERR_JS_AUTHORIZATION_DENIED;
+    }
+    return E_OK;
+}
+ 
+ 
 REGISTER_SYSTEM_ABILITY_BY_ID(DiskManagerProvider, DISK_MANAGER_SA_ID, false);
 
 DiskManagerProvider::DiskManagerProvider(int32_t saId, bool runOnCreate) : SystemAbility(saId, runOnCreate) {}
