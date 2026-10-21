@@ -35,6 +35,7 @@ namespace {
 constexpr const char *DISK_MANAGER_DATA_PATH = "/data/service/el1/public/disk_manager/";
 constexpr const char *VOLDATA_UUID_MAPPING_JSON = "voldata_uuid_mapping.json";
 constexpr const char *TMP_FILE_SUFFIX = ".tmp";
+constexpr const char *BACKUP_FILE_SUFFIX = ".bak";
 constexpr const char *VOLDATA_MOUNT_PREFIX = "/mnt/data/voldata/data";
 constexpr uint32_t MAX_VOLDATA_SLOT_COUNT = 1000;
 #define FDSAN_TAG 1
@@ -314,19 +315,11 @@ uint32_t VoldataUuidStore::AllocateNextSlotLocked()
     return FindMinimumFreeSlotLocked();
 }
 
-int32_t VoldataUuidStore::LoadFromFile()
+int32_t VoldataUuidStore::LoadJsonFromPath(const std::string &filePath)
 {
-    uuidMap_.clear();
-
-    std::error_code errorCode;
-    if (!std::filesystem::exists(jsonFilePath_, errorCode)) {
-        LOGI("VoldataUuidStore JSON not exists, create empty: %{public}s", jsonFilePath_.c_str());
-        return SaveToFile();
-    }
-
-    std::ifstream file(jsonFilePath_);
+    std::ifstream file(filePath);
     if (!file.is_open()) {
-        LOGE("VoldataUuidStore open read failed: %{public}s", jsonFilePath_.c_str());
+        LOGE("VoldataUuidStore open read failed: %{public}s", filePath.c_str());
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
@@ -338,18 +331,18 @@ int32_t VoldataUuidStore::LoadFromFile()
     }
 
     if (!nlohmann::json::accept(jsonStr)) {
-        LOGE("VoldataUuidStore invalid JSON: %{public}s", jsonFilePath_.c_str());
+        LOGE("VoldataUuidStore invalid JSON: %{public}s", filePath.c_str());
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
     nlohmann::json root = nlohmann::json::parse(jsonStr, nullptr, false);
     if (root.is_discarded()) {
-        LOGE("VoldataUuidStore parse discarded");
+        LOGE("VoldataUuidStore parse discarded: %{public}s", filePath.c_str());
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
     if (!root.is_array()) {
-        LOGE("VoldataUuidStore root is not array");
+        LOGE("VoldataUuidStore root is not array: %{public}s", filePath.c_str());
         return DiskManagerErrNo::DISK_MGR_ERR;
     }
 
@@ -366,8 +359,54 @@ int32_t VoldataUuidStore::LoadFromFile()
         uuidMap_[entry.fsUuid] = entry;
     }
 
-    LOGI("VoldataUuidStore loaded %{public}zu entries", uuidMap_.size());
+    LOGI("VoldataUuidStore loaded %{public}zu entries from %{public}s", uuidMap_.size(), filePath.c_str());
     return DiskManagerErrNo::E_OK;
+}
+
+int32_t VoldataUuidStore::LoadFromFile()
+{
+    uuidMap_.clear();
+
+    const std::string backupFilePath = jsonFilePath_ + BACKUP_FILE_SUFFIX;
+
+    std::error_code errorCode;
+    const bool mainExists = std::filesystem::exists(jsonFilePath_, errorCode);
+
+    // Case 1: main file does not exist (first run), create empty main + backup
+    if (!mainExists) {
+        LOGI("VoldataUuidStore JSON not exists, create empty: %{public}s", jsonFilePath_.c_str());
+        return SaveToFile();
+    }
+
+    // Case 2: main file is valid, load succeeded
+    int32_t loadRet = LoadJsonFromPath(jsonFilePath_);
+    if (loadRet == DiskManagerErrNo::E_OK) {
+        // Upgrade compatibility: old version has only main file without backup,
+        // rebuild backup on first launch of new code to eliminate the protection gap
+        const bool backupExists = std::filesystem::exists(backupFilePath, errorCode);
+        if (!backupExists) {
+            LOGI("VoldataUuidStore backup not found, creating from main file");
+            (void)SaveToFile();
+        }
+        return DiskManagerErrNo::E_OK;
+    }
+
+    // Case 3: main file corrupted, try backup
+    LOGW("VoldataUuidStore main file corrupted, trying backup: %{public}s", backupFilePath.c_str());
+    const bool backupExists = std::filesystem::exists(backupFilePath, errorCode);
+    if (backupExists) {
+        loadRet = LoadJsonFromPath(backupFilePath);
+        if (loadRet == DiskManagerErrNo::E_OK) {
+            LOGI("VoldataUuidStore recovered from backup, entries=%{public}zu", uuidMap_.size());
+            // Recovered, rewrite main + backup to keep them consistent
+            return SaveToFile();
+        }
+        LOGW("VoldataUuidStore backup also corrupted");
+    }
+
+    // Case 4: both corrupted (or no backup), start fresh from empty
+    LOGW("VoldataUuidStore starting fresh from empty");
+    return SaveToFile();
 }
 
 int32_t VoldataUuidStore::SaveToFile()
@@ -376,7 +415,19 @@ int32_t VoldataUuidStore::SaveToFile()
     for (const auto &pair : uuidMap_) {
         jsonArray.push_back(pair.second.ToJson());
     }
-    return SaveJsonToFile(jsonFilePath_, jsonArray);
+    // Write main file
+    const int32_t mainRet = SaveJsonToFile(jsonFilePath_, jsonArray);
+    if (mainRet != DiskManagerErrNo::E_OK) {
+        LOGE("VoldataUuidStore main write failed ret=%{public}d", mainRet);
+        return mainRet;
+    }
+    // Write backup file (failure is non-fatal, only LOGW; next SaveToFile will retry)
+    const std::string backupFilePath = jsonFilePath_ + BACKUP_FILE_SUFFIX;
+    const int32_t backupRet = SaveJsonToFile(backupFilePath, jsonArray);
+    if (backupRet != DiskManagerErrNo::E_OK) {
+        LOGW("VoldataUuidStore backup write failed ret=%{public}d", backupRet);
+    }
+    return DiskManagerErrNo::E_OK;
 }
 
 int32_t VoldataUuidStore::SaveJsonToFile(const std::string &filePath, const nlohmann::json &jsonData)

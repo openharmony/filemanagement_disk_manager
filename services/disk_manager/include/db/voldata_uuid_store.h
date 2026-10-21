@@ -68,6 +68,7 @@ private:
 
     static std::string BuildMountPathForSlot(uint32_t slotIndex);
     int32_t LoadFromFile();
+    int32_t LoadJsonFromPath(const std::string &filePath);
     int32_t SaveToFile();
     int32_t SaveJsonToFile(const std::string &filePath, const nlohmann::json &jsonData);
     void EvictSlotOneIfFullLocked();
