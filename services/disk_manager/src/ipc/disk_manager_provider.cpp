@@ -1208,5 +1208,3 @@ int32_t DiskManagerProvider::UmountVolumeByPath(const std::string &diskId, const
 }
 } // namespace DiskManager
 } // namespace OHOS
-
-
