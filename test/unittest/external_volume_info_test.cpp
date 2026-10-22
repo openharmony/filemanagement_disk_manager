@@ -166,5 +166,101 @@ HWTEST_F(ExternalVolumeInfoTest, Marshalling_RoundTrip_NegativeSize_TestCase_001
     EXPECT_EQ(result->GetFreeSize(), -1);
     delete result;
 }
+
+HWTEST_F(ExternalVolumeInfoTest, Unmarshalling_OversizedVolumeId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteString("");
+    parcel.WriteString("");
+    parcel.WriteString("");
+    parcel.WriteInt32(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteString("");
+    parcel.WriteString("");
+    ExternalVolumeInfo *result = ExternalVolumeInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalVolumeInfoTest, Unmarshalling_OversizedUuid_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-8-1");
+    parcel.WriteString(std::string(4097, 'b'));
+    parcel.WriteString("");
+    parcel.WriteString("");
+    parcel.WriteInt32(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteString("");
+    parcel.WriteString("");
+    ExternalVolumeInfo *result = ExternalVolumeInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalVolumeInfoTest, Unmarshalling_OversizedDiskId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-8-1");
+    parcel.WriteString("7FC7-17EC");
+    parcel.WriteString(std::string(4097, 'c'));
+    parcel.WriteString("");
+    parcel.WriteInt32(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteString("");
+    parcel.WriteString("");
+    ExternalVolumeInfo *result = ExternalVolumeInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalVolumeInfoTest, Unmarshalling_OversizedDescription_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-8-1");
+    parcel.WriteString("7FC7-17EC");
+    parcel.WriteString("disk-8-0");
+    parcel.WriteString(std::string(4097, 'd'));
+    parcel.WriteInt32(0);
+    parcel.WriteInt64(0);
+    parcel.WriteInt64(0);
+    parcel.WriteString("");
+    parcel.WriteString("");
+    ExternalVolumeInfo *result = ExternalVolumeInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalVolumeInfoTest, Unmarshalling_OversizedPath_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-8-1");
+    parcel.WriteString("7FC7-17EC");
+    parcel.WriteString("disk-8-0");
+    parcel.WriteString("USB Drive");
+    parcel.WriteInt32(2);
+    parcel.WriteInt64(2147483648LL);
+    parcel.WriteInt64(1073741824LL);
+    parcel.WriteString(std::string(4097, 'e'));
+    parcel.WriteString("");
+    ExternalVolumeInfo *result = ExternalVolumeInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalVolumeInfoTest, Unmarshalling_OversizedFsType_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("vol-8-1");
+    parcel.WriteString("7FC7-17EC");
+    parcel.WriteString("disk-8-0");
+    parcel.WriteString("USB Drive");
+    parcel.WriteInt32(2);
+    parcel.WriteInt64(2147483648LL);
+    parcel.WriteInt64(1073741824LL);
+    parcel.WriteString("/mnt/external/vol-8-1");
+    parcel.WriteString(std::string(4097, 'f'));
+    ExternalVolumeInfo *result = ExternalVolumeInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
 } // namespace DiskManager
 } // namespace OHOS

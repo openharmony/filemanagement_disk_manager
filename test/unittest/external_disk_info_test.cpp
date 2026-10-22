@@ -151,5 +151,42 @@ HWTEST_F(ExternalDiskInfoTest, Marshalling_RoundTrip_ZeroVidPid_TestCase_001, Te
     EXPECT_EQ(result->GetProductId(), 0);
     delete result;
 }
+
+HWTEST_F(ExternalDiskInfoTest, Unmarshalling_OversizedDiskId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString(std::string(4097, 'a'));
+    parcel.WriteInt32(0);
+    parcel.WriteUint32(0u);
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(0);
+    ExternalDiskInfo *result = ExternalDiskInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalDiskInfoTest, Unmarshalling_OverMaxVolumeCount_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("disk-8-0");
+    parcel.WriteInt32(USB_FLAG);
+    parcel.WriteUint32(257u);
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(0);
+    ExternalDiskInfo *result = ExternalDiskInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
+
+HWTEST_F(ExternalDiskInfoTest, Unmarshalling_OversizedVolumeId_TestCase_001, TestSize.Level0)
+{
+    Parcel parcel;
+    parcel.WriteString("disk-8-0");
+    parcel.WriteInt32(USB_FLAG);
+    parcel.WriteUint32(1u);
+    parcel.WriteString(std::string(4097, 'b'));
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(0);
+    ExternalDiskInfo *result = ExternalDiskInfo::Unmarshalling(parcel);
+    EXPECT_EQ(result, nullptr);
+}
 } // namespace DiskManager
 } // namespace OHOS
