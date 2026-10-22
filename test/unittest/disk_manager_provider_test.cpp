@@ -3967,4 +3967,3 @@ std::string BlockInfoTable::ToJsonStringWithExtras(
 
 } // namespace DiskManager
 } // namespace OHOS
-
