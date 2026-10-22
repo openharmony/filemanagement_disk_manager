@@ -1833,7 +1833,7 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
                                                                      filePath, fsType, mountedPath);
     if (err != ERR_OK) {
         LOGE("CreateIsoImage vol %{public}s err=%{public}d", blockVolId.c_str(), E_ISO_WRITE_FAILED);
-        return dfx.Finish(E_ISO_WRITE_FAILED;
+        return dfx.Finish(E_ISO_WRITE_FAILED);
     }
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
