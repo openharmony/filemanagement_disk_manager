@@ -69,7 +69,7 @@ enum class VolumeOpType : int32_t {
     ERASE = 20,
     EJECT = 21,
     BURN = 22,
-    CREATE_ISO_IMAGE = 23, 
+    CREATE_ISO_IMAGE = 23,
 };
 
 enum class AutoMountSkipReason : int32_t {
