@@ -2570,7 +2570,7 @@ std::string ReadAuditSince(int64_t offset)
  * @tc.name: CdromDiscover_QueryFallbackFailDfx_001
  * @tc.desc: cdrom state query failed and ReadMetadata fallback failed reports CDROM_DISCOVER fault.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(UeventBootstrapTest, CdromDiscover_QueryFallbackFailDfx_001, TestSize.Level0)
 {
@@ -2605,7 +2605,7 @@ HWTEST_F(UeventBootstrapTest, CdromDiscover_QueryFallbackFailDfx_001, TestSize.L
  * @tc.name: CdromDiscover_MetadataTypeEmptyDfx_001
  * @tc.desc: cdrom disc detected but metadata type empty reports CDROM_DISCOVER fault.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(UeventBootstrapTest, CdromDiscover_MetadataTypeEmptyDfx_001, TestSize.Level0)
 {
@@ -2645,7 +2645,7 @@ HWTEST_F(UeventBootstrapTest, CdromDiscover_MetadataTypeEmptyDfx_001, TestSize.L
  * @tc.name: CdromDiscover_AutoEjectFailDfx_001
  * @tc.desc: auto eject failure on eject-request uevent reports CDROM_DISCOVER fault.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(UeventBootstrapTest, CdromDiscover_AutoEjectFailDfx_001, TestSize.Level0)
 {
