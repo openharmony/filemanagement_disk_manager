@@ -840,7 +840,6 @@ void DiscoverSinglePartitionVolume4CD(const UeventEnv &env, const std::string &d
             state = CdromState::NON_EMPTY_DISC;
         } else {
             LOGE("SCSI query and ReadMetadata both failed, treat as NO_DISC");
-            ReportCdromDiscoverFault(diskId, "cdromStateQueryFallback", metaRet);
             DestroyALLVolume(diskId);
             return;
         }
