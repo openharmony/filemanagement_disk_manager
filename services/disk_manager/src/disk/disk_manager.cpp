@@ -1731,6 +1731,8 @@ int32_t DiskManager::GetTotalSizeOfVolume(const std::string &volumeUuid, int64_t
 
 int32_t DiskManager::Erase(const std::string &volumeId)
 {
+    IpcDfxScope dfx("DiskManager::Erase", DFX_STAGE_ERASE, VolumeOpType::ERASE,
+                    VolumeReportInfo().WithVolumeId(volumeId));
     std::string blockVolId;
     std::string diskId;
     std::string fsType;
@@ -1739,7 +1741,7 @@ int32_t DiskManager::Erase(const std::string &volumeId)
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_PARAMS_INVALID;
+            return dfx.Finish(E_PARAMS_INVALID);
         }
         blockVolId = it->second.GetId();
         diskId = it->second.GetDiskId();
@@ -1747,44 +1749,48 @@ int32_t DiskManager::Erase(const std::string &volumeId)
     }
     if (!IsOddFsType(fsType)) {
         LOGE("Erase only support odd fsType, fsType is %{public}s", fsType.c_str());
-        return E_NOT_SUPPORT;
+        return dfx.Finish(E_NOT_SUPPORT);
     }
     int32_t err = StorageDaemonAdapter::GetInstance().Erase("/dev/block/" + blockVolId);
     if (err != ERR_OK) {
         LOGE("Erase vol %{public}s err=%{public}d", blockVolId.c_str(), E_ERASE_FAILED);
-        return E_ERASE_FAILED;
+        return dfx.Finish(E_ERASE_FAILED);
     }
     err = Eject(diskId);
     if (err != ERR_OK) {
         LOGE("Erase-Eject vol %{public}s err=%{public}d", blockVolId.c_str(), E_ERASE_FAILED);
-        return E_ERASE_FAILED;
+        return dfx.Finish(E_ERASE_FAILED);
     }
-    return DiskManagerErrNo::E_OK;
+    return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
 int32_t DiskManager::Eject(const std::string &diskId)
 {
+    IpcDfxScope dfx("DiskManager::Eject", DFX_STAGE_EJECT, VolumeOpType::EJECT,
+                    VolumeReportInfo().WithDiskId(diskId));
     Disk disk;
     if (GetDiskById(diskId, disk) != E_OK) {
         LOGE("Disk with id %{public}s not found", diskId.c_str());
-        return E_NOT_SUPPORT;
+        return dfx.Finish(E_NOT_SUPPORT);
     }
     if (disk.GetDiskType() != DiskType::CD_FLAG) {
         LOGE("Eject only support cd disk, diskId is %{public}s", diskId.c_str());
-        return E_NOT_SUPPORT;
+        return dfx.Finish(E_NOT_SUPPORT);
     }
     std::string devName = disk.GetDevName();
     int32_t err = StorageDaemonAdapter::GetInstance().Eject(devName);
     if (err != ERR_OK) {
         LOGE("Eject diskId %{public}s err=%{public}d", diskId.c_str(), E_EJECT_FAILED);
-        return E_EJECT_FAILED;
+        return dfx.Finish(E_EJECT_FAILED);
     }
-    return DiskManagerErrNo::E_OK;
+    return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
 int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
                                     const std::string &filePath)
 {
+    IpcDfxScope dfx("DiskManager::CreateIsoImage", DFX_STAGE_CREATE_ISO_IMAGE, VolumeOpType::CREATE_ISO_IMAGE,
+                    VolumeReportInfo().WithVolumeId(volumeId));
     std::string blockVolId;
     std::string fsType;
     std::string mountedPath;
@@ -1794,11 +1800,11 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
         const auto it = volumeMap_.find(volumeId);
         if (it == volumeMap_.end()) {
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
-            return E_NOT_SUPPORT;
+            return dfx.Finish(E_NOT_SUPPORT);
         }
         if (it->second.GetState() != VolumeState::MOUNTED) {
             LOGE("Volume with id %{public}s not mounted", volumeId.c_str());
-            return E_VOL_STATE;
+            return dfx.Finish(E_VOL_STATE);
         }
         blockVolId = it->second.GetId();
         fsType = it->second.GetFsTypeString();
@@ -1807,29 +1813,29 @@ int32_t DiskManager::CreateIsoImage(const std::string &volumeId,
     }
     if (!IsOddFsType(fsType)) {
         LOGE("CreateIsoImage only support odd fsType, fsType is %{public}s", fsType.c_str());
-        return E_NOT_SUPPORT;
+        return dfx.Finish(E_NOT_SUPPORT);
     }
     if (filePath.empty()) {
         LOGE("CreateIsoImage: filePath is empty");
-        return E_PARAMS_INVALID;
+        return dfx.Finish(E_PARAMS_INVALID);
     }
     Disk disk;
     if (GetDiskById(diskId, disk) != E_OK) {
         LOGE("Disk with id %{public}s not found", diskId.c_str());
-        return E_PARAMS_INVALID;
+        return dfx.Finish(E_PARAMS_INVALID);
     }
     if (disk.GetCdromState() == CdromState::EMPTY_DISC) {
         LOGE("CreateIsoImage: cdrom state is EMPTY_DISC");
-        return E_EMPTY_DISC;
+        return dfx.Finish(E_EMPTY_DISC);
     }
 
     int32_t err = StorageDaemonAdapter::GetInstance().CreateIsoImage("/dev/block/" + blockVolId,
                                                                      filePath, fsType, mountedPath);
     if (err != ERR_OK) {
         LOGE("CreateIsoImage vol %{public}s err=%{public}d", blockVolId.c_str(), E_ISO_WRITE_FAILED);
-        return E_ISO_WRITE_FAILED;
+        return dfx.Finish(E_ISO_WRITE_FAILED);
     }
-    return DiskManagerErrNo::E_OK;
+    return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
 std::string DiskManager::GetDiscType(const std::string &extraInfo)
@@ -1935,15 +1941,17 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
 int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOptions,
                           const std::string &callerBundle, int32_t callerUserId)
 {
+    IpcDfxScope dfx("DiskManager::Burn", DFX_STAGE_BURN, VolumeOpType::BURN,
+                    VolumeReportInfo().WithVolumeId(volumeId));
     std::string blockVolId;
     std::string fsType;
     int32_t prepErr = PrepareBurn(volumeId, burnOptions, callerUserId, blockVolId, fsType);
     if (prepErr == EDM_BURN_DENIED_MARK) {
         ReportBurnSecurityInfo(callerUserId, callerBundle, fsType, BURN_EDM_CONTROL_EVENT_ID);
-        return E_NOT_SUPPORT;
+        return dfx.Finish(E_NOT_SUPPORT);
     }
     if (prepErr != DiskManagerErrNo::E_OK) {
-        return prepErr;
+        return dfx.Finish(prepErr);
     }
     int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
     LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
@@ -1953,12 +1961,12 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
     if (err != ERR_OK) {
         if (err == E_BURN_NOSPC) {
             LOGE("Burn vol %{public}s no space left on device", blockVolId.c_str());
-            return E_BURN_NOSPC;
+            return  dfx.Finish(E_BURN_NOSPC);
         }
         LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), E_BURN_FAILED);
-        return E_BURN_FAILED;
+        return  dfx.Finish(E_BURN_FAILED);
     }
-    return DiskManagerErrNo::E_OK;
+    return  dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
 int32_t DiskManager::GetVolumeOpProcess(const std::string &volumeId, int32_t &progressPct)

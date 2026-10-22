@@ -39,6 +39,12 @@ constexpr int32_t DFX_STAGE_MOUNT_VOL_BY_PATH = 54;
 constexpr int32_t DFX_STAGE_UMOUNT_VOL_BY_PATH = 55;
 constexpr int32_t DFX_STAGE_NOTIFY_MTP_MOUNTED = 56;
 constexpr int32_t DFX_STAGE_NOTIFY_MTP_UNMOUNTED = 57;
+constexpr int32_t DFX_STAGE_ERASE = 60;
+constexpr int32_t DFX_STAGE_EJECT = 61;
+constexpr int32_t DFX_STAGE_BURN = 62;
+constexpr int32_t DFX_STAGE_CREATE_ISO_IMAGE = 63;
+constexpr int32_t DFX_STAGE_CDROM_DISCOVER = 64;
+
 // Must fit tools[] dump from volume op diag (cmd/ret/exitCode/output).
 constexpr size_t DFX_TRUNCATE_MAX_LEN = 2048;
 
@@ -60,6 +66,10 @@ enum class VolumeOpType : int32_t {
     UMOUNT_VOL_BY_PATH = 14,
     NOTIFY_MTP_MOUNTED = 15,
     NOTIFY_MTP_UNMOUNTED = 16,
+    ERASE = 20,
+    EJECT = 21,
+    BURN = 22,
+    CREATE_ISO_IMAGE = 23,
 };
 
 enum class AutoMountSkipReason : int32_t {

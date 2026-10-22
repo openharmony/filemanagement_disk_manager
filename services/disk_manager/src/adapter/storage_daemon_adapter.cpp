@@ -446,10 +446,12 @@ int32_t StorageDaemonAdapter::FormatPartition(const std::string &devPath, const 
 int32_t StorageDaemonAdapter::Erase(const std::string &devPath)
 {
     LOGI("Erase enter, devPath=%{public}s", devPath.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Erase exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::Erase", DFX_STAGE_ERASE, VolumeOpType::ERASE, err, info);
     }
     const int32_t ret = storageDaemon_->Erase(devPath);
     LOGI("Erase exit ret=%{public}d", ret);
@@ -459,10 +461,12 @@ int32_t StorageDaemonAdapter::Erase(const std::string &devPath)
 int32_t StorageDaemonAdapter::Eject(const std::string &devName)
 {
     LOGI("Eject enter, devName=%{public}s", devName.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devName);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Eject exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::Eject", DFX_STAGE_EJECT, VolumeOpType::EJECT, err, info);
     }
     const int32_t ret = storageDaemon_->Eject(devName);
     LOGI("Eject exit ret=%{public}d", ret);
@@ -475,10 +479,13 @@ int32_t StorageDaemonAdapter::CreateIsoImage(const std::string &devPath,
                                              const std::string &mountPath)
 {
     LOGI("CreateIsoImage enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("CreateIsoImage exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::CreateIsoImage", DFX_STAGE_CREATE_ISO_IMAGE,
+                              VolumeOpType::CREATE_ISO_IMAGE, err, info);
     }
     const int32_t ret = storageDaemon_->CreateIsoImage(devPath, filePath, fsType, mountPath);
     LOGI("CreateIsoImage exit ret=%{public}d", ret);
@@ -491,10 +498,12 @@ int32_t StorageDaemonAdapter::Burn(const std::string &devPath,
 {
     LOGI("Burn enter, devPath=%{public}s, burnOptions=%{public}s, fsType=%{public}s",
         devPath.c_str(), burnOptions.c_str(), fsType.c_str());
+    VolumeReportInfo info;
+    info.WithDevPath(devPath).WithFsType(fsType);
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Burn exit err=%{public}d (proxy not ready)", err);
-        return err;
+        return FinishDaemonOp("StorageDaemonAdapter::Burn", DFX_STAGE_BURN, VolumeOpType::BURN, err, info);
     }
     const int32_t ret = storageDaemon_->Burn(devPath, burnOptions, fsType);
     LOGI("Burn exit ret=%{public}d", ret);

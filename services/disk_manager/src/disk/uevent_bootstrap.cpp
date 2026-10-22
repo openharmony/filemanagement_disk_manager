@@ -111,6 +111,15 @@ constexpr const char *BLOCK_PATH = "/dev/block";
 constexpr int DEC_BASE = 10;
 constexpr int HEX_BASE = 16;
 
+void ReportCdromDiscoverFault(const std::string &diskId, const std::string &failStage, int32_t err)
+{
+    VolumeReportInfo info;
+    info.WithDiskId(diskId);
+    info.extra = "failStage:" + failStage;
+    DiskManagerRadar::GetInstance().ReportVolumeFault("UeventBootstrap::CdromDiscover", DFX_STAGE_CDROM_DISCOVER,
+                                                      VolumeOpType::OTHER, err, info);
+}
+
 CdromState QueryCdromState(const std::string &devPath)
 {
     int32_t status = 0;
@@ -671,7 +680,9 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
     const std::string volId = VolIdFromDev(pDev);
     const std::string volDevPath = BlockPathForId(volId);
 
-    if (CreateAndSetupVolume(diskId, pDev, false, 0) != ERR_OK) {
+    const int32_t setupRet = CreateAndSetupVolume(diskId, pDev, false, 0);
+    if (setupRet != ERR_OK) {
+        ReportCdromDiscoverFault(diskId, "createVolumeNode", setupRet);
         return;
     }
 
@@ -699,6 +710,7 @@ void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState sta
 
     if (type.empty()) {
         LOGE("HandleAddCD type.empty()=%{public}d, uuid.empty()=%{public}d", type.empty(), uuid.empty());
+        ReportCdromDiscoverFault(diskId, "metadataTypeEmpty", DiskManagerErrNo::E_PARAMS_INVALID);
         return;
     }
 
@@ -715,6 +727,7 @@ bool EjectAndDestroyCdrom(const std::string &diskId)
     const int32_t ret = DiskManager::GetInstance().Eject(diskId);
     if (ret != ERR_OK) {
         LOGE("TryEjectCdrom diskId %{public}s Eject err=%{public}d", diskId.c_str(), ret);
+        ReportCdromDiscoverFault(diskId, "autoEject", ret);
         return false;
     }
     DestroyALLVolume(diskId);
@@ -850,6 +863,7 @@ int32_t DiscoverCdromVolumes(const UeventEnv &env, const std::string &diskId, bo
         diskDevPath, K_DISK_BLOCK_DEVICE_NODE_MODE, static_cast<int32_t>(env.major), static_cast<int32_t>(env.minor));
     if (err != ERR_OK) {
         LOGE("DiscoverCdromVolumes CreateBlockDeviceNode failed err=%{public}d", err);
+        ReportCdromDiscoverFault(diskId, "createDiskNode", err);
         return err;
     }
 

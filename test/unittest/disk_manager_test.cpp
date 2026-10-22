@@ -6356,5 +6356,134 @@ HWTEST_F(DiskManagerTest, GetExternalVolumeInfos_TestCase_005, TestSize.Level0)
     }
     GTEST_LOG_(INFO) << "GetExternalVolumeInfos_TestCase_005 End";
 }
+
+namespace {
+constexpr const char *DFX_AUDIT_FILE = "/data/log/hiaudit/disk_manager/disk_manager_audit.csv";
+ 
+void EnsureDfxAuditDir()
+{
+    if (access("/data/log", F_OK) != 0) {
+        mkdir("/data/log", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+    if (access("/data/log/hiaudit", F_OK) != 0) {
+        mkdir("/data/log/hiaudit", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+    if (access("/data/log/hiaudit/disk_manager/", F_OK) != 0) {
+        mkdir("/data/log/hiaudit/disk_manager/", S_IRWXU | S_IRWXG | S_IXOTH);
+    }
+}
+ 
+int64_t GetAuditFileSize()
+{
+    std::ifstream ifs(DFX_AUDIT_FILE, std::ios::ate);
+    if (!ifs.is_open()) {
+        return 0;
+    }
+    return static_cast<int64_t>(ifs.tellg());
+}
+ 
+std::string ReadAuditSince(int64_t offset)
+{
+    std::ifstream ifs(DFX_AUDIT_FILE);
+    if (!ifs.is_open()) {
+        return "";
+    }
+    ifs.seekg(offset, std::ios::beg);
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return ss.str();
+}
+} // namespace
+ 
+/**
+ * @tc.name: Erase_DfxFailKeepsReturn_001
+ * @tc.desc: Erase failure keeps business return and reports FAIL behavior with real error code.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Erase_DfxFailKeepsReturn_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Erase_DfxFailKeepsReturn_001 Start";
+    EnsureDfxAuditDir();
+    auto &dm = DiskManager::GetInstance();
+    dm.OnVolumeCreated(MakeUdfVolume("vol-er-dfx", "disk-er-dfx", "uuid-er-dfx"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Erase(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(dm.Erase("vol-er-dfx"), E_ERASE_FAILED);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManager::Erase"), std::string::npos);
+    EXPECT_NE(tail.find("ret:13601803"), std::string::npos);
+    GTEST_LOG_(INFO) << "Erase_DfxFailKeepsReturn_001 End";
+}
+ 
+/**
+ * @tc.name: Eject_DfxFailKeepsReturn_001
+ * @tc.desc: Eject failure keeps business return and reports FAIL behavior with real error code.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Eject_DfxFailKeepsReturn_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Eject_DfxFailKeepsReturn_001 Start";
+    EnsureDfxAuditDir();
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-ej-dfx"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Eject(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(dm.Eject("disk-ej-dfx"), E_EJECT_FAILED);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManager::Eject"), std::string::npos);
+    EXPECT_NE(tail.find("ret:13601804"), std::string::npos);
+    GTEST_LOG_(INFO) << "Eject_DfxFailKeepsReturn_001 End";
+}
+ 
+/**
+ * @tc.name: CreateIsoImage_DfxFailKeepsReturn_001
+ * @tc.desc: CreateIsoImage failure keeps business return and reports FAIL behavior with real error code.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, CreateIsoImage_DfxFailKeepsReturn_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "CreateIsoImage_DfxFailKeepsReturn_001 Start";
+    EnsureDfxAuditDir();
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-iso-dfx"));
+    dm.OnVolumeCreated(MakeUdfVolume("vol-iso-dfx", "disk-iso-dfx", "uuid-iso-dfx"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, CreateIsoImage(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(dm.CreateIsoImage("vol-iso-dfx", "/data/local/tmp/iso.img"), E_ISO_WRITE_FAILED);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManager::CreateIsoImage"), std::string::npos);
+    EXPECT_NE(tail.find("ret:13601802"), std::string::npos);
+    GTEST_LOG_(INFO) << "CreateIsoImage_DfxFailKeepsReturn_001 End";
+}
+ 
+/**
+ * @tc.name: Burn_DfxFailKeepsReturn_001
+ * @tc.desc: Burn failure keeps business return and reports FAIL behavior with real error code.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Burn_DfxFailKeepsReturn_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Burn_DfxFailKeepsReturn_001 Start";
+    EnsureDfxAuditDir();
+    auto &dm = DiskManager::GetInstance();
+    dm.OnVolumeCreated(MakeUdfVolume("vol-bn-dfx", "disk-bn-dfx", "uuid-bn-dfx"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(E_BURN_NOSPC));
+    const int64_t offset = GetAuditFileSize();
+    EXPECT_EQ(dm.Burn("vol-bn-dfx", "{}", "com.ohos.test", 100), E_BURN_NOSPC);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("DiskManager::Burn"), std::string::npos);
+    EXPECT_NE(tail.find("ret:13601806"), std::string::npos);
+    GTEST_LOG_(INFO) << "Burn_DfxFailKeepsReturn_001 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
