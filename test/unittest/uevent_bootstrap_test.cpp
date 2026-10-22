@@ -19,9 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstdarg>
-#include <sys/stat.h>
 #include <sys/sysmacros.h>
-#include <sstream>
 
 #include "disk/uevent_bootstrap.h"
 #include "disk/uevent_env_parser.h"
