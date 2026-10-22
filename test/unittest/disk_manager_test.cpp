@@ -6399,7 +6399,7 @@ std::string ReadAuditSince(int64_t offset)
  * @tc.name: Erase_DfxFailKeepsReturn_001
  * @tc.desc: Erase failure keeps business return and reports FAIL behavior with real error code.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, Erase_DfxFailKeepsReturn_001, TestSize.Level0)
 {
@@ -6421,7 +6421,7 @@ HWTEST_F(DiskManagerTest, Erase_DfxFailKeepsReturn_001, TestSize.Level0)
  * @tc.name: Eject_DfxFailKeepsReturn_001
  * @tc.desc: Eject failure keeps business return and reports FAIL behavior with real error code.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, Eject_DfxFailKeepsReturn_001, TestSize.Level0)
 {
@@ -6443,7 +6443,7 @@ HWTEST_F(DiskManagerTest, Eject_DfxFailKeepsReturn_001, TestSize.Level0)
  * @tc.name: CreateIsoImage_DfxFailKeepsReturn_001
  * @tc.desc: CreateIsoImage failure keeps business return and reports FAIL behavior with real error code.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, CreateIsoImage_DfxFailKeepsReturn_001, TestSize.Level0)
 {
@@ -6466,7 +6466,7 @@ HWTEST_F(DiskManagerTest, CreateIsoImage_DfxFailKeepsReturn_001, TestSize.Level0
  * @tc.name: Burn_DfxFailKeepsReturn_001
  * @tc.desc: Burn failure keeps business return and reports FAIL behavior with real error code.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, Burn_DfxFailKeepsReturn_001, TestSize.Level0)
 {
@@ -6489,7 +6489,7 @@ HWTEST_F(DiskManagerTest, Burn_DfxFailKeepsReturn_001, TestSize.Level0)
  * @tc.name: FormatPartition_DfxKeepsRealErrno_001
  * @tc.desc: FormatPartition with invalid fsType reports E_PARAMS_INVALID instead of DISK_MGR_ERR.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, FormatPartition_DfxKeepsRealErrno_001, TestSize.Level0)
 {
@@ -6517,7 +6517,7 @@ HWTEST_F(DiskManagerTest, FormatPartition_DfxKeepsRealErrno_001, TestSize.Level0
  * @tc.name: NotifyMtpMounted_UnknownFsTypeReportsFault_001
  * @tc.desc: NotifyMtpMounted with unknown fsType reports MTP_NOTIFY fault.
  * @tc.type: FUNC
- * @tc.require: RR-30093408
+ * @tc.require: NA
  */
 HWTEST_F(DiskManagerTest, NotifyMtpMounted_UnknownFsTypeReportsFault_001, TestSize.Level0)
 {
