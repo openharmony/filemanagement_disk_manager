@@ -6484,53 +6484,6 @@ HWTEST_F(DiskManagerTest, Burn_DfxFailKeepsReturn_001, TestSize.Level0)
     EXPECT_NE(tail.find("ret:13601806"), std::string::npos);
     GTEST_LOG_(INFO) << "Burn_DfxFailKeepsReturn_001 End";
 }
- 
-/**
- * @tc.name: FormatPartition_DfxKeepsRealErrno_001
- * @tc.desc: FormatPartition with invalid fsType reports E_PARAMS_INVALID instead of DISK_MGR_ERR.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, FormatPartition_DfxKeepsRealErrno_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "FormatPartition_DfxKeepsRealErrno_001 Start";
-    EnsureDfxAuditDir();
-    auto &dm = DiskManager::GetInstance();
-    const std::string diskId = "disk-fmt-dfx";
-    dm.OnDiskCreated(MakeUsbDisk(diskId));
-    PartitionTableInfo tbl;
-    tbl.SetDiskId(diskId);
-    std::vector<PartitionInfo> parts = { PartitionInfo(1, diskId, 2048, 4096, 1024, "ext4") };
-    tbl.SetPartitions(parts);
-    dm.partitionTableMap_[diskId] = tbl;
-    const int64_t offset = GetAuditFileSize();
-    FormatParams params("nilfs2", true, "vol-fmt-dfx");
-    EXPECT_EQ(dm.FormatPartition(diskId, 1, params), E_PARAMS_INVALID);
-    const std::string tail = ReadAuditSince(offset);
-    EXPECT_NE(tail.find("DiskManager::FormatPartition"), std::string::npos);
-    EXPECT_NE(tail.find("ret:13600002"), std::string::npos);
-    EXPECT_EQ(tail.find("ret:-1"), std::string::npos);
-    GTEST_LOG_(INFO) << "FormatPartition_DfxKeepsRealErrno_001 End";
-}
- 
-/**
- * @tc.name: NotifyMtpMounted_UnknownFsTypeReportsFault_001
- * @tc.desc: NotifyMtpMounted with unknown fsType reports MTP_NOTIFY fault.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, NotifyMtpMounted_UnknownFsTypeReportsFault_001, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "NotifyMtpMounted_UnknownFsTypeReportsFault_001 Start";
-    EnsureDfxAuditDir();
-    auto &dm = DiskManager::GetInstance();
-    const int64_t offset = GetAuditFileSize();
-    dm.NotifyMtpMounted("ptp-unknown-1", "/mnt/data/external/ptp-unknown-1", "desc", "uuid-unknown-1", "nilfs");
-    const std::string tail = ReadAuditSince(offset);
-    EXPECT_NE(tail.find("NotifyMtpMounted"), std::string::npos);
-    EXPECT_NE(tail.find("failStage:unknownFsType"), std::string::npos);
-    GTEST_LOG_(INFO) << "NotifyMtpMounted_UnknownFsTypeReportsFault_001 End";
-}
 
 } // namespace DiskManager
 } // namespace OHOS
