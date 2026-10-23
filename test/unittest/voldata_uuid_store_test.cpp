@@ -30,12 +30,16 @@ namespace {
 const std::string JSON_DIR = "/data/service/el1/public/disk_manager/";
 const std::string JSON_FILE = JSON_DIR + "voldata_uuid_mapping.json";
 const std::string JSON_TMP_FILE = JSON_FILE + ".tmp";
+const std::string BAK_FILE = JSON_FILE + ".bak";
+const std::string BAK_TMP_FILE = BAK_FILE + ".tmp";
 
 void RemoveTestFiles()
 {
     std::error_code ec;
     std::filesystem::remove(JSON_FILE, ec);
     std::filesystem::remove(JSON_TMP_FILE, ec);
+    std::filesystem::remove(BAK_FILE, ec);
+    std::filesystem::remove(BAK_TMP_FILE, ec);
 }
 
 void WriteRawFile(const std::string &path, const std::string &content)
@@ -464,7 +468,123 @@ HWTEST_F(VoldataUuidStoreTest, LoadFromFile_TestCase_003, TestSize.Level0)
     store.UnInit();
     RemoveTestFiles();
     WriteRawFile(JSON_FILE, "not valid json {{{");
-    EXPECT_EQ(store.Init(), DiskManagerErrNo::DISK_MGR_ERR);
+    EXPECT_EQ(store.Init(), DiskManagerErrNo::E_OK);
+    // Main file corrupted and no backup, start from empty
+    std::string path;
+    EXPECT_FALSE(store.TryGetMountPath("any-uuid", path));
+}
+
+/**
+ * @tc.name: LoadFromFile_FallbackToBackup_TestCase_001
+ * @tc.desc: Fall back to backup file when main file is corrupted
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VoldataUuidStoreTest, LoadFromFile_FallbackToBackup_TestCase_001, TestSize.Level0)
+{
+    auto &store = VoldataUuidStore::GetInstance();
+    store.UnInit();
+    RemoveTestFiles();
+    // Write a valid backup file
+    nlohmann::json arr = nlohmann::json::array();
+    nlohmann::json obj;
+    obj["fsUuid"] = "backup-uuid";
+    obj["mountPath"] = "/mnt/data/voldata/data1";
+    obj["slotIndex"] = 1;
+    arr.push_back(obj);
+    WriteRawFile(BAK_FILE, arr.dump());
+    // Corrupt the main file
+    WriteRawFile(JSON_FILE, "corrupted!!!");
+    EXPECT_EQ(store.Init(), DiskManagerErrNo::E_OK);
+    std::string path;
+    EXPECT_TRUE(store.TryGetMountPath("backup-uuid", path));
+    EXPECT_EQ(path, "/mnt/data/voldata/data1");
+    // Main file should be repaired after recovering from backup
+    EXPECT_TRUE(std::filesystem::exists(JSON_FILE));
+}
+
+/**
+ * @tc.name: LoadFromFile_BothCorrupted_TestCase_001
+ * @tc.desc: Start from empty when both main and backup files are corrupted
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VoldataUuidStoreTest, LoadFromFile_BothCorrupted_TestCase_001, TestSize.Level0)
+{
+    auto &store = VoldataUuidStore::GetInstance();
+    store.UnInit();
+    RemoveTestFiles();
+    WriteRawFile(JSON_FILE, "corrupted main!!!");
+    WriteRawFile(BAK_FILE, "corrupted backup!!!");
+    EXPECT_EQ(store.Init(), DiskManagerErrNo::E_OK);
+    std::string path;
+    EXPECT_FALSE(store.TryGetMountPath("any-uuid", path));
+    // Both main and backup should be rewritten as empty arrays
+    EXPECT_TRUE(std::filesystem::exists(JSON_FILE));
+    EXPECT_TRUE(std::filesystem::exists(BAK_FILE));
+}
+
+/**
+ * @tc.name: SaveToFile_CreatesBackup_TestCase_001
+ * @tc.desc: SaveToFile writes both main and backup files with identical content
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VoldataUuidStoreTest, SaveToFile_CreatesBackup_TestCase_001, TestSize.Level0)
+{
+    auto &store = VoldataUuidStore::GetInstance();
+    std::string path;
+    bool created = false;
+    EXPECT_EQ(store.ResolveMountPath("backup-test-uuid", path, created), DiskManagerErrNo::E_OK);
+    EXPECT_TRUE(created);
+    EXPECT_TRUE(std::filesystem::exists(BAK_FILE));
+    // Verify backup content matches main file
+    std::ifstream mainFile(JSON_FILE);
+    std::string mainContent((std::istreambuf_iterator<char>(mainFile)), std::istreambuf_iterator<char>());
+    mainFile.close();
+    std::ifstream bakFile(BAK_FILE);
+    std::string bakContent((std::istreambuf_iterator<char>(bakFile)), std::istreambuf_iterator<char>());
+    bakFile.close();
+    EXPECT_EQ(mainContent, bakContent);
+}
+
+/**
+ * @tc.name: LoadFromFile_UpgradeCompat_TestCase_001
+ * @tc.desc: Upgrade scenario: old version has only main file without backup, rebuild backup on first launch
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(VoldataUuidStoreTest, LoadFromFile_UpgradeCompat_TestCase_001, TestSize.Level0)
+{
+    auto &store = VoldataUuidStore::GetInstance();
+    store.UnInit();
+    RemoveTestFiles();
+    // Simulate old version: only main file, no backup
+    nlohmann::json arr = nlohmann::json::array();
+    nlohmann::json obj;
+    obj["fsUuid"] = "upgrade-uuid";
+    obj["mountPath"] = "/mnt/data/voldata/data1";
+    obj["slotIndex"] = 1;
+    arr.push_back(obj);
+    WriteRawFile(JSON_FILE, arr.dump());
+    // Confirm backup does not exist
+    EXPECT_FALSE(std::filesystem::exists(BAK_FILE));
+    // Init should succeed
+    EXPECT_EQ(store.Init(), DiskManagerErrNo::E_OK);
+    // Data should be loaded from main file
+    std::string path;
+    EXPECT_TRUE(store.TryGetMountPath("upgrade-uuid", path));
+    EXPECT_EQ(path, "/mnt/data/voldata/data1");
+    // Backup should be auto-created
+    EXPECT_TRUE(std::filesystem::exists(BAK_FILE));
+    // Backup content matches main file
+    std::ifstream mainFile(JSON_FILE);
+    std::string mainContent((std::istreambuf_iterator<char>(mainFile)), std::istreambuf_iterator<char>());
+    mainFile.close();
+    std::ifstream bakFile(BAK_FILE);
+    std::string bakContent((std::istreambuf_iterator<char>(bakFile)), std::istreambuf_iterator<char>());
+    bakFile.close();
+    EXPECT_EQ(mainContent, bakContent);
 }
 
 } // namespace DiskManager
