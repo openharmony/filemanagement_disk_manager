@@ -3593,7 +3593,9 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_004, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeUsbDisk("disk-56-2"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-56-2", "disk-56-2", "uuid-fp-4", MOUNTED));
+    VolumeExternal vol = MakeUsbVolume("vol-56-2", "disk-56-2", "uuid-fp-4", UNMOUNTED, EXFAT);
+    vol.SetPartitionNum(1);
+    dm.OnVolumeCreated(vol);
     PartitionTableInfo info;
     PartitionInfo pinfo;
     pinfo.SetPartitionNum(1);
@@ -3602,7 +3604,15 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_004, TestSize.Level0)
     FormatParams params("vfat", true, "volume");
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(StrEq("/dev/block/vol-56-2"), _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("new-uuid-fp-4"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("new-label-fp-4"), Return(ERR_OK)));
     EXPECT_EQ(dm.FormatPartition("disk-56-2", 1, params), E_OK);
+    VolumeExternal volOut;
+    EXPECT_EQ(dm.GetVolumeById("vol-56-2", volOut), E_OK);
+    EXPECT_EQ(volOut.GetUuid(), "new-uuid-fp-4");
+    EXPECT_EQ(volOut.GetFsType(), static_cast<int32_t>(VFAT));
+    EXPECT_EQ(volOut.GetDescription(), "new-label-fp-4");
 }
 
 HWTEST_F(DiskManagerTest, FormatPartition_TestCase_005, TestSize.Level0)
@@ -3658,6 +3668,49 @@ HWTEST_F(DiskManagerTest, FormatPartition_TestCase_008, TestSize.Level0)
     dm.partitionTableMap_["disk-56-6"] = info;
     FormatParams params("nilfs2", true, "volume");
     EXPECT_EQ(dm.FormatPartition("disk-56-6", 1, params), E_PARAMS_INVALID);
+}
+
+/**
+ * @tc.name: FormatPartition_TestCase_009
+ * @tc.desc: FormatPartition returns E_OK even when metadata refresh fails after success.
+ */
+HWTEST_F(DiskManagerTest, FormatPartition_TestCase_009, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-56-7"));
+    VolumeExternal vol = MakeUsbVolume("vol-56-7", "disk-56-7", "uuid-fp-9", UNMOUNTED);
+    vol.SetPartitionNum(1);
+    dm.OnVolumeCreated(vol);
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(1);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-56-7"] = info;
+    FormatParams params("vfat", true, "volume");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.FormatPartition("disk-56-7", 1, params), E_OK);
+}
+
+/**
+ * @tc.name: FormatPartition_TestCase_010
+ * @tc.desc: FormatPartition returns E_OK when no volume matches the partitionNum in map.
+ */
+HWTEST_F(DiskManagerTest, FormatPartition_TestCase_010, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-56-8"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-56-8", "disk-56-8", "uuid-fp-10", UNMOUNTED));
+    PartitionTableInfo info;
+    PartitionInfo pinfo;
+    pinfo.SetPartitionNum(1);
+    info.SetPartitions({pinfo});
+    dm.partitionTableMap_["disk-56-8"] = info;
+    FormatParams params("vfat", true, "volume");
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatPartition(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.FormatPartition("disk-56-8", 1, params), E_OK);
 }
 
 HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_001, TestSize.Level0)

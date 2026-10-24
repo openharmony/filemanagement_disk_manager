@@ -232,6 +232,9 @@ private:
     int32_t UpdateVolumeAfterFormat(const std::string &volumeId, const std::string &fsType,
                                  const std::string &diskId, const std::string &oldFsUuid,
                                  const std::string &devPath);
+    /** FormatPartition 成功后刷新 volumeMap_ 中卷的 uuid/fstype/label；刷新失败仅告警，不影响返回值。 */
+    void RefreshVolumeAfterFormatPartition(const VolumeExternal &fmtVol, const std::string &fsType,
+                                           const std::string &diskId);
     /** 将挂载/卸载后修改的 VolumeExternal 整体回写 volumeMap_（自取写锁）。返回 E_OK / E_NON_EXIST。 */
     int32_t UpdateVolumeExternal(const VolumeExternal &volExternal);
     VolumeExternal FindVolumeForPartition(const Disk &disk, int32_t partitionNum);

@@ -2533,6 +2533,7 @@ int32_t DiskManager::FormatPartition(const std::string &diskId, int32_t partitio
         return dfx.Finish(E_FORMAT_PARTITION_ERROR);
     }
     LOGI("FormatPartition success");
+    RefreshVolumeAfterFormatPartition(fmtVol, params.GetFsType(), diskId);
     return dfx.Finish(DiskManagerErrNo::E_OK);
 }
 
@@ -2617,6 +2618,28 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
     return E_OK;
+}
+
+void DiskManager::RefreshVolumeAfterFormatPartition(const VolumeExternal &fmtVol, const std::string &fsType,
+    const std::string &diskId)
+{
+    if (fmtVol.GetId().empty()) {
+        LOGW("RefreshVolumeAfterFormatPartition: no volume in map, skip refresh diskId=%{public}s",
+             diskId.c_str());
+        return;
+    }
+    // 使用 vol-x-x 稳定设备节点（daemon mknod 的独立节点）：sgdisk 重写分区表后内核重建
+    // /dev/block/sdax 节点的窗口期内，按内核名访问会概率性 realpath 失败（ENOENT）
+    std::string devPath = CheckVolId(fmtVol.GetId());
+    if (devPath.empty()) {
+        LOGW("RefreshVolumeAfterFormatPartition: devPath empty volId=%{public}s", fmtVol.GetId().c_str());
+        return;
+    }
+    int32_t err = UpdateVolumeAfterFormat(fmtVol.GetId(), fsType, diskId, fmtVol.GetUuid(), devPath);
+    if (err != E_OK) {
+        LOGE("RefreshVolumeAfterFormatPartition failed volId=%{public}s err=%{public}d",
+             fmtVol.GetId().c_str(), err);
+    }
 }
 
 VolumeExternal DiskManager::FindVolumeForPartition(const Disk &disk, int32_t partitionNum)
