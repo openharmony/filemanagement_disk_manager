@@ -100,7 +100,7 @@ public:
     int32_t DestroyDmCryptVolume(const std::string &mapperName) override;
     int32_t UnbindBlockLoopDev(const std::string &loopPath) override;
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath,
-                               const MountParam &param) override;
+                              const MountParam &param) override;
     int32_t UmountVolumeByPath(const std::string &diskId, const std::string &volPath) override;
     int32_t MountDmDevice(const std::string &diskId, const std::string &dmPath, const std::string &dstPath,
                           const std::string &fsType, const MountParam &mountParam) override;
