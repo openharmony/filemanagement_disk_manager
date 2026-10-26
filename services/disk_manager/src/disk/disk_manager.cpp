@@ -3392,7 +3392,7 @@ int32_t DiskManager::FormatDmDevice(const std::string &diskId, const std::string
         return E_NON_EXIST;
     }
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(dmPath, fsType, "/dev/block/" + diskId,
-                                                                    "", 0);
+                                                                   "", 0);
     if (err != E_OK) {
         LOGE("FormatDmDevice: format failed, err=%{public}d", err);
         return E_DM_FORMAT_FAILED;
