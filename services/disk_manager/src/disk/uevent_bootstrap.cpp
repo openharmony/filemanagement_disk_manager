@@ -40,6 +40,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <algorithm>
+#include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
 #include <fstream>
@@ -76,6 +77,7 @@ constexpr int32_t MAX_SCSI_VOLUMES = 15;
 constexpr int32_t VOL_LENGTH = 3;
 constexpr uint64_t BYTES_PER_MB = 1024 * 1024;
 constexpr uint64_t MIN_DISK_SIZE_MB = 4;
+constexpr uint64_t SECTOR_SIZE = 512;
 const int32_t CONFIG_PARAM_NUM = 6;
 const std::string CONFIG_PATH = "/system/etc/disk_manager/disk_config";
 #define FDSAN_TAG 1
@@ -509,46 +511,51 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
     }
 }
 
-static uint64_t GetDevSectorSize(const std::string &devName)
+// 按内核命名规则拼分区名：sd*/hd*/vd* 直接追加数字；nvme*n*、mmcblk* 需加 'p' 再加数字。
+static std::string BuildPartitionDevName(const std::string &devName, uint32_t partitionNumber)
 {
-    std::string sysfsPath = "/sys/class/block/" + devName + "/size";
-    int fd = open(sysfsPath.c_str(), O_RDONLY);
-    if (fd < 0) {
-        return 0;
+    if (devName.empty()) {
+        return std::string();
     }
-    fdsan_exchange_owner_tag(fd, 0, NEW_TAG);
-    char buf[32] = {};
-    ssize_t n = read(fd, buf, sizeof(buf) - 1);
-    fdsan_close_with_tag(fd, NEW_TAG);
-    if (n <= 0) {
-        return 0;
+    char last = devName.back();
+    std::string partDevName = devName;
+    if (std::isdigit(static_cast<unsigned char>(last))) {
+        partDevName += "p";
     }
-    return strtoull(buf, nullptr, DEC_BASE);
+    partDevName += std::to_string(partitionNumber);
+    return partDevName;
 }
 
 static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t partitionNumber)
 {
-    std::string partDevName = devName + std::to_string(partitionNumber);
-    constexpr uint64_t DM_RESERVED_SECTORS = (20 * BYTES_PER_MB) / 512;  // 预留 20MB
-    uint64_t totalSectors = GetDevSectorSize(partDevName);
+    std::string partDevName = BuildPartitionDevName(devName, partitionNumber);
+    std::string partDevPath = std::string("/dev/block/") + partDevName;
+    constexpr uint64_t DM_RESERVED_SECTORS = (20 * BYTES_PER_MB) / SECTOR_SIZE;  // 预留 20MB
+    std::string sysfsDevName = devName + "/" + partDevName;
+    uint64_t totalBytes = 0;
+    int32_t sizeErr = StorageDaemonAdapter::GetInstance().GetDiskSize(sysfsDevName, totalBytes);
+    if (sizeErr != ERR_OK || totalBytes == 0) {
+        LOGE("CreateDmLinearForPartition: GetDiskSize failed, err=%{public}d, partDev=%{public}s",
+             sizeErr, partDevName.c_str());
+        return makedev(0, 0);
+    }
+    uint64_t totalSectors = totalBytes / SECTOR_SIZE;
     if (totalSectors <= DM_RESERVED_SECTORS) {
-        LOGE("CreateDmLinearForPartition: totalSectors=%{public}llu too small, skip",
-             static_cast<unsigned long long>(totalSectors));
+        LOGE("CreateDmLinearForPartition: totalSectors=%{public}llu too small, partDev=%{public}s, skip",
+             static_cast<unsigned long long>(totalSectors), partDevPath.c_str());
         return makedev(0, 0);
     }
     uint64_t mappingSectors = totalSectors - DM_RESERVED_SECTORS;
-    std::string partDevPath = std::string("/dev/block/") + partDevName;
     uint64_t dmDevVal = 0;
     int32_t err = StorageDaemonAdapter::GetInstance().CreateDmLinear(partDevPath, 0, mappingSectors, dmDevVal);
     if (err != ERR_OK || dmDevVal == 0) {
-        LOGE("CreateDmLinearForPartition: CreateDmLinear failed, err=%{public}d, dmDev=0", err);
+        LOGE("CreateDmLinearForPartition: CreateDmLinear failed, err=%{public}d, partDev=%{public}s",
+             err, partDevPath.c_str());
         return makedev(0, 0);
     }
     dev_t dmDev = static_cast<dev_t>(dmDevVal);
-    LOGI("CreateDmLinearForPartition: success, partDevPath=%{public}s, dev=(%{public}u,%{public}u)",
-         partDevPath.c_str(),
-         major(dmDev),
-         minor(dmDev));
+    LOGI("CreateDmLinearForPartition: success, partDev=%{public}s, dev=(%{public}u,%{public}u)",
+         partDevPath.c_str(), major(dmDev), minor(dmDev));
  
     return dmDev;
 }

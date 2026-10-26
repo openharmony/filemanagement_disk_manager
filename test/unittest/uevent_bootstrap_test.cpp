@@ -46,6 +46,7 @@ using namespace testing::ext;
 constexpr int DISK_METADATA_ARG_UUID = 1;
 constexpr int DISK_METADATA_ARG_TYPE = 2;
 constexpr int DISK_METADATA_ARG_LABEL = 3;
+constexpr uint64_t SECTOR_SIZE = 512;
 
 static bool g_interceptSysfs = false;
 static uint64_t g_mockDevSectorSize = 0;
@@ -2255,15 +2256,17 @@ HWTEST_F(UeventBootstrapTest, TryEjectCdrom_MultiVolumeMatch_TestCase_013, TestS
 
 // ===== ResolvePartitionDev / CreateDmLinearForPartition 测试 =====
 // 从 DiscoverPartitionsAndVolumes 入口，通过 mock 控制进入 DiscoverSinglePartitionVolume，
-// 使用 SysfsInterceptGuard 控制 GetDevSectorSize 返回值。
+// 通过 mock GetDiskSize IPC 控制 CreateDmLinearForPartition 内的分区大小。
 
 /**
  * @tc.name: DmLinear_InternalDataDisk_Success_001
- * @tc.desc: 内置数据盘，分区扇区数 > 40960，CreateDmLinear 成功
+ * @tc.desc: 内置数据盘，分区字节数 > 20MB(40960 扇区)，CreateDmLinear 成功
  */
 HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_Success_001, TestSize.Level0)
 {
-    SysfsInterceptGuard guard(204800); // > DM_RESERVED_SECTORS(40960)
+    // 204800 扇区 * SECTOR_SIZE = 104857600 字节 > 20MB，走 CreateDmLinear 成功路径
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(204800 * SECTOR_SIZE)), Return(E_OK)));
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2303,11 +2306,13 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_Success_001, TestSize.Le
 
 /**
  * @tc.name: DmLinear_InternalDataDisk_SectorTooSmall_002
- * @tc.desc: 内置数据盘，分区扇区数 <= 40960，CreateDmLinearForPartition 跳过
+ * @tc.desc: 内置数据盘，分区字节数 <= 20MB(40960 扇区)，CreateDmLinearForPartition 跳过
  */
 HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_SectorTooSmall_002, TestSize.Level0)
 {
-    SysfsInterceptGuard guard(20480); // <= DM_RESERVED_SECTORS(40960)
+    // 20480 扇区 * SECTOR_SIZE = 10485760 字节 <= 20MB，跳过 dm-linear
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(20480 * SECTOR_SIZE)), Return(E_OK)));
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2346,11 +2351,12 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_SectorTooSmall_002, Test
 
 /**
  * @tc.name: DmLinear_InternalDataDisk_SysfsZero_003
- * @tc.desc: 内置数据盘，GetDevSectorSize 返回 0，CreateDmLinearForPartition 跳过
+ * @tc.desc: 内置数据盘，GetDiskSize 返回 0，CreateDmLinearForPartition 跳过
  */
 HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_SysfsZero_003, TestSize.Level0)
 {
-    SysfsInterceptGuard guard(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(0)), Return(E_OK)));
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2389,11 +2395,12 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_SysfsZero_003, TestSize.
 
 /**
  * @tc.name: DmLinear_InternalDataDisk_CreateFail_004
- * @tc.desc: 内置数据盘，扇区数足够但 CreateDmLinear 失败(err≠0)，走 fallback
+ * @tc.desc: 内置数据盘，字节数足够但 CreateDmLinear 失败(err≠0)，走 fallback
  */
 HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_CreateFail_004, TestSize.Level0)
 {
-    SysfsInterceptGuard guard(204800);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(204800 * SECTOR_SIZE)), Return(E_OK)));
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2437,7 +2444,8 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_CreateFail_004, TestSize
  */
 HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_DmDevZero_005, TestSize.Level0)
 {
-    SysfsInterceptGuard guard(204800);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(204800 * SECTOR_SIZE)), Return(E_OK)));
     UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string dump = "DISK gpt\nPART 1\n";
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
@@ -2482,7 +2490,9 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_DmDevZero_005, TestSize.
  */
 HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_FallbackIsUserData_006, TestSize.Level0)
 {
-    SysfsInterceptGuard guard(20480);
+    // 33 分区每个都会走一次 ResolvePartitionDev，内置盘每次先调 GetDiskSize
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillRepeatedly(DoAll(SetArgReferee<1>(static_cast<uint64_t>(20480 * SECTOR_SIZE)), Return(E_OK)));
     std::string dump = "DISK gpt\n";
     for (int i = 1; i <= 33; ++i) {
         if (i == 1) {
@@ -2508,6 +2518,98 @@ HWTEST_F(UeventBootstrapTest, DmLinear_InternalDataDisk_FallbackIsUserData_006, 
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
             info.diskId = "disk-8-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DmLinear_Nvme_PartitionName_007
+ * @tc.desc: NVMe 盘 nvme1n1 分区 1，验证 BuildPartitionDevName 拼出 nvme1n1p1（加 'p'），
+ *           GetDiskSize 入参为层级路径 "nvme1n1/nvme1n1p1"，CreateDmLinear 成功
+ */
+HWTEST_F(UeventBootstrapTest, DmLinear_Nvme_PartitionName_007, TestSize.Level0)
+{
+    // 校验 GetDiskSize 入参为层级路径 "nvme1n1/nvme1n1p1"
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(StrEq("nvme1n1/nvme1n1p1"), _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(204800 * SECTOR_SIZE)), Return(E_OK)));
+    UeventEnv env = MakeUenv("change", 259, 1, "/devices/nvme1n1", "disk", "block", "nvme1n1");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    // CreateDmLinear 入参 sourceDevPath 应为 /dev/block/nvme1n1p1
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(StrEq("/dev/block/nvme1n1p1"), _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(static_cast<uint64_t>(makedev(253, 0))), Return(E_OK)));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-259-1";
+            info.vendor = "vendor";
+            return true;
+        }));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ToJsonStringWithExtrasImpl(_, _))
+        .WillOnce(Return(std::string("{}")));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("test-uuid")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+ 
+/**
+ * @tc.name: DmLinear_Nvme_GetDiskSizeFail_008
+ * @tc.desc: NVMe 盘 nvme1n1 分区 1，GetDiskSize 失败，CreateDmLinearForPartition 跳过走 fallback
+ */
+HWTEST_F(UeventBootstrapTest, DmLinear_Nvme_GetDiskSizeFail_008, TestSize.Level0)
+{
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(0)), Return(-1)));
+    UeventEnv env = MakeUenv("change", 259, 1, "/devices/nvme1n1", "disk", "block", "nvme1n1");
+    std::string dump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetVolumeById(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillRepeatedly(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateDmLinear(_, _, _, _)).Times(0);
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Invoke([](const std::string &, BlockInfo &info) {
+            info.diskId = "disk-259-1";
             info.vendor = "vendor";
             return true;
         }));
