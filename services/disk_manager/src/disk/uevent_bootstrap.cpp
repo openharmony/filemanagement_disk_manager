@@ -528,7 +528,7 @@ static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t par
 {
     std::string partDevName = BuildPartitionDevName(devName, partitionNumber);
     std::string partDevPath = std::string("/dev/block/") + partDevName;
-    constexpr uint64_t DM_RESERVED_SECTORS = (20 * BYTES_PER_MB) / SECTOR_SIZE;  // 预留 20MB
+    constexpr uint64_t dmReservedSectors = (20 * BYTES_PER_MB) / SECTOR_SIZE;  // 预留 20MB
     std::string sysfsDevName = devName + "/" + partDevName;
     uint64_t totalBytes = 0;
     int32_t sizeErr = StorageDaemonAdapter::GetInstance().GetDiskSize(sysfsDevName, totalBytes);
@@ -538,12 +538,12 @@ static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t par
         return makedev(0, 0);
     }
     uint64_t totalSectors = totalBytes / SECTOR_SIZE;
-    if (totalSectors <= DM_RESERVED_SECTORS) {
+    if (totalSectors <= dmReservedSectors) {
         LOGE("CreateDmLinearForPartition: totalSectors=%{public}llu too small, partDev=%{public}s, skip",
              static_cast<unsigned long long>(totalSectors), partDevPath.c_str());
         return makedev(0, 0);
     }
-    uint64_t mappingSectors = totalSectors - DM_RESERVED_SECTORS;
+    uint64_t mappingSectors = totalSectors - dmReservedSectors;
     uint64_t dmDevVal = 0;
     int32_t err = StorageDaemonAdapter::GetInstance().CreateDmLinear(partDevPath, 0, mappingSectors, dmDevVal);
     if (err != ERR_OK || dmDevVal == 0) {
