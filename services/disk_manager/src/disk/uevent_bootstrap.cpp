@@ -80,8 +80,6 @@ constexpr uint64_t MIN_DISK_SIZE_MB = 4;
 constexpr uint64_t SECTOR_SIZE = 512;
 const int32_t CONFIG_PARAM_NUM = 6;
 const std::string CONFIG_PATH = "/system/etc/disk_manager/disk_config";
-#define FDSAN_TAG 1
-const uint64_t NEW_TAG = static_cast<uint64_t>(0xD00430F) << 32 | FDSAN_TAG;
 
 /**
  * 将 sysfs 读出的字符串安全转为 int32_t。
@@ -556,7 +554,7 @@ static dev_t CreateDmLinearForPartition(const std::string &devName, uint32_t par
     dev_t dmDev = static_cast<dev_t>(dmDevVal);
     LOGI("CreateDmLinearForPartition: success, partDev=%{public}s, dev=(%{public}u,%{public}u)",
          partDevPath.c_str(), major(dmDev), minor(dmDev));
- 
+
     return dmDev;
 }
 

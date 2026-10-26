@@ -2583,7 +2583,7 @@ HWTEST_F(UeventBootstrapTest, DmLinear_Nvme_PartitionName_007, TestSize.Level0)
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }
- 
+
 /**
  * @tc.name: DmLinear_Nvme_GetDiskSizeFail_008
  * @tc.desc: NVMe 盘 nvme1n1 分区 1，GetDiskSize 失败，CreateDmLinearForPartition 跳过走 fallback
