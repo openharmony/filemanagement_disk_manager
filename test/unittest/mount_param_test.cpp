@@ -92,5 +92,31 @@ HWTEST_F(MountParamTest, Unmarshalling_Success_TestCase_002, TestSize.Level0)
     delete result;
 }
 
+HWTEST_F(MountParamTest, MountData_Marshalling, TestSize.Level0)
+{
+    MountParam mp(true);
+    mp.SetMountData("label_test");
+    Parcel parcel;
+    EXPECT_TRUE(mp.Marshalling(parcel));
+    MountParam *result = MountParam::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->GetMountData(), "label_test");
+    EXPECT_TRUE(result->GetReadOnly());
+    delete result;
+}
+
+HWTEST_F(MountParamTest, MountData_EmptyDefault, TestSize.Level0)
+{
+    MountParam mp;
+    Parcel parcel;
+    EXPECT_TRUE(mp.Marshalling(parcel));
+    MountParam *result = MountParam::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->GetMountData(), "");
+    EXPECT_FALSE(result->GetReadOnly());
+    EXPECT_FALSE(result->IsFromEdmMount());
+    delete result;
+}
+
 } // namespace DiskManager
 } // namespace OHOS

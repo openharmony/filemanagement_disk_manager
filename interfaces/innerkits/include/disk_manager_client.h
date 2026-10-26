@@ -104,6 +104,10 @@ public:
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
     int32_t UmountVolumeByPath(const std::string &diskId, const std::string &volPath);
 
+    int32_t MountDmDevice(const std::string &diskId, const std::string &dmPath, const std::string &dstPath,
+                          const std::string &fsType, const MountParam &mountParam);
+    int32_t FormatDmDevice(const std::string &diskId, const std::string &dmPath, const std::string &fsType);
+
 private:
     DiskManagerClient() = default;
     DiskManagerClient(const DiskManagerClient &) = delete;

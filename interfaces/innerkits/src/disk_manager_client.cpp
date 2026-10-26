@@ -728,5 +728,32 @@ int32_t DiskManagerClient::UmountVolumeByPath(const std::string &diskId, const s
     IDiskManager &dm = *proxy;
     return dm.UmountVolumeByPath(diskId, volPath);
 }
+
+int32_t DiskManagerClient::MountDmDevice(const std::string &diskId, const std::string &dmPath,
+                                         const std::string &dstPath, const std::string &fsType,
+                                         const MountParam &mountParam)
+{
+    LOGI("MountDmDevice diskId=%{public}s dmPath=%{public}s", diskId.c_str(), dmPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.MountDmDevice(diskId, dmPath, dstPath, fsType, mountParam);
+}
+
+int32_t DiskManagerClient::FormatDmDevice(const std::string &diskId, const std::string &dmPath,
+                                          const std::string &fsType)
+{
+    LOGI("FormatDmDevice diskId=%{public}s dmPath=%{public}s", diskId.c_str(), dmPath.c_str());
+    sptr<IDiskManager> proxy;
+    int32_t err = Connect(proxy);
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.FormatDmDevice(diskId, dmPath, fsType);
+}
 } // namespace DiskManager
 } // namespace OHOS

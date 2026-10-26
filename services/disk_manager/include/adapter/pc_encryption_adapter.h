@@ -53,6 +53,9 @@ public:
                              const std::string &volumeId,
                              const std::string &volPath);
 
+    void NotifyVolumeFormatted(const std::string &diskId,
+                               const std::string &volumeId);
+
 private:
     PcEncryptionAdapter();
     ~PcEncryptionAdapter();

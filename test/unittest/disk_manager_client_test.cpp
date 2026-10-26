@@ -1638,5 +1638,82 @@ HWTEST_F(DiskManagerClientTest, GetDiskPowerOnHoursTest002, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "GetDiskPowerOnHoursTest002 End";
 }
+
+/**
+ * @tc.name: MountDmDeviceTest001
+ * @tc.desc: 测试 MountDmDevice 在 SA 不可用时返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, MountDmDeviceTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "MountDmDeviceTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    MountParam param;
+    int32_t ret = client.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param);
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "MountDmDeviceTest001 End";
+}
+
+/**
+ * @tc.name: MountDmDeviceTest002
+ * @tc.desc: MountDmDevice Connect 成功后转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, MountDmDeviceTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "MountDmDeviceTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, MountDmDevice(_, _, _, _, _)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    MountParam param;
+    EXPECT_EQ(client.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param), E_OK);
+
+    GTEST_LOG_(INFO) << "MountDmDeviceTest002 End";
+}
+
+/**
+ * @tc.name: FormatDmDeviceTest001
+ * @tc.desc: 测试 FormatDmDevice 在 SA 不可用时返回非 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, FormatDmDeviceTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatDmDeviceTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t ret = client.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4");
+    EXPECT_NE(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "FormatDmDeviceTest001 End";
+}
+
+/**
+ * @tc.name: FormatDmDeviceTest002
+ * @tc.desc: FormatDmDevice Connect 成功后转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, FormatDmDeviceTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FormatDmDeviceTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, FormatDmDevice(_, _, _)).WillOnce(Return(E_OK));
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    EXPECT_EQ(client.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4"), E_OK);
+
+    GTEST_LOG_(INFO) << "FormatDmDeviceTest002 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS

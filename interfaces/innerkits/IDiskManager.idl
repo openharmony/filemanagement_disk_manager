@@ -84,4 +84,9 @@ interface OHOS.DiskManager.IDiskManager {
     [ipccode 54] void GetDiskSerialNumber([in] String sysPath, [out] String serialNumber);
     [ipccode 55] void GetDiskPowerCycleCount([in] String sysPath, [out] int powerCycleCount);
     [ipccode 56] void GetDiskPowerOnHours([in] String sysPath, [out] int powerOnHours);
+
+    /* ---------- dm device mount/format（PC 加密扩展服务调用） ---------- */
+    [ipccode 57] void MountDmDevice([in] String diskId, [in] String dmPath, [in] String dstPath,
+                                     [in] String fsType, [in] MountParam mountParam);
+    [ipccode 58] void FormatDmDevice([in] String diskId, [in] String dmPath, [in] String fsType);
 }

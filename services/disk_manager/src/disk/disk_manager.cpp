@@ -2805,6 +2805,10 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     it->second.SetDescription(label);
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
+    Disk disk;
+    if (GetDiskById(diskId, disk) == E_OK && disk.IsInternalDataDisk()) {
+        PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volumeId);
+    }
     return E_OK;
 }
 
@@ -3319,6 +3323,82 @@ bool DiskManager::IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeL
     }
     LOGI("IsVolumeBind: volume not bind");
     return false;
+}
+
+int32_t DiskManager::QueryDmDeviceFsType(const std::string &dmPath, std::string &fsType)
+{
+    std::vector<std::string> cmd = {"blkid", "-n", "mdraid", "-s", "TYPE", "-o", "value", dmPath};
+    int32_t execRet = 0;
+    std::vector<std::string> output;
+    int32_t err = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
+    if (err != E_OK) {
+        LOGE("QueryDmDeviceFsType: blkid ExecuteCommand failed, err=%{public}d", err);
+        return E_DM_MOUNT_FAILED;
+    }
+    if (output.empty() || output[0].empty()) {
+        LOGE("QueryDmDeviceFsType: blkid result is empty, dm device not formatted, dmPath=%{public}s",
+             dmPath.c_str());
+        return E_FSTYPE_NOT_EXIST;
+    }
+    fsType = output[0];
+    size_t sep = fsType.find_first_of("\n");
+    if (sep != std::string::npos) {
+        fsType.resize(sep);
+    }
+    return E_OK;
+}
+
+int32_t DiskManager::MountDmDevice(const std::string &diskId, const std::string &dmPath,
+                                   const std::string &dstPath, const std::string &fsType,
+                                   const MountParam &mountParam)
+{
+    LOGI("MountDmDevice diskId=%{public}s dmPath=%{public}s dstPath=%{public}s fsType=%{public}s",
+         diskId.c_str(), dmPath.c_str(), dstPath.c_str(), fsType.c_str());
+    if (!HasDisk(diskId)) {
+        LOGE("MountDmDevice: disk not found, diskId=%{public}s", diskId.c_str());
+        return E_NON_EXIST;
+    }
+    std::string actualFsType;
+    int32_t err = QueryDmDeviceFsType(dmPath, actualFsType);
+    if (err != E_OK) {
+        return err;
+    }
+    if (actualFsType != fsType) {
+        LOGE("MountDmDevice: fsType mismatch, actual=%{public}s expected=%{public}s",
+             actualFsType.c_str(), fsType.c_str());
+        return E_FSTYPE_MISMATCH;
+    }
+    uint64_t mountFlag = 0;
+    if (mountParam.GetReadOnly()) {
+        mountFlag |= static_cast<uint64_t>(MS_RDONLY);
+    }
+    err = StorageDaemonAdapter::GetInstance().Mount(dmPath, dstPath, fsType, mountFlag,
+                                                    mountParam.GetMountData());
+    if (err != E_OK) {
+        LOGE("MountDmDevice: mount failed, err=%{public}d", err);
+        return E_DM_MOUNT_FAILED;
+    }
+    LOGI("MountDmDevice: mount success");
+    return E_OK;
+}
+
+int32_t DiskManager::FormatDmDevice(const std::string &diskId, const std::string &dmPath,
+                                    const std::string &fsType)
+{
+    LOGI("FormatDmDevice diskId=%{public}s dmPath=%{public}s fsType=%{public}s", diskId.c_str(),
+         dmPath.c_str(), fsType.c_str());
+    if (!HasDisk(diskId)) {
+        LOGE("FormatDmDevice: disk not found, diskId=%{public}s", diskId.c_str());
+        return E_NON_EXIST;
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(dmPath, fsType, "/dev/block/" + diskId,
+                                                                    "", 0);
+    if (err != E_OK) {
+        LOGE("FormatDmDevice: format failed, err=%{public}d", err);
+        return E_DM_FORMAT_FAILED;
+    }
+    LOGI("FormatDmDevice: format success");
+    return E_OK;
 }
 } // namespace DiskManager
 } // namespace OHOS
