@@ -509,15 +509,16 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
     }
 }
 
-// 按内核命名规则拼分区名：sd*/hd*/vd* 直接追加数字；nvme*n*、mmcblk* 需加 'p' 再加数字。
+// 拼分区名：nvme 盘名以数字结尾，需加 'p' 分隔再追加分区号（nvme1n1→nvme1n1p1）；
+// sd*/hd*/vd* 盘名以字母结尾，直接追加分区号（sda→sda1）。
 static std::string BuildPartitionDevName(const std::string &devName, uint32_t partitionNumber)
 {
     if (devName.empty()) {
         return std::string();
     }
-    char last = devName.back();
+    constexpr const char *nvmePrefix = "nvme";
     std::string partDevName = devName;
-    if (std::isdigit(static_cast<unsigned char>(last))) {
+    if (devName.rfind(nvmePrefix, 0) == 0) {
         partDevName += "p";
     }
     partDevName += std::to_string(partitionNumber);
