@@ -287,6 +287,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_001, TestSize.Le
         DAMAGED, DAMAGED_MOUNTED, ENCRYPTING, ENCRYPTED_AND_LOCKED,
         ENCRYPTED_AND_UNLOCKED, DECRYPTING, CHECKING,
         REPAIR_FINISH_FAIL, REPAIR_FINISH_SUCCESS, FORMAT_FINISH_FAIL,
+        REPAIR_START,
     };
     for (VolumeState s : mappedStates) {
         VolumeExternal vol = MakeSampleVolume();
@@ -444,13 +445,13 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_009, TestSize.Le
 HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_010, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_010 Start";
- 
+
     VolumeExternal vEject = MakeSampleVolume();
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(EJECTING, vEject));
- 
+
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_010 End";
 }
- 
+
 /**
  * @tc.name: PublishVolumeChange_TestCase_011
  * @tc.desc: EJECTING + umountResult="umountFail" 覆盖 SetEjectEventParams 携带卸载失败信息路径。
@@ -460,12 +461,28 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_010, TestSize.Le
 HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_011, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_011 Start";
- 
+
     VolumeExternal vEjectFail = MakeSampleVolume();
     vEjectFail.SetUmountResult("umountFail");
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(EJECTING, vEjectFail));
- 
+
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_011 End";
+}
+
+/**
+ * @tc.name: PublishVolumeResult_TestCase_003
+ * @tc.desc: PublishVolumeResult REPAIR_START 有 STATE_INFOS 映射，覆盖 actionSet=true 路径。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_003 Start";
+
+    VolumeExternal vol = MakeSampleVolume();
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(REPAIR_START, vol));
+
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_003 End";
 }
 
 } // namespace DiskManager

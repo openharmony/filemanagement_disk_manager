@@ -253,16 +253,15 @@ int32_t StorageDaemonAdapter::FormatVolume(const std::string &devPath, const std
     return ret;
 }
 
-int32_t StorageDaemonAdapter::Check(const std::string &devPath, const std::string &fsType, bool autoFix)
+int32_t StorageDaemonAdapter::Check(const std::string &devPath, const std::string &fsType)
 {
-    LOGI("Check enter, devPath=%{public}s, fsType=%{public}s, autoFix=%{public}d", devPath.c_str(), fsType.c_str(),
-         static_cast<int32_t>(autoFix));
+    LOGI("Check enter, devPath=%{public}s, fsType=%{public}s", devPath.c_str(), fsType.c_str());
     int32_t err = EnsureProxyReady();
     if (err != E_OK) {
         LOGE("Check exit err=%{public}d (proxy not ready)", err);
         return err;
     }
-    const int32_t ret = storageDaemon_->Check(devPath, fsType, autoFix);
+    const int32_t ret = storageDaemon_->Check(devPath, fsType);
     LOGI("Check exit ret=%{public}d", ret);
     return ret;
 }
