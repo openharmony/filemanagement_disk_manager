@@ -75,7 +75,7 @@ constexpr const char *FUSE_UMOUNT_FS_TYPE = "fuse";
 /** SSD/HDD 上 f2fs 分区挂载至 /mnt/data/voldata/dataX 时需要添加的挂载参数 */
 constexpr const char *VOLDATA_MOUNT_CONTEXT = "bb_retry";
 constexpr const char *DEV_BLOCK_PREFIX = "/dev/block/";
-constexpr int64_t BURN_REPORT_EVENT_ID = 0x30000101;
+constexpr int64_t BURN_REPORT_EVENT_ID = 0x00F000004;
 constexpr int64_t BURN_EDM_CONTROL_EVENT_ID = 0x00F000008;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
 // PrepareBurn 内部标记：EDM 策略禁止刻录；非错误码，仅 Burn 层据此上报审计事件后对外映射为 E_NOT_SUPPORT。
