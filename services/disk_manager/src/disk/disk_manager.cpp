@@ -2863,7 +2863,7 @@ int32_t DiskManager::BindBlockLoopDev(const std::string &diskId, uint64_t offset
     if (IsVolumeBind(disk, offset, sizeLimit, loopPath)) {
         return dfx.Finish(E_OK);
     }
-    std::vector<std::string> cmd = {"losetup", "--oh", "-f", "-o", std::to_string(offset), "--sizelimit",
+    std::vector<std::string> cmd = {"loopctl", "--oh", "-f", "-o", std::to_string(offset), "--sizelimit",
                                     std::to_string(sizeLimit), "--show", "/dev/block/" + diskId};
     std::vector<std::string> output;
     int32_t execRet = 0;
@@ -2958,7 +2958,7 @@ int32_t DiskManager::UnbindBlockLoopDev(const std::string &loopPath)
     reportInfo.WithDevPath(loopPath);
     IpcDfxScope dfx("DiskManager::UnbindBlockLoopDev", DFX_STAGE_UNBIND_BLOCK_LOOP_DEV,
                     VolumeOpType::UNBIND_BLOCK_LOOP_DEV, reportInfo);
-    std::vector<std::string> cmd = {"losetup", "-d", loopPath};
+    std::vector<std::string> cmd = {"loopctl", "-d", loopPath};
     std::vector<std::string> output;
     int32_t execRet = 0;
     int32_t ret = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
