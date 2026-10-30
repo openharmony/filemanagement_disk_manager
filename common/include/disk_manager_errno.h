@@ -88,6 +88,10 @@ enum DiskManagerErrNo : int32_t {
 
     // data disk format reentrancy errno
     E_BUSY = 13600000 + 1907,
+
+    // volume repair errno (与 storage_service_errno.h 数值一致)
+    E_VOL_NEED_FIX = 13600000 + 1730,
+    E_VOL_FIX_FAILED = 13600000 + 1731,
 };
 
 } // namespace DiskManager

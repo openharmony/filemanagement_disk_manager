@@ -793,18 +793,36 @@ int32_t DiskManager::MountVolumeEntry(VolumeExternal &volExternal, const std::st
         volExternal.SetState(CHECKING);
         SetVolumeStateLocked(volumeId, CHECKING);
         CommonEventPublisher::PublishVolumeResult(CHECKING, volExternal);
-        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType,
-            true);
-        if (checkErr != ERR_OK) {
+        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check("/dev/block/" + volExternal.GetId(), fsType);
+        if (checkErr == E_VOL_NEED_FIX) {
+            volExternal.SetState(REPAIR_START);
+            SetVolumeStateLocked(volumeId, REPAIR_START);
+            CommonEventPublisher::PublishVolumeResult(REPAIR_START, volExternal);
+            volExternal.SetState(REPAIRING);
+            SetVolumeStateLocked(volumeId, REPAIRING);
+            int32_t repairErr = StorageDaemonAdapter::GetInstance().Repair("/dev/block/" + volExternal.GetId(),
+                fsType);
+            if (repairErr != ERR_OK) {
+                LOGE("Mount: Repair failed volId=%{public}s err=%{public}d", volumeId.c_str(), repairErr);
+                volExternal.SetState(REPAIR_FINISH_FAIL);
+                SetVolumeStateLocked(volumeId, REPAIR_FINISH_FAIL);
+                CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_FAIL, volExternal);
+                return repairErr;
+            }
+            CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_SUCCESS, volExternal);
+            volExternal.SetState(UNMOUNTED);
+            SetVolumeStateLocked(volumeId, UNMOUNTED);
+        } else if (checkErr != ERR_OK) {
             LOGE("Mount: Check failed volId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
             volExternal.SetState(REPAIR_FINISH_FAIL);
             SetVolumeStateLocked(volumeId, REPAIR_FINISH_FAIL);
             CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_FAIL, volExternal);
             return checkErr;
+        } else {
+            CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_SUCCESS, volExternal);
+            volExternal.SetState(UNMOUNTED);
+            SetVolumeStateLocked(volumeId, UNMOUNTED);
         }
-        CommonEventPublisher::PublishVolumeResult(REPAIR_FINISH_SUCCESS, volExternal);
-        volExternal.SetState(UNMOUNTED);
-        SetVolumeStateLocked(volumeId, UNMOUNTED);
     }
 
     int32_t mountErr = MountVolumeFilesystem(volExternal, fsType, fsUuid, readOnly);
@@ -2671,7 +2689,7 @@ int32_t DiskManager::RepairAndCheckVolume(VolumeExternal &volExternal, const std
     }
 
     if (ComputeVolumeMountPolicy(volExternal.GetDiskId(), fsType).useVoldataPath) {
-        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType, true);
+        int32_t checkErr = StorageDaemonAdapter::GetInstance().Check(devPath, fsType);
         if (checkErr != ERR_OK) {
             LOGE("RepairAndCheck: Check failed volumeId=%{public}s err=%{public}d", volumeId.c_str(), checkErr);
             volExternal.SetState(REPAIR_FINISH_FAIL);
