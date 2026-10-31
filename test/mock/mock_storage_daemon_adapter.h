@@ -46,7 +46,7 @@ public:
     MOCK_METHOD(int32_t, FormatVolume, (const std::string &devPath, const std::string &fsType,
                                         const std::string &diskPath, const std::string &partitionType,
                                         const int32_t partitionNum));
-    MOCK_METHOD(int32_t, Check, (const std::string &devPath, const std::string &fsType));
+    MOCK_METHOD(int32_t, Check, (const std::string &devPath, const std::string &fsType, bool autoFix));
     MOCK_METHOD(int32_t, Repair, (const std::string &devPath, const std::string &fsType));
     MOCK_METHOD(int32_t, SetLabel,
         (const std::string &devPath, const std::string &fsType, const std::string &label));

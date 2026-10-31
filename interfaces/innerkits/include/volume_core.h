@@ -41,8 +41,6 @@ enum VolumeState {
     REPAIR_FINISH_FAIL,
     REPAIR_FINISH_SUCCESS,
     FORMAT_FINISH_FAIL,
-    REPAIR_START,
-    REPAIRING,
 };
 
 class VolumeInfoStr : public Parcelable {
