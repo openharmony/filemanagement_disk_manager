@@ -169,7 +169,7 @@ HWTEST_F(StorageDaemonAdapterTest, FormatVolume_ErrorPath_001, TestSize.Level0)
 HWTEST_F(StorageDaemonAdapterTest, Check_ErrorPath_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_NE(adapter.Check("/dev/block/sda1", "ext4", false), E_OK);
+    EXPECT_NE(adapter.Check("/dev/block/sda1", "ext4"), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterTest, Repair_ErrorPath_001, TestSize.Level0)
@@ -419,8 +419,8 @@ HWTEST_F(StorageDaemonAdapterProxyTest, FormatVolume_Success_001, TestSize.Level
 HWTEST_F(StorageDaemonAdapterProxyTest, Check_Success_001, TestSize.Level0)
 {
     auto &adapter = StorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(*mockRemote_, Check(_, _, _)).WillOnce(Return(E_OK));
-    EXPECT_EQ(adapter.Check("/dev/block/sda1", "ext4", false), E_OK);
+    EXPECT_CALL(*mockRemote_, Check(_, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(adapter.Check("/dev/block/sda1", "ext4"), E_OK);
 }
 
 HWTEST_F(StorageDaemonAdapterProxyTest, Repair_Success_001, TestSize.Level0)

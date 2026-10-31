@@ -215,7 +215,7 @@ ErrCode StorageDaemonProxy::FormatVolume(const std::string &devPath, const std::
     return reply.ReadInt32();
 }
 
-ErrCode StorageDaemonProxy::Check(const std::string &devPath, const std::string &fsType, bool autoFix)
+ErrCode StorageDaemonProxy::Check(const std::string &devPath, const std::string &fsType)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -223,8 +223,7 @@ ErrCode StorageDaemonProxy::Check(const std::string &devPath, const std::string 
     if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
         return ERR_TRANSACTION_FAILED;
     }
-    if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(fsType)) ||
-        !data.WriteBool(autoFix)) {
+    if (!data.WriteString16(Str8ToStr16(devPath)) || !data.WriteString16(Str8ToStr16(fsType))) {
         return ERR_INVALID_DATA;
     }
     int32_t ret =

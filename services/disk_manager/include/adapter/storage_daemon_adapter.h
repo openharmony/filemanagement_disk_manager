@@ -52,7 +52,7 @@ public:
     int32_t FormatVolume(const std::string &devPath, const std::string &fsType,
                          const std::string &diskPath, const std::string &partitionType,
                          const int32_t partitionNum);
-    int32_t Check(const std::string &devPath, const std::string &fsType, bool autoFix);
+    int32_t Check(const std::string &devPath, const std::string &fsType);
     int32_t Repair(const std::string &devPath, const std::string &fsType);
     int32_t SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label);
     int32_t ReadMetadata(const std::string &devPath, std::string &uuid, std::string &type, std::string &label);
