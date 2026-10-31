@@ -2210,6 +2210,48 @@ HWTEST_F(DiskManagerProviderTest, GetVolumeOpProcess_PermissionDenied_002, TestS
 }
 
 /**
+ * @tc.name: GetExternalDiskInfos_PermissionDenied_001
+ * @tc.desc: GetExternalDiskInfos returns E_PERMISSION_DENIED when caller lacks
+ *           ohos.permission.GET_STORAGE_VOLUME_INFO.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetExternalDiskInfos_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    std::vector<ExternalDiskInfo> diskInfos;
+    EXPECT_EQ(provider.GetExternalDiskInfos(diskInfos), E_PERMISSION_DENIED);
+    EXPECT_TRUE(diskInfos.empty());
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetExternalDiskInfos_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetExternalVolumeInfos_PermissionDenied_001
+ * @tc.desc: GetExternalVolumeInfos returns E_PERMISSION_DENIED when caller lacks
+ *           ohos.permission.GET_STORAGE_VOLUME_INFO.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetExternalVolumeInfos_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_PermissionDenied_001 Start";
+
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    std::vector<ExternalVolumeInfo> volInfos;
+    EXPECT_EQ(provider.GetExternalVolumeInfos(volInfos), E_PERMISSION_DENIED);
+    EXPECT_TRUE(volInfos.empty());
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+
+    GTEST_LOG_(INFO) << "GetExternalVolumeInfos_PermissionDenied_001 End";
+}
+
+/**
  * @tc.name: OnStart_InitPaths_TestCase_001
  * @tc.desc: 覆盖 OnStart 中 UeventBootstrap/BlockInfoTable/VoldataUuidStore 初始化路径。
  *           UT 进程内不可直接调用 OnStart（会触发 SystemAbility::Publish，栈对象析构时崩溃）。
