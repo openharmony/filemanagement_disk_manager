@@ -66,7 +66,6 @@ const VolumeStateInfo STATE_INFOS[] = {
     {REPAIR_FINISH_SUCCESS, "REPAIR_FINISH_SUCCESS",
         EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
     {FORMAT_FINISH_FAIL, "FORMAT_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
-    {REPAIR_START, "REPAIR_START", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
 };
 
 void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
@@ -168,14 +167,11 @@ void CommonEventPublisher::PublishVolumeChange(VolumeState notifyCode, const Vol
     if (volume.GetFlags() == static_cast<int32_t>(DVR_USB)) {
         LOGI("CommonEventPublisher DVR volume, only publish to user 0, id=%{public}s, volumeState=%{public}d",
              volume.GetId().c_str(), static_cast<int32_t>(notifyCode));
-        bool publishRet = EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, DVR_ALLOWED_USER_ID);
-        LOGI("CommonEventPublisher PublishCommonEventAsUser ret=%{public}d, id=%{public}s", publishRet,
-             volume.GetId().c_str());
+        EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, DVR_ALLOWED_USER_ID);
         return;
     }
 #endif
-    bool publishRet = EventFwk::CommonEventManager::PublishCommonEvent(commonData);
-    LOGI("CommonEventPublisher PublishCommonEvent ret=%{public}d, id=%{public}s", publishRet, volume.GetId().c_str());
+    EventFwk::CommonEventManager::PublishCommonEvent(commonData);
 }
 
 void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const VolumeExternal &volume)
@@ -207,8 +203,7 @@ void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const Vol
 
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
-    bool publishRet = EventFwk::CommonEventManager::PublishCommonEvent(commonData);
-    LOGI("CommonEventPublisher PublishCommonEvent ret=%{public}d, id=%{public}s", publishRet, volume.GetId().c_str());
+    EventFwk::CommonEventManager::PublishCommonEvent(commonData);
 }
 
 void CommonEventPublisher::PublishDiskChange(DiskEventKind kind, const Disk &disk)
@@ -232,9 +227,7 @@ void CommonEventPublisher::PublishDiskChange(DiskEventKind kind, const Disk &dis
 
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
-    bool publishRet = EventFwk::CommonEventManager::PublishCommonEvent(commonData);
-    LOGI("CommonEventPublisher PublishCommonEvent ret=%{public}d diskId=%{public}s", publishRet,
-         disk.GetDiskId().c_str());
+    EventFwk::CommonEventManager::PublishCommonEvent(commonData);
 }
 } // namespace DiskManager
 } // namespace OHOS

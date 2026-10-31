@@ -4084,7 +4084,7 @@ HWTEST_F(DiskManagerTest, MountVolumeEntry_TestCase_003, TestSize.Level0)
     vol.SetFsType(static_cast<int32_t>(F2FS));
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Check(_, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, Check(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
     EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillRepeatedly(Return(false));
     VolumeExternal volOut;
@@ -4100,7 +4100,7 @@ HWTEST_F(DiskManagerTest, MountVolumeEntry_TestCase_004, TestSize.Level0)
     vol.SetFsType(static_cast<int32_t>(F2FS));
     dm.OnVolumeCreated(vol);
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Check(_, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, Check(_, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
     auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
     EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillRepeatedly(Return(false));
@@ -4138,99 +4138,6 @@ HWTEST_F(DiskManagerTest, MountVolumeEntry_TestCase_006, TestSize.Level0)
     VolumeExternal volOut;
     dm.GetVolumeById("vol-69-6", volOut);
     EXPECT_EQ(dm.MountVolumeEntry(volOut, "vol-69-6"), DiskManagerErrNo::E_OK);
-}
-
-/**
- * @tc.name: MountVolumeEntry_CheckPassed_NoRepairNeeded
- * @tc.desc: SSD+f2fs data disk, Check returns E_OK, Repair not called, mount succeeds.
- * @tc.type: FUNC
- */
-HWTEST_F(DiskManagerTest, MountVolumeEntry_CheckPassed_NoRepairNeeded, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeSsdDisk("disk-11-mve-1"));
-    VolumeExternal vol = MakeUsbVolume("vol-mve-1", "disk-11-mve-1", "uuid-mve-1", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(F2FS));
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Check(_, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(sdAdapter, Repair(_, _)).Times(0);
-    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
-    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
-    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillRepeatedly(Return(false));
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-mve-1", volOut);
-    EXPECT_EQ(dm.MountVolumeEntry(volOut, "vol-mve-1"), DiskManagerErrNo::E_OK);
-    EXPECT_EQ(volOut.GetState(), MOUNTED);
-}
-
-/**
- * @tc.name: MountVolumeEntry_CheckNeedFix_RepairSuccess
- * @tc.desc: Check returns E_VOL_NEED_FIX, Repair returns ERR_OK, mount succeeds.
- * @tc.type: FUNC
- */
-HWTEST_F(DiskManagerTest, MountVolumeEntry_CheckNeedFix_RepairSuccess, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeSsdDisk("disk-11-mve-2"));
-    VolumeExternal vol = MakeUsbVolume("vol-mve-2", "disk-11-mve-2", "uuid-mve-2", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(F2FS));
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Check(_, _)).WillOnce(Return(E_VOL_NEED_FIX));
-    EXPECT_CALL(sdAdapter, Repair(_, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
-    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
-    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillRepeatedly(Return(false));
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-mve-2", volOut);
-    EXPECT_EQ(dm.MountVolumeEntry(volOut, "vol-mve-2"), DiskManagerErrNo::E_OK);
-}
-
-/**
- * @tc.name: MountVolumeEntry_CheckNeedFix_RepairFailed
- * @tc.desc: Check returns E_VOL_NEED_FIX, Repair returns E_VOL_FIX_FAILED, mount not attempted.
- * @tc.type: FUNC
- */
-HWTEST_F(DiskManagerTest, MountVolumeEntry_CheckNeedFix_RepairFailed, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeSsdDisk("disk-11-mve-3"));
-    VolumeExternal vol = MakeUsbVolume("vol-mve-3", "disk-11-mve-3", "uuid-mve-3", UNMOUNTED);
-    vol.SetFsType(static_cast<int32_t>(F2FS));
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Check(_, _)).WillOnce(Return(E_VOL_NEED_FIX));
-    EXPECT_CALL(sdAdapter, Repair(_, _)).WillOnce(Return(E_VOL_FIX_FAILED));
-    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
-    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
-    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillRepeatedly(Return(false));
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-mve-3", volOut);
-    EXPECT_NE(dm.MountVolumeEntry(volOut, "vol-mve-3"), DiskManagerErrNo::E_OK);
-    EXPECT_EQ(volOut.GetState(), REPAIR_FINISH_FAIL);
-}
-
-/**
- * @tc.name: MountVolumeEntry_NonDataDisk_SkipsCheck
- * @tc.desc: USB disk (not data disk), Check and Repair not called, mount proceeds directly.
- * @tc.type: FUNC
- */
-HWTEST_F(DiskManagerTest, MountVolumeEntry_NonDataDisk_SkipsCheck, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-mve-4"));
-    VolumeExternal vol = MakeUsbVolume("vol-mve-4", "disk-mve-4", "uuid-mve-4", UNMOUNTED);
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Check(_, _)).Times(0);
-    EXPECT_CALL(sdAdapter, Repair(_, _)).Times(0);
-    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
-    auto &ufAdapter = MockUsbFuseAdapter::GetInstance();
-    EXPECT_CALL(ufAdapter, IsUsbFuseEnabledForFsType(_)).WillRepeatedly(Return(false));
-    VolumeExternal volOut;
-    dm.GetVolumeById("vol-mve-4", volOut);
-    EXPECT_EQ(dm.MountVolumeEntry(volOut, "vol-mve-4"), DiskManagerErrNo::E_OK);
 }
 
 HWTEST_F(DiskManagerTest, SaveVolumeFreeSize_TestCase_001, TestSize.Level0)
