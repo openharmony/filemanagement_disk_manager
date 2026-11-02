@@ -526,5 +526,71 @@ HWTEST_F(DiskTest, GetCdromState_SetCdromState_TestCase_001, TestSize.Level0)
     EXPECT_EQ(disk.GetCdromState(), CdromState::QUERY_FAILED);
 }
 
+HWTEST_F(DiskTest, IsUsbBus_DefaultFalse_TestCase_001, TestSize.Level0)
+{
+    Disk disk;
+    EXPECT_FALSE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, SetUsbBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk;
+    disk.SetUsbBus(true);
+    EXPECT_TRUE(disk.IsUsbBus());
+    disk.SetUsbBus(false);
+    EXPECT_FALSE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_CdFlag_UsbBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", CD_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/usb/usb1/block/sr0");
+    EXPECT_EQ(disk.GetDiskType(), CD_FLAG);
+    EXPECT_TRUE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_CdFlag_SataBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", CD_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/ata/host0/block/sr0");
+    EXPECT_EQ(disk.GetDiskType(), CD_FLAG);
+    EXPECT_FALSE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_Usb_SetsUsbBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", DISK_TYPE_UNKNOWN);
+    disk.RefreshClassificationFromSysfs("/sys/devices/usb/usb1");
+    EXPECT_EQ(disk.GetDiskType(), USB_FLAG);
+    EXPECT_TRUE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_Sata_NotUsbBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", USB_FLAG);
+    disk.RefreshClassificationFromSysfs("/sys/devices/ata/ahci0", 1);
+    EXPECT_EQ(disk.GetDiskType(), DATA_DISK_HDD);
+    EXPECT_FALSE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, RefreshClassification_EmptySysPath_NotUsbBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk("d", 0, "", USB_FLAG);
+    disk.RefreshClassificationFromSysfs("");
+    EXPECT_FALSE(disk.IsUsbBus());
+}
+
+HWTEST_F(DiskTest, Marshalling_DoesNotSerializeUsbBus_TestCase_001, TestSize.Level0)
+{
+    Disk disk("disk-1", 4096, "sda1", USB_FLAG);
+    disk.SetUsbBus(true);
+    Parcel parcel;
+    EXPECT_TRUE(disk.Marshalling(parcel));
+    Disk *result = Disk::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_FALSE(result->IsUsbBus());
+    delete result;
+}
+
 } // namespace DiskManager
 } // namespace OHOS

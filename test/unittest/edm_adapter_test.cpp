@@ -84,7 +84,7 @@ HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_SataOddNotDisabled_ReturnsTrue_001, 
     // SATA刻录未被禁用
     OHOS::system::g_mockSataOddBurnDisabledResult.clear();
     Disk disk("disk-1", 4096, "sr0", CD_FLAG);
-    // SATA内置光驱：vid为空
+    // SATA内置光驱：非USB总线（isUsbBus默认false），vid为空
     auto &dm = DiskManager::GetInstance();
     EXPECT_CALL(dm, GetDiskById("disk-1", _))
         .WillOnce(DoAll(SetArgReferee<1>(disk), Return(E_OK)));
@@ -98,12 +98,30 @@ HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_SataOddDisabled_ReturnsFalse_001, Te
     // SATA刻录被禁用
     OHOS::system::g_mockSataOddBurnDisabledResult = "true";
     Disk disk("disk-1", 4096, "sr0", CD_FLAG);
-    // SATA内置光驱：vid为空
+    // SATA内置光驱：非USB总线（isUsbBus默认false），vid为空
     auto &dm = DiskManager::GetInstance();
     EXPECT_CALL(dm, GetDiskById("disk-1", _))
         .WillOnce(DoAll(SetArgReferee<1>(disk), Return(E_OK)));
     auto &adapter = EdmAdapter::GetInstance();
     EXPECT_FALSE(adapter.IsEdmEnableOddBurn("disk-1", 100));
+}
+
+HWTEST_F(EdmAdapterTest, IsEdmEnableOddBurn_UsbOddVidZero_SataBurnDisabled_GoesWhitelist_001, TestSize.Level0)
+{
+    // 回归：USB外置光驱vid=0（设备未上报vid），SATA刻录禁用开启。
+    // 修复前：vendorId==0 被误判为内置SATA → 走SATA禁用 → 返回false。
+    // 修复后：isUsbBus=true → 走EDM白名单分支，UsbManagerProxy为null时允许刻录 → 返回true。
+    SetEnterpriseParameter();
+    OHOS::system::g_mockSataOddBurnDisabledResult = "true";
+    Disk disk("disk-1", 4096, "sr0", CD_FLAG);
+    disk.SetUsbBus(true);
+    disk.SetVendorId(0);
+    disk.SetProductId(0);
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_CALL(dm, GetDiskById("disk-1", _))
+        .WillOnce(DoAll(SetArgReferee<1>(disk), Return(E_OK)));
+    auto &adapter = EdmAdapter::GetInstance();
+    EXPECT_TRUE(adapter.IsEdmEnableOddBurn("disk-1", 100));
 }
 
 // --- IsEdmControlMountEnabled ---
