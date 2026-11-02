@@ -97,19 +97,22 @@ bool EdmAdapter::IsEdmEnableOddBurn(const std::string &diskId, int32_t callerUse
         LOGI("IsEdmEnableOddBurn not Odd, diskType=%{public}d diskId=%{public}s", disk.GetDiskType(), diskId.c_str());
         return true;
     }
-    // 内置SATA光驱刻录禁用：非USB光驱(vid为0)即为内置SATA光驱
-    bool sataDisabled = IsSataOddBurnDisabled();
-    bool isSataOdd = disk.GetVendorId() == 0;
-    LOGI("IsEdmEnableOddBurn disk found, diskType=%{public}d vid=%{public}d "
-         "sataDisabled=%{public}d isSataOdd=%{public}d",
-         disk.GetDiskType(), disk.GetVendorId(), sataDisabled, isSataOdd);
-    if (isSataOdd) {
-        LOGI("IsEdmEnableOddBurn built-in SATA ODD sataDisabled=%{public}d diskId=%{public}s", sataDisabled,
-             diskId.c_str());
-        return !sataDisabled;
+    // 内置光驱刻录管控：内置光驱（非USB总线）受 persist.edm.disable_sata_odd_burn 控制
+    // 注：不能用 vendorId==0 判断内置光驱，外置USB光驱未上报vid时vendorId也为0
+    bool isBuiltinOdd = !disk.IsUsbBus();
+    LOGI("IsEdmEnableOddBurn diskType=%{public}d isUsbBus=%{public}d isBuiltinOdd=%{public}d",
+         disk.GetDiskType(), disk.IsUsbBus(), isBuiltinOdd);
+    if (isBuiltinOdd) {
+        bool burnDisabled = IsSataOddBurnDisabled();
+        if (burnDisabled) {
+            LOGI("IsEdmEnableOddBurn built-in ODD burn disabled, diskId=%{public}s", diskId.c_str());
+            return false; // 内置光驱且刻录被禁用，不刻录
+        }
+        LOGI("IsEdmEnableOddBurn built-in ODD burn allowed, diskId=%{public}s", diskId.c_str());
+        return true; // 内置光驱且刻录未禁用，正常刻录
     }
 
-    // 非SATA光驱即为外置光驱，查询EDM白名单；USB的vid/pid/sn仅在此时需要
+    // USB外置光驱，查询EDM白名单；vid/pid/sn仅在此分支需要（vid可能为0，由白名单兜底）
     int32_t vid = disk.GetVendorId();
     int32_t pid = disk.GetProductId();
     const std::string &sn = disk.GetSerialNumber();

@@ -234,6 +234,16 @@ std::string Disk::GetPartitionType() const
     return partitionType_;
 }
 
+bool Disk::IsUsbBus() const
+{
+    return isUsbBus_;
+}
+
+void Disk::SetUsbBus(bool isUsbBus)
+{
+    isUsbBus_ = isUsbBus;
+}
+
 bool Disk::IsInternalDataDisk() const
 {
     return IsInternalDataDiskType(diskType_);
@@ -255,13 +265,14 @@ void Disk::RefreshClassificationFromSysfs(const std::string &sysfsPath, int32_t 
     int32_t classifiedType = DISK_TYPE_UNKNOWN;
 
     if (!p.empty()) {
+        isUsbBus_ = SysPathHasUsbTopology(p);
         if (diskType_ == CD_FLAG || SysPathHasOpticalBlock(p)) {
             classifiedType = CD_FLAG;
         } else if (SysPathHasNvme(p) || (SysPathHasDirectSata(p) && rotational == 0)) {
             classifiedType = DATA_DISK_SSD;
         } else if (SysPathHasDirectSata(p)) {
             classifiedType = DATA_DISK_HDD;
-        } else if (SysPathHasUsbTopology(p)) {
+        } else if (isUsbBus_) {
             classifiedType = USB_FLAG;
         } else if (SysPathHasMmcHost(p)) {
             classifiedType = SD_FLAG;

@@ -77,6 +77,8 @@ public:
     void SetCdromState(CdromState cdromState);
     void SetPartitionType(const std::string &partitionType);
     std::string GetPartitionType() const;
+    bool IsUsbBus() const;
+    void SetUsbBus(bool isUsbBus);
 
     // --- 进程内 ---
     /** 块设备节点路径，如 /dev/block/sda。 */
@@ -100,6 +102,7 @@ private:
     std::vector<std::string> volumeIds_;          // volumeIds
     std::string extraInfo_;                        // extraInfo
     CdromState cdromState_ {CdromState::NO_DISC};
+    bool isUsbBus_ {false};                        // 进程内：是否USB总线（RefreshClassificationFromSysfs 判定），不进Parcel
 
     // 进程内扩展（CommonEvent），不导出 JS
     std::string sysPath_;    // /dev/block/{diskId}
