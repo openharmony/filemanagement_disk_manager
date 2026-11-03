@@ -1115,24 +1115,6 @@ HWTEST_F(StorageDaemonProxyTest, Check_TestCase_003, TestSize.Level0)
 }
 
 /**
- * @tc.name: Check_TestCase_004
- * @tc.desc: Check: WriteBool returns false.
- * @tc.type: FUNC
- */
-HWTEST_F(StorageDaemonProxyTest, Check_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "Check_TestCase_004 Start";
-
-    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(false));
-    int32_t ret = proxy_->Check("/dev/block/sda1", "ext4");
-    EXPECT_EQ(ret, ERR_INVALID_DATA);
-
-    GTEST_LOG_(INFO) << "Check_TestCase_004 End";
-}
-
-/**
  * @tc.name: Check_TestCase_005
  * @tc.desc: Check: SendRequest returns non-ERR_OK.
  * @tc.type: FUNC
@@ -1143,7 +1125,6 @@ HWTEST_F(StorageDaemonProxyTest, Check_TestCase_005, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CHECK), _, _, _))
         .WillOnce(Return(IPC_FAILED));
@@ -1164,7 +1145,6 @@ HWTEST_F(StorageDaemonProxyTest, Check_TestCase_006, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
-    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CHECK), _, _, _))
         .WillOnce(Return(ERR_OK));
