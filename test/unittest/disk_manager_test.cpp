@@ -4233,6 +4233,25 @@ HWTEST_F(DiskManagerTest, MountVolumeEntry_NonDataDisk_SkipsCheck, TestSize.Leve
     EXPECT_EQ(dm.MountVolumeEntry(volOut, "vol-mve-4"), DiskManagerErrNo::E_OK);
 }
 
+/**
+ * @tc.name: MountVolumeEntry_Repairing_RejectMount
+ * @tc.desc: Volume in REPAIRING state rejects Mount request (AC-2.6).
+ * @tc.type: FUNC
+ */
+HWTEST_F(DiskManagerTest, MountVolumeEntry_Repairing_RejectMount, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-11-mve-r1"));
+    VolumeExternal vol = MakeUsbVolume("vol-mve-r1", "disk-11-mve-r1", "uuid-mve-r1", UNMOUNTED);
+    vol.SetFsType(static_cast<int32_t>(F2FS));
+    dm.OnVolumeCreated(vol);
+    VolumeExternal volOut;
+    dm.GetVolumeById("vol-mve-r1", volOut);
+    volOut.SetState(REPAIRING);
+    dm.SetVolumeStateLocked("vol-mve-r1", REPAIRING);
+    EXPECT_NE(dm.Mount("vol-mve-r1"), DiskManagerErrNo::E_OK);
+}
+
 HWTEST_F(DiskManagerTest, SaveVolumeFreeSize_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();

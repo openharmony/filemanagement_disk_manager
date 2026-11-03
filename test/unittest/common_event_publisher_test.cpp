@@ -470,6 +470,22 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_011, TestSize.Le
 }
 
 /**
+ * @tc.name: PublishVolumeResult_TestCase_004
+ * @tc.desc: PublishVolumeResult REPAIRING 无 STATE_INFOS 映射，覆盖 actionSet=false early return（AC-2.7）。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_004 Start";
+
+    VolumeExternal vol = MakeSampleVolume();
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(REPAIRING, vol));
+
+    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_004 End";
+}
+
+/**
  * @tc.name: PublishVolumeResult_TestCase_003
  * @tc.desc: PublishVolumeResult REPAIR_START 有 STATE_INFOS 映射，覆盖 actionSet=true 路径。
  * @tc.type: FUNC
