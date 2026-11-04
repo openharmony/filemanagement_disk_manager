@@ -88,6 +88,11 @@ int32_t IpcCallerAuth::GetCallingUid()
     return IPCSkeleton::GetCallingUid();
 }
 
+int32_t IpcCallerAuth::GetCallingAppUid()
+{
+    return IPCSkeleton::GetCallingAppUid();
+}
+
 bool IpcCallerAuth::IsCallingUid(int32_t expectedUid)
 {
     return IPCSkeleton::GetCallingUid() == expectedUid;
@@ -136,11 +141,11 @@ int32_t IpcCallerAuth::GetCallingUserId()
         Security::AccessToken::HapTokenInfo hapInfo;
         if (AccessTokenKit::GetHapTokenInfo(tokenCaller, hapInfo) != ERR_OK) {
             LOGE("IpcCallerAuth: GetHapTokenInfo failed for userId");
-            return IPCSkeleton::GetCallingUid() / UID_BASE_DIVISOR;
+            return IPCSkeleton::GetCallingAppUid() / UID_BASE_DIVISOR;
         }
         return hapInfo.userID;
     }
-    return IPCSkeleton::GetCallingUid() / UID_BASE_DIVISOR;
+    return IPCSkeleton::GetCallingAppUid() / UID_BASE_DIVISOR;
 }
 
 } // namespace DiskManager

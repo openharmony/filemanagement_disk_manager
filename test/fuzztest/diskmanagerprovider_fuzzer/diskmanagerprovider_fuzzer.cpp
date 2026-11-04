@@ -52,6 +52,11 @@ pid_t IPCSkeleton::GetCallingUid()
     return 0;
 }
 
+pid_t IPCSkeleton::GetCallingAppUid()
+{
+    return 0;
+}
+
 uint32_t IPCSkeleton::GetCallingTokenID()
 {
     return MOCK_TOKEN_ID;

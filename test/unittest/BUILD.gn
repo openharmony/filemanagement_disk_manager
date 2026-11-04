@@ -813,6 +813,37 @@ ohos_unittest("disk_manager_provider_test") {
   subsystem_name = "filemanagement"
   part_name = "disk_manager"
 }
+ohos_unittest("ipc_caller_auth_appuid_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "ipc_caller_auth_appuid_test.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/ipc_caller_auth.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_ipc_skeleton.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_accesstoken_kit.cpp",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:disk_manager_mock_include",
+    ":disk_manager_unittest_common",
+  ]
+
+  defines = [
+    "IPCSkeleton=MockIPCSkeleton",
+    "private = public",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
 ohos_unittest("block_info_table_test") {
   module_out_path = "/disk_manager/disk_manager"
   use_exceptions = true
@@ -1036,6 +1067,7 @@ group("disk_manager_ut") {
     ":disk_config_test",
     ":partition_table_parser_test",
     ":disk_manager_provider_test",
+    ":ipc_caller_auth_appuid_test",
     ":block_info_table_test",
     ":uevent_bootstrap_test",
     ":disk_manager_dfx_types_test",

@@ -61,6 +61,9 @@ public:
     /** 返回当前 IPC 调用方 UID（IPCSkeleton::GetCallingUid）。 */
     static int32_t GetCallingUid();
 
+    /** 返回当前 IPC 调用方应用 UID（IPCSkeleton::GetCallingAppUid），用于包名查询、userId/appId 换算等应用身份语义场景。 */
+    static int32_t GetCallingAppUid();
+
     /** 判断当前 IPC 调用方 UID 是否等于 expectedUid。 */
     static bool IsCallingUid(int32_t expectedUid);
 
