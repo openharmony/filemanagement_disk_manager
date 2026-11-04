@@ -137,6 +137,7 @@ protected:
         ON_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillByDefault(Return(false));
         ON_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).WillByDefault(Return(E_OK));
+        ON_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), SetVolumeDiscState(_, _)).WillByDefault(Return(E_OK));
         ON_CALL(DiskManager::GetInstance(), GetAllVolumes(_)).WillByDefault(Return(E_OK));
         ON_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
@@ -1177,6 +1178,7 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_ReadMetadataFail_TestCase_0
 {
     UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
     std::string partitionDump = "DISK 8 1 gpt\n8-1 0 1024 0700 userdata\n";
+    // disk node only, no fallback volume node (legacy behavior kept)
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
@@ -1194,12 +1196,23 @@ HWTEST_F(UeventBootstrapTest, Discover_WithPartition_ReadMetadataFail_TestCase_0
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
         .Times(1);
     ExpectIsPartitioningFalse();
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
     EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
-        .Times(0);
+        .WillOnce(Return(E_OK));
+    // legacy behavior kept: no volume created, no mount attempted, only disk-level abnormal event
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
         .Times(0);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
         .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishDiskAbnormalImpl(Eq("disk-8-1"), Eq(PARTITION_TABLE_READ_FAILED)))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
     int32_t ret = UeventBootstrap::HandleDiskAdd(env);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }
@@ -1534,6 +1547,8 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_WholeDiskPartitioning
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _)).Times(0);
+    // 分区中走建卷+Format 流程，绝不允许标记异常
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, true);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }
@@ -1590,6 +1605,8 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitionsAndVolumes_EmptyDumpNoDiskLine_T
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    // dump 无 DISK 行：弃盘静默，不创建兜底卷也不标记
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_NE(ret, DiskManagerErrNo::E_OK);
 }
@@ -1928,12 +1945,14 @@ HWTEST_F(UeventBootstrapTest, PartitionDiff_ChangeTypeCode_TestCase_004, TestSiz
 
 /**
  * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_TestCase_001
- * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB, disk object should be created
+ * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB: keep legacy behavior that only
+ *           disk object is created (no volume, no mount, no ReadMetadata), and publish disk-level
+ *           abnormal event with reason PARTITION_TABLE_READ_FAILED.
  */
 HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_TestCase_001, TestSize.Level0)
 {
     UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
-    // BuildAndSyncPartitions returns E_STORAGE_VALID_NODE early, only one CreateBlockDeviceNode call
+    // CreateBlockDeviceNode x1: disk node only, no fallback volume node (legacy behavior kept)
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
@@ -1946,12 +1965,29 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
         .Times(0);
     EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
         .WillOnce(Return(false));
-    // ReadExtDiskInfoFromDaemon called once in UpsertDiskAndPublishEvent (TryCopyByDiskId returns false)
     EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
         .WillOnce(Return(-1));
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
         .WillOnce(Return(E_OK));
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    // E_STORAGE_VALID_NODE abnormal-notify gating queries IsPartitioning once
+    ExpectIsPartitioningFalse(1);
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // legacy behavior kept: no volume, no mount, no ReadMetadata on table read failure
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    // disk-level abnormal event published with reason PARTITION_TABLE_READ_FAILED
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishDiskAbnormalImpl(Eq("disk-8-1"), Eq(PARTITION_TABLE_READ_FAILED)))
         .Times(1);
     // Should NOT call DestroyBlockDeviceNode since device is valid
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_))
@@ -1962,8 +1998,9 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
 
 /**
  * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_NoPublish_TestCase_001
- * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB with publishNewDiskEvent=false,
- *           E_STORAGE_VALID_NODE path should return E_OK without UpsertDiskAndPublishEvent publishing
+ * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB with publishNewDiskEvent=false:
+ *           no disk event published (legacy behavior), but disk-level abnormal event is still published
+ *           with reason PARTITION_TABLE_READ_FAILED.
  */
 HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_NoPublish_TestCase_001,
          TestSize.Level0)
@@ -1979,6 +2016,19 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
     // publishNewDiskEvent=false, UpsertDiskAndPublishEvent returns early, no disk event published
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
     EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _)).Times(0);
+    // E_STORAGE_VALID_NODE abnormal-notify gating queries IsPartitioning once
+    ExpectIsPartitioningFalse(1);
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // legacy behavior kept: no volume, no mount, no ReadMetadata on table read failure
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
+    // abnormal notify is independent of disk event publishing
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishDiskAbnormalImpl(Eq("disk-8-1"), Eq(PARTITION_TABLE_READ_FAILED)))
+        .Times(1);
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), DestroyBlockDeviceNode(_)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
@@ -2002,6 +2052,9 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    // disk abandoned: no fallback volume detection, no abnormal marking, no abnormal event
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_NE(ret, DiskManagerErrNo::E_OK);
 }
@@ -2024,8 +2077,73 @@ HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_GetDiskS
         .WillOnce(Return(E_OK));
     EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).Times(0);
     EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_)).Times(0);
+    // disk abandoned: no fallback volume detection, no abnormal marking, no abnormal event
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _)).Times(0);
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
     EXPECT_NE(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DiscoverPartitions_ReadPartitionTableFail_DirectFsNotMarked_TestCase_004
+ * @tc.desc: ReadPartitionTable fails and whole-disk has a direct filesystem: keep legacy behavior
+ *           that no volume is created and no mount is attempted (no ReadMetadata on this path),
+ *           only disk-level abnormal event with reason PARTITION_TABLE_READ_FAILED is published.
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_DirectFsNotMarked_TestCase_004, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(10 * 1024 * 1024)), Return(E_OK)));
+    // E_STORAGE_VALID_NODE abnormal-notify gating queries IsPartitioning once
+    ExpectIsPartitioningFalse(1);
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // legacy behavior kept: table read failure never triggers whole-disk discovery,
+    // direct filesystem is not probed, no volume, no mount
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _)).Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishDiskAbnormalImpl(Eq("disk-8-1"), Eq(PARTITION_TABLE_READ_FAILED)))
+        .Times(1);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: DiscoverPartitions_ReadPartitionTableFail_PartitioningSilent_TestCase_005
+ * @tc.desc: ReadPartitionTable fails while partitioning is in progress: user-initiated flow keeps silent,
+ *           no volume created, no abnormal marking and no abnormal event
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, DiscoverPartitions_ReadPartitionTableFail_PartitioningSilent_TestCase_005,
+         TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")), SetArgReferee<2>(0), Return(-1)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskSize(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(static_cast<uint64_t>(10 * 1024 * 1024)), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _)).Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _)).Times(0);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }
 
 /**
@@ -2625,5 +2743,837 @@ HWTEST_F(UeventBootstrapTest, DmLinear_Nvme_GetDiskSizeFail_008, TestSize.Level0
     EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(DiskManager::GetInstance(), Format(_, _)).WillOnce(Return(E_OK));
     int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_AbnormalMetadataErr_TestCase_001
+ * @tc.desc: 单分区卷元数据读取 IPC 失败，标记 METADATA_READ_FAILED且不尝试挂载。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_AbnormalMetadataErr_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_DAEMON_IPC_FAILED)));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, METADATA_READ_FAILED))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_AbnormalEmptyMetadata_TestCase_002
+ * @tc.desc: 单分区卷元数据读取成功但 uuid/fsType 为空，标记 METADATA_READ_FAILED（空值分支）。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_AbnormalEmptyMetadata_TestCase_002, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    // 元数据读取成功但 uuid 为空：ReadAndUpdateMetadata 内 IsUuidValid 校验不通过提前返回，
+    // 不落盘元数据（保持既有行为），空值由异常检测路径标记 METADATA_READ_FAILED
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, METADATA_READ_FAILED))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_AbnormalUnsupportedFs_TestCase_003
+ * @tc.desc: 单分区卷 fsType 不在支持范围（zfs），标记 FSTYPE_UNSUPPORTED且不尝试挂载。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_AbnormalUnsupportedFs_TestCase_003, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("uuid-zfs-1")),
+                        SetArgReferee<2>(std::string("zfs")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, FSTYPE_UNSUPPORTED))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_AbnormalMountFailed_TestCase_004
+ * @tc.desc: 单分区卷元数据正常但自动挂载失败，标记 MOUNT_FAILED，详情携带底层错误码。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_AbnormalMountFailed_TestCase_004, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("uuid-ok-1")),
+                        SetArgReferee<2>(std::string("vfat")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .WillOnce(Return(E_OTHER_MOUNT));
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, MOUNT_FAILED))
+        .WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_NormalNoAbnormal_TestCase_005
+ * @tc.desc: 正常识别流程（元数据正常+挂载成功）零异常标记。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_NormalNoAbnormal_TestCase_005, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("uuid-ok-1")),
+                        SetArgReferee<2>(std::string("vfat")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_AbnormalUserdataSilent_TestCase_006
+ * @tc.desc: 内置 userdata 分区不参与异常检测（元数据为空不标记原因），空值门禁跳过自动挂载。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_AbnormalUserdataSilent_TestCase_006, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    // 分区表超过 MIN_LINES(32) 行且含 userdata 行，触发内置盘 userdata 识别并压缩为 DISK+单分区行
+    std::string partitionDump = "DISK gpt\nPART 1\nPART 2\nPART 3\nPART 4 userdata\n";
+    for (int i = 5; i <= 33; i++) {
+        partitionDump += "PART " + std::to_string(i) + "\n";
+    }
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_AbnormalUndetectableFsSilent_TestCase_007
+ * @tc.desc: UDF 等不可检测文件系统卷不参与异常检测（保持既有静默行为），挂载失败也不标记。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_AbnormalUndetectableFsSilent_TestCase_007, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("uuid-ok-1")),
+                        SetArgReferee<2>(std::string("udf")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .WillOnce(Return(E_OTHER_MOUNT));
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: HandleDiskAdd_PartitioningFormatFailSilent_TestCase_008
+ * @tc.desc: 分区中用户主动 Format 失败仅记录日志，不参与异常检测（用户流程不标记原因）。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, HandleDiskAdd_PartitioningFormatFailSilent_TestCase_008, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string partitionDump = "DISK gpt\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(partitionDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("uuid-ok-1")),
+                        SetArgReferee<2>(std::string("vfat")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), IsPartitioning(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(DiskManager::GetInstance(), Format(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: UeventInvalid_Silent_TestCase_001
+ * @tc.desc: uevent 非法（原因 1）静默——解析失败零异常标记。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, UeventInvalid_Silent_TestCase_001, TestSize.Level0)
+{
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_EQ(UeventBootstrap::OnBlockDiskUevent(""), DiskManagerErrNo::E_UEVENT_PARSE_FAILED);
+}
+
+/**
+ * @tc.name: PartitionTableParseFailure_Silent_TestCase_001
+ * @tc.desc: 分区表内容非空但解析不出分区（原因 3）：放弃该盘（返回错误），零异常标记。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, PartitionTableParseFailure_Silent_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("garbage-dump")), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::DISK_MGR_ERR);
+}
+
+/**
+ * @tc.name: WholeDiskNoFsAbnormal_TestCase_001
+ * @tc.desc: 表类型非 GPT/MBR（如 APM，含合法 PART 行但表类型不可识别）且无直挂文件系统（盘不可用）：
+ *           保持既有不建卷不挂载行为，仅广播分区表不可用（无卷载体）。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskNoFsAbnormal_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK apm\nPART 1\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(-1)));
+    ExpectIsPartitioningFalse();
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // legacy behavior kept: no volume created, no mount attempted, only disk-level abnormal event
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishDiskAbnormalImpl(Eq("disk-8-1"), Eq(PARTITION_TABLE_READ_FAILED)))
+        .Times(1);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: WholeDiskNoFsAbnormal_TestCase_002
+ * @tc.desc: GPT 表但 PART 行字符排列无法解析（分区号非法/单 token）且无直挂文件系统：
+ *           与 GPT 空分区一致按表分流保持既有静默（未分区状态非异常），不建卷不广播。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskNoFsAbnormal_TestCase_002, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\nPART abc\nPART\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(-1)));
+    ExpectIsPartitioningFalse();
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // GPT 表按表分流：保持既有静默，不建卷不挂载不广播
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: WholeDiskNoFsInternalDiskSilent_TestCase_003
+ * @tc.desc: 盘分类为内置数据盘且无可用分区、无直挂文件系统：不走异常兜底，保持静默零标记。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskNoFsInternalDiskSilent_TestCase_003, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 179, 0, "/devices/mmcblk0", "disk", "block", "mmcblk0");
+    std::string dump = "DISK apm\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(-1)));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Invoke([](const std::string &diskId, Disk &out) {
+            FillInternalDataDisk(diskId, out);
+            return E_OK;
+        }));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: WholeDiskNoFsLegacyUserdataSilent_TestCase_004
+ * @tc.desc: 旧格式 dump 含 userdata 分区特征（触发 userdata 过滤，视为内部用户数据盘）且无直挂文件系统：
+ *           不走异常兜底，保持静默零标记。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskNoFsLegacyUserdataSilent_TestCase_004, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK 8 1 gpt\n";
+    for (int i = 0; i < 33; ++i) {
+        dump += "8-" + std::to_string(i) + " 0 1024 0700 " +
+                (i == 1 ? "userdata" : "part" + std::to_string(i)) + "\n";
+    }
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(Return(-1));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: WholeDiskMbrNoPartDirectFsMount_TestCase_001
+ * @tc.desc: MBR 表无分区条目且整盘直挂文件系统可读（exfat，实测盘形态）：走既有 whole-disk
+ *           建卷并挂载，零异常标记（既有整盘挂载规格不变，防止回归）。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskMbrNoPartDirectFsMount_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK mbr\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("mbr-direct-uuid")),
+                        SetArgReferee<2>(std::string("exfat")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .WillOnce(Return(E_OK));
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: WholeDiskMbrNoFsAbnormalPublish_TestCase_001
+ * @tc.desc: MBR 表无分区条目且整盘无直挂文件系统（盘不可用）：保持既有不建卷不挂载行为，
+ *           仅广播分区表不可用（无卷载体）。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskMbrNoFsAbnormalPublish_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK mbr\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(-1)));
+    ExpectIsPartitioningFalse();
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // legacy behavior kept: no volume created, no mount attempted, only disk-level abnormal event
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(),
+                PublishDiskAbnormalImpl(Eq("disk-8-1"), Eq(PARTITION_TABLE_READ_FAILED)))
+        .Times(1);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: WholeDiskGptNoFsSilent_TestCase_001
+ * @tc.desc: GPT 表完好但无分区条目（未分区状态，非异常）且整盘无直挂文件系统：
+ *           保持既有静默，不建卷不挂载不广播。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, WholeDiskGptNoFsSilent_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string dump = "DISK gpt\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(dump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(-1)));
+    ExpectIsPartitioningFalse();
+    // IsInternalDataDiskById queries disk once (external disk: not internal)
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    // GPT 表按表分流：保持既有静默，不建卷不挂载不广播
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, _))
+        .Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskAbnormalImpl(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
+ * @tc.name: BlockInfoFailure_DoesNotAffectMarking_TestCase_001
+ * @tc.desc: 整盘卷 BlockInfo 失败（-1）不阻塞不吞掉异常标记，fsType 不支持照常标记 FSTYPE_UNSUPPORTED。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(UeventBootstrapTest, BlockInfoFailure_DoesNotAffectMarking_TestCase_001, TestSize.Level0)
+{
+    UeventEnv env = MakeUenv("add", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string wholeDiskDump = "DISK 8 1 gpt\n";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(wholeDiskDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), HasDisk(_))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), TryCopyByDiskId(_, _))
+        .WillOnce(Return(false));
+    EXPECT_CALL(BlockInfoTable::GetInstance(), ReadExtDiskInfoFromDaemon(_, _))
+        .WillOnce(Return(-1))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(DiskManager::GetInstance(), OnDiskCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(CommonEventPublisher::GetInstance(), PublishDiskChangeImpl(_, _))
+        .Times(1);
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("uuid-zfs-4")),
+                        SetArgReferee<2>(std::string("zfs")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), UpdateVolumeMetadata(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    ExpectIsPartitioningFalse();
+    EXPECT_CALL(DiskManager::GetInstance(), MarkVolumeAbnormal(_, FSTYPE_UNSUPPORTED))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), Mount(_, _))
+        .Times(0);
+    int32_t ret = UeventBootstrap::HandleDiskAdd(env);
     EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
 }

@@ -43,5 +43,10 @@ void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const Vol
     GetInstance().PublishVolumeResultImpl(notifyCode, volume);
 }
 
+void CommonEventPublisher::PublishDiskAbnormal(const std::string &diskId, int32_t reasonCode)
+{
+    GetInstance().PublishDiskAbnormalImpl(diskId, reasonCode);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

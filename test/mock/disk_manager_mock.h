@@ -40,6 +40,8 @@ public:
     MOCK_METHOD(int32_t, ForceUnmount, (const std::string &volumeId));
     MOCK_METHOD(int32_t, Format, (const std::string &volumeId, const std::string &fsType));
     MOCK_METHOD(int32_t, TryToFix, (const std::string &volumeId));
+    MOCK_METHOD(int32_t, MarkVolumeAbnormal,
+        (const std::string &volumeId, AbnormalReason reason));
     MOCK_METHOD(int32_t, SetVolumeDescription, (const std::string &fsUuid, const std::string &description));
     MOCK_METHOD(int32_t, Partition, (const std::string &diskId, int32_t type));
     MOCK_METHOD(int32_t, PurgeVolumesForDisk, (const std::string &diskId));

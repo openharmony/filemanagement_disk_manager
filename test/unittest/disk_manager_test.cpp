@@ -6631,5 +6631,155 @@ HWTEST_F(DiskManagerTest, Burn_DfxFailKeepsReturn_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "Burn_DfxFailKeepsReturn_001 End";
 }
 
+/**
+ * @tc.name: MarkVolumeAbnormal_TestCase_001
+ * @tc.desc: Mark UNMOUNTED volume abnormal migrates state to DAMAGED and returns E_OK (状态迁移路径).
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, MarkVolumeAbnormal_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-abn-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-abn-1", "disk-abn-1", "uuid-abn-1", UNMOUNTED));
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-abn-1", METADATA_READ_FAILED), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-abn-1", out), E_OK);
+    EXPECT_EQ(out.GetState(), static_cast<int32_t>(DAMAGED));
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_001 End";
+}
+
+/**
+ * @tc.name: MarkVolumeAbnormal_TestCase_002
+ * @tc.desc: Marking an already DAMAGED volume is idempotent: returns E_OK and state stays DAMAGED.
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, MarkVolumeAbnormal_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_002 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-abn-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-abn-2", "disk-abn-2", "uuid-abn-2", UNMOUNTED));
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-abn-2", FSTYPE_UNSUPPORTED), E_OK);
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-abn-2", FSTYPE_UNSUPPORTED), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-abn-2", out);
+    EXPECT_EQ(out.GetState(), static_cast<int32_t>(DAMAGED));
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_002 End";
+}
+
+/**
+ * @tc.name: MarkVolumeAbnormal_TestCase_003
+ * @tc.desc: Marking a non-existent volume returns E_NON_EXIST and changes nothing.
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, MarkVolumeAbnormal_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_003 Start";
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.MarkVolumeAbnormal("nonexistent-vol", MOUNT_FAILED), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_003 End";
+}
+
+/**
+ * @tc.name: MarkVolumeAbnormal_TestCase_004
+ * @tc.desc: DAMAGED volume is queryable via GetAllVolumes/GetVolumeById/GetVolumeByUuid with state=DAMAGED(6).
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, MarkVolumeAbnormal_TestCase_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_004 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-abn-4"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-abn-4", "disk-abn-4", "uuid-abn-4", UNMOUNTED));
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-abn-4", MOUNT_FAILED), E_OK);
+    std::vector<VolumeExternal> volumes;
+    EXPECT_EQ(dm.GetAllVolumes(volumes), E_OK);
+    bool found = false;
+    for (const auto &v : volumes) {
+        if (v.GetId() == "vol-abn-4") {
+            found = true;
+            EXPECT_EQ(v.GetState(), static_cast<int32_t>(DAMAGED));
+        }
+    }
+    EXPECT_TRUE(found);
+    VolumeExternal byId;
+    EXPECT_EQ(dm.GetVolumeById("vol-abn-4", byId), E_OK);
+    EXPECT_EQ(byId.GetState(), static_cast<int32_t>(DAMAGED));
+    VolumeExternal byUuid;
+    EXPECT_EQ(dm.GetVolumeByUuid("uuid-abn-4", byUuid), E_OK);
+    EXPECT_EQ(byUuid.GetState(), static_cast<int32_t>(DAMAGED));
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_004 End";
+}
+
+/**
+ * @tc.name: MarkVolumeAbnormal_TestCase_005
+ * @tc.desc: Marking a MOUNTED volume (defensive path) returns E_VOL_STATE and keeps state unchanged.
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, MarkVolumeAbnormal_TestCase_005, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_005 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-abn-5"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-abn-5", "disk-abn-5", "uuid-abn-5", MOUNTED));
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-abn-5", MOUNT_FAILED), E_VOL_STATE);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-abn-5", out);
+    EXPECT_EQ(out.GetState(), static_cast<int32_t>(MOUNTED));
+    GTEST_LOG_(INFO) << "MarkVolumeAbnormal_TestCase_005 End";
+}
+
+/**
+ * @tc.name: DamagedVolume_Format_Succeeds_TestCase_001
+ * @tc.desc: DAMAGED volume passes extended Format gate, formats OK and state restores to UNMOUNTED.
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, DamagedVolume_Format_Succeeds_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DamagedVolume_Format_Succeeds_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-dmg-fmt"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-dmg-fmt", "disk-dmg-fmt", "uuid-dmg-fmt", UNMOUNTED));
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-dmg-fmt", MOUNT_FAILED), E_OK);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("new-uuid"), SetArgReferee<2>("vfat"), SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_EQ(dm.Format("vol-dmg-fmt", "vfat"), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-dmg-fmt", out);
+    EXPECT_EQ(out.GetState(), static_cast<int32_t>(UNMOUNTED));
+
+    GTEST_LOG_(INFO) << "DamagedVolume_Format_Succeeds_TestCase_001 End";
+}
+
+/**
+ * @tc.name: DamagedVolume_Mount_Rejected_TestCase_001
+ * @tc.desc: DAMAGED volume is rejected by Mount with E_VOL_MOUNT_ERR(13601702) and state stays DAMAGED.
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(DiskManagerTest, DamagedVolume_Mount_Rejected_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "DamagedVolume_Mount_Rejected_TestCase_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-dmg-mnt"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-dmg-mnt", "disk-dmg-mnt", "uuid-dmg-mnt", UNMOUNTED));
+    EXPECT_EQ(dm.MarkVolumeAbnormal("vol-dmg-mnt", FSTYPE_UNSUPPORTED), E_OK);
+    EXPECT_EQ(dm.Mount("vol-dmg-mnt"), E_VOL_MOUNT_ERR);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-dmg-mnt", out);
+    EXPECT_EQ(out.GetState(), static_cast<int32_t>(DAMAGED));
+
+    GTEST_LOG_(INFO) << "DamagedVolume_Mount_Rejected_TestCase_001 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
