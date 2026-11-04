@@ -722,6 +722,34 @@ DiskManager &DiskManager::GetInstance()
     return instance;
 }
 
+int32_t DiskManager::MarkVolumeAbnormal(const std::string &volumeId, AbnormalReason reason)
+{
+    VolumeExternal volExternal;
+    {
+        std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
+        const auto it = volumeMap_.find(volumeId);
+        if (it == volumeMap_.end()) {
+            LOGE("MarkVolumeAbnormal: volumeId=%{public}s not found", volumeId.c_str());
+            return E_NON_EXIST;
+        }
+        if (it->second.GetState() == VolumeState::DAMAGED) {
+            LOGI("MarkVolumeAbnormal: volumeId=%{public}s already DAMAGED, skip republish", volumeId.c_str());
+            return E_OK;
+        }
+        if (it->second.GetState() != VolumeState::UNMOUNTED) {
+            LOGE("MarkVolumeAbnormal: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(),
+                 it->second.GetState());
+            return E_VOL_STATE;
+        }
+        it->second.SetState(VolumeState::DAMAGED);
+        volExternal = it->second;
+    }
+    LOGI("MarkVolumeAbnormal: volumeId=%{public}s reason=%{public}d", volumeId.c_str(),
+         static_cast<int32_t>(reason));
+    CommonEventPublisher::PublishVolumeAbnormal(volExternal, static_cast<int32_t>(reason));
+    return E_OK;
+}
+
 int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountParam)
 {
     IpcDfxScope dfx("DiskManager::Mount", DFX_STAGE_MOUNT, VolumeOpType::MOUNT,
@@ -1074,9 +1102,11 @@ int32_t DiskManager::Format(const std::string &volumeId, const std::string &fsTy
             LOGE("Not support file system, volumeId=%{public}s", volumeId.c_str());
             return dfx.Finish(E_NOT_SUPPORT);
         }
+        // DAMAGED 卷允许经 Format 恢复（UNMOUNTED/FORMAT_FINISH_FAIL/DAMAGED 白名单），其余状态仍拒绝
         if (it->second.GetState() != VolumeState::UNMOUNTED &&
-            it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL) {
-            LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted",
+            it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL &&
+            it->second.GetState() != VolumeState::DAMAGED) {
+            LOGE("Format: volumeId=%{public}s state=%{public}d not unmounted/damaged",
                  volumeId.c_str(), it->second.GetState());
             return dfx.Finish(E_VOL_STATE);
         }

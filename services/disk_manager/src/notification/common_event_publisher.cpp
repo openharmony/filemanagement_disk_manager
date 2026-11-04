@@ -211,6 +211,48 @@ void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const Vol
     LOGI("CommonEventPublisher PublishCommonEvent ret=%{public}d, id=%{public}s", publishRet, volume.GetId().c_str());
 }
 
+// 异常卷广播字段取最小集：复用 master 既有五字段（id/diskId/fsUuid/flags/volumeState）保证向后兼容，
+// 仅追加 reasonCode 供应用区分失败环节并引导恢复；原因文案由应用按码值自行本地化，
+// 设备节点路径应用无权访问且可由 id 推导，均不随广播下发。
+AAFwk::Want CommonEventPublisher::BuildVolumeAbnormalWant(const VolumeExternal &volume, int32_t reasonCode)
+{
+    AAFwk::Want want;
+    AAFwk::WantParams wantParams;
+    wantParams.SetParam("id", AAFwk::String::Box(volume.GetId()));
+    wantParams.SetParam("diskId", AAFwk::String::Box(volume.GetDiskId()));
+    wantParams.SetParam("fsUuid", AAFwk::String::Box(volume.GetUuid()));
+    wantParams.SetParam("flags", AAFwk::Integer::Box(volume.GetFlags()));
+    wantParams.SetParam("volumeState", AAFwk::Integer::Box(static_cast<int32_t>(DAMAGED)));
+    wantParams.SetParam("reasonCode", AAFwk::Integer::Box(reasonCode));
+    want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE);
+    want.SetParams(wantParams);
+    return want;
+}
+
+void CommonEventPublisher::PublishVolumeAbnormal(const VolumeExternal &volume, int32_t reasonCode)
+{
+    AAFwk::Want want = BuildVolumeAbnormalWant(volume, reasonCode);
+    EventFwk::CommonEventData commonData{want};
+    bool publishRet = EventFwk::CommonEventManager::PublishCommonEvent(commonData);
+    LOGI("CommonEventPublisher PublishCommonEvent ret=%{public}d, id=%{public}s, reasonCode=%{public}d", publishRet,
+         volume.GetId().c_str(), reasonCode);
+}
+
+void CommonEventPublisher::PublishDiskAbnormal(const std::string &diskId, int32_t reasonCode)
+{
+    AAFwk::Want want;
+    AAFwk::WantParams wantParams;
+    wantParams.SetParam("diskId", AAFwk::String::Box(diskId));
+    wantParams.SetParam("volumeState", AAFwk::Integer::Box(static_cast<int32_t>(DAMAGED)));
+    wantParams.SetParam("reasonCode", AAFwk::Integer::Box(reasonCode));
+    want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE);
+    want.SetParams(wantParams);
+    EventFwk::CommonEventData commonData{want};
+    bool publishRet = EventFwk::CommonEventManager::PublishCommonEvent(commonData);
+    LOGI("CommonEventPublisher PublishDiskAbnormal ret=%{public}d, diskId=%{public}s, reasonCode=%{public}d",
+         publishRet, diskId.c_str(), reasonCode);
+}
+
 void CommonEventPublisher::PublishDiskChange(DiskEventKind kind, const Disk &disk)
 {
     AAFwk::Want want;

@@ -45,6 +45,16 @@ enum VolumeState {
     REPAIRING,
 };
 
+// 异常卷原因码（封闭枚举）：按 U 盘识别顺序编号（分区表 → 卷元数据 → fsType → 挂载），
+// 随 COMMON_EVENT_DISK_UNMOUNTABLE 广播携带，取值跨版本稳定；如需变更须走设计文档修订。
+// 不对外新增接口，仅内部与广播数据使用。
+enum AbnormalReason {
+    PARTITION_TABLE_READ_FAILED = 1, // 分区表不可用（sgdisk 查询失败，或内容解析不出可用分区）
+    METADATA_READ_FAILED = 2,       // 卷元数据读取失败（uuid/fsType 缺失或读取报错）
+    FSTYPE_UNSUPPORTED = 3,         // 文件系统类型不在支持范围
+    MOUNT_FAILED = 4,               // 卷挂载失败
+};
+
 class VolumeInfoStr : public Parcelable {
 public:
     VolumeInfoStr(){};

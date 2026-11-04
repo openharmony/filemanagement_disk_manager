@@ -37,6 +37,7 @@ public:
     MOCK_METHOD(void, PublishVolumeChangeImpl, (VolumeState notifyCode, const VolumeExternal &volume));
     MOCK_METHOD(void, PublishDiskChangeImpl, (DiskEventKind kind, const Disk &disk));
     MOCK_METHOD(void, PublishVolumeResultImpl, (VolumeState notifyCode, const VolumeExternal &volume));
+    MOCK_METHOD(void, PublishDiskAbnormalImpl, (const std::string &diskId, int32_t reasonCode));
 
     static CommonEventPublisher *mockInstance_;
 
@@ -45,6 +46,7 @@ public:
     static void PublishVolumeChange(VolumeState notifyCode, const VolumeExternal &volume);
     static void PublishDiskChange(DiskEventKind kind, const Disk &disk);
     static void PublishVolumeResult(VolumeState notifyCode, const VolumeExternal &volume);
+    static void PublishDiskAbnormal(const std::string &diskId, int32_t reasonCode);
 };
 
 } // namespace DiskManager

@@ -49,6 +49,11 @@ public:
     int32_t ForceUnmount(const std::string &volumeId);
     int32_t Format(const std::string &volumeId, const std::string &fsType);
     int32_t TryToFix(const std::string &volumeId);
+    /**
+     * 异常卷集中标记入口：仅 UNMOUNTED→DAMAGED 迁移（幂等）；
+     * 状态写入持 volumeMapMutex_，广播发布在锁外。
+     */
+    int32_t MarkVolumeAbnormal(const std::string &volumeId, AbnormalReason reason);
     int32_t SetVolumeDescription(const std::string &fsUuid, const std::string &description);
     int32_t Partition(const std::string &diskId, int32_t type);
 

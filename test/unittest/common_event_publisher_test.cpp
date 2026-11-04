@@ -26,8 +26,10 @@
 #include <gtest/gtest.h>
 
 #include "disk.h"
+#include "common_event_support.h"
 #include "notification/common_event_publisher.h"
 #include "volume_external.h"
+#include "want.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -499,6 +501,96 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_003, TestSize.Le
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(REPAIR_START, vol));
 
     GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_003 End";
+}
+
+/**
+ * @tc.name: PublishVolumeAbnormal_TestCase_001
+ * @tc.desc: 异常卷广播装配断言：action 为 COMMON_EVENT_DISK_UNMOUNTABLE，volumeState=DAMAGED(6)，
+ *           最小字段集：既有五字段 + reasonCode（不携带 reason 文案与 devPath），向后兼容；多原因码发布冒烟。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_001 Start";
+
+    VolumeExternal vol = MakeSampleVolume();
+    AAFwk::Want want = CommonEventPublisher::BuildVolumeAbnormalWant(vol,
+        static_cast<int32_t>(FSTYPE_UNSUPPORTED));
+    EXPECT_EQ(want.GetAction(), EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE);
+    EXPECT_EQ(want.GetParams().GetIntParam("volumeState", -1), static_cast<int32_t>(DAMAGED));
+    EXPECT_EQ(want.GetParams().GetIntParam("reasonCode", -1), static_cast<int32_t>(FSTYPE_UNSUPPORTED));
+    EXPECT_EQ(want.GetParams().GetStringParam("id"), "vol-ut-1");
+    EXPECT_EQ(want.GetParams().GetStringParam("diskId"), "disk-ut-1");
+    EXPECT_EQ(want.GetParams().GetIntParam("flags", -1), kUtVolumeFlags);
+    EXPECT_EQ(want.GetParams().GetStringParam("reason"), "");
+    EXPECT_EQ(want.GetParams().GetStringParam("devPath"), "");
+
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeAbnormal(vol,
+        static_cast<int32_t>(METADATA_READ_FAILED)));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeAbnormal(vol,
+        static_cast<int32_t>(MOUNT_FAILED)));
+
+    GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_001 End";
+}
+
+/**
+ * @tc.name: PublishVolumeAbnormal_TestCase_002
+ * @tc.desc: 未知原因码发布冒烟：reasonCode 原样透传由应用侧兜底处理，发布不崩溃。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_002, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_002 Start";
+
+    VolumeExternal vol = MakeSampleVolume();
+    AAFwk::Want want = CommonEventPublisher::BuildVolumeAbnormalWant(vol, 99);
+    EXPECT_EQ(want.GetParams().GetIntParam("reasonCode", -1), 99);
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeAbnormal(vol, 99));
+
+    GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_002 End";
+}
+
+/**
+ * @tc.name: PublishVolumeAbnormal_TestCase_003
+ * @tc.desc: 分区表读取失败原因码发布：reasonCode 为 PARTITION_TABLE_READ_FAILED(1)。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_003 Start";
+
+    VolumeExternal vol = MakeSampleVolume();
+    AAFwk::Want want = CommonEventPublisher::BuildVolumeAbnormalWant(vol,
+        static_cast<int32_t>(PARTITION_TABLE_READ_FAILED));
+    EXPECT_EQ(want.GetAction(), EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE);
+    EXPECT_EQ(want.GetParams().GetIntParam("volumeState", -1), static_cast<int32_t>(DAMAGED));
+    EXPECT_EQ(want.GetParams().GetIntParam("reasonCode", -1),
+        static_cast<int32_t>(PARTITION_TABLE_READ_FAILED));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeAbnormal(vol,
+        static_cast<int32_t>(PARTITION_TABLE_READ_FAILED)));
+
+    GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_003 End";
+}
+
+/**
+ * @tc.name: PublishDiskAbnormal_TestCase_001
+ * @tc.desc: 盘级分区表异常广播发布冒烟（无卷载体）：仅携带 diskId/volumeState/reasonCode，
+ *           发布不崩溃，reasonCode 原样透传（含未知码值）。
+ * @tc.type: FUNC
+ * @tc.require: 20260807939139
+ */
+HWTEST_F(CommonEventPublisherTest, PublishDiskAbnormal_TestCase_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PublishDiskAbnormal_TestCase_001 Start";
+
+    EXPECT_NO_THROW(CommonEventPublisher::PublishDiskAbnormal("disk-ut-1",
+        static_cast<int32_t>(PARTITION_TABLE_READ_FAILED)));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishDiskAbnormal("disk-ut-1", 99));
+
+    GTEST_LOG_(INFO) << "PublishDiskAbnormal_TestCase_001 End";
 }
 
 } // namespace DiskManager

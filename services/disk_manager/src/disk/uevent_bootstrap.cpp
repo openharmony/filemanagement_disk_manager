@@ -493,8 +493,8 @@ int32_t CreateAndSetupVolume(const std::string &diskId,
     return ERR_OK;
 }
 
-void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPath,
-                           std::string &uuid, std::string &type, std::string &label)
+int32_t ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPath,
+                              std::string &uuid, std::string &type, std::string &label)
 {
     int32_t err = StorageDaemonAdapter::GetInstance().ReadMetadata(volDevPath, uuid, type, label);
     LOGI("UUID: %{public}s, Type: %{public}s, Label: %{public}s",
@@ -503,10 +503,66 @@ void ReadAndUpdateMetadata(const std::string &volId, const std::string &volDevPa
         if (!IsUuidValid(uuid)) {
             LOGE("ReadAndUpdateMetadata: uuid is invalid volId=%{public}s uuid=%{public}s",
                  volId.c_str(), GetAnonyString(uuid).c_str());
-            return;
+            return err;
         }
         (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
     }
+    return err;
+}
+
+/** 光驱（UDF/ISO9660）与 MTP/PTP 卷不参与卷级异常检测，保持既有静默行为。 */
+bool IsAbnormalDetectableFsType(int32_t fsType)
+{
+    return fsType != MTP && fsType != UDF && fsType != ISO9660 && fsType != PTP;
+}
+
+/**
+ * 元数据异常检测：读取失败/空值标记 METADATA_READ_FAILED，
+ * fsType 不在支持范围标记 FSTYPE_UNSUPPORTED。返回 true 表示已标记异常，调用方应终止发现流程。
+ */
+bool EvaluateVolumeMetadataAbnormal(const std::string &volId, bool isUserData,
+                                    const std::string &uuid, const std::string &type, int32_t metadataErr)
+{
+    if (isUserData) {
+        return false;
+    }
+    const VolumeExternal probe;
+    const int32_t fsType = probe.GetFsTypeByStr(type);
+    if (!IsAbnormalDetectableFsType(fsType)) {
+        return false;
+    }
+    if (metadataErr != ERR_OK || uuid.empty() || type.empty()) {
+        (void)DiskManager::GetInstance().MarkVolumeAbnormal(volId, METADATA_READ_FAILED);
+        return true;
+    }
+    if (fsType == UNDEFINED) {
+        (void)DiskManager::GetInstance().MarkVolumeAbnormal(volId, FSTYPE_UNSUPPORTED);
+        return true;
+    }
+    return false;
+}
+
+/** 发现期自动挂载：AUTO_MOUNT/空值门禁保持既有行为，挂载失败标记 MOUNT_FAILED。 */
+void MountDiscoveredVolume(const std::string &volId, const std::string &diskId, bool isUserData,
+                           const std::string &uuid, const std::string &type)
+{
+    if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
+        LOGI("MountDiscoveredVolume skip mount volId=%{public}s autoMount=%{public}d empty=%{public}d",
+             volId.c_str(), AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty() || uuid.empty());
+        DiskManagerRadar::GetInstance().ReportDiscoverAutoMountSkipFault(
+            {volId, diskId, BlockPathForId(volId), type, uuid, AUTO_MOUNT_EXTERNAL_VOLUMES});
+        return;
+    }
+    int32_t err = DiskManager::GetInstance().Mount(volId, MountParam());
+    if (err != ERR_OK) {
+        LOGE("MountDiscoveredVolume Mount failed volId=%{public}s err=%{public}d", volId.c_str(), err);
+        const VolumeExternal probe;
+        if (!isUserData && IsAbnormalDetectableFsType(probe.GetFsTypeByStr(type))) {
+            (void)DiskManager::GetInstance().MarkVolumeAbnormal(volId, MOUNT_FAILED);
+        }
+        return;
+    }
+    LOGI("MountDiscoveredVolume EXIT SUCCESS");
 }
 
 // 拼分区名：nvme 盘名以数字结尾，需加 'p' 分隔再追加分区号（nvme1n1→nvme1n1p1）；
@@ -604,7 +660,7 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
     std::string type;
     std::string label;
     const std::string volDevPath = BlockPathForId(volId);
-    ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
+    int32_t metadataErr = ReadAndUpdateMetadata(volId, volDevPath, uuid, type, label);
     if (DiskManager::GetInstance().IsPartitioning(diskId)) {
         const int32_t formatRet = DiskManager::GetInstance().Format(volId, PARTITION_TARGET_FS_TYPE);
         if (formatRet != ERR_OK) {
@@ -613,22 +669,14 @@ void DiscoverSinglePartitionVolume(const UeventEnv &env,
         }
         return;
     }
-    LOGI("AUTO_MOUNT_EXTERNAL_VOLUMES: %{public}d, type.empty(): %{public}d, uuid.empty(): %{public}d",
-         AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
-    if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
-        DiskManagerRadar::GetInstance().ReportDiscoverAutoMountSkipFault(
-            {volId, diskId, volDevPath, type, uuid, AUTO_MOUNT_EXTERNAL_VOLUMES});
+    if (EvaluateVolumeMetadataAbnormal(volId, isUserData, uuid, type, metadataErr)) {
         return;
     }
-    int32_t err = DiskManager::GetInstance().Mount(volId, MountParam());
-    if (err != ERR_OK) {
-        LOGE("DiscoverSinglePartitionVolume Mount failed volId=%{public}s", volId.c_str());
-        return;
-    }
-    LOGI("DiscoverSinglePartitionVolume EXIT SUCCESS");
+    MountDiscoveredVolume(volId, diskId, isUserData, uuid, type);
 }
 
-void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
+void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId, bool isUserData,
+                             const std::string &tableType)
 {
     LOGI("DiscoverWholeDiskVolume enter diskId=%{public}s (no valid partition, fallback to whole-disk volume)",
          diskId.c_str());
@@ -644,8 +692,18 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
     if (!isPartitioning) {
         int32_t metaRet = StorageDaemonAdapter::GetInstance().ReadMetadata(diskDevPath, uuid, type, label);
         if (metaRet != ERR_OK) {
-            LOGI("DiscoverWholeDiskVolume ReadMetadata ret=%{public}d, no FS on whole-disk, skip creating volume",
+            if (isUserData || IsInternalDataDiskById(diskId)) {
+                LOGI("DiscoverWholeDiskVolume skip abnormal notify for internal data disk=%{public}s",
+                     diskId.c_str());
+                return;
+            }
+            if (tableType == "gpt") {
+                LOGI("DiscoverWholeDiskVolume keep silent for empty GPT disk=%{public}s", diskId.c_str());
+                return;
+            }
+            LOGI("DiscoverWholeDiskVolume ReadMetadata ret=%{public}d, no FS on whole-disk, publish abnormal event",
                  metaRet);
+            CommonEventPublisher::PublishDiskAbnormal(diskId, PARTITION_TABLE_READ_FAILED);
             return;
         }
     }
@@ -665,18 +723,10 @@ void DiscoverWholeDiskVolume(const UeventEnv &env, const std::string &diskId)
 
     (void)DiskManager::GetInstance().UpdateVolumeMetadata(volId, uuid, type, label);
 
-    LOGI("DiscoverWholeDiskVolume AUTO_MOUNT=%{public}d type.empty=%{public}d uuid.empty=%{public}d",
-         AUTO_MOUNT_EXTERNAL_VOLUMES, type.empty(), uuid.empty());
-    if (!AUTO_MOUNT_EXTERNAL_VOLUMES || type.empty() || uuid.empty()) {
+    if (EvaluateVolumeMetadataAbnormal(volId, false, uuid, type, ERR_OK)) {
         return;
     }
-
-    int32_t err = DiskManager::GetInstance().Mount(volId, MountParam());
-    if (err != ERR_OK) {
-        LOGE("DiscoverWholeDiskVolume Mount failed volId=%{public}s", volId.c_str());
-        return;
-    }
-    LOGI("DiscoverWholeDiskVolume EXIT SUCCESS");
+    MountDiscoveredVolume(volId, diskId, false, uuid, type);
 }
 
 void HandleAddCD(const UeventEnv &env, const std::string &diskId, CdromState state)
@@ -996,6 +1046,10 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     if (err == E_STORAGE_VALID_NODE) {
         UpsertDiskAndPublishEvent(env, diskId, publishNewDiskEvent, tableType);
         LOGI("UpsertDiskAndPublishEvent completed for disk ID: %{public}s, is a valid storage device", diskId.c_str());
+        if (!IsInternalDataDiskById(diskId) && !DiskManager::GetInstance().IsPartitioning(diskId)) {
+            LOGI("DiscoverPartitionsAndVolumes publish table read failure event diskId=%{public}s", diskId.c_str());
+            CommonEventPublisher::PublishDiskAbnormal(diskId, PARTITION_TABLE_READ_FAILED);
+        }
         return DiskManagerErrNo::E_OK;
     }
     if (err != ERR_OK) {
@@ -1036,7 +1090,7 @@ int32_t UeventBootstrap::DiscoverPartitionsAndVolumes(const UeventEnv &env, bool
     }
 
     if (parts.empty() && (publishNewDiskEvent || !removedParts.empty())) {
-        DiscoverWholeDiskVolume(env, diskId);
+        DiscoverWholeDiskVolume(env, diskId, isUserData, tableType);
     }
 
     return DiskManagerErrNo::E_OK;
