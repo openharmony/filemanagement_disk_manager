@@ -2796,6 +2796,8 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
         uuid = DedupFsUuidUnlocked(volumeId, uuid);
     }
     UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
+    Disk disk;
+    bool isInternalDataDisk = (GetDiskById(diskId, disk) == E_OK && disk.IsInternalDataDisk());
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
@@ -2805,8 +2807,7 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     it->second.SetDescription(label);
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
-    Disk disk;
-    if (GetDiskById(diskId, disk) == E_OK && disk.IsInternalDataDisk()) {
+    if (isInternalDataDisk) {
         PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volumeId);
     }
     return E_OK;
