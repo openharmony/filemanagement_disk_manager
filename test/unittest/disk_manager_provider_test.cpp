@@ -3560,6 +3560,22 @@ HWTEST_F(DiskManagerProviderTest, IsDataDisk_VolumeNotFound_ReturnsFalse_001, Te
 }
 
 /**
+ * @tc.name: IsDataDisk_DiskNotFound_ReturnsFalse_001
+ * @tc.desc: IsDataDisk returns false when volume exists but its disk does not.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, IsDataDisk_DiskNotFound_ReturnsFalse_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "IsDataDisk_DiskNotFound_ReturnsFalse_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnVolumeCreated(MakeDataVolume("vol-orphan-1", "disk-orphan-1", "uuid-orphan-1"));
+    EXPECT_FALSE(provider.IsDataDisk("vol-orphan-1"));
+    GTEST_LOG_(INFO) << "IsDataDisk_DiskNotFound_ReturnsFalse_001 End";
+}
+
+/**
  * @tc.name: IsDataDiskByDiskId_DataDisk_ReturnsTrue_001
  * @tc.desc: IsDataDiskByDiskId returns true when disk is internal data disk.
  * @tc.type: FUNC
@@ -3634,19 +3650,20 @@ HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthSuccess_001, TestSize.Leve
     EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
         .WillOnce(Return(ERR_OK));
     int32_t ret = provider.Format("vol-81-1", "vfat");
-    EXPECT_NE(ret, ERR_JS_AUTHORIZATION_DENIED);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
     GTEST_LOG_(INFO) << "Format_DataDisk_AuthSuccess_001 End";
 }
 
 /**
- * @tc.name: Format_DataDisk_AuthDenied_Returns204_001
- * @tc.desc: Data disk Format with authorization denied returns ERR_JS_AUTHORIZATION_DENIED.
+ * @tc.name: Format_DataDisk_AuthDenied_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with authorization denied returns E_PERMISSION_DENIED.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthDenied_Returns204_001, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthDenied_ReturnsPermDenied_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "Format_DataDisk_AuthDenied_Returns204_001 Start";
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthDenied_ReturnsPermDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeDataDisk("disk-81-2"));
@@ -3660,19 +3677,20 @@ HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthDenied_Returns204_001, Tes
             return ERR_OK;
         }));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
-    EXPECT_EQ(provider.Format("vol-81-2", "vfat"), ERR_JS_AUTHORIZATION_DENIED);
-    GTEST_LOG_(INFO) << "Format_DataDisk_AuthDenied_Returns204_001 End";
+    EXPECT_EQ(provider.Format("vol-81-2", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthDenied_ReturnsPermDenied_001 End";
 }
 
 /**
- * @tc.name: Format_DataDisk_AuthTimeout_Returns204_001
- * @tc.desc: Data disk Format with no callback (timeout) returns ERR_JS_AUTHORIZATION_DENIED.
+ * @tc.name: Format_DataDisk_AuthTimeout_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with no callback (timeout) returns E_PERMISSION_DENIED.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthTimeout_Returns204_001, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthTimeout_ReturnsPermDenied_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "Format_DataDisk_AuthTimeout_Returns204_001 Start";
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthTimeout_ReturnsPermDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeDataDisk("disk-81-3"));
@@ -3680,19 +3698,20 @@ HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthTimeout_Returns204_001, Te
     EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
         .WillOnce(Return(ERR_OK));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
-    EXPECT_EQ(provider.Format("vol-81-3", "vfat"), ERR_JS_AUTHORIZATION_DENIED);
-    GTEST_LOG_(INFO) << "Format_DataDisk_AuthTimeout_Returns204_001 End";
+    EXPECT_EQ(provider.Format("vol-81-3", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthTimeout_ReturnsPermDenied_001 End";
 }
 
 /**
- * @tc.name: Format_DataDisk_AcquireFailed_Returns204_001
- * @tc.desc: Data disk Format with AcquireAuthorization returning error returns ERR_JS_AUTHORIZATION_DENIED.
+ * @tc.name: Format_DataDisk_AcquireFailed_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with AcquireAuthorization returning error returns E_PERMISSION_DENIED.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AcquireFailed_Returns204_001, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AcquireFailed_ReturnsPermDenied_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "Format_DataDisk_AcquireFailed_Returns204_001 Start";
+    GTEST_LOG_(INFO) << "Format_DataDisk_AcquireFailed_ReturnsPermDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeDataDisk("disk-81-4"));
@@ -3700,8 +3719,9 @@ HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AcquireFailed_Returns204_001, 
     EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
         .WillOnce(Return(-1));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
-    EXPECT_EQ(provider.Format("vol-81-4", "vfat"), ERR_JS_AUTHORIZATION_DENIED);
-    GTEST_LOG_(INFO) << "Format_DataDisk_AcquireFailed_Returns204_001 End";
+    EXPECT_EQ(provider.Format("vol-81-4", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AcquireFailed_ReturnsPermDenied_001 End";
 }
 
 /**
@@ -3769,7 +3789,7 @@ HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthFailed_BusyReset_001, Test
                                OHOS::AccountSA::AuthorizationResult{});
             return ERR_OK;
         }));
-    EXPECT_EQ(provider.Format("vol-81-7", "vfat"), ERR_JS_AUTHORIZATION_DENIED);
+    EXPECT_EQ(provider.Format("vol-81-7", "vfat"), E_PERMISSION_DENIED);
     EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
     GTEST_LOG_(INFO) << "Format_DataDisk_AuthFailed_BusyReset_001 End";
 }
@@ -3803,7 +3823,7 @@ HWTEST_F(DiskManagerProviderTest, Format_DataDisk_ReleaseAuthFailure_001, TestSi
     EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
         .WillOnce(Return(-1));
     int32_t ret = provider.Format("vol-81-8", "vfat");
-    EXPECT_NE(ret, ERR_JS_AUTHORIZATION_DENIED);
+    EXPECT_EQ(ret, E_OK);
     EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
     GTEST_LOG_(INFO) << "Format_DataDisk_ReleaseAuthFailure_001 End";
 }
@@ -3835,20 +3855,20 @@ HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthSuccess_001, TestSize.L
     EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
         .WillOnce(Return(ERR_OK));
     int32_t ret = provider.Partition("disk-82-1", 0);
-    EXPECT_NE(ret, ERR_JS_AUTHORIZATION_DENIED);
+    EXPECT_EQ(ret, E_OK);
     EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
     GTEST_LOG_(INFO) << "Partition_DataDisk_AuthSuccess_001 End";
 }
 
 /**
- * @tc.name: Partition_DataDisk_AuthDenied_Returns204_001
- * @tc.desc: Data disk Partition with authorization denied returns ERR_JS_AUTHORIZATION_DENIED.
+ * @tc.name: Partition_DataDisk_AuthDenied_ReturnsPermDenied_001
+ * @tc.desc: Data disk Partition with authorization denied returns E_PERMISSION_DENIED.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthDenied_Returns204_001, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthDenied_ReturnsPermDenied_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthDenied_Returns204_001 Start";
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthDenied_ReturnsPermDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeDataDisk("disk-82-2"));
@@ -3861,27 +3881,29 @@ HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthDenied_Returns204_001, 
             return ERR_OK;
         }));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
-    EXPECT_EQ(provider.Partition("disk-82-2", 0), ERR_JS_AUTHORIZATION_DENIED);
-    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthDenied_Returns204_001 End";
+    EXPECT_EQ(provider.Partition("disk-82-2", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthDenied_ReturnsPermDenied_001 End";
 }
 
 /**
- * @tc.name: Partition_DataDisk_AcquireFailed_Returns204_001
- * @tc.desc: Data disk Partition with AcquireAuthorization returning error returns ERR_JS_AUTHORIZATION_DENIED.
+ * @tc.name: Partition_DataDisk_AcquireFailed_ReturnsPermDenied_001
+ * @tc.desc: Data disk Partition with AcquireAuthorization returning error returns E_PERMISSION_DENIED.
  * @tc.type: FUNC
  * @tc.require: NA
  */
-HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AcquireFailed_Returns204_001, TestSize.Level0)
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AcquireFailed_ReturnsPermDenied_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "Partition_DataDisk_AcquireFailed_Returns204_001 Start";
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AcquireFailed_ReturnsPermDenied_001 Start";
     DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeDataDisk("disk-82-3"));
     EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
         .WillOnce(Return(-1));
     EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
-    EXPECT_EQ(provider.Partition("disk-82-3", 0), ERR_JS_AUTHORIZATION_DENIED);
-    GTEST_LOG_(INFO) << "Partition_DataDisk_AcquireFailed_Returns204_001 End";
+    EXPECT_EQ(provider.Partition("disk-82-3", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AcquireFailed_ReturnsPermDenied_001 End";
 }
 
 /**
@@ -3945,7 +3967,7 @@ HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthFailed_BusyReset_001, T
                                OHOS::AccountSA::AuthorizationResult{});
             return ERR_OK;
         }));
-    EXPECT_EQ(provider.Partition("disk-82-6", 0), ERR_JS_AUTHORIZATION_DENIED);
+    EXPECT_EQ(provider.Partition("disk-82-6", 0), E_PERMISSION_DENIED);
     EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
     GTEST_LOG_(INFO) << "Partition_DataDisk_AuthFailed_BusyReset_001 End";
 }
@@ -3972,6 +3994,714 @@ HWTEST_F(DiskManagerProviderTest, Format_Busy_Then_Partition_Busy_001, TestSize.
     EXPECT_EQ(provider.Partition("disk-83-2", 0), E_BUSY);
     provider.dataDiskFormatBusy_.store(false);
     GTEST_LOG_(INFO) << "Format_Busy_Then_Partition_Busy_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthCanceled_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with AUTHORIZATION_CANCELED resultCode returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthCanceled_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthCanceled_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-9"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-9", "disk-81-9", "uuid-fmt-cancel-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_CANCELED,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-9", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthCanceled_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with AUTHORIZATION_INTERACTION_NOT_ALLOWED returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-10"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-10", "disk-81-10", "uuid-fmt-interact-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(
+                OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_INTERACTION_NOT_ALLOWED,
+                OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-10", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthServiceBusy_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with AUTHORIZATION_SERVICE_BUSY resultCode returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthServiceBusy_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthServiceBusy_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-11"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-11", "disk-81-11", "uuid-fmt-svcbusy-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SERVICE_BUSY,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-11", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthServiceBusy_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthPrivilegeNotSupported_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format with AUTHORIZATION_PRIVILEGE_NOT_SUPPORTED resultCode returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthPrivilegeNotSupported_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthPrivilegeNotSupported_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-12"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-12", "disk-81-12", "uuid-fmt-privnotsup-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(
+                OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_PRIVILEGE_NOT_SUPPORTED,
+                OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-12", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthPrivilegeNotSupported_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_OnResultErrorCode_ReturnsPermDenied_001
+ * @tc.desc: Data disk Format where OnResult receives non-zero resultCode param uses that param.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_OnResultErrorCode_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_OnResultErrorCode_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-13"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-13", "disk-81-13", "uuid-fmt-errcode-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(-1, OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-13", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_OnResultErrorCode_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_OnResultDuplicate_IgnoresSecond_001
+ * @tc.desc: Data disk Format where OnResult called twice, second result is ignored (completed flag guard).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_OnResultDuplicate_IgnoresSecond_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_OnResultDuplicate_IgnoresSecond_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-14"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-14", "disk-81-14", "uuid-fmt-dup-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_DENIED,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-fmt-dup-1"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Format("vol-81-14", "vfat");
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_OnResultDuplicate_IgnoresSecond_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthSuccess_FormatError_001
+ * @tc.desc: Data disk Format with successful auth but underlying Format returns error; busy flag reset.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthSuccess_FormatError_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthSuccess_FormatError_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-15"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-15", "disk-81-15", "uuid-fmt-fmterr-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _))
+        .WillOnce(Return(E_PARAMS_INVALID));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Format("vol-81-15", "vfat");
+    EXPECT_EQ(ret, E_PARAMS_INVALID);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthSuccess_FormatError_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthTimeout_BusyReset_001
+ * @tc.desc: Data disk Format with timeout resets the busy flag so subsequent operation does not get E_BUSY.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthTimeout_BusyReset_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthTimeout_BusyReset_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-16"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-16", "disk-81-16", "uuid-fmt-timeoutreset-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-16", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthTimeout_BusyReset_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AcquireFailed_BusyReset_001
+ * @tc.desc: Data disk Format with AcquireAuthorization failure resets the busy flag.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AcquireFailed_BusyReset_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AcquireFailed_BusyReset_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-81-17"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-81-17", "disk-81-17", "uuid-fmt-acqfailreset-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("vol-81-17", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AcquireFailed_BusyReset_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_AuthCanceled_ReturnsPermDenied_001
+ * @tc.desc: Data disk Partition with AUTHORIZATION_CANCELED resultCode returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthCanceled_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthCanceled_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-7"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_CANCELED,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_EQ(provider.Partition("disk-82-7", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthCanceled_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001
+ * @tc.desc: Data disk Partition with AUTHORIZATION_INTERACTION_NOT_ALLOWED returns E_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-8"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(
+                OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_INTERACTION_NOT_ALLOWED,
+                OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_EQ(provider.Partition("disk-82-8", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthInteractionNotAllowed_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_AuthTimeout_ReturnsPermDenied_001
+ * @tc.desc: Data disk Partition with no callback (timeout) returns E_PERMISSION_DENIED and resets busy flag.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthTimeout_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthTimeout_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-9"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_EQ(provider.Partition("disk-82-9", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthTimeout_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_OnResultErrorCode_ReturnsPermDenied_001
+ * @tc.desc: Data disk Partition where OnResult receives non-zero resultCode param uses that param.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_OnResultErrorCode_ReturnsPermDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_OnResultErrorCode_ReturnsPermDenied_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-10"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(-1, OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_EQ(provider.Partition("disk-82-10", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_OnResultErrorCode_ReturnsPermDenied_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_OnResultDuplicate_IgnoresSecond_001
+ * @tc.desc: Data disk Partition where OnResult called twice, second result ignored (completed flag guard).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_OnResultDuplicate_IgnoresSecond_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_OnResultDuplicate_IgnoresSecond_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-11"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_DENIED,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockUeventBootstrap::GetInstance(), RediscoverDiskVolumesImpl(_))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Partition("disk-82-11", 0);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_OnResultDuplicate_IgnoresSecond_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_AuthSuccess_PartitionError_001
+ * @tc.desc: Data disk Partition with successful auth but underlying Partition returns error; busy flag reset.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AuthSuccess_PartitionError_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthSuccess_PartitionError_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-12"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _))
+        .WillOnce(Return(E_PARAMS_INVALID));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Partition("disk-82-12", 0);
+    EXPECT_EQ(ret, E_PARAMS_INVALID);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AuthSuccess_PartitionError_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_ReleaseAuthFailure_001
+ * @tc.desc: Data disk Partition with successful auth but ReleaseAuthorization failure does not block result.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_ReleaseAuthFailure_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_ReleaseAuthFailure_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-13"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockUeventBootstrap::GetInstance(), RediscoverDiskVolumesImpl(_))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(-1));
+    int32_t ret = provider.Partition("disk-82-13", 0);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_ReleaseAuthFailure_001 End";
+}
+
+/**
+ * @tc.name: Partition_DataDisk_AcquireFailed_BusyReset_001
+ * @tc.desc: Data disk Partition with AcquireAuthorization failure resets the busy flag.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_DataDisk_AcquireFailed_BusyReset_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AcquireFailed_BusyReset_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-82-14"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_EQ(provider.Partition("disk-82-14", 0), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_DataDisk_AcquireFailed_BusyReset_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_AuthDenied_Then_FormatAgain_NotBusy_001
+ * @tc.desc: After auth-denied Format resets busy flag, a second data-disk Format proceeds (not E_BUSY).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_DataDisk_AuthDenied_Then_FormatAgain_NotBusy_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthDenied_Then_FormatAgain_NotBusy_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-84-1"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-84-1", "disk-84-1", "uuid-fmt-again-1"));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_DENIED,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_EQ(provider.Format("vol-84-1", "vfat"), E_PERMISSION_DENIED);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    // Second Format: busy flag was reset, so it should not return E_BUSY.
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-fmt-again-1"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret2 = provider.Format("vol-84-1", "vfat");
+    EXPECT_NE(ret2, E_BUSY);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_DataDisk_AuthDenied_Then_FormatAgain_NotBusy_001 End";
+}
+
+/**
+ * @tc.name: Partition_Busy_Then_Format_Busy_001
+ * @tc.desc: Cross-operation reentrancy: Partition sets busy flag, Format on a different volume gets E_BUSY.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_Busy_Then_Format_Busy_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_Busy_Then_Format_Busy_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-85-1"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-85-1", "disk-85-1", "uuid-cross-part-1"));
+    dm.OnDiskCreated(MakeDataDisk("disk-85-2"));
+    provider.dataDiskFormatBusy_.store(true);
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Partition("disk-85-1", 0), E_BUSY);
+    EXPECT_EQ(provider.Format("vol-85-1", "vfat"), E_BUSY);
+    provider.dataDiskFormatBusy_.store(false);
+    GTEST_LOG_(INFO) << "Partition_Busy_Then_Format_Busy_001 End";
+}
+
+/**
+ * @tc.name: Format_StorageManagerCaller_DataDisk_AuthSuccess_001
+ * @tc.desc: storage_manager native caller bypasses VerifyCallerPermission and proceeds to data-disk auth + Format.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_StorageManagerCaller_DataDisk_AuthSuccess_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_StorageManagerCaller_DataDisk_AuthSuccess_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-91-1"));
+    dm.OnVolumeCreated(MakeDataVolume("vol-91-1", "disk-91-1", "uuid-fmt-smgr-1"));
+    g_nativeProcessName = "storage_manager";
+    MockIPCSkeleton::mockCallingUid_ = 1090; // STORAGE_MANAGER_UID
+    g_accessTokenType = 0;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-fmt-smgr-1"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(ERR_OK)));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Format("vol-91-1", "vfat");
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_accessTokenType = 1;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "Format_StorageManagerCaller_DataDisk_AuthSuccess_001 End";
+}
+
+/**
+ * @tc.name: Format_StorageManagerCaller_UsbDisk_NoAuth_001
+ * @tc.desc: storage_manager native caller bypasses permission check on a USB disk (no admin auth needed).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_StorageManagerCaller_UsbDisk_NoAuth_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_StorageManagerCaller_UsbDisk_NoAuth_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-91-2"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-91-2", "disk-91-2", "uuid-fmt-smgr-usb-1"));
+    g_nativeProcessName = "storage_manager";
+    MockIPCSkeleton::mockCallingUid_ = 1090; // STORAGE_MANAGER_UID
+    g_accessTokenType = 0;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-fmt-smgr-usb-1"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(ERR_OK)));
+    int32_t ret = provider.Format("vol-91-2", "vfat");
+    EXPECT_EQ(ret, E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_accessTokenType = 1;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "Format_StorageManagerCaller_UsbDisk_NoAuth_001 End";
+}
+
+/**
+ * @tc.name: Partition_StorageManagerCaller_DataDisk_AuthSuccess_001
+ * @tc.desc: storage_manager native caller bypasses VerifyCallerPermission and proceeds to data-disk auth + Partition.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_StorageManagerCaller_DataDisk_AuthSuccess_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_StorageManagerCaller_DataDisk_AuthSuccess_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeDataDisk("disk-92-1"));
+    g_nativeProcessName = "storage_manager";
+    MockIPCSkeleton::mockCallingUid_ = 1090; // STORAGE_MANAGER_UID
+    g_accessTokenType = 0;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _))
+        .WillOnce(Invoke([](const std::string &privilege,
+                            const OHOS::AccountSA::AcquireAuthorizationOptions &options,
+                            const std::shared_ptr<OHOS::AccountSA::AuthorizationCallback> &callback) {
+            callback->OnResult(OHOS::AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS,
+                               OHOS::AccountSA::AuthorizationResult{});
+            return ERR_OK;
+        }));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockUeventBootstrap::GetInstance(), RediscoverDiskVolumesImpl(_))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), ReleaseAuthorization(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Partition("disk-92-1", 0);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_accessTokenType = 1;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "Partition_StorageManagerCaller_DataDisk_AuthSuccess_001 End";
+}
+
+/**
+ * @tc.name: Partition_StorageManagerCaller_UsbDisk_NoAuth_001
+ * @tc.desc: storage_manager native caller bypasses permission check on a USB disk (no admin auth needed).
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_StorageManagerCaller_UsbDisk_NoAuth_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_StorageManagerCaller_UsbDisk_NoAuth_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-92-2"));
+    g_nativeProcessName = "storage_manager";
+    MockIPCSkeleton::mockCallingUid_ = 1090; // STORAGE_MANAGER_UID
+    g_accessTokenType = 0;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _))
+        .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(MockUeventBootstrap::GetInstance(), RediscoverDiskVolumesImpl(_))
+        .WillOnce(Return(ERR_OK));
+    int32_t ret = provider.Partition("disk-92-2", 0);
+    EXPECT_EQ(ret, E_OK);
+    MockIPCSkeleton::mockCallingUid_ = 0;
+    g_accessTokenType = 1;
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    g_nativeProcessName = "foundation";
+    GTEST_LOG_(INFO) << "Partition_StorageManagerCaller_UsbDisk_NoAuth_001 End";
+}
+
+/**
+ * @tc.name: Format_InvalidVolumeId_ReturnsParamsInvalid_001
+ * @tc.desc: Format with malformed volumeId (not vol-x-y) returns E_PARAMS_INVALID before admin auth.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Format_InvalidVolumeId_ReturnsParamsInvalid_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_InvalidVolumeId_ReturnsParamsInvalid_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), FormatVolume(_, _, _, _, _)).Times(0);
+    EXPECT_EQ(provider.Format("", "vfat"), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.Format("invalid-volume-id", "vfat"), E_PARAMS_INVALID);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Format_InvalidVolumeId_ReturnsParamsInvalid_001 End";
+}
+
+/**
+ * @tc.name: Partition_InvalidDiskId_ReturnsParamsInvalid_001
+ * @tc.desc: Partition with malformed diskId (not disk-x-y) returns E_PARAMS_INVALID before admin auth.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, Partition_InvalidDiskId_ReturnsParamsInvalid_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Partition_InvalidDiskId_ReturnsParamsInvalid_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_CALL(OHOS::AccountSA::AuthorizationClient::GetInstance(), AcquireAuthorization(_, _, _)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), Partition(_, _)).Times(0);
+    EXPECT_EQ(provider.Partition("", 0), E_PARAMS_INVALID);
+    EXPECT_EQ(provider.Partition("invalid-disk-id", 0), E_PARAMS_INVALID);
+    EXPECT_FALSE(provider.dataDiskFormatBusy_.load());
+    GTEST_LOG_(INFO) << "Partition_InvalidDiskId_ReturnsParamsInvalid_001 End";
 }
 
 } // namespace DiskManager

@@ -343,7 +343,7 @@ int32_t DiskManagerProvider::CheckAdminAuthorization()
         FORMAT_DATA_DISK_PRIVILEGE, options, callback);
     if (acquireRet != ERR_OK) {
         LOGE("CheckAdminAuthorization: AcquireAuthorization failed, ret=%{public}d", acquireRet);
-        return ERR_JS_AUTHORIZATION_DENIED;
+        return E_PERMISSION_DENIED;
     }
 
     std::unique_lock<std::mutex> lock(state->mtx);
@@ -351,11 +351,11 @@ int32_t DiskManagerProvider::CheckAdminAuthorization()
     bool notified = state->cv.wait_for(lock, authTimeout, [&state]() { return state->completed; });
     if (!notified) {
         LOGE("CheckAdminAuthorization: wait timeout (%{public}ds)", AUTH_WAIT_TIMEOUT_SEC);
-        return ERR_JS_AUTHORIZATION_DENIED;
+        return E_PERMISSION_DENIED;
     }
     if (state->resultCode != AccountSA::AuthorizationResultCode::AUTHORIZATION_SUCCESS) {
         LOGE("CheckAdminAuthorization: authorization denied, resultCode=%{public}d", state->resultCode);
-        return ERR_JS_AUTHORIZATION_DENIED;
+        return E_PERMISSION_DENIED;
     }
     return E_OK;
 }
