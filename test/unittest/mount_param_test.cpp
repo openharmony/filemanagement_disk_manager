@@ -118,5 +118,14 @@ HWTEST_F(MountParamTest, MountData_EmptyDefault, TestSize.Level0)
     delete result;
 }
 
+HWTEST_F(MountParamTest, MountData_Marshalling_WriteStringFailed, TestSize.Level0)
+{
+    MountParam mp(true);
+    mp.SetMountData("label_test");
+    Parcel parcel;
+    parcel.SetMaxDataCapacity(sizeof(uint32_t) * 2);
+    EXPECT_FALSE(mp.Marshalling(parcel));
+}
+
 } // namespace DiskManager
 } // namespace OHOS
