@@ -123,7 +123,7 @@ HWTEST_F(MountParamTest, MountData_Marshalling_WriteStringFailed, TestSize.Level
     MountParam mp(true);
     mp.SetMountData("label_test");
     Parcel parcel;
-    parcel.SetMaxDataCapacity(sizeof(uint32_t) * 2);
+    parcel.SetDataCapacity(sizeof(uint32_t) * 2);
     EXPECT_FALSE(mp.Marshalling(parcel));
 }
 
