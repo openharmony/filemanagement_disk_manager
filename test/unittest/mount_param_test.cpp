@@ -23,6 +23,8 @@ namespace DiskManager {
 using namespace testing;
 using namespace testing::ext;
 
+constexpr size_t WRITE_STRING_FAIL_LEN = 204800;
+
 class MountParamTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
@@ -121,9 +123,9 @@ HWTEST_F(MountParamTest, MountData_EmptyDefault, TestSize.Level0)
 HWTEST_F(MountParamTest, MountData_Marshalling_WriteStringFailed, TestSize.Level0)
 {
     MountParam mp(true);
-    mp.SetMountData("label_test");
+    std::string largeData(WRITE_STRING_FAIL_LEN, 'a');
+    mp.SetMountData(largeData);
     Parcel parcel;
-    parcel.SetDataCapacity(sizeof(uint32_t) * 2);
     EXPECT_FALSE(mp.Marshalling(parcel));
 }
 
