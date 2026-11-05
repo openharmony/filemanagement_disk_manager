@@ -57,6 +57,7 @@ enum class IStorageDaemonIpcCode {
     ADDON_GET_DISK_SIZE = 261,
     ADDON_EXECUTE_COMMAND = 263,
     ADDON_CREATE_DM_LINEAR = 264,
+    ADDON_GET_BURN_FILE_LIST = 269,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -125,6 +126,8 @@ public:
     virtual ErrCode CreateDmLinear(const std::string &sourceDevPath,
                                    uint64_t startSector, uint64_t sectorCount,
                                    uint64_t &dmDev) = 0;
+    virtual ErrCode GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
+                                   std::vector<std::string> &fileList, bool &hasMore) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

@@ -86,6 +86,9 @@ public:
     MOCK_METHOD(int32_t, CreateDmLinear,
         (const std::string &sourceDevPath,
          uint64_t startSector, uint64_t sectorCount, uint64_t &dmDev));
+    MOCK_METHOD(int32_t, GetBurnFileList,
+        (const std::string &srcDir, int32_t offset, int32_t pageSize,
+         std::vector<std::string> &fileList, bool &hasMore));
 
     static MockStorageDaemonAdapter *mockInstance_;
 };

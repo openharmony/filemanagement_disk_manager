@@ -76,6 +76,8 @@ public:
     ErrCode CreateDmLinear(const std::string &sourceDevPath,
                            uint64_t startSector, uint64_t sectorCount,
                            uint64_t &dmDev) override;
+    ErrCode GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
+                           std::vector<std::string> &fileList, bool &hasMore) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

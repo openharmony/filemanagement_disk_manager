@@ -72,6 +72,8 @@ public:
     MOCK_METHOD4(CreateDmLinear, ErrCode(const std::string &sourceDevPath,
                                           uint64_t startSector, uint64_t sectorCount,
                                           uint64_t &dmDev));
+    MOCK_METHOD5(GetBurnFileList, ErrCode(const std::string &srcDir, int32_t offset, int32_t pageSize,
+                                          std::vector<std::string> &fileList, bool &hasMore));
 };
 
 } // namespace DiskManager

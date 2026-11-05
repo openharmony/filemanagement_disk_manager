@@ -6800,5 +6800,228 @@ HWTEST_F(DiskManagerTest, DamagedVolume_Mount_Rejected_TestCase_001, TestSize.Le
     GTEST_LOG_(INFO) << "DamagedVolume_Mount_Rejected_TestCase_001 End";
 }
 
+// ===== Burn audit helpers (file-scope functions in disk_manager.cpp) =====
+
+std::string ParseBurnPathFromOptions(const std::string &burnOptions);
+bool ParseIsIsoImageFromOptions(const std::string &burnOptions);
+void CollectFilesRecursive(const std::string &dirPath, std::vector<std::string> &fileList);
+std::string ResolveOddType(const std::string &diskId);
+std::vector<std::vector<std::string>> SplitFileListByContent(const std::vector<std::string> &fileList);
+
+// ===== Tier 1: Pure function tests =====
+
+HWTEST_F(DiskManagerTest, ParseBurnPathFromOptions_001, TestSize.Level0)
+{
+    auto val = ParseBurnPathFromOptions("isIsoImage=false\nburnPath=/data/burn");
+    EXPECT_EQ(val, "/data/burn");
+}
+
+HWTEST_F(DiskManagerTest, ParseBurnPathFromOptions_002, TestSize.Level0)
+{
+    auto val = ParseBurnPathFromOptions("isIsoImage=true");
+    EXPECT_TRUE(val.empty());
+}
+
+HWTEST_F(DiskManagerTest, ParseBurnPathFromOptions_003, TestSize.Level0)
+{
+    auto val = ParseBurnPathFromOptions("");
+    EXPECT_TRUE(val.empty());
+}
+
+HWTEST_F(DiskManagerTest, ParseIsIsoImageFromOptions_001, TestSize.Level0)
+{
+    EXPECT_TRUE(ParseIsIsoImageFromOptions("isIsoImage=true"));
+}
+
+HWTEST_F(DiskManagerTest, ParseIsIsoImageFromOptions_002, TestSize.Level0)
+{
+    EXPECT_FALSE(ParseIsIsoImageFromOptions("isIsoImage=false"));
+}
+
+HWTEST_F(DiskManagerTest, ParseIsIsoImageFromOptions_003, TestSize.Level0)
+{
+    EXPECT_TRUE(ParseIsIsoImageFromOptions("isIsoImage=1"));
+}
+
+HWTEST_F(DiskManagerTest, ParseIsIsoImageFromOptions_004, TestSize.Level0)
+{
+    EXPECT_FALSE(ParseIsIsoImageFromOptions("burnPath=/data/x"));
+}
+
+HWTEST_F(DiskManagerTest, SplitFileListByContent_001, TestSize.Level0)
+{
+    std::vector<std::string> empty;
+    auto batches = SplitFileListByContent(empty);
+    EXPECT_EQ(batches.size(), 1u);
+    EXPECT_TRUE(batches[0].empty());
+}
+
+HWTEST_F(DiskManagerTest, SplitFileListByContent_002, TestSize.Level0)
+{
+    std::vector<std::string> files = {"/a/b.txt", "/a/c.txt", "/a/d.txt"};
+    auto batches = SplitFileListByContent(files);
+    EXPECT_EQ(batches.size(), 1u);
+    EXPECT_EQ(batches[0].size(), 3u);
+}
+
+HWTEST_F(DiskManagerTest, SplitFileListByContent_003, TestSize.Level0)
+{
+    std::vector<std::string> files;
+    for (int i = 0; i < 500; ++i) {
+        files.push_back("/data/burn/dir/" + std::to_string(i) + ".txt");
+    }
+    auto batches = SplitFileListByContent(files);
+    EXPECT_GT(batches.size(), 1u);
+    for (const auto &batch : batches) {
+        size_t sz = 512;
+        for (const auto &p : batch) {
+            sz += p.size() + 4;
+        }
+        EXPECT_LE(sz, 9 * 1024u);
+    }
+}
+
+HWTEST_F(DiskManagerTest, SplitFileListByContent_004, TestSize.Level0)
+{
+    std::string huge(10240, 'x');
+    std::vector<std::string> files = {huge};
+    auto batches = SplitFileListByContent(files);
+    EXPECT_EQ(batches.size(), 1u);
+    EXPECT_EQ(batches[0].size(), 1u);
+}
+
+// ===== Tier 2: Mock-dependent function tests =====
+
+HWTEST_F(DiskManagerTest, CollectFilesRecursive_001, TestSize.Level0)
+{
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::vector<std::string> page1;
+    page1.resize(2000, "/data/burn/f.txt");
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(page1), SetArgReferee<4>(true), Return(E_OK)))
+        .WillOnce(DoAll(SetArgReferee<4>(false), Return(E_OK)));
+    std::vector<std::string> result;
+    CollectFilesRecursive("/data/burn", result);
+    EXPECT_EQ(result.size(), 2000u);
+}
+
+HWTEST_F(DiskManagerTest, CollectFilesRecursive_002, TestSize.Level0)
+{
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    std::vector<std::string> result;
+    CollectFilesRecursive("/data/burn", result);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(DiskManagerTest, CollectFilesRecursive_003, TestSize.Level0)
+{
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<4>(false), Return(E_OK)));
+    std::vector<std::string> result;
+    CollectFilesRecursive("/data/burn", result);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(DiskManagerTest, ResolveOddType_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-odd-cd"));
+    EXPECT_EQ(ResolveOddType("disk-odd-cd"), "internal");
+}
+
+HWTEST_F(DiskManagerTest, ResolveOddType_002, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-odd-usb"));
+    EXPECT_EQ(ResolveOddType("disk-odd-usb"), "external");
+}
+
+HWTEST_F(DiskManagerTest, ResolveOddType_003, TestSize.Level0)
+{
+    EXPECT_EQ(ResolveOddType("non-existent-disk"), "external");
+}
+
+// ===== Tier 3: Burn integration tests =====
+
+HWTEST_F(DiskManagerTest, Burn_IsoImage_SkipsIPC_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-burn-iso"));
+    VolumeExternal vol = MakeUdfVolume("vol-burn-iso", "disk-burn-iso", "uuid-iso");
+    vol.SetState(UNMOUNTED);
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Burn("vol-burn-iso", "isIsoImage=true\nburnPath=/data/image.iso",
+                      "test.bundle", 0), DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(DiskManagerTest, Burn_EmptyBurnPath_SkipsIPC_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-burn-empty"));
+    VolumeExternal vol = MakeUdfVolume("vol-burn-empty", "disk-burn-empty", "uuid-empty");
+    vol.SetState(UNMOUNTED);
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Burn("vol-burn-empty", "isIsoImage=false", "test.bundle", 0),
+              DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(DiskManagerTest, Burn_NormalDir_CallsGetBurnFileList_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-burn-dir"));
+    VolumeExternal vol = MakeUdfVolume("vol-burn-dir", "disk-burn-dir", "uuid-dir");
+    vol.SetState(UNMOUNTED);
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::vector<std::string> files = {"/data/burn/a.txt", "/data/burn/b.txt"};
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(files), SetArgReferee<4>(false), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Burn("vol-burn-dir", "isIsoImage=false\nburnPath=/data/burn",
+                      "test.bundle", 0), DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(DiskManagerTest, Burn_GetBurnFileListFail_NotBlocks_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-burn-fail"));
+    VolumeExternal vol = MakeUdfVolume("vol-burn-fail", "disk-burn-fail", "uuid-fail");
+    vol.SetState(UNMOUNTED);
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Burn("vol-burn-fail", "isIsoImage=false\nburnPath=/data/burn",
+                      "test.bundle", 0), DiskManagerErrNo::E_OK);
+}
+
+HWTEST_F(DiskManagerTest, Burn_FailureStillReports_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeCdDisk("disk-burn-failrep"));
+    VolumeExternal vol = MakeUdfVolume("vol-burn-failrep", "disk-burn-failrep", "uuid-failrep");
+    vol.SetState(UNMOUNTED);
+    vol.SetExtraInfo(R"({"ODD_INFO":{"DISC_TYPE":"DVD+RW"}})");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Burn(_, _, _)).WillOnce(Return(E_BURN_FAILED));
+    EXPECT_EQ(dm.Burn("vol-burn-failrep", "isIsoImage=true\nburnPath=/data/iso",
+                      "test.bundle", 0), E_BURN_FAILED);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

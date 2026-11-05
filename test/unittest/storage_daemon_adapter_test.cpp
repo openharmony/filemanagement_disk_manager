@@ -669,6 +669,49 @@ HWTEST_F(StorageDaemonAdapterTest, Burn_ProxyNotReadyDfx_001, TestSize.Level0)
     EXPECT_NE(adapter.Burn("/dev/block/disk-11-0", "{}", "udf"), E_OK);
     const std::string tail = ReadAuditSince(offset);
     EXPECT_NE(tail.find("StorageDaemonAdapter::Burn"), std::string::npos);
+    EXPECT_NE(adapter.Burn("/dev/block/disk-9-0", "dao", "udf"), E_OK);
+    const std::string tail2 = ReadAuditSince(offset);
+    EXPECT_NE(tail2.find("StorageDaemonAdapter::Burn"), std::string::npos);
+}
+
+// ===== GetBurnFileList adapter tests =====
+
+HWTEST_F(StorageDaemonAdapterProxyTest, GetBurnFileList_Success_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    std::vector<std::string> files = {"/data/burn/a.txt", "/data/burn/b.txt"};
+    EXPECT_CALL(*mockRemote_, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<3>(files), SetArgReferee<4>(false), Return(E_OK)));
+    std::vector<std::string> out;
+    bool hasMore = true;
+    EXPECT_EQ(adapter.GetBurnFileList("/data/burn", 0, 2000, out, hasMore), E_OK);
+    EXPECT_EQ(out.size(), 2u);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonAdapterProxyTest, GetBurnFileList_ErrorReturn_001, TestSize.Level0)
+{
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(*mockRemote_, GetBurnFileList(_, _, _, _, _))
+        .WillOnce(Return(E_DAEMON_IPC_FAILED));
+    std::vector<std::string> out;
+    bool hasMore = true;
+    EXPECT_NE(adapter.GetBurnFileList("/data/burn", 0, 2000, out, hasMore), E_OK);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonAdapterTest, GetBurnFileList_ProxyNotReadyDfx_001, TestSize.Level0)
+{
+    EnsureDfxAuditDir();
+    auto &adapter = StorageDaemonAdapter::GetInstance();
+    adapter.storageDaemon_ = nullptr;
+    const int64_t offset = GetAuditFileSize();
+    std::vector<std::string> out;
+    bool hasMore = true;
+    EXPECT_NE(adapter.GetBurnFileList("/data/burn", 0, 2000, out, hasMore), E_OK);
+    EXPECT_FALSE(hasMore);
+    const std::string tail = ReadAuditSince(offset);
+    EXPECT_NE(tail.find("GetBurnFileList"), std::string::npos);
 }
 
 } // namespace DiskManager

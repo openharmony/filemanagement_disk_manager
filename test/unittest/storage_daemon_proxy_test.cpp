@@ -3053,5 +3053,110 @@ HWTEST_F(StorageDaemonProxyTest, CreateDmLinear_TestCase_008, TestSize.Level0)
 
     GTEST_LOG_(INFO) << "CreateDmLinear_TestCase_008 End";
 }
+
+// ===== GetBurnFileList proxy tests =====
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_Success_001, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32())
+        .WillOnce(Return(ERR_OK))    // errno
+        .WillOnce(Return(2));         // count
+    EXPECT_CALL(*messageParcelMock_, ReadString16())
+        .WillOnce(Return(u"/data/burn/a.txt"))
+        .WillOnce(Return(u"/data/burn/b.txt"));
+    EXPECT_CALL(*messageParcelMock_, ReadBool()).WillOnce(Return(true));
+    std::vector<std::string> fileList;
+    bool hasMore = false;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(fileList.size(), 2u);
+    EXPECT_TRUE(hasMore);
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_RemoteError_002, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(IPC_FAILED));
+    std::vector<std::string> fileList;
+    bool hasMore = true;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, IPC_FAILED);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_ErrnoNotOk_003, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32()).WillOnce(Return(REMOTE_FAILED));
+    std::vector<std::string> fileList;
+    bool hasMore = true;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, REMOTE_FAILED);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_CountNegative_004, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32())
+        .WillOnce(Return(ERR_OK))    // errno
+        .WillOnce(Return(-1));        // count < 0
+    std::vector<std::string> fileList;
+    bool hasMore = true;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_CountTooLarge_005, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*remote_, SendRequest(_, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*messageParcelMock_, ReadInt32())
+        .WillOnce(Return(ERR_OK))     // errno
+        .WillOnce(Return(5000));       // count > MAX_FILE_LIST_COUNT(3000)
+    std::vector<std::string> fileList;
+    bool hasMore = true;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_TokenFail_006, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(false));
+    std::vector<std::string> fileList;
+    bool hasMore = true;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, ERR_TRANSACTION_FAILED);
+    EXPECT_FALSE(hasMore);
+}
+
+HWTEST_F(StorageDaemonProxyTest, GetBurnFileList_WriteFail_007, TestSize.Level0)
+{
+    EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteString16(_)).WillOnce(Return(false));
+    EXPECT_CALL(*messageParcelMock_, WriteInt32(_)).Times(0);
+    std::vector<std::string> fileList;
+    bool hasMore = true;
+    int32_t ret = proxy_->GetBurnFileList("/data/burn", 0, 2000, fileList, hasMore);
+    EXPECT_EQ(ret, ERR_INVALID_DATA);
+    EXPECT_FALSE(hasMore);
+}
+
 } // namespace DiskManager
 } // namespace OHOS

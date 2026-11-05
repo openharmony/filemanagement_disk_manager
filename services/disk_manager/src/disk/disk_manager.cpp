@@ -81,29 +81,159 @@ constexpr const char *BURN_REPORT_VERSION = "1.0";
 // PrepareBurn 内部标记：EDM 策略禁止刻录；非错误码，仅 Burn 层据此上报审计事件后对外映射为 E_NOT_SUPPORT。
 constexpr int32_t EDM_BURN_DENIED_MARK = -2;
 
-int32_t ReportBurnSecurityInfo(int32_t userId, const std::string &appId, const std::string &fsType,
-                               int64_t eventId = BURN_REPORT_EVENT_ID)
-{
-    LOGI("ReportBurnSecurityInfo start");
-    auto now = std::chrono::system_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
-    int64_t happenTime = ms.count();
+struct BurnReportParams {
+    int32_t userId;
+    std::string appId;
+    std::string fsType;
+    std::string oddType;
+    std::vector<std::string> burnFileList;
+    int64_t eventId = BURN_REPORT_EVENT_ID;
+};
 
+std::string ParseBurnPathFromOptions(const std::string &burnOptions)
+{
+    std::istringstream ss(burnOptions);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, pos);
+        if (key == "burnPath") {
+            return line.substr(pos + 1);
+        }
+    }
+    return "";
+}
+
+bool ParseIsIsoImageFromOptions(const std::string &burnOptions)
+{
+    std::istringstream ss(burnOptions);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, pos);
+        if (key == "isIsoImage") {
+            std::string value = line.substr(pos + 1);
+            return value == "true" || value == "1";
+        }
+    }
+    return false;
+}
+
+constexpr int32_t LIST_FILES_PAGE_SIZE = 2000;
+constexpr int32_t LIST_FILES_MAX_PAGES = 100;
+
+void CollectFilesRecursive(const std::string &dirPath, std::vector<std::string> &fileList)
+{
+    int32_t offset = 0;
+    bool hasMore = true;
+    for (int32_t page = 0; page < LIST_FILES_MAX_PAGES && hasMore; ++page) {
+        std::vector<std::string> pageFiles;
+        int32_t ret = StorageDaemonAdapter::GetInstance().GetBurnFileList(
+            dirPath, offset, LIST_FILES_PAGE_SIZE, pageFiles, hasMore);
+        if (ret != E_OK) {
+            LOGW("CollectFilesRecursive: GetBurnFileList failed, dir=%{public}s ret=%{public}d page=%{public}d",
+                 GetAnonyString(dirPath).c_str(), ret, page);
+            break;
+        }
+        fileList.insert(fileList.end(), std::make_move_iterator(pageFiles.begin()),
+                        std::make_move_iterator(pageFiles.end()));
+        offset += static_cast<int32_t>(pageFiles.size());
+    }
+    LOGI("CollectFilesRecursive: total=%{public}zu hasMore=%{public}d", fileList.size(), hasMore);
+}
+
+std::string ResolveOddType(const std::string &diskId)
+{
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
+        LOGW("ResolveOddType: disk not found, diskId=%{public}s", GetAnonyString(diskId).c_str());
+        return "external";
+    }
+    return disk.IsUsbBus() ? "external" : "internal";
+}
+
+constexpr size_t BURN_REPORT_CONTENT_MAX_SIZE = 9 * 1024;
+
+int32_t ReportBurnSecurityInfoOne(const BurnReportParams &params,
+                                  const std::vector<std::string> &batchFileList,
+                                  int32_t batchIndex, int32_t batchTotal, int64_t happenTime)
+{
     json contentJson;
-    contentJson["userId"] = userId;
-    contentJson["appId"] = appId;
-    contentJson["burningType"] = fsType;
+    contentJson["userId"] = params.userId;
+    contentJson["appId"] = params.appId;
+    contentJson["burningType"] = params.fsType;
     contentJson["happenTime"] = happenTime;
+    if (!params.oddType.empty()) {
+        contentJson["oddType"] = params.oddType;
+        contentJson["burnFileList"] = batchFileList;
+    }
+    LOGI("ReportBurnSecurityInfo: batch=%{public}d/%{public}d files=%{public}zu",
+         batchIndex, batchTotal, batchFileList.size());
 
     std::string content = contentJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-    OHOS::Security::SecurityGuard::EventInfo eventInfo(eventId, BURN_REPORT_VERSION, content);
-    LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " version=%{public}s content=%{public}s",
-         eventId, BURN_REPORT_VERSION, content.c_str());
+    OHOS::Security::SecurityGuard::EventInfo eventInfo(params.eventId, BURN_REPORT_VERSION, content);
+    LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " batch=%{public}d/%{public}d "
+         "files=%{public}zu contentLen=%{public}zu",
+         params.eventId, batchIndex, batchTotal, batchFileList.size(), content.size());
     auto wrappedInfo = std::make_shared<OHOS::Security::SecurityGuard::EventInfo>(eventInfo);
     OHOS::Security::SecurityGuard::NativeDataCollectKit nativeDataCollectKit;
     int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
-    LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d", reportResult);
+    LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d batch=%{public}d/%{public}d",
+         reportResult, batchIndex, batchTotal);
     return reportResult;
+}
+
+std::vector<std::vector<std::string>> SplitFileListByContent(const std::vector<std::string> &fileList)
+{
+    const size_t fixedOverhead = 512;
+    std::vector<std::vector<std::string>> batches;
+    std::vector<std::string> batch;
+    size_t batchSize = fixedOverhead;
+    for (const auto &filePath : fileList) {
+        size_t entrySize = filePath.size() + 4;
+        if (batchSize + entrySize > BURN_REPORT_CONTENT_MAX_SIZE && !batch.empty()) {
+            batches.push_back(std::move(batch));
+            batch.clear();
+            batchSize = fixedOverhead;
+        }
+        batch.push_back(filePath);
+        batchSize += entrySize;
+    }
+    if (!batch.empty()) {
+        batches.push_back(std::move(batch));
+    }
+    if (batches.empty()) {
+        batches.emplace_back();
+    }
+    return batches;
+}
+
+int32_t ReportBurnSecurityInfo(const BurnReportParams &params)
+{
+    LOGI("ReportBurnSecurityInfo start, totalFiles=%{public}zu", params.burnFileList.size());
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    int64_t happenTime = ms.count();
+    if (params.oddType.empty()) {
+        return ReportBurnSecurityInfoOne(params, {}, 1, 1, happenTime);
+    }
+    auto batches = SplitFileListByContent(params.burnFileList);
+    int32_t batchTotal = static_cast<int32_t>(batches.size());
+    LOGI("ReportBurnSecurityInfo split into %{public}d batches", batchTotal);
+    int32_t lastResult = E_OK;
+    for (int32_t i = 0; i < batchTotal; ++i) {
+        int32_t ret = ReportBurnSecurityInfoOne(params, batches[i], i + 1, batchTotal, happenTime);
+        if (ret != E_OK) {
+            lastResult = ret;
+        }
+    }
+    return lastResult;
 }
 
 std::string NormalizeDiskBlockPath(const std::string &diskPath)
@@ -1941,11 +2071,10 @@ std::string DiskManager::GetDriverType(const std::string &extraInfo)
 }
 
 int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string &burnOptions,
-                                 int32_t callerUserId, std::string &blockVolId, std::string &fsType)
+                                 int32_t callerUserId, BurnPrepareResult &result)
 {
-    std::string mountPath;
-    std::string diskId;
     int32_t volState = UNMOUNTED;
+    std::string mountPath;
     {
         std::shared_lock<std::shared_mutex> volReadLock(volumeMapMutex_);
         const auto it = volumeMap_.find(volumeId);
@@ -1953,14 +2082,14 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
             return E_PARAMS_INVALID;
         }
-        blockVolId = it->second.GetId();
-        diskId = it->second.GetDiskId();
-        fsType = it->second.GetFsTypeString();
+        result.blockVolId = it->second.GetId();
+        result.diskId = it->second.GetDiskId();
+        result.fsType = it->second.GetFsTypeString();
         mountPath = it->second.GetPath();
         volState = it->second.GetState();
     }
-    if (!IsOddFsType(fsType)) {
-        LOGE("Burn only support odd fsType, fsType is %{public}s", fsType.c_str());
+    if (!IsOddFsType(result.fsType)) {
+        LOGE("Burn only support odd fsType, fsType is %{public}s", result.fsType.c_str());
         return E_NOT_SUPPORT;
     }
     if (burnOptions.empty()) {
@@ -1968,14 +2097,14 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
         return E_PARAMS_INVALID;
     }
 #ifdef EDM_ADAPTER_ENABLE
-    if (!EdmAdapter::GetInstance().IsEdmEnableOddBurn(diskId, callerUserId)) {
-        LOGE("Burn EDM policy denied, diskId=%{public}s", diskId.c_str());
+    if (!EdmAdapter::GetInstance().IsEdmEnableOddBurn(result.diskId, callerUserId)) {
+        LOGE("Burn EDM policy denied, diskId=%{public}s", result.diskId.c_str());
         return EDM_BURN_DENIED_MARK;
     }
 #endif
     // Only mounted volumes need unmounting before burn; skip when already unmounted.
     if ((volState == VolumeState::MOUNTED || volState == VolumeState::DAMAGED_MOUNTED) && !mountPath.empty()) {
-        int32_t umountErr = StorageDaemonAdapter::GetInstance().Unmount(mountPath, fsType, true);
+        int32_t umountErr = StorageDaemonAdapter::GetInstance().Unmount(mountPath, result.fsType, true);
         if (umountErr != ERR_OK) {
             LOGE("Burn: unmount before burn failed volumeId=%{public}s mountPath=%{public}s err=%{public}d",
                 volumeId.c_str(), GetAnonyString(mountPath).c_str(), umountErr);
@@ -1991,27 +2120,40 @@ int32_t DiskManager::Burn(const std::string &volumeId, const std::string &burnOp
 {
     IpcDfxScope dfx("DiskManager::Burn", DFX_STAGE_BURN, VolumeOpType::BURN,
                     VolumeReportInfo().WithVolumeId(volumeId));
-    std::string blockVolId;
-    std::string fsType;
-    int32_t prepErr = PrepareBurn(volumeId, burnOptions, callerUserId, blockVolId, fsType);
+    BurnPrepareResult prepResult;
+    int32_t prepErr = PrepareBurn(volumeId, burnOptions, callerUserId, prepResult);
     if (prepErr == EDM_BURN_DENIED_MARK) {
-        ReportBurnSecurityInfo(callerUserId, callerBundle, fsType, BURN_EDM_CONTROL_EVENT_ID);
+        BurnReportParams params{callerUserId, callerBundle, prepResult.fsType, "", {}, BURN_EDM_CONTROL_EVENT_ID};
+        ReportBurnSecurityInfo(params);
         return dfx.Finish(E_NOT_SUPPORT);
     }
     if (prepErr != DiskManagerErrNo::E_OK) {
         return dfx.Finish(prepErr);
     }
-    int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + blockVolId, burnOptions, fsType);
+    std::string burnPath = ParseBurnPathFromOptions(burnOptions);
+    bool isIsoImage = ParseIsIsoImageFromOptions(burnOptions);
+    std::vector<std::string> burnFileList;
+    if (!burnPath.empty()) {
+        if (isIsoImage) {
+            burnFileList.push_back(burnPath);
+        } else {
+            CollectFilesRecursive(burnPath, burnFileList);
+        }
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().Burn("/dev/block/" + prepResult.blockVolId, burnOptions,
+                                                           prepResult.fsType);
     LOGI("Burn completed: callerBundle=%{public}s callerUserId=%{public}d fsType=%{public}s",
-        callerBundle.c_str(), callerUserId, fsType.c_str());
-    int32_t reportRet = ReportBurnSecurityInfo(callerUserId, callerBundle, fsType);
+        callerBundle.c_str(), callerUserId, prepResult.fsType.c_str());
+    BurnReportParams reportParams{callerUserId, callerBundle, prepResult.fsType,
+                                  ResolveOddType(prepResult.diskId), std::move(burnFileList)};
+    int32_t reportRet = ReportBurnSecurityInfo(reportParams);
     LOGI("Burn result: reportResult=%{public}d", reportRet);
     if (err != ERR_OK) {
         if (err == E_BURN_NOSPC) {
-            LOGE("Burn vol %{public}s no space left on device", blockVolId.c_str());
+            LOGE("Burn vol %{public}s no space left on device", prepResult.blockVolId.c_str());
             return  dfx.Finish(E_BURN_NOSPC);
         }
-        LOGE("Burn vol %{public}s err=%{public}d", blockVolId.c_str(), E_BURN_FAILED);
+        LOGE("Burn vol %{public}s err=%{public}d", prepResult.blockVolId.c_str(), E_BURN_FAILED);
         return  dfx.Finish(E_BURN_FAILED);
     }
     return  dfx.Finish(DiskManagerErrNo::E_OK);

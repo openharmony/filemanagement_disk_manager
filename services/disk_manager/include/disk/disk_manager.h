@@ -40,6 +40,12 @@
 namespace OHOS {
 namespace DiskManager {
 
+struct BurnPrepareResult {
+    std::string blockVolId;
+    std::string fsType;
+    std::string diskId;
+};
+
 class DiskManager {
 public:
     static DiskManager &GetInstance();
@@ -195,7 +201,7 @@ private:
 
     /** 刻录前查找卷、校验 fsType/burnOptions、EDM 策略检查并在需要时卸载。 */
     int32_t PrepareBurn(const std::string &volumeId, const std::string &burnOptions,
-                        int32_t callerUserId, std::string &blockVolId, std::string &fsType);
+                        int32_t callerUserId, BurnPrepareResult &result);
 
     /** PC 标准数据盘格式化后，同步 voldata_uuid_store 中 fsUuid 映射。 */
     void UpdateVoldataMappingAfterFormat(const std::string &diskId,
