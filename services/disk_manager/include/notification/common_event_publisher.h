@@ -39,10 +39,10 @@ public:
     static void PublishDiskChange(DiskEventKind kind, const Disk &disk);
     static void PublishVolumeResult(VolumeState notifyCode, const VolumeExternal &volume);
     // 装配异常卷广播 Want（action=COMMON_EVENT_DISK_UNMOUNTABLE）：复用既有五字段
-    // （id/diskId/fsUuid/flags/volumeState）并追加 reasonCode，供发布与单测断言使用。
+    // （id/diskId/fsUuid/flags/volumeState）并追加 reasonCode/reason/devPath，供发布与单测断言使用。
     static AAFwk::Want BuildVolumeAbnormalWant(const VolumeExternal &volume, int32_t reasonCode);
     static void PublishVolumeAbnormal(const VolumeExternal &volume, int32_t reasonCode);
-    // 盘级分区表异常广播（无卷载体，仅携带 diskId/volumeState/reasonCode）
+    // 盘级分区表异常广播（无卷载体，仅携带 diskId/volumeState/reasonCode/reason/devPath）
     static void PublishDiskAbnormal(const std::string &diskId, int32_t reasonCode);
 
     CommonEventPublisher() = delete;

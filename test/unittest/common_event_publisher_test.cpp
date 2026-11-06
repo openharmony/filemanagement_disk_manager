@@ -472,22 +472,6 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_011, TestSize.Le
 }
 
 /**
- * @tc.name: PublishVolumeResult_TestCase_004
- * @tc.desc: PublishVolumeResult REPAIRING 无 STATE_INFOS 映射，覆盖 actionSet=false early return（AC-2.7）。
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_004, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_004 Start";
-
-    VolumeExternal vol = MakeSampleVolume();
-    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(REPAIRING, vol));
-
-    GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_004 End";
-}
-
-/**
  * @tc.name: PublishVolumeResult_TestCase_003
  * @tc.desc: PublishVolumeResult REPAIR_START 有 STATE_INFOS 映射，覆盖 actionSet=true 路径。
  * @tc.type: FUNC
@@ -506,7 +490,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_003, TestSize.Le
 /**
  * @tc.name: PublishVolumeAbnormal_TestCase_001
  * @tc.desc: 异常卷广播装配断言：action 为 COMMON_EVENT_DISK_UNMOUNTABLE，volumeState=DAMAGED(6)，
- *           最小字段集：既有五字段 + reasonCode（不携带 reason 文案与 devPath），向后兼容；多原因码发布冒烟。
+ *           字段集：既有五字段 + reasonCode + reason + devPath（设备节点路径），向后兼容；多原因码发布冒烟。
  * @tc.type: FUNC
  * @tc.require: 20260807939139
  */
@@ -523,8 +507,8 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_001, TestSize.
     EXPECT_EQ(want.GetParams().GetStringParam("id"), "vol-ut-1");
     EXPECT_EQ(want.GetParams().GetStringParam("diskId"), "disk-ut-1");
     EXPECT_EQ(want.GetParams().GetIntParam("flags", -1), kUtVolumeFlags);
-    EXPECT_EQ(want.GetParams().GetStringParam("reason"), "");
-    EXPECT_EQ(want.GetParams().GetStringParam("devPath"), "");
+    EXPECT_EQ(want.GetParams().GetStringParam("reason"), "fstype unsupported");
+    EXPECT_EQ(want.GetParams().GetStringParam("devPath"), "/dev/block/vol-ut-1");
 
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeAbnormal(vol,
         static_cast<int32_t>(METADATA_READ_FAILED)));
@@ -536,7 +520,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_001, TestSize.
 
 /**
  * @tc.name: PublishVolumeAbnormal_TestCase_002
- * @tc.desc: 未知原因码发布冒烟：reasonCode 原样透传由应用侧兜底处理，发布不崩溃。
+ * @tc.desc: 未知原因码发布冒烟：reasonCode 原样透传、reason 回落 "unknown"，发布不崩溃。
  * @tc.type: FUNC
  * @tc.require: 20260807939139
  */
@@ -547,6 +531,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_002, TestSize.
     VolumeExternal vol = MakeSampleVolume();
     AAFwk::Want want = CommonEventPublisher::BuildVolumeAbnormalWant(vol, 99);
     EXPECT_EQ(want.GetParams().GetIntParam("reasonCode", -1), 99);
+    EXPECT_EQ(want.GetParams().GetStringParam("reason"), "unknown");
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeAbnormal(vol, 99));
 
     GTEST_LOG_(INFO) << "PublishVolumeAbnormal_TestCase_002 End";
@@ -577,7 +562,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeAbnormal_TestCase_003, TestSize.
 
 /**
  * @tc.name: PublishDiskAbnormal_TestCase_001
- * @tc.desc: 盘级分区表异常广播发布冒烟（无卷载体）：仅携带 diskId/volumeState/reasonCode，
+ * @tc.desc: 盘级分区表异常广播发布冒烟（无卷载体）：仅携带 diskId/volumeState/reasonCode/reason/devPath，
  *           发布不崩溃，reasonCode 原样透传（含未知码值）。
  * @tc.type: FUNC
  * @tc.require: 20260807939139

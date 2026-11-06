@@ -36,6 +36,8 @@ namespace DiskManager {
 
 namespace {
 
+constexpr const char *DEV_BLOCK = "/dev/block/";
+
 struct VolumeStateInfo {
     VolumeState state;
     const char *logMessage;
@@ -122,6 +124,22 @@ void SetEjectEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &vo
     wantParams.SetParam("umountResult", AAFwk::String::Box(volume.GetUmountResult()));
     LOGI("Volume ejecting: id=%{public}s, fsType=%{public}d, umountResult=%{public}s",
         volume.GetId().c_str(), volume.GetFsType(), volume.GetUmountResult().c_str());
+}
+
+std::string ReasonCodeToMessage(int32_t reasonCode)
+{
+    switch (reasonCode) {
+        case PARTITION_TABLE_READ_FAILED:
+            return "partition table read failed";
+        case METADATA_READ_FAILED:
+            return "metadata read failed";
+        case FSTYPE_UNSUPPORTED:
+            return "fstype unsupported";
+        case MOUNT_FAILED:
+            return "mount failed";
+        default:
+            return "unknown";
+    }
 }
 } // namespace
 
@@ -212,8 +230,9 @@ void CommonEventPublisher::PublishVolumeResult(VolumeState notifyCode, const Vol
 }
 
 // 异常卷广播字段取最小集：复用 master 既有五字段（id/diskId/fsUuid/flags/volumeState）保证向后兼容，
-// 仅追加 reasonCode 供应用区分失败环节并引导恢复；原因文案由应用按码值自行本地化，
-// 设备节点路径应用无权访问且可由 id 推导，均不随广播下发。
+// 追加 reasonCode（封闭枚举，跨版本稳定）与 reason（稳定英文原因短语，未知码回落 "unknown"）
+// 供应用区分失败环节并引导恢复；本地化文案由应用按码值自行处理；
+// devPath 由 id 推导（/dev/block/<id>，语义与 id 等价，无额外敏感暴露），按需求下发供应用直接消费。
 AAFwk::Want CommonEventPublisher::BuildVolumeAbnormalWant(const VolumeExternal &volume, int32_t reasonCode)
 {
     AAFwk::Want want;
@@ -224,6 +243,8 @@ AAFwk::Want CommonEventPublisher::BuildVolumeAbnormalWant(const VolumeExternal &
     wantParams.SetParam("flags", AAFwk::Integer::Box(volume.GetFlags()));
     wantParams.SetParam("volumeState", AAFwk::Integer::Box(static_cast<int32_t>(DAMAGED)));
     wantParams.SetParam("reasonCode", AAFwk::Integer::Box(reasonCode));
+    wantParams.SetParam("reason", AAFwk::String::Box(ReasonCodeToMessage(reasonCode)));
+    wantParams.SetParam("devPath", AAFwk::String::Box(std::string(DEV_BLOCK) + volume.GetId()));
     want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE);
     want.SetParams(wantParams);
     return want;
@@ -245,6 +266,8 @@ void CommonEventPublisher::PublishDiskAbnormal(const std::string &diskId, int32_
     wantParams.SetParam("diskId", AAFwk::String::Box(diskId));
     wantParams.SetParam("volumeState", AAFwk::Integer::Box(static_cast<int32_t>(DAMAGED)));
     wantParams.SetParam("reasonCode", AAFwk::Integer::Box(reasonCode));
+    wantParams.SetParam("reason", AAFwk::String::Box(ReasonCodeToMessage(reasonCode)));
+    wantParams.SetParam("devPath", AAFwk::String::Box(std::string(DEV_BLOCK) + diskId));
     want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_DISK_UNMOUNTABLE);
     want.SetParams(wantParams);
     EventFwk::CommonEventData commonData{want};
