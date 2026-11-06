@@ -74,18 +74,13 @@ bool IpcCallerAuth::VerifyNativeCallerMatches(const std::string &expectedProcess
         return false;
     }
 
-    int32_t uid = IPCSkeleton::GetCallingUid();
-    if (nativeInfo.processName != expectedProcessName || uid != expectedUid) {
+    int32_t appUid = IPCSkeleton::GetCallingAppUid();
+    if (nativeInfo.processName != expectedProcessName || appUid != expectedUid) {
         LOGE("IpcCallerAuth: native caller mismatch, process=%{public}s uid=%{public}d",
-             nativeInfo.processName.c_str(), uid);
+             nativeInfo.processName.c_str(), appUid);
         return false;
     }
     return true;
-}
-
-int32_t IpcCallerAuth::GetCallingUid()
-{
-    return IPCSkeleton::GetCallingUid();
 }
 
 int32_t IpcCallerAuth::GetCallingAppUid()
@@ -95,7 +90,7 @@ int32_t IpcCallerAuth::GetCallingAppUid()
 
 bool IpcCallerAuth::IsCallingUid(int32_t expectedUid)
 {
-    return IPCSkeleton::GetCallingUid() == expectedUid;
+    return IPCSkeleton::GetCallingAppUid() == expectedUid;
 }
 
 bool IpcCallerAuth::IsCallingNativeToken()

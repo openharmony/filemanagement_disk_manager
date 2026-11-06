@@ -1015,9 +1015,9 @@ int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_
          diskId.c_str(), offset, sizeLimit);
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(cryptVolMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
-    if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
-        LOGE("BindBlockLoopDev: call uid %{public}d is invalid", uid);
+    int32_t appUid = IpcCallerAuth::GetCallingAppUid();
+    if (appUid != CRYPTO_USB_MGR_SERVICE_UID) {
+        LOGE("BindBlockLoopDev: call uid %{public}d is invalid", appUid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
@@ -1049,9 +1049,9 @@ int32_t DiskManagerProvider::CreateDmCryptVolume(const CryptParam &param, const 
     LOGI("CreateDmCryptVolume loopPath=%{public}s mapperName=%{public}s", loopPath.c_str(), mapperName.c_str());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(cryptVolMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
-    if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
-        LOGE("CreateDmCryptVolume: call uid %{public}d is invalid", uid);
+    int32_t appUid = IpcCallerAuth::GetCallingAppUid();
+    if (appUid != CRYPTO_USB_MGR_SERVICE_UID) {
+        LOGE("CreateDmCryptVolume: call uid %{public}d is invalid", appUid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
@@ -1083,9 +1083,9 @@ int32_t DiskManagerProvider::DestroyDmCryptVolume(const std::string &mapperName)
     LOGI("DestroyDmCryptVolume mapperName=%{public}s", mapperName.c_str());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(cryptVolMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
-    if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
-        LOGE("DestroyDmCryptVolume: call uid %{public}d is invalid", uid);
+    int32_t appUid = IpcCallerAuth::GetCallingAppUid();
+    if (appUid != CRYPTO_USB_MGR_SERVICE_UID) {
+        LOGE("DestroyDmCryptVolume: call uid %{public}d is invalid", appUid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
@@ -1113,9 +1113,9 @@ int32_t DiskManagerProvider::UnbindBlockLoopDev(const std::string &loopPath)
     LOGI("UnbindBlockLoopDev loopPath=%{public}s", loopPath.c_str());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(cryptVolMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
-    if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
-        LOGE("UnbindBlockLoopDev: call uid %{public}d is invalid", uid);
+    int32_t appUid = IpcCallerAuth::GetCallingAppUid();
+    if (appUid != CRYPTO_USB_MGR_SERVICE_UID) {
+        LOGE("UnbindBlockLoopDev: call uid %{public}d is invalid", appUid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
@@ -1144,9 +1144,9 @@ int32_t DiskManagerProvider::MountVolumeByPath(const std::string &diskId, const 
          param.GetReadOnly());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(cryptVolMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
-    if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
-        LOGE("MountVolumeByPath: call uid %{public}d is invalid", uid);
+    int32_t appUid = IpcCallerAuth::GetCallingAppUid();
+    if (appUid != CRYPTO_USB_MGR_SERVICE_UID) {
+        LOGE("MountVolumeByPath: call uid %{public}d is invalid", appUid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
@@ -1178,9 +1178,9 @@ int32_t DiskManagerProvider::UmountVolumeByPath(const std::string &diskId, const
     LOGI("UmountVolumeByPath diskId=%{public}s volPath=%{public}s", diskId.c_str(), volPath.c_str());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(cryptVolMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
-    if (uid != CRYPTO_USB_MGR_SERVICE_UID) {
-        LOGE("UmountVolumeByPath: call uid %{public}d is invalid", uid);
+    int32_t appUid = IpcCallerAuth::GetCallingAppUid();
+    if (appUid != CRYPTO_USB_MGR_SERVICE_UID) {
+        LOGE("UmountVolumeByPath: call uid %{public}d is invalid", appUid);
         return E_PERMISSION_DENIED;
     }
     if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_MOUNT_MANAGER)) {
