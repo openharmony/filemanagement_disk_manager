@@ -337,7 +337,7 @@ int32_t DiskManagerProvider::CheckAdminAuthorization()
     options.isInteractionAllowed = true;
     options.subjectInfo.emplace();
     options.subjectInfo->pid = IPCSkeleton::GetCallingPid();
-    options.subjectInfo->uid = IPCSkeleton::GetCallingUid();
+    options.subjectInfo->uid = IPCSkeleton::GetCallingAppUid();
     options.subjectInfo->customName = "";
     ErrCode acquireRet = AccountSA::AuthorizationClient::GetInstance().AcquireAuthorization(
         FORMAT_DATA_DISK_PRIVILEGE, options, callback);
