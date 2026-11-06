@@ -598,9 +598,6 @@ int32_t DiskManager::MountUsbFuseIfNeeded(const std::string &volumeId,
     }
 
     const std::string mountPath = std::string(EXTERNAL_MOUNT_ROOT) + fsUuid;
-    if (IsPathMounted(mountPath)) {
-        return DiskManagerErrNo::E_OK;
-    }
 
     int32_t fuseFd = -1;
     int32_t err = StorageDaemonAdapter::GetInstance().MountFuseDevice(mountPath, fuseFd);
