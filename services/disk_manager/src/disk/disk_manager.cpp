@@ -994,12 +994,17 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
             return dfx.Finish(E_NON_EXIST);
         }
-        if (it->second.GetState() != VolumeState::MOUNTED &&
-            it->second.GetState() != VolumeState::DAMAGED_MOUNTED &&
-            it->second.GetState() != VolumeState::ENCRYPTED_AND_LOCKED &&
-            it->second.GetState() != VolumeState::ENCRYPTED_AND_UNLOCKED) {
-            LOGE("Unmount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(),
-                 it->second.GetState());
+        const int32_t state = it->second.GetState();
+        if (state == VolumeState::DAMAGED) {
+            // DAMAGED 卷无挂载点，卸载幂等成功，避免阻塞上层分区前置卸载流程
+            LOGI("Unmount: damaged volume %{public}s has nothing to unmount, return ok", volumeId.c_str());
+            return dfx.Finish(DiskManagerErrNo::E_OK);
+        }
+        if (state != VolumeState::MOUNTED &&
+            state != VolumeState::DAMAGED_MOUNTED &&
+            state != VolumeState::ENCRYPTED_AND_LOCKED &&
+            state != VolumeState::ENCRYPTED_AND_UNLOCKED) {
+            LOGE("Unmount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(), state);
             return dfx.Finish(E_VOL_UMOUNT_ERR);
         }
         volExternal = it->second;
@@ -2418,7 +2423,9 @@ bool DiskManager::IsDiskNotReady(const std::string &diskId)
         if (GetVolumeById(item, external) != E_OK) {
             continue;
         }
-        if (external.GetState() != UNMOUNTED) {
+        // DAMAGED 卷无挂载点且无法回到 UNMOUNTED，不应拦截分区操作
+        const int32_t state = external.GetState();
+        if (state != UNMOUNTED && state != DAMAGED) {
             LOGE("volume status is not unmounted, id=%{public}s", item.c_str());
             return true;
         }
@@ -2597,7 +2604,9 @@ bool DiskManager::IsVolumeMounted(const std::string &diskId, int32_t partitionNu
         if (GetVolumeById(item, external) != E_OK) {
             continue;
         }
-        if (external.GetPartitionNum() == partitionNum && external.GetState() != UNMOUNTED) {
+        // DAMAGED 卷不算挂载中，允许 FormatPartition 修复损坏分区
+        if (external.GetPartitionNum() == partitionNum && external.GetState() != UNMOUNTED &&
+            external.GetState() != DAMAGED) {
             LOGE("volume status is not unmounted, id=%{public}s", item.c_str());
             return true;
         }
