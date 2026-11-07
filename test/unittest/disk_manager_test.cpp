@@ -2657,6 +2657,37 @@ HWTEST_F(DiskManagerTest, IsDiskNotReady_TestCase_003, TestSize.Level0)
     EXPECT_FALSE(dm.IsDiskNotReady("disk-51-3"));
 }
 
+/**
+ * @tc.name: IsDiskNotReady_TestCase_004
+ * @tc.desc: Disk with only DAMAGED volume is ready for partition operations (create/delete),
+ *           damaged volume never blocks partition flow.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsDiskNotReady_TestCase_004, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-51-4"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-51-4", "disk-51-4", "uuid-dnr-4", DAMAGED));
+    EXPECT_FALSE(dm.IsDiskNotReady("disk-51-4"));
+}
+
+/**
+ * @tc.name: IsDiskNotReady_TestCase_005
+ * @tc.desc: Disk with both DAMAGED and MOUNTED volumes is still not ready:
+ *           only DAMAGED is tolerated, a mounted volume keeps blocking partition ops.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsDiskNotReady_TestCase_005, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-51-5"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-51-5", "disk-51-5", "uuid-dnr-5", DAMAGED));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-51-6", "disk-51-5", "uuid-dnr-6", MOUNTED));
+    EXPECT_TRUE(dm.IsDiskNotReady("disk-51-5"));
+}
+
 HWTEST_F(DiskManagerTest, IsVolumeMounted_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
@@ -3273,6 +3304,44 @@ HWTEST_F(DiskManagerTest, IsVolumeMounted_TestCase_003, TestSize.Level0)
     dm.OnDiskCreated(MakeUsbDisk("disk-52-3"));
     dm.OnVolumeCreated(MakeUsbVolume("vol-52-3", "disk-52-3", "uuid-ivm-3", UNMOUNTED));
     EXPECT_FALSE(dm.IsVolumeMounted("disk-52-3", 999));
+}
+
+/**
+ * @tc.name: IsVolumeMounted_TestCase_004
+ * @tc.desc: DAMAGED volume of the target partition is not counted as mounted,
+ *           FormatPartition can format damaged partition to repair it.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeMounted_TestCase_004, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-52-4"));
+    VolumeExternal vol = MakeUsbVolume("vol-52-4", "disk-52-4", "uuid-ivm-4", DAMAGED);
+    vol.SetPartitionNum(1);
+    dm.OnVolumeCreated(vol);
+    EXPECT_FALSE(dm.IsVolumeMounted("disk-52-4", 1));
+}
+
+/**
+ * @tc.name: IsVolumeMounted_TestCase_005
+ * @tc.desc: Only the target partition's state matters: unmounted target is not mounted
+ *           even if another partition of the same disk is mounted.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsVolumeMounted_TestCase_005, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-52-5"));
+    VolumeExternal unmounted = MakeUsbVolume("vol-52-5", "disk-52-5", "uuid-ivm-5", UNMOUNTED);
+    unmounted.SetPartitionNum(1);
+    dm.OnVolumeCreated(unmounted);
+    VolumeExternal mounted = MakeUsbVolume("vol-52-6", "disk-52-5", "uuid-ivm-6", MOUNTED);
+    mounted.SetPartitionNum(2);
+    dm.OnVolumeCreated(mounted);
+    EXPECT_FALSE(dm.IsVolumeMounted("disk-52-5", 1));
+    EXPECT_TRUE(dm.IsVolumeMounted("disk-52-5", 2));
 }
 
 HWTEST_F(DiskManagerTest, PurgeVolumesForDisk_TestCase_003, TestSize.Level0)
@@ -4414,6 +4483,24 @@ HWTEST_F(DiskManagerTest, Unmount_TestCase_008, TestSize.Level0)
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, QueryUsbIsInUse(_, _)).WillOnce(DoAll(SetArgReferee<1>(true), Return(ERR_OK)));
     EXPECT_EQ(dm.Unmount("vol-27-7"), E_UMOUNT_BUSY);
+}
+
+/**
+ * @tc.name: Unmount_TestCase_009
+ * @tc.desc: Unmount volume in DAMAGED state returns E_OK directly (nothing mounted and
+ *           storage_daemon not touched), so pre-partition "unmount all volumes" flow
+ *           is not blocked by damaged volume.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Unmount_TestCase_009, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-27-8"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-27-8", "disk-27-8", "uuid-um-9", DAMAGED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).Times(0);
+    EXPECT_EQ(dm.Unmount("vol-27-8"), E_OK);
 }
 
 /**
