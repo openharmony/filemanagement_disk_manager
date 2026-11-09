@@ -1944,6 +1944,52 @@ HWTEST_F(UeventBootstrapTest, PartitionDiff_ChangeTypeCode_TestCase_004, TestSiz
 }
 
 /**
+ * @tc.name: PartitionDiff_MbrFsTypeChange_TestCase_005
+ * @tc.desc: MBR same partition formatted to another fs (type code 0x0c -> 0x83, e.g. exFAT->ext4)
+ *           triggers re-enumeration via kernel change uevent: partition identity is keyed by
+ *           partitionNumber + partitionType only (fsTypeRaw excluded), so no volume is
+ *           destroyed/created and no auto-mount happens after Format.
+ */
+HWTEST_F(UeventBootstrapTest, PartitionDiff_MbrFsTypeChange_TestCase_005, TestSize.Level0)
+{
+    UeventBootstrap::ResetPartitionSnapshotForTest();
+    UeventEnv env = MakeUenv("change", 8, 1, "/devices/sda", "disk", "block", "sda");
+    std::string firstDump = "DISK mbr\nPART 1 0x0c\n";
+    std::string secondDump = "DISK mbr\nPART 1 0x83\n";
+
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(firstDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), GetDiskById(_, _)).WillOnce(Return(E_OK)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(std::string("")),
+                        SetArgReferee<2>(std::string("")),
+                        SetArgReferee<3>(std::string("")),
+                        Return(E_OK)));
+    ExpectIsPartitioningFalse();
+    ASSERT_EQ(UeventBootstrap::DiscoverPartitionsAndVolumes(env, false), DiskManagerErrNo::E_OK);
+    testing::Mock::VerifyAndClearExpectations(&DiskManager::GetInstance());
+    testing::Mock::VerifyAndClearExpectations(&MockStorageDaemonAdapter::GetInstance());
+
+    // 格式化后重枚举：同分区号仅 MBR 类型字节变化，不允许判为分区增删
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), CreateBlockDeviceNode(_, _, _, _))
+        .WillOnce(Return(E_OK));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadPartitionTable(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(secondDump), SetArgReferee<2>(0), Return(E_OK)));
+    EXPECT_CALL(DiskManager::GetInstance(), ReplacePartitionsForDisk(_, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(DiskManager::GetInstance(), DestroyVolumeByDiskIdAndPartNum(_, _)).Times(0);
+    EXPECT_CALL(DiskManager::GetInstance(), OnVolumeCreated(_)).Times(0);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ReadMetadata(_, _, _, _)).Times(0);
+    ExpectIsPartitioningFalse(1);
+    int32_t ret = UeventBootstrap::DiscoverPartitionsAndVolumes(env, false);
+    EXPECT_EQ(ret, DiskManagerErrNo::E_OK);
+}
+
+/**
  * @tc.name: DiscoverPartitions_ReadPartitionTableFail_GetDiskSizeLarge_TestCase_001
  * @tc.desc: ReadPartitionTable fails, GetDiskSize returns size > 4MB: keep legacy behavior that only
  *           disk object is created (no volume, no mount, no ReadMetadata), and publish disk-level

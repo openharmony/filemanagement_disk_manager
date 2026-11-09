@@ -929,11 +929,15 @@ int32_t DiscoverCdromVolumes(const UeventEnv &env, const std::string &diskId, bo
     return DiskManagerErrNo::E_OK;
 }
 
+// 分区同一性只按分区号+分区表类型判等，不携带 MBR 类型字节（fsTypeRaw）：
+// 格式化会随目标文件系统更新 MBR 类型字节（FAT32=0x0b/0x0c、exFAT/NTFS=0x07、ext4=0x83），
+// 若参与判等，Format 后内核 change uevent 触发的重枚举会把"同一分区换文件系统"误判为
+// removed+added，导致卷被销毁重建并意外自动挂载；GPT 解析侧 fsTypeRaw 恒为空且类型 GUID
+// 不随文件系统变化，不受影响；跨表转换（MBR<->GPT）经 partitionType 仍判不等。
 inline bool PartitionKeyEqual(const PartitionRecord &a, const PartitionRecord &b)
 {
     return a.partitionNumber == b.partitionNumber &&
-           a.partitionType == b.partitionType &&
-           a.fsTypeRaw == b.fsTypeRaw;
+           a.partitionType == b.partitionType;
 }
 
 bool ContainsPartition(const std::vector<PartitionRecord> &list, const PartitionRecord &target)
