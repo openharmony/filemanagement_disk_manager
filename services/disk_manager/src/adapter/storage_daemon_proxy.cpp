@@ -23,6 +23,7 @@
 
 namespace OHOS {
 namespace StorageDaemon {
+constexpr int32_t MAX_FILE_LIST_COUNT = 3000;
 StorageDaemonProxy::StorageDaemonProxy(const sptr<IRemoteObject> &impl) : IRemoteProxy<IStorageDaemon>(impl) {}
 
 ErrCode StorageDaemonProxy::QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)
@@ -747,6 +748,55 @@ ErrCode StorageDaemonProxy::CreateDmLinear(const std::string &sourceDevPath,
     if (!reply.ReadUint64(dmDev)) {
         return ERR_INVALID_DATA;
     }
+    return ERR_OK;
+}
+
+ErrCode StorageDaemonProxy::GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
+                                            std::vector<std::string> &fileList, bool &hasMore)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    fileList.clear();
+    hasMore = false;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(srcDir)) || !data.WriteInt32(offset) || !data.WriteInt32(pageSize)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_BURN_FILE_LIST), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    int32_t count = reply.ReadInt32();
+    if (count < 0 || count > MAX_FILE_LIST_COUNT) {
+        LOGE("GetBurnFileList: invalid count=%{public}d", count);
+        return ERR_INVALID_DATA;
+    }
+    int32_t emptyCount = 0;
+    fileList.reserve(static_cast<size_t>(count));
+    for (int32_t i = 0; i < count; ++i) {
+        std::string path = Str16ToStr8(reply.ReadString16());
+        if (!path.empty()) {
+            fileList.push_back(std::move(path));
+        } else {
+            emptyCount++;
+        }
+    }
+    hasMore = reply.ReadBool();
+    if (emptyCount > 0) {
+        LOGW("GetBurnFileList: parcel truncated, count=%{public}d emptyCount=%{public}d valid=%{public}zu "
+             "hasMore=%{public}d offset=%{public}d pageSize=%{public}d",
+             count, emptyCount, fileList.size(), hasMore, offset, pageSize);
+    }
+    LOGI("GetBurnFileList: reply count=%{public}d valid=%{public}zu empty=%{public}d hasMore=%{public}d",
+         count, fileList.size(), emptyCount, hasMore);
     return ERR_OK;
 }
 } // namespace StorageDaemon

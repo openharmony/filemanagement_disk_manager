@@ -578,5 +578,22 @@ int32_t StorageDaemonAdapter::CreateDmLinear(const std::string &sourceDevPath,
          static_cast<int32_t>(ret), major(dmDevVal), minor(dmDevVal));
     return static_cast<int32_t>(ret);
 }
+
+int32_t StorageDaemonAdapter::GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
+                                              std::vector<std::string> &fileList, bool &hasMore)
+{
+    LOGI("GetBurnFileList enter, srcDir=%{public}s offset=%{public}d pageSize=%{public}d",
+         GetAnonyString(srcDir).c_str(), offset, pageSize);
+    hasMore = false;
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetBurnFileList exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const ErrCode ret = storageDaemon_->GetBurnFileList(srcDir, offset, pageSize, fileList, hasMore);
+    LOGI("GetBurnFileList exit ret=%{public}d count=%{public}zu hasMore=%{public}d",
+         static_cast<int32_t>(ret), fileList.size(), hasMore);
+    return static_cast<int32_t>(ret);
+}
 } // namespace DiskManager
 } // namespace OHOS
