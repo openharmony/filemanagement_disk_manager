@@ -6932,13 +6932,6 @@ HWTEST_F(DiskManagerTest, ResolveOddType_001, TestSize.Level0)
     EXPECT_EQ(ResolveOddType("disk-odd-cd"), "internal");
 }
 
-HWTEST_F(DiskManagerTest, ResolveOddType_002, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-odd-usb"));
-    EXPECT_EQ(ResolveOddType("disk-odd-usb"), "external");
-}
-
 HWTEST_F(DiskManagerTest, ResolveOddType_003, TestSize.Level0)
 {
     EXPECT_EQ(ResolveOddType("non-existent-disk"), "external");

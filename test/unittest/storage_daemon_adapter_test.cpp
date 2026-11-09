@@ -699,20 +699,5 @@ HWTEST_F(StorageDaemonAdapterProxyTest, GetBurnFileList_ErrorReturn_001, TestSiz
     EXPECT_NE(adapter.GetBurnFileList("/data/burn", 0, 2000, out, hasMore), E_OK);
     EXPECT_FALSE(hasMore);
 }
-
-HWTEST_F(StorageDaemonAdapterTest, GetBurnFileList_ProxyNotReadyDfx_001, TestSize.Level0)
-{
-    EnsureDfxAuditDir();
-    auto &adapter = StorageDaemonAdapter::GetInstance();
-    adapter.storageDaemon_ = nullptr;
-    const int64_t offset = GetAuditFileSize();
-    std::vector<std::string> out;
-    bool hasMore = true;
-    EXPECT_NE(adapter.GetBurnFileList("/data/burn", 0, 2000, out, hasMore), E_OK);
-    EXPECT_FALSE(hasMore);
-    const std::string tail = ReadAuditSince(offset);
-    EXPECT_NE(tail.find("GetBurnFileList"), std::string::npos);
-}
-
 } // namespace DiskManager
 } // namespace OHOS

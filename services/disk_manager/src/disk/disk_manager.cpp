@@ -80,6 +80,8 @@ constexpr int64_t BURN_EDM_CONTROL_EVENT_ID = 0x00F000008;
 constexpr const char *BURN_REPORT_VERSION = "1.0";
 // PrepareBurn 内部标记：EDM 策略禁止刻录；非错误码，仅 Burn 层据此上报审计事件后对外映射为 E_NOT_SUPPORT。
 constexpr int32_t EDM_BURN_DENIED_MARK = -2;
+constexpr int32_t LIST_FILES_PAGE_SIZE = 2000;
+constexpr int32_t LIST_FILES_MAX_PAGES = 50000;
 
 struct BurnReportParams {
     int32_t userId;
@@ -89,152 +91,6 @@ struct BurnReportParams {
     std::vector<std::string> burnFileList;
     int64_t eventId = BURN_REPORT_EVENT_ID;
 };
-
-std::string ParseBurnPathFromOptions(const std::string &burnOptions)
-{
-    std::istringstream ss(burnOptions);
-    std::string line;
-    while (std::getline(ss, line)) {
-        auto pos = line.find('=');
-        if (pos == std::string::npos) {
-            continue;
-        }
-        std::string key = line.substr(0, pos);
-        if (key == "burnPath") {
-            return line.substr(pos + 1);
-        }
-    }
-    return "";
-}
-
-bool ParseIsIsoImageFromOptions(const std::string &burnOptions)
-{
-    std::istringstream ss(burnOptions);
-    std::string line;
-    while (std::getline(ss, line)) {
-        auto pos = line.find('=');
-        if (pos == std::string::npos) {
-            continue;
-        }
-        std::string key = line.substr(0, pos);
-        if (key == "isIsoImage") {
-            std::string value = line.substr(pos + 1);
-            return value == "true" || value == "1";
-        }
-    }
-    return false;
-}
-
-constexpr int32_t LIST_FILES_PAGE_SIZE = 2000;
-constexpr int32_t LIST_FILES_MAX_PAGES = 100;
-
-void CollectFilesRecursive(const std::string &dirPath, std::vector<std::string> &fileList)
-{
-    int32_t offset = 0;
-    bool hasMore = true;
-    for (int32_t page = 0; page < LIST_FILES_MAX_PAGES && hasMore; ++page) {
-        std::vector<std::string> pageFiles;
-        int32_t ret = StorageDaemonAdapter::GetInstance().GetBurnFileList(
-            dirPath, offset, LIST_FILES_PAGE_SIZE, pageFiles, hasMore);
-        if (ret != E_OK) {
-            LOGW("CollectFilesRecursive: GetBurnFileList failed, dir=%{public}s ret=%{public}d page=%{public}d",
-                 GetAnonyString(dirPath).c_str(), ret, page);
-            break;
-        }
-        fileList.insert(fileList.end(), std::make_move_iterator(pageFiles.begin()),
-                        std::make_move_iterator(pageFiles.end()));
-        offset += static_cast<int32_t>(pageFiles.size());
-    }
-    LOGI("CollectFilesRecursive: total=%{public}zu hasMore=%{public}d", fileList.size(), hasMore);
-}
-
-std::string ResolveOddType(const std::string &diskId)
-{
-    Disk disk;
-    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
-        LOGW("ResolveOddType: disk not found, diskId=%{public}s", GetAnonyString(diskId).c_str());
-        return "external";
-    }
-    return disk.IsUsbBus() ? "external" : "internal";
-}
-
-constexpr size_t BURN_REPORT_CONTENT_MAX_SIZE = 9 * 1024;
-
-int32_t ReportBurnSecurityInfoOne(const BurnReportParams &params,
-                                  const std::vector<std::string> &batchFileList,
-                                  int32_t batchIndex, int32_t batchTotal, int64_t happenTime)
-{
-    json contentJson;
-    contentJson["userId"] = params.userId;
-    contentJson["appId"] = params.appId;
-    contentJson["burningType"] = params.fsType;
-    contentJson["happenTime"] = happenTime;
-    if (!params.oddType.empty()) {
-        contentJson["oddType"] = params.oddType;
-        contentJson["burnFileList"] = batchFileList;
-    }
-    LOGI("ReportBurnSecurityInfo: batch=%{public}d/%{public}d files=%{public}zu",
-         batchIndex, batchTotal, batchFileList.size());
-
-    std::string content = contentJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-    OHOS::Security::SecurityGuard::EventInfo eventInfo(params.eventId, BURN_REPORT_VERSION, content);
-    LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " batch=%{public}d/%{public}d "
-         "files=%{public}zu contentLen=%{public}zu",
-         params.eventId, batchIndex, batchTotal, batchFileList.size(), content.size());
-    auto wrappedInfo = std::make_shared<OHOS::Security::SecurityGuard::EventInfo>(eventInfo);
-    OHOS::Security::SecurityGuard::NativeDataCollectKit nativeDataCollectKit;
-    int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
-    LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d batch=%{public}d/%{public}d",
-         reportResult, batchIndex, batchTotal);
-    return reportResult;
-}
-
-std::vector<std::vector<std::string>> SplitFileListByContent(const std::vector<std::string> &fileList)
-{
-    const size_t fixedOverhead = 512;
-    std::vector<std::vector<std::string>> batches;
-    std::vector<std::string> batch;
-    size_t batchSize = fixedOverhead;
-    for (const auto &filePath : fileList) {
-        size_t entrySize = filePath.size() + 4;
-        if (batchSize + entrySize > BURN_REPORT_CONTENT_MAX_SIZE && !batch.empty()) {
-            batches.push_back(std::move(batch));
-            batch.clear();
-            batchSize = fixedOverhead;
-        }
-        batch.push_back(filePath);
-        batchSize += entrySize;
-    }
-    if (!batch.empty()) {
-        batches.push_back(std::move(batch));
-    }
-    if (batches.empty()) {
-        batches.emplace_back();
-    }
-    return batches;
-}
-
-int32_t ReportBurnSecurityInfo(const BurnReportParams &params)
-{
-    LOGI("ReportBurnSecurityInfo start, totalFiles=%{public}zu", params.burnFileList.size());
-    auto now = std::chrono::system_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
-    int64_t happenTime = ms.count();
-    if (params.oddType.empty()) {
-        return ReportBurnSecurityInfoOne(params, {}, 1, 1, happenTime);
-    }
-    auto batches = SplitFileListByContent(params.burnFileList);
-    int32_t batchTotal = static_cast<int32_t>(batches.size());
-    LOGI("ReportBurnSecurityInfo split into %{public}d batches", batchTotal);
-    int32_t lastResult = E_OK;
-    for (int32_t i = 0; i < batchTotal; ++i) {
-        int32_t ret = ReportBurnSecurityInfoOne(params, batches[i], i + 1, batchTotal, happenTime);
-        if (ret != E_OK) {
-            lastResult = ret;
-        }
-    }
-    return lastResult;
-}
 
 std::string NormalizeDiskBlockPath(const std::string &diskPath)
 {
@@ -497,6 +353,148 @@ std::string ResolveQueryUsbIsInUseMountPath(const VolumeExternal &volExternal, b
     return "";
 }
 } // namespace
+
+std::string ParseBurnPathFromOptions(const std::string &burnOptions)
+{
+    std::istringstream ss(burnOptions);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, pos);
+        if (key == "burnPath") {
+            return line.substr(pos + 1);
+        }
+    }
+    return "";
+}
+
+bool ParseIsIsoImageFromOptions(const std::string &burnOptions)
+{
+    std::istringstream ss(burnOptions);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, pos);
+        if (key == "isIsoImage") {
+            std::string value = line.substr(pos + 1);
+            return value == "true" || value == "1";
+        }
+    }
+    return false;
+}
+
+void CollectFilesRecursive(const std::string &dirPath, std::vector<std::string> &fileList)
+{
+    int32_t offset = 0;
+    bool hasMore = true;
+    for (int32_t page = 0; page < LIST_FILES_MAX_PAGES && hasMore; ++page) {
+        std::vector<std::string> pageFiles;
+        int32_t ret = StorageDaemonAdapter::GetInstance().GetBurnFileList(
+            dirPath, offset, LIST_FILES_PAGE_SIZE, pageFiles, hasMore);
+        if (ret != E_OK) {
+            LOGW("CollectFilesRecursive: GetBurnFileList failed, dir=%{public}s ret=%{public}d page=%{public}d",
+                 GetAnonyString(dirPath).c_str(), ret, page);
+            break;
+        }
+        fileList.insert(fileList.end(), std::make_move_iterator(pageFiles.begin()),
+                        std::make_move_iterator(pageFiles.end()));
+        offset += static_cast<int32_t>(pageFiles.size());
+    }
+    LOGI("CollectFilesRecursive: total=%{public}zu hasMore=%{public}d", fileList.size(), hasMore);
+}
+
+std::string ResolveOddType(const std::string &diskId)
+{
+    Disk disk;
+    if (DiskManager::GetInstance().GetDiskById(diskId, disk) != E_OK) {
+        LOGW("ResolveOddType: disk not found, diskId=%{public}s", GetAnonyString(diskId).c_str());
+        return "external";
+    }
+    return disk.IsUsbBus() ? "external" : "internal";
+}
+
+std::vector<std::vector<std::string>> SplitFileListByContent(const std::vector<std::string> &fileList)
+{
+    constexpr size_t maxContent = 9 * 1024;
+    const size_t fixedOverhead = 512;
+    std::vector<std::vector<std::string>> batches;
+    std::vector<std::string> batch;
+    size_t batchSize = fixedOverhead;
+    for (const auto &filePath : fileList) {
+        size_t entrySize = filePath.size() + 4;
+        if (batchSize + entrySize > maxContent && !batch.empty()) {
+            batches.push_back(std::move(batch));
+            batch.clear();
+            batchSize = fixedOverhead;
+        }
+        batch.push_back(filePath);
+        batchSize += entrySize;
+    }
+    if (!batch.empty()) {
+        batches.push_back(std::move(batch));
+    }
+    if (batches.empty()) {
+        batches.emplace_back();
+    }
+    return batches;
+}
+
+int32_t ReportBurnSecurityInfoOne(const BurnReportParams &params,
+                                  const std::vector<std::string> &batchFileList,
+                                  int32_t batchIndex, int32_t batchTotal, int64_t happenTime)
+{
+    json contentJson;
+    contentJson["userId"] = params.userId;
+    contentJson["appId"] = params.appId;
+    contentJson["burningType"] = params.fsType;
+    contentJson["happenTime"] = happenTime;
+    if (!params.oddType.empty()) {
+        contentJson["oddType"] = params.oddType;
+        contentJson["burnFileList"] = batchFileList;
+    }
+    LOGI("ReportBurnSecurityInfo: batch=%{public}d/%{public}d files=%{public}zu",
+         batchIndex, batchTotal, batchFileList.size());
+
+    std::string content = contentJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    OHOS::Security::SecurityGuard::EventInfo eventInfo(params.eventId, BURN_REPORT_VERSION, content);
+    LOGI("ReportBurnSecurityInfo: eventId=%{public}" PRId64 " batch=%{public}d/%{public}d "
+         "files=%{public}zu contentLen=%{public}zu",
+         params.eventId, batchIndex, batchTotal, batchFileList.size(), content.size());
+    auto wrappedInfo = std::make_shared<OHOS::Security::SecurityGuard::EventInfo>(eventInfo);
+    OHOS::Security::SecurityGuard::NativeDataCollectKit nativeDataCollectKit;
+    int32_t reportResult = nativeDataCollectKit.ReportSecurityInfo(wrappedInfo);
+    LOGI("ReportBurnSecurityInfo result: reportResult=%{public}d batch=%{public}d/%{public}d",
+         reportResult, batchIndex, batchTotal);
+    return reportResult;
+}
+
+int32_t ReportBurnSecurityInfo(const BurnReportParams &params)
+{
+    LOGI("ReportBurnSecurityInfo start, totalFiles=%{public}zu", params.burnFileList.size());
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    int64_t happenTime = ms.count();
+    if (params.oddType.empty()) {
+        return ReportBurnSecurityInfoOne(params, {}, 1, 1, happenTime);
+    }
+    auto batches = SplitFileListByContent(params.burnFileList);
+    int32_t batchTotal = static_cast<int32_t>(batches.size());
+    LOGI("ReportBurnSecurityInfo split into %{public}d batches", batchTotal);
+    int32_t lastResult = E_OK;
+    for (int32_t i = 0; i < batchTotal; ++i) {
+        int32_t ret = ReportBurnSecurityInfoOne(params, batches[i], i + 1, batchTotal, happenTime);
+        if (ret != E_OK) {
+            lastResult = ret;
+        }
+    }
+    return lastResult;
+}
 
 bool DiskManager::ShouldUseVoldataMountPathForDiskUnlocked(const std::string &diskId,
                                                            const std::string &fsNormLower) const

@@ -776,16 +776,27 @@ ErrCode StorageDaemonProxy::GetBurnFileList(const std::string &srcDir, int32_t o
     }
     int32_t count = reply.ReadInt32();
     if (count < 0 || count > MAX_FILE_LIST_COUNT) {
+        LOGE("GetBurnFileList: invalid count=%{public}d", count);
         return ERR_INVALID_DATA;
     }
+    int32_t emptyCount = 0;
     fileList.reserve(static_cast<size_t>(count));
     for (int32_t i = 0; i < count; ++i) {
         std::string path = Str16ToStr8(reply.ReadString16());
         if (!path.empty()) {
             fileList.push_back(std::move(path));
+        } else {
+            emptyCount++;
         }
     }
     hasMore = reply.ReadBool();
+    if (emptyCount > 0) {
+        LOGW("GetBurnFileList: parcel truncated, count=%{public}d emptyCount=%{public}d valid=%{public}zu "
+             "hasMore=%{public}d offset=%{public}d pageSize=%{public}d",
+             count, emptyCount, fileList.size(), hasMore, offset, pageSize);
+    }
+    LOGI("GetBurnFileList: reply count=%{public}d valid=%{public}zu empty=%{public}d hasMore=%{public}d",
+         count, fileList.size(), emptyCount, hasMore);
     return ERR_OK;
 }
 } // namespace StorageDaemon
