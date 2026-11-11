@@ -1,212 +1,145 @@
 # 磁盘管理服务指引
 
-## 项目定位
+## 业务定位
 
-本仓库对应 OpenHarmony `foundation/filemanagement/disk_manager`。优先按这些目录定位问题：
+OpenHarmony **外置存储磁盘管理服务**（SA 8640，`libdisk_manager_server.z.so`，无 `main()`，由 init 按 `disk_manager.cfg` 按需拉起）：管理可插拔存储设备从"插入"到"可用"的全生命周期——热插拔识别、卷状态机与系统广播、挂载/卸载/格式化/分区/刻录、文件系统检查修复、空闲自动卸载、EDM 企业管控。识别、状态与策略在本仓；挂载/格式化等重活经 IPC 转发 storage_daemon（storage_service 仓）执行，本仓不直接操作块设备。
 
-- `services/disk_manager/disk/`：核心业务（DiskManager 单例）、uevent 解析、分区表解析（sgdisk dump）、disk_config 匹配。
-- `services/disk_manager/ipc/`：SA 入口（DiskManagerProvider，SA ID 8640）、IPC stub、权限校验、空闲卸载（3 分钟）。
-- `services/disk_manager/adapter/`：storage_daemon IPC 适配（IStorageDaemon、proxy、死亡监听）；dlopen 加载 USB FUSE 与 PC 加密扩展。
-- `services/disk_manager/db/`：BlockInfoTable 内存缓存（不落盘）；VoldataUuidStore 持久化映射（原子写，最多 1000 条）。
-- `services/disk_manager/dfx/`：IpcDfxScope 埋点、DiskManagerRadar HiSysEvent、HiAudit 审计日志。
-- `services/disk_manager/notification/`：发布 `COMMON_EVENT_VOLUME_*` / `COMMON_EVENT_DISK_*` 公共事件。
-- `interfaces/innerkits/`：内部 C++ API（IDiskManager.idl、DiskManagerClient、Disk、VolumeCore、VolumeExternal、PartitionInfo）。
-- `interfaces/kits/js/`、`interfaces/kits/taihe/`：NAPI 与 Taihe/ANI 两套对外 JS API（`@ohos.file.volumeManager`）。
-- `common/include/`：错误码（disk_manager_errno.h、disk_manager_napi_errno.h）。
-- `utils/`：日志宏、IPC 鉴权（ipc_caller_auth）、字符串/UUID/路径校验。
-- `etc/disk_config`、`sa_profile/8640.json`、`services/disk_manager/disk_manager.cfg`、`test/`：配置、SA profile、init 配置、测试。
+**支持的硬件**（`disk.h` DiskType 枚举，按数值 1~6 顺序；uevent 经 `disk_config` 白名单匹配）：
 
-注：进程无 `main()`，由 init 按 `disk_manager.cfg` 拉起 `sa_main` 加载 SA 库；OnStart 依次执行 `UeventBootstrap::Init` → `BlockInfoTable::ReloadFromDaemon` → `VoldataUuidStore::Init` → `SystemAbility::Publish` → `StartIdleMonitor`。
+| # | 硬件 | 说明 |
+|---|------|------|
+| 1 | SD 卡（`SD_FLAG`） | 机器自带 SD 卡槽直连（裸卡槽）场景；经读卡器从 USB/Type-C 等外置接口接入的 SD 卡属 `USB_FLAG`，不属本类型 |
+| 2 | U 盘（`USB_FLAG`） | 主流场景；PC 形态含加密 U 盘（dm-crypt + loop 设备） |
+| 3 | 光驱（`CD_FLAG`） | CD/DVD/BD：挂载、刻录、擦除、弹出 |
+| 4 | 内置数据盘 SSD（`DATA_DISK_SSD`） | 主板槽位直连的固态硬盘；USB/Type-C 外接同介质盘属 `USB_FLAG`。仅 PC/2in1/平板（`PC_MANAGER` 宏） |
+| 5 | 内置数据盘 HDD（`DATA_DISK_HDD`） | 主板槽位直连的机械硬盘；USB/Type-C 外接同介质盘属 `USB_FLAG`。仅 PC/2in1/平板（`PC_MANAGER` 宏） |
+| 6 | 行车记录仪盘（`DVR_USB`） | 仅车机（`CDC_STORAGE` 宏） |
 
-### 按任务类型定位代码
+**类型判定看接入总线，不看物理介质**：凡经 USB/Type-C 等外置接口桥接接入的设备（读卡器中的 SD 卡、外接 SSD/HDD 移动硬盘）均呈现为 `USB_FLAG`。
 
-| 任务类型 | 首选目录 | 关键文件 |
-|---------|---------|---------|
-| 卷挂载/卸载/格式化/刻录、uevent 解析、分区表解析、disk_config | `services/disk_manager/disk/` | `disk_manager.h/cpp`、`uevent_bootstrap.h/cpp`、`uevent_env_parser.h/cpp`、`partition_table_parser.h/cpp`、`disk_config.h/cpp` |
-| IPC 权限校验/SA 生命周期/空闲卸载 | `services/disk_manager/ipc/` | `disk_manager_provider.h/cpp` |
-| storage_daemon 适配/USB FUSE/PC 加密 | `services/disk_manager/adapter/` | `storage_daemon_adapter.h/cpp`、`storage_daemon_proxy.h/cpp`、`istorage_daemon.h`、`usb_fuse_adapter.h/cpp`、`pc_encryption_adapter.h/cpp` |
-| voldata UUID 持久化/BlockInfo 缓存 | `services/disk_manager/db/` | `voldata_uuid_store.h/cpp`、`block_info_table.h/cpp` |
-| DFX 埋点/HiSysEvent/审计日志 | `services/disk_manager/dfx/` | `disk_manager_dfx.h`、`disk_manager_dfx_types.h/cpp`、`disk_manager_radar.h/cpp`、`hi_audit.h/cpp` |
-| 公共事件发布 | `services/disk_manager/notification/` | `common_event_publisher.h/cpp` |
-| Native API/IDL/客户端代理 | `interfaces/innerkits/` | `IDiskManager.idl`、`disk_manager_client.h/cpp`、`disk.h`、`volume_core.h`、`partition_types.h` |
-| NAPI 绑定 | `interfaces/kits/js/` | `volumemanager_n_exporter.cpp`、`volumemanager_napi.cpp` |
-| Taihe/ANI 接口 | `interfaces/kits/taihe/` | `ohos.file.volumeManager.taihe`、`ohos.file.volumeManager.impl.cpp` |
-| IPC 鉴权/工具函数 | `utils/` | `ipc_caller_auth.h/cpp`、`disk_manager_utils.h/cpp` |
+MTP/PTP 设备不在 DiskType 枚举内，不走 uevent：存储管理部件执行挂载/卸载逻辑（mtpfs/gphotofs）后经 innerkits `NotifyMtpMounted`/`NotifyMtpUnmounted` 通知本仓管理状态；应用卸载复用 volumeManager 的 unmount 接口能力。
 
-### 嵌套指引
+**对外提供三层出口**：
 
-本仓库无目录级别的嵌套指引。稳定背景知识放在 `docs/knowledge/`，按"知识索引"节的场景表读取对应文件。
+- **JS API** `@ohos.file.volumeManager`（NAPI + Taihe）：应用查询磁盘/卷、主动挂载/卸载/格式化
+- **C++ innerkits** `DiskManagerClient`：storage_daemon 转发 uevent、EDM 管控应用重挂载、系统应用
+- **公共事件** `VOLUME_*`/`DISK_*`/`DISK_UNMOUNTABLE` 广播：消费方为文件管理器、系统设置、大桌面等
 
-## 构建和验证
+**对外兼容性（必须遵守）**：凡对外有影响的代码修改，必须先与用户评估确认后再动手，不得自行实施：
 
-构建命令从 OpenHarmony 源码根目录执行，不在本子目录执行。
+- **JS API 对外错误码的变化属非兼容变更，严格禁止**（三方应用按错误码写死分支）。
+- C++ innerkits 错误码：确认不影响 JS API 映射时可以修改。
+- 公共事件的参数（字段、action、reasonCode 等）修改须与用户确认，避免非兼容变更。
+
+**动手前**：写代码先过 Clean Code 硬规则（门禁 codecheck 必查，违反即返工）；改模块按文末知识索引先读对应文档。
+
+## 目录地图
+
+| 目录 | 职责 |
+|------|------|
+| `services/disk_manager/disk/` | 核心业务：DiskManager 单例、uevent 解析、分区表解析、挂载策略、异常卷标记、sysfs 直读 |
+| `services/disk_manager/ipc/` | SA 入口 DiskManagerProvider、IPC 鉴权、空闲卸载（3 分钟） |
+| `services/disk_manager/adapter/` | storage_daemon IPC 适配、加密 U 盘、dlopen 扩展（USB FUSE/PC 加密）、EDM 管控 |
+| `services/disk_manager/db/` | BlockInfoTable 内存缓存、VoldataUuidStore 持久化映射 |
+| `services/disk_manager/dfx/` | IpcDfxScope 埋点、HiSysEvent、HiAudit |
+| `services/disk_manager/notification/` | 公共事件发布（VOLUME_*/DISK_*/DISK_UNMOUNTABLE） |
+| `interfaces/innerkits/` | C++ 内部 API：IDiskManager.idl、DiskManagerClient、各 Parcelable |
+| `interfaces/kits/js/`、`interfaces/kits/taihe/` | NAPI 与 Taihe 对外 API（`@ohos.file.volumeManager`） |
+| `common/include/`、`utils/` | 错误码、日志宏、IPC 鉴权、校验工具 |
+
+OnStart 序列：`UeventBootstrap::Init` → `BlockInfoTable::ReloadFromDaemon` → `VoldataUuidStore::Init` → `Publish` → `StartIdleMonitor`。
+
+## Clean Code 硬规则（门禁 codecheck 必查）
+
+### 行数与格式
+
+| 项 | 限制 |
+|----|------|
+| **函数** | **≤ 50 有效行**（不含空行和注释） |
+| 文件 | ≤ 2000 行 |
+| 单行 | ≤ 120 字符，按 `.clang-format` 断行 |
+
+**行数口径**：新写/改动的代码遵守；**存量超限的函数与文件不要求单独修改**；评估后认为拆分会影响可读性的，可以不拆，走报备处理——禁止为过检而对存量代码大规模重构。
+
+需要拆分时的本仓惯用法：抽小辅助函数、持锁变体加 `Locked`/`Unlocked` 后缀、文件内辅助函数放匿名 namespace。
+
+`.clang-format` 要点（提交前格式化）：4 空格缩进禁 Tab、K&R 大括号、`PointerAlignment: Right`、`NamespaceIndentation: None`、`BinPackParameters: false`（形参要么同行要么每行一个）。
+
+### 命名
+
+| 类型 | 规则 | 示例 |
+|------|------|------|
+| 类/函数 | 大驼峰 | `DiskManager`、`Mount` |
+| 变量/参数 | 小驼峰 | `volumeId`、`fsUuid` |
+| 成员变量 | 下划线结尾 | `diskMap_`、`partitionLock_` |
+| 常量/宏 | UPPER_SNAKE，`constexpr` 优先 | `IDLE_CHECK_INTERVAL_MS` |
+| 新枚举 | `enum class`（遗留 `DiskManagerErrNo` 是 unscoped，勿模仿） | `VolumeOpType` |
+| 文件名 | 全小写下划线 | `disk_manager.cpp` |
+
+**禁止魔法数字/魔法字符串**：数字、超时、路径、长度上限一律 `constexpr` 具名常量（本仓惯例见 `disk_manager_provider.cpp` 顶部常量区）。
+
+### 写新代码必套的模式
+
+1. **版权头**：新文件必须带 Apache License 头（拷贝任意现有文件头）。
+2. **业务入口埋点**：RAII `IpcDfxScope` 构造上报 START，**所有出口必须 `return dfx.Finish(<具体errno>);`**——裸 return 会被析构兜底成 `DISK_MGR_ERR`，掩盖真实错误码。
+3. **错误码**：禁止 `DISK_MGR_ERR`/裸 `-1` 对外，按下表选具体码：
+
+| 场景 | 用 |
+|------|-----|
+| id 不存在 | `E_NON_EXIST` |
+| 状态不允许 | `E_VOL_STATE`（`E_BUSY` 用于格式化重入） |
+| 参数无效 | `E_PARAMS_INVALID` |
+| 不支持 | `E_NOT_SUPPORT` |
+| 权限不足 | `E_PERMISSION_DENIED` / `E_SYS_APP_PERMISSION_DENIED` |
+| 挂/卸载失败 | `E_VOL_MOUNT_ERR` / `E_VOL_UMOUNT_ERR` / `E_UMOUNT_BUSY`（数据盘被占用） |
+| 分区/刻录/加密U盘 | 1739-1751 / 1801-1806 / 1901-1906 段对应码，全表见 `service-and-dfx.md` |
+
+4. **日志**：只用 `LOGI/LOGW/LOGE/LOGD` 宏（勿直接 `HILOG_IMPL`）；uuid/path/sn 等敏感参数必须 `GetAnonyString(...)` 脱敏后以 `%{public}s` 输出（隐私门禁会扫）。**边界日志规则**（外部调用进来的接口、调用外部的接口均适用，格式参考 `storage_daemon_adapter.cpp`、`uevent_bootstrap.cpp`）：
+   - 入口日志：`<接口名> enter`，外部调用进来的加 `external=<来源接口>`，后接全部入参；
+   - 出口日志：`<接口名> exit ret=<结果>`，失败路径用 LOGE 带错误码。
+5. **单例**：`GetInstance()` 静态局部变量模式 + `NoCopyable`，参考 `StorageDaemonAdapter`。
+6. **报文长度**：uevent 4096 / opDiag 8192 / Parcel 字符串 4096 / 分区数 256，超限在入口拒绝。
+
+### 平台特性宏（disk_manager.gni，改代码先看编译条件）
+
+- `PC_MANAGER`（pc/2in1/tablet）：加密 U 盘 IPC 15-20、内置盘非 f2fs 直挂
+- `CDC_STORAGE`（car）：DVR_USB 事件仅发 user 0
+- `HMDFS_FILE_MANAGER`：DFS API（方法数以 `.idl` 为准），宿主在本仓、逻辑归 dfs_service，**勿大改**
+- `EDM_ADAPTER_ENABLE`：edm_adapter.cpp 编入
+
+## 构建与验证
+
+在源码根目录（`code/`）执行，编译组件按场景调整：
 
 ```sh
-./build.sh --product-name rk3568 --build-target disk_manager_server --ccache
-./build.sh --product-name rk3568 --build-target disk_manager_innerkits --ccache
-prebuilts/build-tools/linux-x86/bin/ninja -C out/rk3568 disk_manager_server_test
+./build.sh --product-name rk3568 --ccache --build-target disk_manager disk_manager_test --target-cpu arm --gn-args allow_sanitize_debug=true
 ```
 
-单元测试 23 个目标、Fuzz 测试 9 个目标，详见 `docs/knowledge/testing-guide.md`。提交使用 `git commit -s`，保留 `Co-Authored-By: Agent`，变更需通过单元测试和 fuzz 测试。
+UT 与 Fuzz 目标清单见 `testing-guide.md`（以 `test/unittest/BUILD.gn`、`test/fuzztest/BUILD.gn` 聚合 group 为准）。提交 `git commit -s`，附 `Co-Authored-By: Agent`。板侧场景（真实磁盘/uevent/刻录/EDM）需证据；无法验证时说明原因并给人工步骤。
 
-### 完成标准
+## 红线约束（详见 constraints-and-traps.md）
 
-1. **代码改动已提交** - `git commit -s`，多代理协作添加 `Co-Authored-By: Agent`
-2. **本地构建通过** - 执行上述构建命令
-3. **相关测试通过** - 对应单元测试与 fuzz 测试
-4. **板侧验证（如适用）** - 涉及真实磁盘/uevent/PC 加密/刻录/分区的改动需提供证据
-5. **文档更新（如适用）** - 公共 API（NAPI/Taihe/IDL）修改需更新注释和文档
+- 锁顺序 `diskMapMutex_` → `volumeMapMutex_`，反序必死锁；长等待（授权弹窗）不得持锁。
+- 卷状态机不可跳步；`COMMON_EVENT_DISK_UNMOUNTABLE` 的 reasonCode（1-4）跨版本稳定勿改。
+- IDL/Parcel/IPC code/`IStorageDaemonIpcCode` 数值是跨仓兼容契约，禁止擅改；生成代码只改 `.idl`/`.taihe` 源。
+- 不得删除 adapter enter/exit 日志（唯一耗时边界）；uevent 发现串行链路禁插额外 IPC。
+- `DestroyALLVolume` 必须先 `ForceUnmount` 再 `DestroyBlockDeviceNode`（残留挂载层递归删会穿透源数据）。
+- IPC 鉴权五类写死：daemon 回调 uid=0、系统应用+权限、`GetExternal*` 仅权限、加密 U 盘 uid 7060、storage_manager uid 1090。
+- 对外兼容：JS API 错误码变化（非兼容变更）严格禁止；innerkits 错误码、公共事件参数修改须先与用户评估确认（详见对外兼容性节与 constraints-and-traps.md）。
+- 改业务代码必须评估知识库是否需同步更新；需要则与业务代码同一 commit 上库（见知识索引节）。
 
-无法运行验证时，明确说明原因并列出推荐步骤供人工执行。完成报告含：改动摘要、验证结果、风险评估、未完成事项。
+## 知识索引（按场景先读再改，改完必须回写）
 
-## 错误码与代码规范
+**知识库同步（必须遵守）**：修改业务代码时，必须评估本次改动是否使知识库文档过时（流程、契约、错误码、宏、测试、陷阱等记录与代码不一致）；需要更新的，知识库修改与业务代码**同一个 commit 一并上库**，禁止"文档以后补"。
 
-### 命名规则
+| 改什么 | 读什么 |
+|--------|--------|
+| 挂载/卸载/挂载策略/uevent/异常卷/分区 | `docs/knowledge/disk-volume-lifecycle.md` |
+| storage_daemon 对接/加密 U 盘/性能边界 | `docs/knowledge/storage-daemon-adapter.md` |
+| SA 生命周期/鉴权/EDM/格式化授权/DFX/错误码全表 | `docs/knowledge/service-and-dfx.md` |
+| voldata 持久化/BlockInfo 缓存 | `docs/knowledge/data-persistence.md` |
+| 全部陷阱与跨仓契约（EDM 命名勿"修复"等） | `docs/knowledge/constraints-and-traps.md` |
+| 测试与 Mock 注入 | `docs/knowledge/testing-guide.md` |
 
-| 类型 | 规则 | 注意 |
-|------|------|------|
-| 类名/函数名 | 大驼峰 | `DiskManager`、`Mount`；`Locked`/`Unlocked` 后缀表示"调用方已持锁" |
-| 变量名 | 小驼峰 | `volumeId`、`diskId`、`fsUuid` |
-| 成员变量 | 下划线结尾 | `diskMap_`、`volumeMap_`、`partitionLock_` |
-| 常量 | `constexpr` + UPPER_SNAKE | `DISK_MANAGER_SYS_CAP_TAG`、`UEVENT_RAW_MAX_LEN`、`IDLE_CHECK_INTERVAL_MS` |
-| 枚举 | 遗留用 `enum : int32_t`，新增用 `enum class : int32_t` | `DiskManagerErrNo`（unscoped）；`VolumeOpType`、`DiskManagerNativeErr`（scoped） |
-| 命名空间/文件名 | `OHOS::DiskManager` / 全小写下划线 | `napi_errno.h` 例外：在 `OHOS` 暴露裸名 |
-
-### 错误码选用
-
-禁止 `DISK_MGR_ERR`（= -1，仅用于 IpcDfxScope 析构兜底），必须用具体类别码：
-
-| 场景 | 必须使用 |
-|------|----------|
-| volumeId/diskId 不存在 | `E_NON_EXIST` |
-| volume 状态不允许 | `E_VOL_STATE` |
-| 参数无效 | `E_PARAMS_INVALID` |
-| 不支持操作 | `E_NOT_SUPPORT` |
-| 卷挂载/卸载失败 | `E_VOL_MOUNT_ERR`、`E_VOL_UMOUNT_ERR`、`E_UMOUNT_BUSY` |
-| 权限不足 | `E_PERMISSION_DENIED`、`E_SYS_APP_PERMISSION_DENIED` |
-| SA 未就绪 | `E_SA_IS_NULLPTR`、`E_SERVICE_IS_NULLPTR`、`E_REMOTE_IS_NULLPTR` |
-| 磁盘不存在/已存在 | `E_DISK_NOT_FOUND`、`E_DISK_HAS_EXIST` |
-| uevent/分区/刻录失败 | `E_UEVENT_PARSE_FAILED`、`E_GET_PARTITION_ERROR`、`E_EMPTY_DISC`、`E_BURN_FAILED` 等 |
-
-adapter 返回 `ERR_OK`/非零在业务层映射：`Mount`/`Unmount` 透传；`Erase`→`E_ERASE_FAILED`、`Eject`→`E_EJECT_FAILED`、`Burn`→`E_BURN_FAILED` 等。
-
-### 错误码范围
-
-`DISK_MANAGER_SYS_CAP_TAG = 13610000`（SA 能力标签，与 storage_service 的 13600000 错开）。实际枚举值仍以 `13600000` 为基址（与 storage_service 对齐），`13610000` 为预留标签待固化。
-
-| 范围 | 类别 |
-|------|------|
-| 0 / -1 | `E_OK` / `DISK_MGR_ERR`（禁对外） |
-| 10-13 | SA/IPC 软引用失败 |
-| 20-26 | 磁盘/卷内部 |
-| 13600001-13600025 | 通用错误（权限/参数/不存在，与 storage 对齐） |
-| 13601204 | statvfs |
-| 13601701-13601704 | 卷状态/挂载/卸载（`E_VOL_STATE`、`E_VOL_MOUNT_ERR` 等，后三者定义于 `napi_errno.h`） |
-| 13601705 / 13601715 | 无子分区 / 其他挂载 |
-| 13601739-13601751 | 分区操作（创建/删除/格式化/超时/查询） |
-| 13601801-13601805 | 光盘/刻录 |
-
-NAPI/JS 层错误码在 `common/include/disk_manager_napi_errno.h`（基址 `13600000`），含 `DiskManagerNativeErr`、`DiskManagerJsErr` 两个 enum class 及 `E_PERMISSION=201` 等 JS 错误码。
-
-### 日志必打节点
-
-日志宏 `LOGI/LOGW/LOGE/LOGD`（`utils/include/disk_manager_hilog.h`），domain `0xD00430F`、tag `"DiskManager"`。敏感参数（uuid/path）必须经 `GetAnonyString` 脱敏后用 `%{public}s` 输出。
-
-| 流程 | 必打节点 | 级别 |
-|------|----------|------|
-| SA 生命周期 | begin、各阶段 ret、end | LOGI/LOGE |
-| IPC 客户端/Provider | 入口 LOGI(参数) + 出口 LOGI(err) | LOGI/LOGE |
-| 业务层入口 | RAII `IpcDfxScope` 构造上报 START；`dfx.Finish(具体 errno)` | LOGI/LOGE |
-| 磁盘/卷事件 | 设备信息、正常/异常移除 | LOGI/LOGW |
-| storage_daemon 死亡/uevent 失败 | OnRemoteDied 重置 proxy / `E_UEVENT_PARSE_FAILED` 上报 | LOGW/LOGE |
-
-注意：业务层提前 return 必须用 `return dfx.Finish(<具体 errno>);`，析构兜底会上报 `DISK_MGR_ERR` 掩盖真实错误码。
-
-### 编码约束
-
-| 约束项 | 限制 |
-|--------|------|
-| 单个函数/文件 | ≤ 50 行 / ≤ 2000 行 |
-| `.clang-format` | ColumnLimit=120、IndentWidth=4、UseTab=Never、PointerAlignment=Right、NamespaceIndentation=None |
-| Unmarshalling | 字符串上限 `PARCEL_STRING_MAX_LEN = 4096`；分区数上限 `PARTITION_COUNT_MAX = 256` |
-
-## 知识索引
-
-稳定背景知识放在 `docs/knowledge/`。改动前按场景读取对应文件：
-
-| 场景 | 先读文档 |
-|------|---------|
-| 卷状态转换、uevent 热插拔、公共事件时序、锁模型、分区表解析、分区操作、disk_config | `docs/knowledge/disk-volume-lifecycle.md` |
-| IStorageDaemon IPC 契约、纯透传层、重操作清单、框架层/工具层性能边界、自证清白、死亡监听、dlopen 扩展 | `docs/knowledge/storage-daemon-adapter.md` |
-| SA 生命周期、空闲卸载、IPC 鉴权、IpcDfxScope 埋点、Radar HiSysEvent、HiAudit 审计 | `docs/knowledge/service-and-dfx.md` |
-| VoldataUuidStore 持久化映射、BlockInfoTable 内存缓存 | `docs/knowledge/data-persistence.md` |
-| 架构约束汇总与陷阱（锁/状态机/事件时序/分区同步/dlopen/高危删除） | `docs/knowledge/constraints-and-traps.md` |
-| 测试覆盖、Mock 策略、Fuzz 目标 | `docs/knowledge/testing-guide.md` |
-
-### 开始编辑前
-
-1. 确认任务类别（参考"按任务类型定位代码"表）
-2. 根据上表确定需要阅读的文档
-3. 根据"项目约束"确认不违反任何约束
-4. 声明："我将修改 X，已阅读 Y 文档，遵循 Z 约束"
-
-## 项目约束
-
-### 性能约束
-
-disk_manager 不 fork 工具进程，所有重操作经 `StorageDaemonAdapter` IPC 转发给 storage_daemon 执行内核工具。定位性能耗时须区分**框架层开销**与**工具执行耗时**，详见 `docs/knowledge/storage-daemon-adapter.md`。
-
-- **不得删除 adapter 的 enter/exit 日志**——框架层与工具层的唯一时间边界。
-- **uevent 发现路径串行同步**：`DiscoverPartitionsAndVolumes` 内 `ReadPartitionTable` + 每分区 `ReadMetadata` + `Mount` 串行调用，禁止插入额外 IPC。
-- **BlockInfoTable 全量拉取限频**：`ReloadFromDaemon` 仅在 `OnStart` 调一次。
-- **DFX 上报不含耗时**：如需耗时打点须在 adapter 前后埋点，不可侵入 `IpcDfxScope` 析构。
-
-### 架构约束
-
-- **锁顺序**：`diskMapMutex_` → `volumeMapMutex_`（先 disk 后 volume）。
-- **卷状态**：`MOUNTED → EJECTING → REMOVED`，不可跳转。
-- **公共事件时序**：详见 `docs/knowledge/disk-volume-lifecycle.md`。
-- **分区同步**：`Partition` 后须 `partitionLock_` + `partitionCv_` 等待 `NotifyPartitionDone`。
-- **空闲卸载**：`HasManagedResources()==false` 且 `pendingStorageDaemonCallbackCount_==0`。
-- **VoldataUuidStore 原子写**：`.tmp` → `fsync` → `rename`，失败回滚内存 map。
-- **dlopen 生命周期**：失败静默处理，不得在 handler 未就绪时调用 dlsym。
-
-详细约束与陷阱见 `docs/knowledge/constraints-and-traps.md`。
-
-### 编码约定
-
-- C++ 改动优先复用 `LOGI/LOGE/LOGW/LOGD` 宏，不要直接调用 `HILOG_IMPL`。
-- 业务层入口必须使用 RAII `IpcDfxScope` 埋点，必须 `return dfx.Finish(<具体 errno>)`。
-- 错误码必须用具体类别码，禁止 `DISK_MGR_ERR` 对外返回。
-- 敏感参数必须经 `GetAnonyString` 脱敏后用 `%{public}s` 输出。
-- uevent 报文长度 `UEVENT_RAW_MAX_LEN = 4096`、`OP_DIAG_RAW_MAX_LEN = 8192`，超长拒绝。
-
-### 公共 API 约束
-
-**禁止**：修改已发布 NAPI/Taihe API 签名/错误码/行为语义；删除或重命名已有公共 API。
-
-**修改前确认**：新增公共 API 是否需要 DFX/权限检查；修改 IDL 接口是否影响跨模块兼容性。
-
-### 安全与权限边界
-
-**禁止**：绕过 IPC 鉴权（storage_daemon 回调校验 `VerifyNativeCallerMatches("storage_daemon", uid=0)`；其他方法校验 `IsCallingSystemApp()` + 权限或 `IsStorageManagerCaller`(uid=1090)）；未验证使用跨进程 fd；敏感信息未脱敏入日志。
-
-**修改前确认**：涉及 `AccessTokenKit` 改动；跨用户数据访问；卷加密状态（`PcEncryptionAdapter`）改动。
-
-### 协议与数据格式兼容性
-
-**禁止**：修改 IDL IPC 接口签名（`IDiskManager.idl`，27 个 IPC code）/ Parcel 序列化顺序 / Parcelable 布局（`Disk`/`VolumeCore`/`VolumeExternal`/`PartitionInfo` 等的 `Marshalling`/`Unmarshalling`）/ 已有 IPC code 语义。
-
-**修改前确认**：新增 IPC 接口的跨版本兼容性；uevent 解析格式变更影响 storage_daemon 上报；`voldata_uuid_mapping.json` 格式变更影响存量映射。
-
-### 生成代码边界
-
-**禁止**：直接修改 IDL 生成的 stub/proxy（`idl_gen_interface("disk_manager_interface_native")`）；手动编辑 Taihe 生成代码（`taihe_shared_library` + `generate_static_abc`）。
-
-**正确做法**：修改 `.idl` / `.taihe` 定义文件 → 重新运行编译器生成。
-
-### 设备操作约束
-
-- 不执行破坏性操作（对已挂载卷直接格式化、对在线磁盘强制分区）。
-- 真实设备验证（磁盘热插拔/uevent/PC 加密/刻录）须提供板侧证据。
-- **高危删除**：不可逆删除前必须确认目标真实后端——挂载类间接层使真实后端≠表面，残留挂载层递归删会穿透到源数据。`DestroyALLVolume` 须先 `ForceUnmount` 再 `DestroyBlockDeviceNode`。
+动手前声明："我将修改 X，已读 Y 文档，遵循 Z 约束。"
+动手后声明："本次改动需要/不需要同步知识库文档 W"——需要时，文档更新与代码同 commit 上库。

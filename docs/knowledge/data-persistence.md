@@ -4,7 +4,7 @@
 
 ## VoldataUuidStore
 
-`VoldataUuidStore`（`voldata_uuid_store.h`）是单例 `final`，维护卷 fsUuid 与 `/mnt/data/voldata/dataX` 挂载路径的持久化映射。
+`VoldataUuidStore` 是单例 `final`，维护卷 fsUuid 与 `/mnt/data/voldata/dataX` 挂载路径的持久化映射。**仅内置数据盘（DATA_DISK_SSD/HDD）+ f2fs 卷使用**（`ShouldUseVoldataMountPathForDiskUnlocked` 判定）。
 
 | 项 | 值 |
 |----|-----|
@@ -24,7 +24,7 @@
 |------|------|
 | 新 fsUuid | `FindMinimumFreeSlotLocked` 顺序扫描 1..1000 分配最小空闲 slot |
 | 满 1000 | `EvictSlotOneIfFullLocked` 优先淘汰 `slotIndex == 1` 的条目 |
-| 格式化后 fsUuid 变化 | `ReplaceFsUuid` 保留原 dataX 槽位，仅更新映射键 |
+| 格式化后 fsUuid 变化 | `ReplaceFsUuid` 保留原 dataX 槽位，仅更新映射键（`UpdateVoldataMappingAfterFormat`：仅 voldata 场景保留；非 voldata 场景 `RemoveByFsUuid` 删除） |
 | 校验 | `ParseVoldataSlotFromMountPath` 校验前缀 + 纯数字 1..1000 |
 
 ### 同步原语
@@ -46,7 +46,7 @@
 
 ## BlockInfoTable
 
-`BlockInfoTable`（`block_info_table.h`）是单例，从 storage_daemon 拉取 `BlockInfo` 按 diskId 缓存在内存，**不落盘**。
+`BlockInfoTable` 是单例，从 storage_daemon 拉取 `BlockInfo` 按 diskId 缓存在内存，**不落盘**。
 
 | 项 | 值 |
 |----|-----|
