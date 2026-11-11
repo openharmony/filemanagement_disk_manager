@@ -1592,6 +1592,24 @@ HWTEST_F(DiskManagerTest, PurgeVolumesForDisk_TestCase_002, TestSize.Level0)
 }
 
 /**
+ * @tc.name: PurgeVolumesForDisk_DataDisk_NotifyFormatted_001
+ * @tc.desc: PurgeVolumesForDisk on data disk triggers NotifyVolumeFormatted, no crash.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, PurgeVolumesForDisk_DataDisk_NotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PurgeVolumesForDisk_DataDisk_NotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-pv-dn"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-pv-dn", "disk-77-pv-dn", "uuid-pv-dn", UNMOUNTED));
+    EXPECT_EQ(dm.PurgeVolumesForDisk("disk-77-pv-dn"), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-pv-dn", out), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "PurgeVolumesForDisk_DataDisk_NotifyFormatted_001 End";
+}
+
+/**
  * @tc.name: Partition_TestCase_001
  * @tc.desc: Partition CD disk returns E_NOT_SUPPORT.
  * @tc.type: FUNC
@@ -1621,6 +1639,29 @@ HWTEST_F(DiskManagerTest, Partition_TestCase_002, TestSize.Level0)
     dm.OnVolumeCreated(vol);
     EXPECT_EQ(dm.Partition("disk-32-1", 0), E_VOL_STATE);
     GTEST_LOG_(INFO) << "Partition_TestCase_002 End";
+}
+
+/**
+ * @tc.name: Format_SkipNotifyFormatted_001
+ * @tc.desc: Format with skipNotifyFormatted_=true skips NotifyVolumeFormatted, returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Format_SkipNotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_SkipNotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-snf-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-snf-1", "disk-77-snf-1", "uuid-snf-1", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-snf-1"), SetArgReferee<2>("ext4"),
+        SetArgReferee<3>("label"), Return(E_OK)));
+    dm.skipNotifyFormatted_ = true;
+    EXPECT_EQ(dm.Format("vol-snf-1", "ext4"), E_OK);
+    dm.skipNotifyFormatted_ = false;
+    GTEST_LOG_(INFO) << "Format_SkipNotifyFormatted_001 End";
 }
 
 /**

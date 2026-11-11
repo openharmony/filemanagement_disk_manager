@@ -1393,9 +1393,14 @@ int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
         }
     }
 
+    Disk disk;
+    bool isInternalDataDisk = (GetDiskById(diskId, disk) == E_OK && disk.IsInternalDataDisk());
     {
         std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
         for (const std::string &volId : volIds) {
+            if (isInternalDataDisk) {
+                PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volId);
+            }
             volumeMap_.erase(volId);
         }
     }
@@ -1470,8 +1475,10 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     }
 
     AddPartitioningDisk(diskId);
+    skipNotifyFormatted_ = true;
     ret = PurgeVolumesForDisk(diskId);
     if (ret != E_OK) {
+        skipNotifyFormatted_ = false;
         RemovePartitioningDisk(diskId);
         LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
@@ -1481,12 +1488,14 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionFsType);
     if (ret != E_OK) {
+        skipNotifyFormatted_ = false;
         RemovePartitioningDisk(diskId);
         LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
 
     ret = UeventBootstrap::RediscoverDiskVolumes(diskId);
+    skipNotifyFormatted_ = false;
     RemovePartitioningDisk(diskId);
     if (ret != E_OK) {
         LOGE("Partition RediscoverDiskVolumes failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
@@ -2807,7 +2816,7 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     it->second.SetDescription(label);
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
-    if (isInternalDataDisk) {
+    if (isInternalDataDisk && !skipNotifyFormatted_) {
         PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volumeId);
     }
     return E_OK;
