@@ -286,7 +286,7 @@ private:
     std::map<std::string, PartitionTableInfo> partitionTableMap_;
     std::set<std::string> partitioningDiskIds_;
     mutable std::shared_mutex oddMutex_;
-    bool skipNotifyFormatted_ {false};
+    std::atomic<bool> skipNotifyFormatted_ {false};
 };
 
 } // namespace DiskManager
