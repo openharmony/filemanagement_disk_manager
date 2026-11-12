@@ -1658,9 +1658,9 @@ HWTEST_F(DiskManagerTest, Format_SkipNotifyFormatted_001, TestSize.Level0)
     EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
         SetArgReferee<1>("uuid-snf-1"), SetArgReferee<2>("ext4"),
         SetArgReferee<3>("label"), Return(E_OK)));
-    dm.skipNotifyFormatted_ = true;
+    dm.skipNotifyFormatted_.store(true);
     EXPECT_EQ(dm.Format("vol-snf-1", "ext4"), E_OK);
-    dm.skipNotifyFormatted_ = false;
+    dm.skipNotifyFormatted_.store(false);
     GTEST_LOG_(INFO) << "Format_SkipNotifyFormatted_001 End";
 }
 

@@ -1475,10 +1475,10 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     }
 
     AddPartitioningDisk(diskId);
-    skipNotifyFormatted_ = true;
+    skipNotifyFormatted_.store(true);
     ret = PurgeVolumesForDisk(diskId);
     if (ret != E_OK) {
-        skipNotifyFormatted_ = false;
+        skipNotifyFormatted_.store(false);
         RemovePartitioningDisk(diskId);
         LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
@@ -1488,14 +1488,14 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionFsType);
     if (ret != E_OK) {
-        skipNotifyFormatted_ = false;
+        skipNotifyFormatted_.store(false);
         RemovePartitioningDisk(diskId);
         LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
 
     ret = UeventBootstrap::RediscoverDiskVolumes(diskId);
-    skipNotifyFormatted_ = false;
+    skipNotifyFormatted_.store(false);
     RemovePartitioningDisk(diskId);
     if (ret != E_OK) {
         LOGE("Partition RediscoverDiskVolumes failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
@@ -2816,7 +2816,7 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     it->second.SetDescription(label);
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
-    if (isInternalDataDisk && !skipNotifyFormatted_) {
+    if (isInternalDataDisk && !skipNotifyFormatted_.load()) {
         PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volumeId);
     }
     return E_OK;
