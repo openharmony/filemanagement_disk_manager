@@ -611,11 +611,8 @@ int32_t DiskManager::MapToPublicVolumeState(int32_t internalState)
 {
     switch (internalState) {
         case VolumeState::MOUNTED:
-        case VolumeState::DAMAGED_MOUNTED:
             return VolumeState::MOUNTED; // mounted
         case VolumeState::CHECKING:
-        case VolumeState::ENCRYPTING:
-        case VolumeState::DECRYPTING:
             return VolumeState::CHECKING; // checking
         case VolumeState::EJECTING:
             return VolumeState::EJECTING; // ejecting
@@ -893,7 +890,6 @@ int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountP
             return dfx.Finish(E_NON_EXIST);
         }
         if ((it->second.GetState() != VolumeState::UNMOUNTED) &&
-            (it->second.GetState() != VolumeState::DECRYPTING) &&
             (it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL)) {
             LOGE("Mount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(),
                  it->second.GetState());
@@ -922,7 +918,6 @@ int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountP
         }
         if (mountErr == DiskManagerErrNo::E_OK &&
             it->second.GetState() != VolumeState::UNMOUNTED &&
-            it->second.GetState() != VolumeState::DECRYPTING &&
             it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL) {
             LOGE("Mount: volumeId=%{public}s state changed during mount", volumeId.c_str());
             return dfx.Finish(E_VOL_MOUNT_ERR);
@@ -1129,7 +1124,6 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
             return dfx.Finish(DiskManagerErrNo::E_OK);
         }
         if (state != VolumeState::MOUNTED &&
-            state != VolumeState::DAMAGED_MOUNTED &&
             state != VolumeState::ENCRYPTED_AND_LOCKED &&
             state != VolumeState::ENCRYPTED_AND_UNLOCKED) {
             LOGE("Unmount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(), state);
@@ -1281,7 +1275,7 @@ int32_t DiskManager::TryToFix(const std::string &volumeId)
         volExternal = it->second;
     }
 
-    if (volExternal.GetState() == VolumeState::DAMAGED_MOUNTED || volExternal.GetState() == VolumeState::MOUNTED) {
+    if (volExternal.GetState() == VolumeState::MOUNTED) {
         const int32_t previousState = NotifyVolumeEjecting(volumeId, volExternal);
         const int32_t umErr = UnmountVolumeMountPoints(volExternal, true);
         if (umErr != ERR_OK) {
@@ -2103,7 +2097,7 @@ int32_t DiskManager::PrepareBurn(const std::string &volumeId, const std::string 
     }
 #endif
     // Only mounted volumes need unmounting before burn; skip when already unmounted.
-    if ((volState == VolumeState::MOUNTED || volState == VolumeState::DAMAGED_MOUNTED) && !mountPath.empty()) {
+    if (volState == VolumeState::MOUNTED && !mountPath.empty()) {
         int32_t umountErr = StorageDaemonAdapter::GetInstance().Unmount(mountPath, result.fsType, true);
         if (umountErr != ERR_OK) {
             LOGE("Burn: unmount before burn failed volumeId=%{public}s mountPath=%{public}s err=%{public}d",

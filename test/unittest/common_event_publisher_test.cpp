@@ -134,11 +134,8 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_002, TestSize.Le
         BAD_REMOVAL,
         EJECTING,
         DAMAGED,
-        DAMAGED_MOUNTED,
-        ENCRYPTING,
         ENCRYPTED_AND_LOCKED,
         ENCRYPTED_AND_UNLOCKED,
-        DECRYPTING,
     };
     for (VolumeState s : nonMountedMapped) {
         VolumeExternal vol = MakeSampleVolume();
@@ -286,8 +283,8 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_001, TestSize.Le
 
     const VolumeState mappedStates[] = {
         REMOVED, UNMOUNTED, MOUNTED, BAD_REMOVAL, EJECTING,
-        DAMAGED, DAMAGED_MOUNTED, ENCRYPTING, ENCRYPTED_AND_LOCKED,
-        ENCRYPTED_AND_UNLOCKED, DECRYPTING, CHECKING,
+        DAMAGED, ENCRYPTED_AND_LOCKED,
+        ENCRYPTED_AND_UNLOCKED, CHECKING,
         REPAIR_FINISH_FAIL, REPAIR_FINISH_SUCCESS, FORMAT_FINISH_FAIL,
         REPAIR_START,
     };
