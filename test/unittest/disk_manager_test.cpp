@@ -1665,6 +1665,50 @@ HWTEST_F(DiskManagerTest, Format_SkipNotifyFormatted_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: Format_DataDisk_NotifyFormatted_001
+ * @tc.desc: Format on data disk with skipNotifyFormatted_=false triggers NotifyVolumeFormatted.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Format_DataDisk_NotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_NotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-fdn-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-fdn-1", "disk-77-fdn-1", "uuid-fdn-1", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-fdn-1"), SetArgReferee<2>("ext4"),
+        SetArgReferee<3>("label"), Return(E_OK)));
+    EXPECT_EQ(dm.Format("vol-fdn-1", "ext4"), E_OK);
+    GTEST_LOG_(INFO) << "Format_DataDisk_NotifyFormatted_001 End";
+}
+
+/**
+ * @tc.name: Format_UsbDisk_SkipNotifyFormatted_001
+ * @tc.desc: Format on USB disk with skipNotifyFormatted_=true, isInternalDataDisk=false, returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Format_UsbDisk_SkipNotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_UsbDisk_SkipNotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-77-usn-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-usn-1", "disk-77-usn-1", "uuid-usn-1", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-usn-1"), SetArgReferee<2>("ext4"),
+        SetArgReferee<3>("label"), Return(E_OK)));
+    dm.skipNotifyFormatted_.store(true);
+    EXPECT_EQ(dm.Format("vol-usn-1", "ext4"), E_OK);
+    dm.skipNotifyFormatted_.store(false);
+    GTEST_LOG_(INFO) << "Format_UsbDisk_SkipNotifyFormatted_001 End";
+}
+
+/**
  * @tc.name: Partition_TestCase_003
  * @tc.desc: Partition disk with all volumes UNMOUNTED succeeds.
  * @tc.type: FUNC
