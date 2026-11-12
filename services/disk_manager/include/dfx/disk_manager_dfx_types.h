@@ -39,6 +39,8 @@ constexpr int32_t DFX_STAGE_MOUNT_VOL_BY_PATH = 54;
 constexpr int32_t DFX_STAGE_UMOUNT_VOL_BY_PATH = 55;
 constexpr int32_t DFX_STAGE_NOTIFY_MTP_MOUNTED = 56;
 constexpr int32_t DFX_STAGE_NOTIFY_MTP_UNMOUNTED = 57;
+constexpr int32_t DFX_STAGE_MOUNT_DM_DEVICE = 58;
+constexpr int32_t DFX_STAGE_FORMAT_DM_DEVICE = 59;
 constexpr int32_t DFX_STAGE_ERASE = 60;
 constexpr int32_t DFX_STAGE_EJECT = 61;
 constexpr int32_t DFX_STAGE_BURN = 62;
@@ -66,6 +68,8 @@ enum class VolumeOpType : int32_t {
     UMOUNT_VOL_BY_PATH = 14,
     NOTIFY_MTP_MOUNTED = 15,
     NOTIFY_MTP_UNMOUNTED = 16,
+    MOUNT_DM_DEVICE = 17,
+    FORMAT_DM_DEVICE = 18,
     ERASE = 20,
     EJECT = 21,
     BURN = 22,

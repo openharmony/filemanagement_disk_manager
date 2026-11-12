@@ -3367,21 +3367,25 @@ int32_t DiskManager::MountDmDevice(const std::string &diskId, const std::string 
                                    const std::string &dstPath, const std::string &fsType,
                                    const MountParam &mountParam)
 {
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDiskId(diskId).WithDevPath(dmPath).WithFsType(fsType);
+    IpcDfxScope dfx("DiskManager::MountDmDevice", DFX_STAGE_MOUNT_DM_DEVICE,
+                    VolumeOpType::MOUNT_DM_DEVICE, reportInfo);
     LOGI("MountDmDevice diskId=%{public}s dmPath=%{public}s dstPath=%{public}s fsType=%{public}s",
          diskId.c_str(), dmPath.c_str(), dstPath.c_str(), fsType.c_str());
     if (!HasDisk(diskId)) {
         LOGE("MountDmDevice: disk not found, diskId=%{public}s", diskId.c_str());
-        return E_NON_EXIST;
+        return dfx.Finish(E_NON_EXIST);
     }
     std::string actualFsType;
     int32_t err = QueryDmDeviceFsType(dmPath, actualFsType);
     if (err != E_OK) {
-        return err;
+        return dfx.Finish(err);
     }
     if (actualFsType != fsType) {
         LOGE("MountDmDevice: fsType mismatch, actual=%{public}s expected=%{public}s",
              actualFsType.c_str(), fsType.c_str());
-        return E_FSTYPE_MISMATCH;
+        return dfx.Finish(E_FSTYPE_MISMATCH);
     }
     uint64_t mountFlag = 0;
     if (mountParam.GetReadOnly()) {
@@ -3391,29 +3395,33 @@ int32_t DiskManager::MountDmDevice(const std::string &diskId, const std::string 
                                                     mountParam.GetMountData());
     if (err != E_OK) {
         LOGE("MountDmDevice: mount failed, err=%{public}d", err);
-        return E_DM_MOUNT_FAILED;
+        return dfx.Finish(E_DM_MOUNT_FAILED);
     }
     LOGI("MountDmDevice: mount success");
-    return E_OK;
+    return dfx.Finish(E_OK);
 }
 
 int32_t DiskManager::FormatDmDevice(const std::string &diskId, const std::string &dmPath,
                                     const std::string &fsType)
 {
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDiskId(diskId).WithDevPath(dmPath).WithFsType(fsType);
+    IpcDfxScope dfx("DiskManager::FormatDmDevice", DFX_STAGE_FORMAT_DM_DEVICE,
+                    VolumeOpType::FORMAT_DM_DEVICE, reportInfo);
     LOGI("FormatDmDevice diskId=%{public}s dmPath=%{public}s fsType=%{public}s", diskId.c_str(),
          dmPath.c_str(), fsType.c_str());
     if (!HasDisk(diskId)) {
         LOGE("FormatDmDevice: disk not found, diskId=%{public}s", diskId.c_str());
-        return E_NON_EXIST;
+        return dfx.Finish(E_NON_EXIST);
     }
     int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(dmPath, fsType, "/dev/block/" + diskId,
                                                                    "", 0);
     if (err != E_OK) {
         LOGE("FormatDmDevice: format failed, err=%{public}d", err);
-        return E_DM_FORMAT_FAILED;
+        return dfx.Finish(E_DM_FORMAT_FAILED);
     }
     LOGI("FormatDmDevice: format success");
-    return E_OK;
+    return dfx.Finish(E_OK);
 }
 } // namespace DiskManager
 } // namespace OHOS
