@@ -6883,6 +6883,76 @@ HWTEST_F(DiskManagerTest, FormatDmDevice_TestCase_003, TestSize.Level0)
 }
 
 /**
+ * @tc.name: MountDmDevice_TestCase_009
+ * @tc.desc: blkid exits non-zero with empty output (no filesystem) → E_FSTYPE_NOT_EXIST.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_009, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-9"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_WEXITSTATUS), Return(DISK_MGR_ERR)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-9", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_FSTYPE_NOT_EXIST);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_010
+ * @tc.desc: blkid exits non-zero with non-empty output → E_DM_MOUNT_FAILED.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_010, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-10"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    std::vector<std::string> blkidOutput = {"error_msg"};
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_WEXITSTATUS),
+                        SetArgReferee<2>(blkidOutput), Return(DISK_MGR_ERR)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-10", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_DM_MOUNT_FAILED);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_011
+ * @tc.desc: ExecuteCommand fails with non-E_WEXITSTATUS execRet → E_DM_MOUNT_FAILED.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_011, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-11"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(E_DAEMON_IPC_FAILED), Return(DISK_MGR_ERR)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-11", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_DM_MOUNT_FAILED);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_012
+ * @tc.desc: ExecuteCommand fails with execRet=0 (IPC failure) → E_DM_MOUNT_FAILED.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_012, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-12"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ExecuteCommand(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(0), Return(DISK_MGR_ERR)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-12", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_DM_MOUNT_FAILED);
+}
+
+/**
  * @tc.name: MarkVolumeAbnormal_TestCase_001
  * @tc.desc: Mark UNMOUNTED volume abnormal migrates state to DAMAGED and returns E_OK (状态迁移路径).
  * @tc.type: FUNC
