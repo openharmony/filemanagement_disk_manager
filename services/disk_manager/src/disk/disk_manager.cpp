@@ -3343,7 +3343,7 @@ int32_t DiskManager::QueryDmDeviceFsType(const std::string &dmPath, std::string 
     int32_t err = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
     if (err != E_OK) {
         if (execRet == E_WEXITSTATUS && output.empty()) {
-            LOGE("QueryDmDeviceFsType: blkid no filesystem found, dmPath=%{public}s", dmPath.c_str());
+            LOGW("QueryDmDeviceFsType: blkid no filesystem found, dmPath=%{public}s", dmPath.c_str());
             return E_FSTYPE_NOT_EXIST;
         }
         LOGE("QueryDmDeviceFsType: blkid ExecuteCommand failed, err=%{public}d, execRet=%{public}d",
