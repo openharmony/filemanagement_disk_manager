@@ -54,25 +54,6 @@ enum class DiskStoreFsType : uint8_t {
     UNKNOWN = 255,
 };
 
-/** 与 define.md 5.2.10 VolumeState 对齐 */
-enum class DiskStoreVolumeState : uint32_t {
-    UNFORMATTED = 0,
-    ERROR = 1,
-    CHECKING = 2,
-    MOUNTED = 3,
-    UNMOUNTING = 4,
-    MOUNTING = 5,
-    REPAIRING = 6,
-    FORMATTING = 7,
-    UNMOUNTED = 8,
-    EJECTING = 9,
-    REMOVED = 10,
-    BAD_REMOVAL = 11,
-    DAMAGED = 12,
-    FUSE_REMOVED = 13,
-    DAMAGED_MOUNTED = 14,
-};
-
 struct PartitionRecord {
     std::string diskId;
     uint32_t partitionNumber = 0;
@@ -92,7 +73,6 @@ struct VolumeStoreRecord {
     std::string diskId;
     std::string description;
     bool removable = false;
-    DiskStoreVolumeState state = DiskStoreVolumeState::UNMOUNTED;
     std::string path;
     DiskStoreFsType fsType = DiskStoreFsType::UNKNOWN;
     std::string extraInfo;

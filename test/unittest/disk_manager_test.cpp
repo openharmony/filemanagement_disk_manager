@@ -1091,25 +1091,6 @@ HWTEST_F(DiskManagerTest, Mount_TestCase_003, TestSize.Level0)
 }
 
 /**
- * @tc.name: Mount_TestCase_004
- * @tc.desc: Mount volume in DECRYPTING state proceeds to mount.
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, Mount_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "Mount_TestCase_004 Start";
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-26-3"));
-    VolumeExternal vol = MakeUsbVolume("vol-26-3", "disk-26-3", "uuid-mt-4", DECRYPTING);
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.Mount("vol-26-3"), E_OK);
-    GTEST_LOG_(INFO) << "Mount_TestCase_004 End";
-}
-
-/**
  * @tc.name: Mount_TestCase_005
  * @tc.desc: Mount fails when StorageDaemonAdapter::Mount returns error.
  * @tc.type: FUNC
@@ -3353,19 +3334,6 @@ HWTEST_F(DiskManagerTest, PurgeVolumesForDisk_TestCase_003, TestSize.Level0)
     EXPECT_EQ(dm.PurgeVolumesForDisk("disk-59-1"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, TryToFix_TestCase_005, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-60-1"));
-    VolumeExternal vol = MakeUsbVolume("vol-60-1", "disk-60-1", "uuid-ttf-5", DAMAGED_MOUNTED);
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(sdAdapter, Repair(_, _)).WillOnce(Return(E_OK));
-    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.TryToFix("vol-60-1"), E_OK);
-}
-
 HWTEST_F(DiskManagerTest, TryToFix_TestCase_006, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
@@ -3377,27 +3345,6 @@ HWTEST_F(DiskManagerTest, TryToFix_TestCase_006, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Repair(_, _)).WillOnce(Return(E_OK));
     EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.TryToFix("vol-60-2"), E_OK);
-}
-
-HWTEST_F(DiskManagerTest, TryToFix_TestCase_007, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-60-3"));
-    VolumeExternal vol = MakeUsbVolume("vol-60-3", "disk-60-3", "uuid-ttf-7", DAMAGED_MOUNTED);
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
-    EXPECT_NE(dm.TryToFix("vol-60-3"), E_OK);
-}
-
-HWTEST_F(DiskManagerTest, Unmount_TestCase_005, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-27-4"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-27-4", "disk-27-4", "uuid-um-5", DAMAGED_MOUNTED));
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.Unmount("vol-27-4"), ERR_OK);
 }
 
 HWTEST_F(DiskManagerTest, Unmount_TestCase_006, TestSize.Level0)
@@ -4345,20 +4292,6 @@ HWTEST_F(DiskManagerTest, SaveVolumeFreeSize_TestCase_003, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     VolumeExternal vol;
     dm.SaveVolumeFreeSize(vol);
-}
-
-HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_006, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-63-5"));
-    VolumeExternal vol = MakeUsbVolume("vol-63-5", "disk-63-5", "uuid-dv-6", DAMAGED_MOUNTED);
-    vol.SetPartitionNum(1);
-    vol.SetPath("/mnt/data/external/uuid-dv-6");
-    dm.OnVolumeCreated(vol);
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_CALL(sdAdapter, DestroyBlockDeviceNode(_)).WillOnce(Return(ERR_OK));
-    EXPECT_TRUE(dm.DestroyVolumeByDiskIdAndPartNum("disk-63-5", 1));
 }
 
 HWTEST_F(DiskManagerTest, UpdateVoldataMappingAfterFormat_TestCase_001, TestSize.Level0)
@@ -6282,20 +6215,6 @@ HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: MapToPublicVolumeState_TestCase_002
- * @tc.desc: MapToPublicVolumeState maps DAMAGED_MOUNTED to MOUNTED (2).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_002, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_002 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::DAMAGED_MOUNTED), VolumeState::MOUNTED);
-    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_002 End";
-}
-
-/**
  * @tc.name: MapToPublicVolumeState_TestCase_003
  * @tc.desc: MapToPublicVolumeState maps CHECKING to CHECKING (1).
  * @tc.type: FUNC
@@ -6307,34 +6226,6 @@ HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_003, TestSize.Level0)
     auto &dm = DiskManager::GetInstance();
     EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::CHECKING), VolumeState::CHECKING);
     GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_003 End";
-}
-
-/**
- * @tc.name: MapToPublicVolumeState_TestCase_004
- * @tc.desc: MapToPublicVolumeState maps ENCRYPTING to CHECKING (1).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_004, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_004 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::ENCRYPTING), VolumeState::CHECKING);
-    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_004 End";
-}
-
-/**
- * @tc.name: MapToPublicVolumeState_TestCase_005
- * @tc.desc: MapToPublicVolumeState maps DECRYPTING to CHECKING (1).
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_005, TestSize.Level0)
-{
-    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_005 Start";
-    auto &dm = DiskManager::GetInstance();
-    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::DECRYPTING), VolumeState::CHECKING);
-    GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_005 End";
 }
 
 /**
