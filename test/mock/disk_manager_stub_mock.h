@@ -21,6 +21,7 @@
 #include "crypt_param.h"
 #include "external_disk_info.h"
 #include "external_volume_info.h"
+#include "local_disk_info.h"
 #include "mount_param.h"
 #include "disk_manager_stub.h"
 
@@ -61,6 +62,10 @@ public:
         (const std::string &diskId, int32_t partitionNum, const FormatParams &params));
     MOCK_METHOD(int32_t, GetExternalDiskInfos, (std::vector<ExternalDiskInfo> &vecOfDiskInfo));
     MOCK_METHOD(int32_t, GetExternalVolumeInfos, (std::vector<ExternalVolumeInfo> &vecOfVolInfo));
+    MOCK_METHOD(int32_t, GetLocalDiskInfos, (std::vector<LocalDiskInfo> &infos));
+    MOCK_METHOD(int32_t, GetDiskSerialNumber, (const std::string &sysPath, std::string &serialNumber));
+    MOCK_METHOD(int32_t, GetDiskPowerCycleCount, (const std::string &sysPath, int32_t &powerCycleCount));
+    MOCK_METHOD(int32_t, GetDiskPowerOnHours, (const std::string &sysPath, int32_t &powerOnHours));
     MOCK_METHOD(int32_t, BindBlockLoopDev,
         (const std::string &sysPath, uint64_t offset, uint64_t sizeLimit, std::string &loopPath));
     MOCK_METHOD(int32_t, CreateDmCryptVolume,

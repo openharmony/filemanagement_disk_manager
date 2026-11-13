@@ -799,5 +799,59 @@ ErrCode StorageDaemonProxy::GetBurnFileList(const std::string &srcDir, int32_t o
          count, fileList.size(), emptyCount, hasMore);
     return ERR_OK;
 }
+
+ErrCode StorageDaemonProxy::GetDiskPowerCycleCount(const std::string &devName, uint64_t &powerCycleCount)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    powerCycleCount = 0;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devName))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_DISK_POWER_CYCLE_COUNT), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    if (!reply.ReadUint64(powerCycleCount)) {
+        return ERR_INVALID_DATA;
+    }
+    return ERR_OK;
+}
+
+ErrCode StorageDaemonProxy::GetDiskPowerOnHours(const std::string &devName, uint64_t &powerOnHours)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    powerOnHours = 0;
+    if (!data.WriteInterfaceToken(IStorageDaemon::GetDescriptor())) {
+        return ERR_TRANSACTION_FAILED;
+    }
+    if (!data.WriteString16(Str8ToStr16(devName))) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = Remote()->SendRequest(
+        static_cast<uint32_t>(IStorageDaemonIpcCode::ADDON_GET_DISK_POWER_ON_HOURS), data, reply, option);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t res = reply.ReadInt32();
+    if (res != ERR_OK) {
+        return res;
+    }
+    if (!reply.ReadUint64(powerOnHours)) {
+        return ERR_INVALID_DATA;
+    }
+    return ERR_OK;
+}
 } // namespace StorageDaemon
 } // namespace OHOS

@@ -77,6 +77,10 @@
       *OHOS::DiskManager::ExternalVolumeInfo::*;
       *OHOS::DiskManager::ExternalVolumeInfo;
 
+      # LocalDiskInfo - public data type (broad wildcard)
+      *OHOS::DiskManager::LocalDiskInfo::*;
+      *OHOS::DiskManager::LocalDiskInfo;
+
       # CryptParam - public data type (broad wildcard)
       *OHOS::DiskManager::CryptParam::*;
       *OHOS::DiskManager::CryptParam;

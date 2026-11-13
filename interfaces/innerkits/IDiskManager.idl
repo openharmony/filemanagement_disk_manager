@@ -25,6 +25,7 @@ sequenceable VolumeExternal..OHOS.DiskManager.VolumeExternal;
 sequenceable VolumeCore..OHOS.DiskManager.VolumeInfoStr;
 sequenceable ExternalDiskInfo..OHOS.DiskManager.ExternalDiskInfo;
 sequenceable ExternalVolumeInfo..OHOS.DiskManager.ExternalVolumeInfo;
+sequenceable LocalDiskInfo..OHOS.DiskManager.LocalDiskInfo;
 
 interface OHOS.DiskManager.IDiskManager {
     /* ---------- 应用 / Connect：卷与磁盘 ---------- */
@@ -77,4 +78,10 @@ interface OHOS.DiskManager.IDiskManager {
     /* ---------- Public API：外置存储设备信息查询（三方应用可用，normal 权限） ---------- */
     [ipccode 51] void GetExternalDiskInfos([out] ExternalDiskInfo[] vecOfDiskInfo);
     [ipccode 52] void GetExternalVolumeInfos([out] ExternalVolumeInfo[] vecOfVolInfo);
+
+    /* ---------- Public API：本地磁盘硬件信息查询（PC 产品，normal 权限） ---------- */
+    [ipccode 53] void GetLocalDiskInfos([out] LocalDiskInfo[] infos);
+    [ipccode 54] void GetDiskSerialNumber([in] String sysPath, [out] String serialNumber);
+    [ipccode 55] void GetDiskPowerCycleCount([in] String sysPath, [out] int powerCycleCount);
+    [ipccode 56] void GetDiskPowerOnHours([in] String sysPath, [out] int powerOnHours);
 }

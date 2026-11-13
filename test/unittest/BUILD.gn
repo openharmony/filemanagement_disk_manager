@@ -140,6 +140,7 @@ ohos_unittest("disk_manager_client_test") {
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/external_disk_info.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/external_volume_info.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/local_disk_info.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/partition_types.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_core.cpp",
     "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/volume_external.cpp",
@@ -425,6 +426,87 @@ ohos_unittest("external_volume_info_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("local_disk_info_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "local_disk_info_test.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/local_disk_info.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+  defines = [ "private = public" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("disk_hardware_reader_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "disk_hardware_reader_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_hardware_reader.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/local_disk_info.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/disk.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_disk_manager.cpp",
+    "//foundation/filemanagement/disk_manager/test/mock/mock_block_info_table.cpp",
+  ]
+
+  configs = [
+    "//foundation/filemanagement/disk_manager/test/mock:uevent_bootstrap_mock_include",
+    ":disk_manager_unittest_common",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "filemanagement"
+  part_name = "disk_manager"
+}
+
+ohos_unittest("smart_reader_test") {
+  module_out_path = "/disk_manager/disk_manager"
+  use_exceptions = true
+
+  sources = [
+    "smart_reader_test.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/smart_reader.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_hardware_reader.cpp",
+    "//foundation/filemanagement/disk_manager/interfaces/innerkits/src/local_disk_info.cpp",
+    "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
+  ]
+
+  configs = [ ":disk_manager_unittest_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
   ]
 
   subsystem_name = "filemanagement"
@@ -733,6 +815,8 @@ ohos_unittest("disk_manager_provider_test") {
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/ipc/disk_manager_provider.cpp",
     "//foundation/filemanagement/disk_manager/utils/src/disk_manager_utils.cpp",
     "//foundation/filemanagement/disk_manager/utils/src/ipc_caller_auth.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_hardware_reader.cpp",
+    "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/smart_reader.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/disk/disk_manager.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_dfx_types.cpp",
     "//foundation/filemanagement/disk_manager/services/disk_manager/src/dfx/disk_manager_radar.cpp",
@@ -1026,6 +1110,9 @@ group("disk_manager_ut") {
     ":volume_external_test",
     ":external_disk_info_test",
     ":external_volume_info_test",
+    ":local_disk_info_test",
+    ":disk_hardware_reader_test",
+    ":smart_reader_test",
     ":crypt_param_test",
     ":mount_param_test",
     ":partition_types_test",

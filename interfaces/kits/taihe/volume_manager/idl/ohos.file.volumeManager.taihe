@@ -196,3 +196,26 @@ function GetExternalDiskInfosSync(): Array<ExternalDiskInfo>;
 
 @gen_promise("getExternalVolumeInfos")
 function GetExternalVolumeInfosSync(): Array<ExternalVolumeInfo>;
+
+// Public API：本地磁盘硬件信息查询（PC 产品，since 26.1.0）
+
+struct LocalDiskInfo {
+    sysPath: String;
+    model: String;
+    description: String;
+    size: i64;
+    mediaType: i32;
+    state: String;
+}
+
+@gen_promise("getLocalDiskInfos")
+function GetLocalDiskInfosSync(): Array<LocalDiskInfo>;
+
+@gen_promise("getDiskSerialNumber")
+function GetDiskSerialNumberSync(sysPath: String): String;
+
+@gen_promise("getDiskPowerCycleCount")
+function GetDiskPowerCycleCountSync(sysPath: String): i32;
+
+@gen_promise("getDiskPowerOnHours")
+function GetDiskPowerOnHoursSync(sysPath: String): i32;

@@ -32,6 +32,7 @@ group("disk_manager_mock") {
 }
 
 # 部件测试入口：UT + FUZZ（developer_test / CI 常引用此 group）
+# XTS 测试用例在 xts 仓 storagevolumemanagertest 项目中维护
 group("test") {
   testonly = true
   deps = [

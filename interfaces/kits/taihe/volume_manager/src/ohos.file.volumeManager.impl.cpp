@@ -21,6 +21,7 @@
 #include "disk_manager_napi_utils.h"
 #include "external_disk_info.h"
 #include "external_volume_info.h"
+#include "local_disk_info.h"
 #include "ipc_caller_auth.h"
 #include "partition_types.h"
 #include "storageStatistics_taihe_error.h"
@@ -601,6 +602,89 @@ taihe::array<ohos::file::volumeManager::ExternalVolumeInfo> GetExternalVolumeInf
         taihe::copy_data_t{}, taiheVols.data(), taiheVols.size());
 }
 
+// ---------- Public API：本地磁盘硬件信息查询（PC 产品，since 26.1.0） ----------
+
+taihe::array<ohos::file::volumeManager::LocalDiskInfo> GetLocalDiskInfosSync()
+{
+    if (!OHOS::DiskManager::VerifyCallerPermission(
+        OHOS::DiskManager::PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return taihe::array<ohos::file::volumeManager::LocalDiskInfo>::make(
+            0, ohos::file::volumeManager::LocalDiskInfo{});
+    }
+    auto diskInfos = std::make_shared<std::vector<OHOS::DiskManager::LocalDiskInfo>>();
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetLocalDiskInfos(*diskInfos);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return taihe::array<ohos::file::volumeManager::LocalDiskInfo>::make(
+            0, ohos::file::volumeManager::LocalDiskInfo{});
+    }
+    std::vector<ohos::file::volumeManager::LocalDiskInfo> taiheDisks;
+    for (const auto &disk : *diskInfos) {
+        ohos::file::volumeManager::LocalDiskInfo taiheDisk{
+            taihe::string(disk.GetSysPath()),
+            taihe::string(disk.GetModel()),
+            taihe::string(disk.GetDescription()),
+            disk.GetSize(),
+            disk.GetMediaType(),
+            taihe::string(disk.GetState())};
+        taiheDisks.push_back(taiheDisk);
+    }
+    return taihe::array<ohos::file::volumeManager::LocalDiskInfo>(
+        taihe::copy_data_t{}, taiheDisks.data(), taiheDisks.size());
+}
+
+taihe::string GetDiskSerialNumberSync(taihe::string_view sysPath)
+{
+    if (!OHOS::DiskManager::VerifyCallerPermission(
+        OHOS::DiskManager::PERMISSION_ACCESS_DISK_PHY_INFO)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return taihe::string("");
+    }
+    std::string serial;
+    std::string path(static_cast<const char *>(sysPath.data()), sysPath.size());
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetDiskSerialNumber(path, serial);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return taihe::string("");
+    }
+    return taihe::string(serial);
+}
+
+int32_t GetDiskPowerCycleCountSync(taihe::string_view sysPath)
+{
+    if (!OHOS::DiskManager::VerifyCallerPermission(
+        OHOS::DiskManager::PERMISSION_ENTERPRISE_MANAGE_DISK)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return 0;
+    }
+    int32_t count = 0;
+    std::string path(static_cast<const char *>(sysPath.data()), sysPath.size());
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetDiskPowerCycleCount(path, count);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return 0;
+    }
+    return count;
+}
+
+int32_t GetDiskPowerOnHoursSync(taihe::string_view sysPath)
+{
+    if (!OHOS::DiskManager::VerifyCallerPermission(
+        OHOS::DiskManager::PERMISSION_ENTERPRISE_MANAGE_DISK)) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(OHOS::E_PERMISSION);
+        return 0;
+    }
+    int32_t hours = 0;
+    std::string path(static_cast<const char *>(sysPath.data()), sysPath.size());
+    int32_t errNum = OHOS::DiskManager::DiskManagerClient::GetInstance().GetDiskPowerOnHours(path, hours);
+    if (errNum != OHOS::E_OK) {
+        OHOS::StorageTaiheError::SetStorageTaiheError(errNum);
+        return 0;
+    }
+    return hours;
+}
+
 } // namespace ANI::VolumeManager
 
 // Since these macros are auto-generate, lint will cause false positive.
@@ -635,4 +719,10 @@ TH_EXPORT_CPP_API_IsVolumeInUseSync(ANI::VolumeManager::IsVolumeInUseSync);
 // Public API exports（三方应用可用，normal 权限）
 TH_EXPORT_CPP_API_GetExternalDiskInfosSync(ANI::VolumeManager::GetExternalDiskInfosSync);
 TH_EXPORT_CPP_API_GetExternalVolumeInfosSync(ANI::VolumeManager::GetExternalVolumeInfosSync);
+
+// Public API exports：本地磁盘硬件信息查询（PC 产品，since 26.1.0）
+TH_EXPORT_CPP_API_GetLocalDiskInfosSync(ANI::VolumeManager::GetLocalDiskInfosSync);
+TH_EXPORT_CPP_API_GetDiskSerialNumberSync(ANI::VolumeManager::GetDiskSerialNumberSync);
+TH_EXPORT_CPP_API_GetDiskPowerCycleCountSync(ANI::VolumeManager::GetDiskPowerCycleCountSync);
+TH_EXPORT_CPP_API_GetDiskPowerOnHoursSync(ANI::VolumeManager::GetDiskPowerOnHoursSync);
 // NOLINTEND

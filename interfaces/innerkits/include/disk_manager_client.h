@@ -31,6 +31,7 @@
 #include "mount_param.h"
 #include "external_disk_info.h"
 #include "external_volume_info.h"
+#include "local_disk_info.h"
 
 namespace OHOS {
 namespace DiskManager {
@@ -61,6 +62,12 @@ public:
     /* ---------- Public API：外置存储设备信息查询（三方应用可用，normal 权限） ---------- */
     int32_t GetExternalDiskInfos(std::vector<ExternalDiskInfo> &vecOfDiskInfo);
     int32_t GetExternalVolumeInfos(std::vector<ExternalVolumeInfo> &vecOfVolInfo);
+
+    /* ---------- Public API：本地磁盘硬件信息查询（PC 产品，normal 权限） ---------- */
+    int32_t GetLocalDiskInfos(std::vector<LocalDiskInfo> &infos);
+    int32_t GetDiskSerialNumber(const std::string &sysPath, std::string &serialNumber);
+    int32_t GetDiskPowerCycleCount(const std::string &sysPath, int32_t &powerCycleCount);
+    int32_t GetDiskPowerOnHours(const std::string &sysPath, int32_t &powerOnHours);
 
     /* ---------- Partition（@ohos.file.volumeManager @since 26.0.0） ---------- */
     int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &out);

@@ -53,5 +53,11 @@ bool IsVolumeInUseSync(taihe::string_view volumePath);
 // Public API：外置存储设备信息查询（三方应用可用，normal 权限）
 taihe::array<ohos::file::volumeManager::ExternalDiskInfo> GetExternalDiskInfosSync();
 taihe::array<ohos::file::volumeManager::ExternalVolumeInfo> GetExternalVolumeInfosSync();
+
+// Public API：本地磁盘硬件信息查询（PC 产品，since 26.1.0）
+taihe::array<ohos::file::volumeManager::LocalDiskInfo> GetLocalDiskInfosSync();
+taihe::string GetDiskSerialNumberSync(taihe::string_view sysPath);
+int32_t GetDiskPowerCycleCountSync(taihe::string_view sysPath);
+int32_t GetDiskPowerOnHoursSync(taihe::string_view sysPath);
 } // namespace ANI::VolumeManager
 #endif // OHOS_FILE_VOLUMEMANAGER_IMPL_H

@@ -1473,5 +1473,170 @@ HWTEST_F(DiskManagerClientTest, GetExternalVolumeInfosTest002, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "GetExternalVolumeInfosTest002 End";
 }
+
+/**
+ * @tc.name: GetLocalDiskInfosTest001
+ * @tc.desc: 测试 GetLocalDiskInfos 在 SA 未运行时返回空列表 + E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetLocalDiskInfosTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetLocalDiskInfosTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::vector<LocalDiskInfo> infos;
+    int32_t ret = client.GetLocalDiskInfos(infos);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(infos.empty());
+
+    GTEST_LOG_(INFO) << "GetLocalDiskInfosTest001 End";
+}
+
+/**
+ * @tc.name: GetLocalDiskInfosTest002
+ * @tc.desc: 测试 GetLocalDiskInfos 在 SA 可用时转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetLocalDiskInfosTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetLocalDiskInfosTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetLocalDiskInfos(_)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::vector<LocalDiskInfo> infos;
+    int32_t ret = client.GetLocalDiskInfos(infos);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetLocalDiskInfosTest002 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumberTest001
+ * @tc.desc: 测试 GetDiskSerialNumber 在 SA 未运行时返回 E_NON_EXIST。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskSerialNumberTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumberTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::string serial;
+    int32_t ret = client.GetDiskSerialNumber("/sys/block/nvme0n1", serial);
+    EXPECT_EQ(ret, E_NON_EXIST);
+
+    GTEST_LOG_(INFO) << "GetDiskSerialNumberTest001 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumberTest002
+ * @tc.desc: 测试 GetDiskSerialNumber 在 SA 可用时转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskSerialNumberTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumberTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetDiskSerialNumber(_, _)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    std::string serial;
+    int32_t ret = client.GetDiskSerialNumber("/sys/block/nvme0n1", serial);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetDiskSerialNumberTest002 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerCycleCountTest001
+ * @tc.desc: 测试 GetDiskPowerCycleCount 在 SA 未运行时返回 E_NON_EXIST。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskPowerCycleCountTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCountTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t count = 0;
+    int32_t ret = client.GetDiskPowerCycleCount("/sys/block/nvme0n1", count);
+    EXPECT_EQ(ret, E_NON_EXIST);
+
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCountTest001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerCycleCountTest002
+ * @tc.desc: 测试 GetDiskPowerCycleCount 在 SA 可用时转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskPowerCycleCountTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCountTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetDiskPowerCycleCount(_, _)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t count = 0;
+    int32_t ret = client.GetDiskPowerCycleCount("/sys/block/nvme0n1", count);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCountTest002 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerOnHoursTest001
+ * @tc.desc: 测试 GetDiskPowerOnHours 在 SA 未运行时返回 E_NON_EXIST。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskPowerOnHoursTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHoursTest001 Start";
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t hours = 0;
+    int32_t ret = client.GetDiskPowerOnHours("/sys/block/nvme0n1", hours);
+    EXPECT_EQ(ret, E_NON_EXIST);
+
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHoursTest001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerOnHoursTest002
+ * @tc.desc: 测试 GetDiskPowerOnHours 在 SA 可用时转发到 stub，预期返回 E_OK。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerClientTest, GetDiskPowerOnHoursTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHoursTest002 Start";
+
+    EXPECT_CALL(*samMock_, CheckSystemAbility(An<int32_t>())).WillOnce(Return(dmStubMock_));
+    EXPECT_CALL(*dmStubMock_, GetDiskPowerOnHours(_, _)).WillOnce(Return(E_OK));
+
+    DiskManagerClient &client = DiskManagerClient::GetInstance();
+    client.ResetProxy();
+    int32_t hours = 0;
+    int32_t ret = client.GetDiskPowerOnHours("/sys/block/nvme0n1", hours);
+    EXPECT_EQ(ret, E_OK);
+
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHoursTest002 End";
+}
 } // namespace DiskManager
 } // namespace OHOS

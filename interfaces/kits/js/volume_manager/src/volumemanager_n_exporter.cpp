@@ -29,6 +29,7 @@
 #include "disk_manager_napi_utils.h"
 #include "external_disk_info.h"
 #include "external_volume_info.h"
+#include "local_disk_info.h"
 #include "ipc_caller_auth.h"
 #include "mount_param.h"
 #include "n_async/n_async_work_callback.h"
@@ -1378,6 +1379,180 @@ napi_value GetExternalVolumeInfos(napi_env env, napi_callback_info info)
     return NAsyncWorkPromise(env, thisVar).Schedule("GetExternalVolumeInfos", cbExec, cbComplete).val_;
 }
 
+// ========== Local disk hardware info API (since 26.1.0) ==========
+
+static napi_value BuildLocalDiskJSObject(napi_env env, const LocalDiskInfo &disk)
+{
+    NVal obj = NVal::CreateObject(env);
+    obj.AddProp("sysPath", NVal::CreateUTF8String(env, disk.GetSysPath()).val_);
+    obj.AddProp("model", NVal::CreateUTF8String(env, disk.GetModel()).val_);
+    obj.AddProp("description", NVal::CreateUTF8String(env, disk.GetDescription()).val_);
+    obj.AddProp("size", NVal::CreateInt64(env, disk.GetSize()).val_);
+    obj.AddProp("mediaType", NVal::CreateInt32(env, disk.GetMediaType()).val_);
+    obj.AddProp("state", NVal::CreateUTF8String(env, disk.GetState()).val_);
+    return obj.val_;
+}
+
+static NVal MakeLocalDiskJsArray(napi_env env, const std::vector<LocalDiskInfo> &disks)
+{
+    napi_value arr = nullptr;
+    napi_status status = napi_create_array(env, &arr);
+    if (status != napi_ok) {
+        return {env, NError(status).GetNapiErr(env)};
+    }
+    for (size_t i = 0; i < disks.size(); i++) {
+        napi_value obj = BuildLocalDiskJSObject(env, disks[i]);
+        if (obj == nullptr) {
+            return {env, NError(napi_generic_failure).GetNapiErr(env)};
+        }
+        status = napi_set_element(env, arr, static_cast<uint32_t>(i), obj);
+        if (status != napi_ok) {
+            return {env, NError(status).GetNapiErr(env)};
+        }
+    }
+    return {NVal(env, arr)};
+}
+
+napi_value GetLocalDiskInfos(napi_env env, napi_callback_info info)
+{
+    if (!VerifyCallerPermission(PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        NError(E_PERMISSION).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ZERO)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    auto diskInfos = std::make_shared<std::vector<LocalDiskInfo>>();
+    auto cbExec = [diskInfos]() -> NError {
+        int32_t errNum = DiskManagerClient::GetInstance().GetLocalDiskInfos(*diskInfos);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [diskInfos](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return MakeLocalDiskJsArray(env, *diskInfos);
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetLocalDiskInfos", cbExec, cbComplete).val_;
+}
+
+napi_value GetDiskSerialNumber(napi_env env, napi_callback_info info)
+{
+    if (!VerifyCallerPermission(PERMISSION_ACCESS_DISK_PHY_INFO)) {
+        NError(E_PERMISSION).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    bool succ = false;
+    std::unique_ptr<char[]> sysPathBuf;
+    std::tie(succ, sysPathBuf, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    auto sysPath = std::make_shared<std::string>(sysPathBuf.get());
+    auto serialOut = std::make_shared<std::string>();
+    auto cbExec = [sysPath, serialOut]() -> NError {
+        int32_t errNum = DiskManagerClient::GetInstance().GetDiskSerialNumber(*sysPath, *serialOut);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [serialOut](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return NVal::CreateUTF8String(env, *serialOut);
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetDiskSerialNumber", cbExec, cbComplete).val_;
+}
+
+napi_value GetDiskPowerCycleCount(napi_env env, napi_callback_info info)
+{
+    if (!VerifyCallerPermission(PERMISSION_ENTERPRISE_MANAGE_DISK)) {
+        NError(E_PERMISSION).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    bool succ = false;
+    std::unique_ptr<char[]> sysPathBuf;
+    std::tie(succ, sysPathBuf, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    auto sysPath = std::make_shared<std::string>(sysPathBuf.get());
+    auto result = std::make_shared<int32_t>(0);
+    auto cbExec = [sysPath, result]() -> NError {
+        int32_t errNum = DiskManagerClient::GetInstance().GetDiskPowerCycleCount(*sysPath, *result);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [result](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return NVal::CreateInt32(env, *result);
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetDiskPowerCycleCount", cbExec, cbComplete).val_;
+}
+
+napi_value GetDiskPowerOnHours(napi_env env, napi_callback_info info)
+{
+    if (!VerifyCallerPermission(PERMISSION_ENTERPRISE_MANAGE_DISK)) {
+        NError(E_PERMISSION).ThrowErr(env);
+        return nullptr;
+    }
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs((int)NARG_CNT::ONE)) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    bool succ = false;
+    std::unique_ptr<char[]> sysPathBuf;
+    std::tie(succ, sysPathBuf, std::ignore) = NVal(env, funcArg[(int)NARG_POS::FIRST]).ToUTF8String();
+    if (!succ) {
+        NError(E_PARAMS).ThrowErr(env);
+        return nullptr;
+    }
+    auto sysPath = std::make_shared<std::string>(sysPathBuf.get());
+    auto result = std::make_shared<int32_t>(0);
+    auto cbExec = [sysPath, result]() -> NError {
+        int32_t errNum = DiskManagerClient::GetInstance().GetDiskPowerOnHours(*sysPath, *result);
+        if (errNum != E_OK) {
+            return NError(Convert2JsErrNum(errNum));
+        }
+        return NError(ERRNO_NOERR);
+    };
+    auto cbComplete = [result](napi_env env, NError err) -> NVal {
+        if (err) {
+            return {env, err.GetNapiErr(env)};
+        }
+        return NVal::CreateInt32(env, *result);
+    };
+    NVal thisVar(env, funcArg.GetThisVar());
+    return NAsyncWorkPromise(env, thisVar).Schedule("GetDiskPowerOnHours", cbExec, cbComplete).val_;
+}
+
 // ========== 模块初始化 ==========
 
 // 模块导出的属性描述符
@@ -1408,6 +1583,11 @@ static napi_property_descriptor g_properties[] = {
     // Public API：外置存储设备信息查询（三方应用可用，normal 权限）
     DECLARE_NAPI_FUNCTION("getExternalDiskInfos", GetExternalDiskInfos),
     DECLARE_NAPI_FUNCTION("getExternalVolumeInfos", GetExternalVolumeInfos),
+    // Public API：本地磁盘硬件信息查询（PC 产品，since 26.1.0）
+    DECLARE_NAPI_FUNCTION("getLocalDiskInfos", GetLocalDiskInfos),
+    DECLARE_NAPI_FUNCTION("getDiskSerialNumber", GetDiskSerialNumber),
+    DECLARE_NAPI_FUNCTION("getDiskPowerCycleCount", GetDiskPowerCycleCount),
+    DECLARE_NAPI_FUNCTION("getDiskPowerOnHours", GetDiskPowerOnHours),
 #ifdef HMDFS_FILE_MANAGER
     DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
     DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),
