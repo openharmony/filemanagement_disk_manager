@@ -48,6 +48,12 @@ napi_value FormatPartition(napi_env env, napi_callback_info info);
 napi_value GetExternalDiskInfos(napi_env env, napi_callback_info info);
 napi_value GetExternalVolumeInfos(napi_env env, napi_callback_info info);
 
+// Public API：本地磁盘硬件信息查询（PC 产品，normal 权限）
+napi_value GetLocalDiskInfos(napi_env env, napi_callback_info info);
+napi_value GetDiskSerialNumber(napi_env env, napi_callback_info info);
+napi_value GetDiskPowerCycleCount(napi_env env, napi_callback_info info);
+napi_value GetDiskPowerOnHours(napi_env env, napi_callback_info info);
+
 // 枚举导出函数
 napi_value CreateDiskTypeEnum(napi_env env);
 napi_value CreateVerifyTypeEnum(napi_env env);

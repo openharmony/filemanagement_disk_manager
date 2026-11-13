@@ -51,6 +51,8 @@ enum DiskManagerErrNo : int32_t {
     E_SYS_APP_PERMISSION_DENIED = 13600000 + 25,
     E_STATVFS = 13600000 + 1204,
 
+    E_DISK_PHY_INFO_UNKNOWN = 13900042,
+
     E_OTHER_MOUNT = 13600000 + 1715,
 
     // partition errno

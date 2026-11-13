@@ -395,6 +395,67 @@ int32_t DiskManagerClient::GetExternalVolumeInfos(std::vector<ExternalVolumeInfo
     return dm.GetExternalVolumeInfos(vecOfVolInfo);
 }
 
+int32_t DiskManagerClient::GetLocalDiskInfos(std::vector<LocalDiskInfo> &infos)
+{
+    LOGI("GetLocalDiskInfos enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        infos.clear();
+        return E_OK;
+    }
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetLocalDiskInfos(infos);
+}
+
+int32_t DiskManagerClient::GetDiskSerialNumber(const std::string &sysPath, std::string &serialNumber)
+{
+    LOGI("GetDiskSerialNumber enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetDiskSerialNumber(sysPath, serialNumber);
+}
+
+int32_t DiskManagerClient::GetDiskPowerCycleCount(const std::string &sysPath, int32_t &powerCycleCount)
+{
+    LOGI("GetDiskPowerCycleCount enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetDiskPowerCycleCount(sysPath, powerCycleCount);
+}
+
+int32_t DiskManagerClient::GetDiskPowerOnHours(const std::string &sysPath, int32_t &powerOnHours)
+{
+    LOGI("GetDiskPowerOnHours enter");
+    sptr<IDiskManager> proxy;
+    int32_t err = ConnectIfPresent(proxy);
+    if (err == E_SERVICE_IS_NULLPTR) {
+        return E_NON_EXIST;
+    }
+    if (err != E_OK) {
+        return err;
+    }
+    IDiskManager &dm = *proxy;
+    return dm.GetDiskPowerOnHours(sysPath, powerOnHours);
+}
+
 int32_t DiskManagerClient::Erase(const std::string &volumeId)
 {
     LOGI("Erase volumeId=%{public}s", volumeId.c_str());

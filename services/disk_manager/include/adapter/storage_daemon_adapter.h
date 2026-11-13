@@ -85,6 +85,8 @@ public:
                            uint64_t &dmDev);
     int32_t GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
                            std::vector<std::string> &fileList, bool &hasMore);
+    int32_t GetDiskPowerCycleCount(const std::string &devName, uint64_t &powerCycleCount);
+    int32_t GetDiskPowerOnHours(const std::string &devName, uint64_t &powerOnHours);
 
 private:
     StorageDaemonAdapter();

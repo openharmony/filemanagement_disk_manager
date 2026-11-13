@@ -58,6 +58,8 @@ enum class IStorageDaemonIpcCode {
     ADDON_EXECUTE_COMMAND = 263,
     ADDON_CREATE_DM_LINEAR = 264,
     ADDON_GET_BURN_FILE_LIST = 269,
+    ADDON_GET_DISK_POWER_CYCLE_COUNT = 271,
+    ADDON_GET_DISK_POWER_ON_HOURS = 272,
 };
 
 class IStorageDaemon : public IRemoteBroker {
@@ -128,6 +130,8 @@ public:
                                    uint64_t &dmDev) = 0;
     virtual ErrCode GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
                                    std::vector<std::string> &fileList, bool &hasMore) = 0;
+    virtual ErrCode GetDiskPowerCycleCount(const std::string &devName, uint64_t &powerCycleCount) = 0;
+    virtual ErrCode GetDiskPowerOnHours(const std::string &devName, uint64_t &powerOnHours) = 0;
 protected:
     static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0xD004301, "StorageDaemon"};
 };

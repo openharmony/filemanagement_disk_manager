@@ -89,6 +89,8 @@ public:
     MOCK_METHOD(int32_t, GetBurnFileList,
         (const std::string &srcDir, int32_t offset, int32_t pageSize,
          std::vector<std::string> &fileList, bool &hasMore));
+    MOCK_METHOD(int32_t, GetDiskPowerCycleCount, (const std::string &devName, uint64_t &powerCycleCount));
+    MOCK_METHOD(int32_t, GetDiskPowerOnHours, (const std::string &devName, uint64_t &powerOnHours));
 
     static MockStorageDaemonAdapter *mockInstance_;
 };

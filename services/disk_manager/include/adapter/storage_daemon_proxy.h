@@ -78,6 +78,8 @@ public:
                            uint64_t &dmDev) override;
     ErrCode GetBurnFileList(const std::string &srcDir, int32_t offset, int32_t pageSize,
                            std::vector<std::string> &fileList, bool &hasMore) override;
+    ErrCode GetDiskPowerCycleCount(const std::string &devName, uint64_t &powerCycleCount) override;
+    ErrCode GetDiskPowerOnHours(const std::string &devName, uint64_t &powerOnHours) override;
 
 private:
     static inline BrokerDelegator<StorageDaemonProxy> delegator_;

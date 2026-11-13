@@ -1008,6 +1008,139 @@ int32_t DiskManagerProvider::GetExternalVolumeInfos(std::vector<ExternalVolumeIn
     return err;
 }
 
+int32_t DiskManagerProvider::GetLocalDiskInfos(std::vector<LocalDiskInfo> &infos)
+{
+    LOGI("GetLocalDiskInfos");
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_GET_STORAGE_VOLUME_INFO)) {
+        LOGE("GetLocalDiskInfos: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+#ifdef PC_MANAGER
+    infos = DiskHardwareReader::GetLocalDiskInfos();
+    LOGI("GetLocalDiskInfos count=%{public}zu", infos.size());
+#else
+    LOGI("GetLocalDiskInfos: not supported on non-PC");
+    infos.clear();
+#endif
+    return E_OK;
+}
+
+int32_t DiskManagerProvider::GetDiskSerialNumber(const std::string &sysPath, std::string &serialNumber)
+{
+    LOGI("GetDiskSerialNumber sysPath=%{public}s", GetAnonyString(sysPath).c_str());
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_ACCESS_DISK_PHY_INFO)) {
+        LOGE("GetDiskSerialNumber: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+#ifdef PC_MANAGER
+    if (sysPath.empty() || sysPath.find("/sys/block/") != 0) {
+        LOGE("GetDiskSerialNumber: invalid sysPath");
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    std::string devName = sysPath.substr(strlen("/sys/block/"));
+    if (devName.empty() || devName.find('/') != std::string::npos || devName.find("..") != std::string::npos) {
+        LOGE("GetDiskSerialNumber: invalid devName");
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    bool isNvme = devName.find("nvme") == 0;
+    if (isNvme) {
+        // 系统盘：直读 sysfs /sys/block/nvme0n1/device/serial，无权限问题
+        serialNumber = SmartReader::GetSerialNumber(devName, true);
+    } else {
+        // 数据盘：从 BlockInfoTable 取（storage_daemon 以 root 权限已填充 serialNumber）
+        std::vector<Disk> allDisks;
+        DiskManager::GetInstance().GetAllDisks(allDisks);
+        std::string diskId;
+        for (const auto &disk : allDisks) {
+            if (disk.GetDevName() == devName) {
+                diskId = disk.GetDiskId();
+                break;
+            }
+        }
+        if (diskId.empty()) {
+            LOGE("GetDiskSerialNumber: devName=%{public}s not found in DiskManager", devName.c_str());
+            serialNumber = "Unknown";
+        } else {
+            BlockInfo blockInfo {};
+            if (BlockInfoTable::GetInstance().TryCopyByDiskId(diskId, blockInfo) &&
+                !blockInfo.serialNumber.empty()) {
+                serialNumber = blockInfo.serialNumber;
+            } else {
+                LOGE("GetDiskSerialNumber: serialNumber not found in BlockInfoTable for diskId=%{public}s",
+                     diskId.c_str());
+                serialNumber = "Unknown";
+            }
+        }
+    }
+#else
+    LOGI("GetDiskSerialNumber: not supported on non-PC");
+    return E_NOT_SUPPORT;
+#endif
+    return E_OK;
+}
+
+int32_t DiskManagerProvider::GetDiskPowerCycleCount(const std::string &sysPath, int32_t &powerCycleCount)
+{
+    LOGI("GetDiskPowerCycleCount sysPath=%{public}s", GetAnonyString(sysPath).c_str());
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_ENTERPRISE_MANAGE_DISK)) {
+        LOGE("GetDiskPowerCycleCount: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+#ifdef PC_MANAGER
+    if (sysPath.empty() || sysPath.find("/sys/block/") != 0) {
+        LOGE("GetDiskPowerCycleCount: invalid sysPath");
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    std::string devName = sysPath.substr(strlen("/sys/block/"));
+    if (devName.empty() || devName.find('/') != std::string::npos || devName.find("..") != std::string::npos) {
+        LOGE("GetDiskPowerCycleCount: invalid devName");
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    uint64_t count = 0;
+    int32_t err = StorageDaemonAdapter::GetInstance().GetDiskPowerCycleCount(devName, count);
+    if (err != E_OK) {
+        LOGE("GetDiskPowerCycleCount: IPC failed, err=%{public}d", err);
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    powerCycleCount = static_cast<int32_t>(count);
+#else
+    LOGI("GetDiskPowerCycleCount: not supported on non-PC");
+    return E_NOT_SUPPORT;
+#endif
+    return E_OK;
+}
+
+int32_t DiskManagerProvider::GetDiskPowerOnHours(const std::string &sysPath, int32_t &powerOnHours)
+{
+    LOGI("GetDiskPowerOnHours sysPath=%{public}s", GetAnonyString(sysPath).c_str());
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_ENTERPRISE_MANAGE_DISK)) {
+        LOGE("GetDiskPowerOnHours: permission denied");
+        return E_PERMISSION_DENIED;
+    }
+#ifdef PC_MANAGER
+    if (sysPath.empty() || sysPath.find("/sys/block/") != 0) {
+        LOGE("GetDiskPowerOnHours: invalid sysPath");
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    std::string devName = sysPath.substr(strlen("/sys/block/"));
+    if (devName.empty() || devName.find('/') != std::string::npos || devName.find("..") != std::string::npos) {
+        LOGE("GetDiskPowerOnHours: invalid devName");
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    uint64_t hours = 0;
+    int32_t err = StorageDaemonAdapter::GetInstance().GetDiskPowerOnHours(devName, hours);
+    if (err != E_OK) {
+        LOGE("GetDiskPowerOnHours: IPC failed, err=%{public}d", err);
+        return E_DISK_PHY_INFO_UNKNOWN;
+    }
+    powerOnHours = static_cast<int32_t>(hours);
+#else
+    LOGI("GetDiskPowerOnHours: not supported on non-PC");
+    return E_NOT_SUPPORT;
+#endif
+    return E_OK;
+}
+
 int32_t DiskManagerProvider::BindBlockLoopDev(const std::string &diskId, uint64_t offset, uint64_t sizeLimit,
                                               std::string &loopPath)
 {

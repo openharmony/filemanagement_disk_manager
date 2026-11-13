@@ -74,6 +74,8 @@ public:
                                           uint64_t &dmDev));
     MOCK_METHOD5(GetBurnFileList, ErrCode(const std::string &srcDir, int32_t offset, int32_t pageSize,
                                           std::vector<std::string> &fileList, bool &hasMore));
+    MOCK_METHOD2(GetDiskPowerCycleCount, ErrCode(const std::string &devName, uint64_t &powerCycleCount));
+    MOCK_METHOD2(GetDiskPowerOnHours, ErrCode(const std::string &devName, uint64_t &powerOnHours));
 };
 
 } // namespace DiskManager

@@ -4737,5 +4737,294 @@ std::string BlockInfoTable::ToJsonStringWithExtras(
     return "";
 }
 
+// ========== Local disk hardware info API tests (since 26.2.0) ==========
+
+/**
+ * @tc.name: GetLocalDiskInfos_PermissionDenied_001
+ * @tc.desc: GetLocalDiskInfos returns E_PERMISSION_DENIED without GET_STORAGE_VOLUME_INFO.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetLocalDiskInfos_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetLocalDiskInfos_PermissionDenied_001 Start";
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::vector<LocalDiskInfo> infos;
+    EXPECT_EQ(provider.GetLocalDiskInfos(infos), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetLocalDiskInfos_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetLocalDiskInfos_NotSupport_001
+ * @tc.desc: GetLocalDiskInfos returns E_OK with empty vector on non-PC.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetLocalDiskInfos_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetLocalDiskInfos_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::vector<LocalDiskInfo> infos;
+    auto ret = provider.GetLocalDiskInfos(infos);
+#ifdef PC_MANAGER
+    EXPECT_EQ(ret, E_OK);
+#else
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(infos.empty());
+#endif
+    GTEST_LOG_(INFO) << "GetLocalDiskInfos_NotSupport_001 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumber_PermissionDenied_001
+ * @tc.desc: GetDiskSerialNumber returns E_PERMISSION_DENIED without ACCESS_DISK_PHY_INFO.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskSerialNumber_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_PermissionDenied_001 Start";
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string serial;
+    EXPECT_EQ(provider.GetDiskSerialNumber("/sys/block/nvme0n1", serial), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumber_InvalidPath_001
+ * @tc.desc: GetDiskSerialNumber returns E_DISK_PHY_INFO_UNKNOWN for invalid sysPath.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskSerialNumber_InvalidPath_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_InvalidPath_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string serial;
+#ifdef PC_MANAGER
+    EXPECT_EQ(provider.GetDiskSerialNumber("/invalid/path", serial), E_DISK_PHY_INFO_UNKNOWN);
+    EXPECT_EQ(provider.GetDiskSerialNumber("", serial), E_DISK_PHY_INFO_UNKNOWN);
+#else
+    EXPECT_EQ(provider.GetDiskSerialNumber("/invalid/path", serial), E_NOT_SUPPORT);
+#endif
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_InvalidPath_001 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumber_NotSupport_001
+ * @tc.desc: GetDiskSerialNumber returns E_NOT_SUPPORT on non-PC with valid sysPath.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskSerialNumber_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string serial;
+    auto ret = provider.GetDiskSerialNumber("/sys/block/nvme0n1", serial);
+#ifdef PC_MANAGER
+    EXPECT_NE(ret, E_NOT_SUPPORT);
+#else
+    EXPECT_EQ(ret, E_NOT_SUPPORT);
+#endif
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_NotSupport_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerCycleCount_PermissionDenied_001
+ * @tc.desc: GetDiskPowerCycleCount returns E_PERMISSION_DENIED without ENTERPRISE_MANAGE_DISK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerCycleCount_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_PermissionDenied_001 Start";
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t count = 0;
+    EXPECT_EQ(provider.GetDiskPowerCycleCount("/sys/block/nvme0n1", count), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerCycleCount_NotSupport_001
+ * @tc.desc: GetDiskPowerCycleCount returns E_NOT_SUPPORT on non-PC.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerCycleCount_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t count = 0;
+    auto ret = provider.GetDiskPowerCycleCount("/sys/block/nvme0n1", count);
+#ifdef PC_MANAGER
+    EXPECT_NE(ret, E_NOT_SUPPORT);
+#else
+    EXPECT_EQ(ret, E_NOT_SUPPORT);
+#endif
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_NotSupport_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerOnHours_PermissionDenied_001
+ * @tc.desc: GetDiskPowerOnHours returns E_PERMISSION_DENIED without ENTERPRISE_MANAGE_DISK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerOnHours_PermissionDenied_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_PermissionDenied_001 Start";
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t hours = 0;
+    EXPECT_EQ(provider.GetDiskPowerOnHours("/sys/block/nvme0n1", hours), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_PermissionDenied_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerOnHours_NotSupport_001
+ * @tc.desc: GetDiskPowerOnHours returns E_NOT_SUPPORT on non-PC.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerOnHours_NotSupport_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_NotSupport_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t hours = 0;
+    auto ret = provider.GetDiskPowerOnHours("/sys/block/nvme0n1", hours);
+#ifdef PC_MANAGER
+    EXPECT_NE(ret, E_NOT_SUPPORT);
+#else
+    EXPECT_EQ(ret, E_NOT_SUPPORT);
+#endif
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_NotSupport_001 End";
+}
+
+#ifdef PC_MANAGER
+/**
+ * @tc.name: GetDiskSerialNumber_NvmeSystemDisk_001
+ * @tc.desc: GetDiskSerialNumber for NVMe system disk reads sysfs /device/serial.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskSerialNumber_NvmeSystemDisk_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_NvmeSystemDisk_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string serial;
+    auto ret = provider.GetDiskSerialNumber("/sys/block/nvme0n1", serial);
+    EXPECT_EQ(ret, E_OK);
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_NvmeSystemDisk_001 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumber_DevNameContainsSlash_001
+ * @tc.desc: GetDiskSerialNumber with devName containing / returns E_DISK_PHY_INFO_UNKNOWN.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskSerialNumber_DevNameContainsSlash_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_DevNameContainsSlash_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string serial;
+    EXPECT_EQ(provider.GetDiskSerialNumber("/sys/block/sda/b", serial), E_DISK_PHY_INFO_UNKNOWN);
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_DevNameContainsSlash_001 End";
+}
+
+/**
+ * @tc.name: GetDiskSerialNumber_DevNameContainsDotDot_001
+ * @tc.desc: GetDiskSerialNumber with devName containing .. returns E_DISK_PHY_INFO_UNKNOWN.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskSerialNumber_DevNameContainsDotDot_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_DevNameContainsDotDot_001 Start";
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    std::string serial;
+    EXPECT_EQ(provider.GetDiskSerialNumber("/sys/block/..", serial), E_DISK_PHY_INFO_UNKNOWN);
+    GTEST_LOG_(INFO) << "GetDiskSerialNumber_DevNameContainsDotDot_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerCycleCount_IpcFail_001
+ * @tc.desc: GetDiskPowerCycleCount returns E_DISK_PHY_INFO_UNKNOWN when IPC fails.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerCycleCount_IpcFail_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_IpcFail_001 Start";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskPowerCycleCount(_, _))
+        .WillOnce(Return(E_SA_IS_NULLPTR));
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t count = 0;
+    EXPECT_EQ(provider.GetDiskPowerCycleCount("/sys/block/nvme0n1", count), E_DISK_PHY_INFO_UNKNOWN);
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_IpcFail_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerCycleCount_IpcSuccess_001
+ * @tc.desc: GetDiskPowerCycleCount returns E_OK with correct count when IPC succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerCycleCount_IpcSuccess_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_IpcSuccess_001 Start";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskPowerCycleCount(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(100), Return(E_OK)));
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t count = 0;
+    EXPECT_EQ(provider.GetDiskPowerCycleCount("/sys/block/nvme0n1", count), E_OK);
+    EXPECT_EQ(count, 100);
+    GTEST_LOG_(INFO) << "GetDiskPowerCycleCount_IpcSuccess_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerOnHours_IpcFail_001
+ * @tc.desc: GetDiskPowerOnHours returns E_DISK_PHY_INFO_UNKNOWN when IPC fails.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerOnHours_IpcFail_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_IpcFail_001 Start";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskPowerOnHours(_, _))
+        .WillOnce(Return(E_SA_IS_NULLPTR));
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t hours = 0;
+    EXPECT_EQ(provider.GetDiskPowerOnHours("/sys/block/nvme0n1", hours), E_DISK_PHY_INFO_UNKNOWN);
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_IpcFail_001 End";
+}
+
+/**
+ * @tc.name: GetDiskPowerOnHours_IpcSuccess_001
+ * @tc.desc: GetDiskPowerOnHours returns E_OK with correct hours when IPC succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerProviderTest, GetDiskPowerOnHours_IpcSuccess_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_IpcSuccess_001 Start";
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), GetDiskPowerOnHours(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(2000), Return(E_OK)));
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    int32_t hours = 0;
+    EXPECT_EQ(provider.GetDiskPowerOnHours("/sys/block/nvme0n1", hours), E_OK);
+    EXPECT_EQ(hours, 2000);
+    GTEST_LOG_(INFO) << "GetDiskPowerOnHours_IpcSuccess_001 End";
+}
+#endif
+
 } // namespace DiskManager
 } // namespace OHOS

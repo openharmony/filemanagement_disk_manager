@@ -595,5 +595,31 @@ int32_t StorageDaemonAdapter::GetBurnFileList(const std::string &srcDir, int32_t
          static_cast<int32_t>(ret), fileList.size(), hasMore);
     return static_cast<int32_t>(ret);
 }
+
+int32_t StorageDaemonAdapter::GetDiskPowerCycleCount(const std::string &devName, uint64_t &powerCycleCount)
+{
+    LOGI("GetDiskPowerCycleCount enter, devName=%{public}s", devName.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetDiskPowerCycleCount exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->GetDiskPowerCycleCount(devName, powerCycleCount);
+    LOGI("GetDiskPowerCycleCount exit ret=%{public}d count=%{public}" PRIu64, ret, powerCycleCount);
+    return ret;
+}
+
+int32_t StorageDaemonAdapter::GetDiskPowerOnHours(const std::string &devName, uint64_t &powerOnHours)
+{
+    LOGI("GetDiskPowerOnHours enter, devName=%{public}s", devName.c_str());
+    int32_t err = EnsureProxyReady();
+    if (err != E_OK) {
+        LOGE("GetDiskPowerOnHours exit err=%{public}d (proxy not ready)", err);
+        return err;
+    }
+    const int32_t ret = storageDaemon_->GetDiskPowerOnHours(devName, powerOnHours);
+    LOGI("GetDiskPowerOnHours exit ret=%{public}d hours=%{public}" PRIu64, ret, powerOnHours);
+    return ret;
+}
 } // namespace DiskManager
 } // namespace OHOS

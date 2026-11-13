@@ -34,6 +34,8 @@ inline const std::string PERMISSION_STORAGE_MANAGER = "ohos.permission.STORAGE_M
 inline const std::string PERMISSION_MOUNT_MANAGER = "ohos.permission.MOUNT_UNMOUNT_MANAGER";
 inline const std::string PERMISSION_FORMAT_MANAGER = "ohos.permission.MOUNT_FORMAT_MANAGER";
 inline const std::string PERMISSION_GET_STORAGE_VOLUME_INFO = "ohos.permission.GET_STORAGE_VOLUME_INFO";
+inline const std::string PERMISSION_ACCESS_DISK_PHY_INFO = "ohos.permission.ACCESS_DISK_PHY_INFO";
+inline const std::string PERMISSION_ENTERPRISE_MANAGE_DISK = "ohos.permission.ENTERPRISE_MANAGE_DISK";
 
 /**
  * @class IpcCallerAuth

@@ -26,6 +26,21 @@ namespace ModuleVolumeManager {
 /***********************************************
  * Module export - 只保留导出函数，不注册模块
  ***********************************************/
+static void ExportEnums(napi_env env, napi_value exports)
+{
+    napi_value verifyTypeEnum = nullptr;
+    napi_create_object(env, &verifyTypeEnum);
+    napi_value keyData = nullptr;
+    napi_value fullData = nullptr;
+    napi_create_int32(env, 0, &keyData);
+    napi_create_int32(env, 1, &fullData);
+    napi_set_named_property(env, verifyTypeEnum, "KEY_DATA", keyData);
+    napi_set_named_property(env, verifyTypeEnum, "FULL_DATA", fullData);
+    napi_set_named_property(env, exports, "VerifyType", verifyTypeEnum);
+    napi_value diskTypeEnum = CreateDiskTypeEnum(env);
+    napi_set_named_property(env, exports, "DiskType", diskTypeEnum);
+}
+
 napi_value VolumeManagerExport(napi_env env, napi_value exports)
 {
     static napi_property_descriptor desc[] = {
@@ -55,6 +70,11 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
         // Public API：外置存储设备信息查询（三方应用可用，normal 权限）
         DECLARE_NAPI_FUNCTION("getExternalDiskInfos", GetExternalDiskInfos),
         DECLARE_NAPI_FUNCTION("getExternalVolumeInfos", GetExternalVolumeInfos),
+        // Public API：本地磁盘硬件信息查询（PC 产品，since 26.1.0）
+        DECLARE_NAPI_FUNCTION("getLocalDiskInfos", GetLocalDiskInfos),
+        DECLARE_NAPI_FUNCTION("getDiskSerialNumber", GetDiskSerialNumber),
+        DECLARE_NAPI_FUNCTION("getDiskPowerCycleCount", GetDiskPowerCycleCount),
+        DECLARE_NAPI_FUNCTION("getDiskPowerOnHours", GetDiskPowerOnHours),
 #ifdef HMDFS_FILE_MANAGER
         DECLARE_NAPI_FUNCTION("isSameAccountDevice", DfsService::IsSameAccountDevice),
         DECLARE_NAPI_FUNCTION("getDfsSwitchStatus", DfsService::GetDfsSwitchStatus),
@@ -67,22 +87,7 @@ napi_value VolumeManagerExport(napi_env env, napi_value exports)
 #endif
     };
     FILEMGMT_CALL(napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
-
-    // 导出 VerifyType 枚举
-    napi_value verifyTypeEnum = nullptr;
-    FILEMGMT_CALL(napi_create_object(env, &verifyTypeEnum));
-    napi_value keyData = nullptr;
-    napi_value fullData = nullptr;
-    FILEMGMT_CALL(napi_create_int32(env, 0, &keyData));
-    FILEMGMT_CALL(napi_create_int32(env, 1, &fullData));
-    FILEMGMT_CALL(napi_set_named_property(env, verifyTypeEnum, "KEY_DATA", keyData));
-    FILEMGMT_CALL(napi_set_named_property(env, verifyTypeEnum, "FULL_DATA", fullData));
-    FILEMGMT_CALL(napi_set_named_property(env, exports, "VerifyType", verifyTypeEnum));
-
-    // 导出 DiskType 枚举（调用 n_exporter 中的函数）
-    napi_value diskTypeEnum = CreateDiskTypeEnum(env);
-    FILEMGMT_CALL(napi_set_named_property(env, exports, "DiskType", diskTypeEnum));
-
+    ExportEnums(env, exports);
     return exports;
 }
 
