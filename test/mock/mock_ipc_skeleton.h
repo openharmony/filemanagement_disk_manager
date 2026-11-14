@@ -24,6 +24,7 @@ namespace OHOS {
 class MockIPCSkeleton {
 public:
     static pid_t mockCallingUid_;
+    static pid_t mockCallingAppUid_;
     static pid_t mockCallingPid_;
     static uint32_t mockCallingTokenID_;
     static uint64_t mockCallingFullTokenID_;
@@ -35,6 +36,7 @@ public:
     }
 
     static pid_t GetCallingUid() { return mockCallingUid_; }
+    static pid_t GetCallingAppUid() { return mockCallingAppUid_; }
     static pid_t GetCallingPid() { return mockCallingPid_; }
     static uint32_t GetCallingTokenID() { return mockCallingTokenID_; }
     static uint64_t GetCallingFullTokenID() { return mockCallingFullTokenID_; }

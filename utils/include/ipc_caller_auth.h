@@ -17,7 +17,7 @@
  * @file ipc_caller_auth.h
  * @brief IPC 侧调用方鉴权工具：封装 AccessTokenKit、IPCSkeleton 等通用能力。
  *
- * 不包含具体业务白名单（特定 UID、进程名、免检条件等），由调用方在业务层自行组合。
+ * 不包含具体业务白名单（特定 AppUID、进程名、免检条件等），由调用方在业务层自行组合。
  */
 
 #ifndef OHOS_FILEMANAGEMENT_DISK_MANAGER_IPC_CALLER_AUTH_H
@@ -57,13 +57,13 @@ public:
     /** 判断是否为系统应用：HAP 需系统应用，非 HAP（如原生 SA）视为 true。 */
     static bool IsCallingSystemApp();
 
-    /** 比对原生调用方进程名与 UID，均与期望值一致返回 true（依赖 GetNativeTokenInfo）。 */
+    /** 比对原生调用方进程名与 AppUID，均与期望值一致返回 true（依赖 GetNativeTokenInfo）。 */
     static bool VerifyNativeCallerMatches(const std::string &expectedProcessName, int32_t expectedUid);
 
-    /** 返回当前 IPC 调用方 UID（IPCSkeleton::GetCallingUid）。 */
-    static int32_t GetCallingUid();
+    /** 返回当前 IPC 调用方AppUID（IPCSkeleton::GetCallingAppUid）。 */
+    static int32_t GetCallingAppUid();
 
-    /** 判断当前 IPC 调用方 UID 是否等于 expectedUid。 */
+    /** 判断当前 IPC 调用方 AppUID 是否等于 expectedUid。 */
     static bool IsCallingUid(int32_t expectedUid);
 
     /** 判断当前线程 IPC 令牌类型是否为 TOKEN_NATIVE。 */
@@ -75,7 +75,7 @@ public:
     /** 按令牌类型读取调用方标识：原生为进程名，HAP 为 bundleName；其它或未取到为空串。 */
     static std::string GetCallingBundleOrNativeProcessName();
 
-    /** 按令牌类型读取调用方 userId：HAP 从 HapTokenInfo.userID 取值，非 HAP 按 uid/200000 推算。 */
+    /** 按令牌类型读取调用方 userId：HAP 从 HapTokenInfo.userID 取值，非 HAP 按 appUid/200000 推算。 */
     static int32_t GetCallingUserId();
 
     /** 工具类禁止构造。 */

@@ -47,7 +47,7 @@ using namespace IPC_SINGLE;
 #endif
 constexpr uint32_t MOCK_TOKEN_ID = 100;
 
-pid_t IPCSkeleton::GetCallingUid()
+pid_t IPCSkeleton::GetCallingAppUid()
 {
     return 0;
 }

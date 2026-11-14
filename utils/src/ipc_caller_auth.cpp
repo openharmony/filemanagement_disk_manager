@@ -74,23 +74,23 @@ bool IpcCallerAuth::VerifyNativeCallerMatches(const std::string &expectedProcess
         return false;
     }
 
-    int32_t uid = IPCSkeleton::GetCallingUid();
-    if (nativeInfo.processName != expectedProcessName || uid != expectedUid) {
+    int32_t appUid = IPCSkeleton::GetCallingAppUid();
+    if (nativeInfo.processName != expectedProcessName || appUid != expectedUid) {
         LOGE("IpcCallerAuth: native caller mismatch, process=%{public}s uid=%{public}d",
-             nativeInfo.processName.c_str(), uid);
+             nativeInfo.processName.c_str(), appUid);
         return false;
     }
     return true;
 }
 
-int32_t IpcCallerAuth::GetCallingUid()
+int32_t IpcCallerAuth::GetCallingAppUid()
 {
-    return IPCSkeleton::GetCallingUid();
+    return IPCSkeleton::GetCallingAppUid();
 }
 
 bool IpcCallerAuth::IsCallingUid(int32_t expectedUid)
 {
-    return IPCSkeleton::GetCallingUid() == expectedUid;
+    return IPCSkeleton::GetCallingAppUid() == expectedUid;
 }
 
 bool IpcCallerAuth::IsCallingNativeToken()
@@ -136,11 +136,11 @@ int32_t IpcCallerAuth::GetCallingUserId()
         Security::AccessToken::HapTokenInfo hapInfo;
         if (AccessTokenKit::GetHapTokenInfo(tokenCaller, hapInfo) != ERR_OK) {
             LOGE("IpcCallerAuth: GetHapTokenInfo failed for userId");
-            return IPCSkeleton::GetCallingUid() / UID_BASE_DIVISOR;
+            return IPCSkeleton::GetCallingAppUid() / UID_BASE_DIVISOR;
         }
         return hapInfo.userID;
     }
-    return IPCSkeleton::GetCallingUid() / UID_BASE_DIVISOR;
+    return IPCSkeleton::GetCallingAppUid() / UID_BASE_DIVISOR;
 }
 
 } // namespace DiskManager

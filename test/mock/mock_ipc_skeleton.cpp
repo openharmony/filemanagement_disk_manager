@@ -18,6 +18,7 @@
 namespace OHOS {
 
 pid_t MockIPCSkeleton::mockCallingUid_ = 0;
+pid_t MockIPCSkeleton::mockCallingAppUid_ = 0;
 pid_t MockIPCSkeleton::mockCallingPid_ = 0;
 uint32_t MockIPCSkeleton::mockCallingTokenID_ = 0;
 uint64_t MockIPCSkeleton::mockCallingFullTokenID_ = 0;
