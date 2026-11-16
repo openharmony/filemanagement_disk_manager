@@ -5026,5 +5026,299 @@ HWTEST_F(DiskManagerProviderTest, GetDiskPowerOnHours_IpcSuccess_001, TestSize.L
 }
 #endif
 
+#ifdef PC_MANAGER
+/**
+ * @tc.name: MountDmDevice_Success_001
+ * @tc.desc: MountDmDevice returns E_OK when all checks pass and blkid+mount succeed.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_Success_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    Disk disk("disk-1-1", SIZE, "/dev/block/disk-1-1", DATA_DISK_HDD);
+    DiskManager::GetInstance().OnDiskCreated(disk);
+    std::vector<std::string> blkidOutput = {"ext4"};
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(testing::_, testing::_, testing::_))
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(0),
+                                  testing::SetArgReferee<2>(blkidOutput), testing::Return(E_OK)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(),
+                Mount(testing::_, testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(E_OK));
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param), E_OK);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_PermissionDenied_001
+ * @tc.desc: MountDmDevice returns E_PERMISSION_DENIED when caller uid is not PC_ENC_EXT_SERVICE_UID.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_PermissionDenied_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: MountDmDevice_PermissionDenied_002
+ * @tc.desc: MountDmDevice returns E_PERMISSION_DENIED when caller lacks MOUNT_FORMAT_MANAGER permission.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_PermissionDenied_002, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_InvalidDiskId_001
+ * @tc.desc: MountDmDevice returns E_PARAMS_INVALID when diskId format is invalid.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_InvalidDiskId_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("invalid", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_InvalidDmPath_001
+ * @tc.desc: MountDmDevice returns E_PARAMS_INVALID when dmPath prefix is not /dev/block/.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_InvalidDmPath_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/mnt/data/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_InvalidDstPath_001
+ * @tc.desc: MountDmDevice returns E_PARAMS_INVALID when dstPath is invalid (path traversal).
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_InvalidDstPath_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "../../../etc/passwd", "ext4", param),
+              E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_InvalidFsType_001
+ * @tc.desc: MountDmDevice returns E_PARAMS_INVALID when fsType is not ext4.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_InvalidFsType_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "vfat", param),
+              E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_MountDataOverlength_001
+ * @tc.desc: MountDmDevice returns E_PARAMS_INVALID when mountData exceeds 4096 bytes (EX-10).
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_MountDataOverlength_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    MountParam param;
+    param.SetMountData(std::string(4097, 'x'));
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_FsTypeNotExist_001
+ * @tc.desc: MountDmDevice returns E_FSTYPE_NOT_EXIST when blkid result is empty.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_FsTypeNotExist_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    Disk disk("disk-1-1", SIZE, "/dev/block/disk-1-1", DATA_DISK_HDD);
+    DiskManager::GetInstance().OnDiskCreated(disk);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(testing::_, testing::_, testing::_))
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(0), testing::Return(E_OK)));
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_FSTYPE_NOT_EXIST);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_FsTypeMismatch_001
+ * @tc.desc: MountDmDevice returns E_FSTYPE_MISMATCH when blkid result is vfat but expected ext4.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_FsTypeMismatch_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    Disk disk("disk-1-1", SIZE, "/dev/block/disk-1-1", DATA_DISK_HDD);
+    DiskManager::GetInstance().OnDiskCreated(disk);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(testing::_, testing::_, testing::_))
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(0),
+                                  testing::SetArgReferee<2>(std::vector<std::string>{"vfat"}),
+                                  testing::Return(E_OK)));
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_FSTYPE_MISMATCH);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: MountDmDevice_MountFailed_001
+ * @tc.desc: MountDmDevice returns E_DM_MOUNT_FAILED when mount operation fails.
+ */
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_MountFailed_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    Disk disk("disk-1-1", SIZE, "/dev/block/disk-1-1", DATA_DISK_HDD);
+    DiskManager::GetInstance().OnDiskCreated(disk);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(), ExecuteCommand(testing::_, testing::_, testing::_))
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(0),
+                                  testing::SetArgReferee<2>(std::vector<std::string>{"ext4"}),
+                                  testing::Return(E_OK)));
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(),
+                Mount(testing::_, testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(E_DM_MOUNT_FAILED));
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_DM_MOUNT_FAILED);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: FormatDmDevice_Success_001
+ * @tc.desc: FormatDmDevice returns E_OK when all checks pass and FormatVolume succeeds.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_Success_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    Disk disk("disk-1-1", SIZE, "/dev/block/disk-1-1", DATA_DISK_HDD);
+    DiskManager::GetInstance().OnDiskCreated(disk);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(),
+                FormatVolume(testing::_, testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(E_OK));
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4"), E_OK);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: FormatDmDevice_PermissionDenied_001
+ * @tc.desc: FormatDmDevice returns E_PERMISSION_DENIED when caller uid is not PC_ENC_EXT_SERVICE_UID.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_PermissionDenied_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4"), E_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: FormatDmDevice_PermissionDenied_002
+ * @tc.desc: FormatDmDevice returns E_PERMISSION_DENIED when caller lacks MOUNT_FORMAT_MANAGER permission.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_PermissionDenied_002, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    g_permissionGranted = MOCK_PERMISSION_DENIED;
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4"), E_PERMISSION_DENIED);
+    g_permissionGranted = MOCK_PERMISSION_GRANTED;
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: FormatDmDevice_InvalidDiskId_001
+ * @tc.desc: FormatDmDevice returns E_PARAMS_INVALID when diskId format is invalid.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_InvalidDiskId_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    EXPECT_EQ(provider.FormatDmDevice("invalid", "/dev/block/dm-0", "ext4"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: FormatDmDevice_InvalidDmPath_001
+ * @tc.desc: FormatDmDevice returns E_PARAMS_INVALID when dmPath prefix is not /dev/block/.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_InvalidDmPath_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/mnt/data/dm-0", "ext4"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: FormatDmDevice_InvalidFsType_001
+ * @tc.desc: FormatDmDevice returns E_PARAMS_INVALID when fsType is not ext4.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_InvalidFsType_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "vfat"), E_PARAMS_INVALID);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+
+/**
+ * @tc.name: FormatDmDevice_FormatFailed_001
+ * @tc.desc: FormatDmDevice returns E_DM_FORMAT_FAILED when FormatVolume fails.
+ */
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_FormatFailed_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MockIPCSkeleton::mockCallingAppUid_ = PC_ENC_EXT_SERVICE_UID;
+    Disk disk("disk-1-1", SIZE, "/dev/block/disk-1-1", DATA_DISK_HDD);
+    DiskManager::GetInstance().OnDiskCreated(disk);
+    EXPECT_CALL(MockStorageDaemonAdapter::GetInstance(),
+                FormatVolume(testing::_, testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(E_DM_FORMAT_FAILED));
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4"), E_DM_FORMAT_FAILED);
+    MockIPCSkeleton::mockCallingAppUid_ = 0;
+}
+#endif // PC_MANAGER
+
+#ifndef PC_MANAGER
+HWTEST_F(DiskManagerProviderTest, MountDmDevice_NotSupport_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    MountParam param;
+    EXPECT_EQ(provider.MountDmDevice("disk-1-1", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_NOT_SUPPORT);
+}
+
+HWTEST_F(DiskManagerProviderTest, FormatDmDevice_NotSupport_001, TestSize.Level0)
+{
+    DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
+    EXPECT_EQ(provider.FormatDmDevice("disk-1-1", "/dev/block/dm-0", "ext4"), E_NOT_SUPPORT);
+}
+#endif // PC_MANAGER
+
 } // namespace DiskManager
 } // namespace OHOS
