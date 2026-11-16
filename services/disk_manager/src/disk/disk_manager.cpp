@@ -3380,7 +3380,10 @@ int32_t DiskManager::MountDmDevice(const std::string &diskId, const std::string 
     std::string actualFsType;
     int32_t err = QueryDmDeviceFsType(dmPath, actualFsType);
     if (err != E_OK) {
-        return err;
+        if (err == E_FSTYPE_NOT_EXIST) {
+            return err;
+        }
+        return dfx.Finish(err);
     }
     if (actualFsType != fsType) {
         LOGE("MountDmDevice: fsType mismatch, actual=%{public}s expected=%{public}s",
