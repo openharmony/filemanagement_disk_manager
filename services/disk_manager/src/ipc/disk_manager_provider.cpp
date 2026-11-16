@@ -1351,7 +1351,7 @@ int32_t DiskManagerProvider::MountDmDevice(const std::string &diskId, const std:
          diskId.c_str(), dmPath.c_str(), dstPath.c_str(), fsType.c_str(), mountParam.GetReadOnly());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(dmDevMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
+    int32_t uid = IpcCallerAuth::GetCallingAppUid();
     if (uid != PC_ENC_EXT_SERVICE_UID) {
         LOGE("MountDmDevice: call uid %{public}d is invalid", uid);
         return E_PERMISSION_DENIED;
@@ -1396,7 +1396,7 @@ int32_t DiskManagerProvider::FormatDmDevice(const std::string &diskId, const std
          dmPath.c_str(), fsType.c_str());
 #ifdef PC_MANAGER
     std::lock_guard<std::mutex> lock(dmDevMutex_);
-    int32_t uid = IpcCallerAuth::GetCallingUid();
+    int32_t uid = IpcCallerAuth::GetCallingAppUid();
     if (uid != PC_ENC_EXT_SERVICE_UID) {
         LOGE("FormatDmDevice: call uid %{public}d is invalid", uid);
         return E_PERMISSION_DENIED;
