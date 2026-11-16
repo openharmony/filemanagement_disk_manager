@@ -48,6 +48,7 @@ constexpr int32_t MOCK_PERMISSION_GRANTED = 0;
 constexpr int32_t MOCK_PERMISSION_DENIED = -1;
 #ifdef PC_MANAGER
 constexpr int32_t CRYPTO_USB_MGR_SERVICE_UID = 7060;
+constexpr int32_t PC_ENC_EXT_SERVICE_UID = 7075;
 #endif
 
 namespace OHOS {
