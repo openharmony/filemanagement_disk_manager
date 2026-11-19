@@ -1393,9 +1393,14 @@ int32_t DiskManager::PurgeVolumesForDisk(const std::string &diskId)
         }
     }
 
+    Disk disk;
+    bool isInternalDataDisk = (GetDiskById(diskId, disk) == E_OK && disk.IsInternalDataDisk());
     {
         std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
         for (const std::string &volId : volIds) {
+            if (isInternalDataDisk) {
+                PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volId);
+            }
             volumeMap_.erase(volId);
         }
     }
@@ -1470,8 +1475,10 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     }
 
     AddPartitioningDisk(diskId);
+    skipNotifyFormatted_.store(true);
     ret = PurgeVolumesForDisk(diskId);
     if (ret != E_OK) {
+        skipNotifyFormatted_.store(false);
         RemovePartitioningDisk(diskId);
         LOGE("Partition failed, purge volumes diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
@@ -1481,12 +1488,14 @@ int32_t DiskManager::Partition(const std::string &diskId, int32_t type)
     const std::string diskPath = NormalizeDiskBlockPath(diskId);
     ret = StorageDaemonAdapter::GetInstance().Partition(diskPath, partitionFsType);
     if (ret != E_OK) {
+        skipNotifyFormatted_.store(false);
         RemovePartitioningDisk(diskId);
         LOGE("Partition storage_daemon failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
         return ret;
     }
 
     ret = UeventBootstrap::RediscoverDiskVolumes(diskId);
+    skipNotifyFormatted_.store(false);
     RemovePartitioningDisk(diskId);
     if (ret != E_OK) {
         LOGE("Partition RediscoverDiskVolumes failed diskId=%{public}s ret=%{public}d", diskId.c_str(), ret);
@@ -2797,6 +2806,8 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
         uuid = DedupFsUuidUnlocked(volumeId, uuid);
     }
     UpdateVoldataMappingAfterFormat(diskId, oldFsUuid, uuid, fsType);
+    Disk disk;
+    bool isInternalDataDisk = (GetDiskById(diskId, disk) == E_OK && disk.IsInternalDataDisk());
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     auto it = volumeMap_.find(volumeId);
     if (it == volumeMap_.end()) {
@@ -2806,6 +2817,9 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     it->second.SetDescription(label);
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
+    if (isInternalDataDisk && !skipNotifyFormatted_.load()) {
+        PcEncryptionAdapter::GetInstance().NotifyVolumeFormatted(diskId, volumeId);
+    }
     return E_OK;
 }
 
@@ -3320,6 +3334,79 @@ bool DiskManager::IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeL
     }
     LOGI("IsVolumeBind: volume not bind");
     return false;
+}
+
+int32_t DiskManager::QueryDmDeviceFsType(const std::string &dmPath, std::string &fsType)
+{
+    std::string uuid;
+    std::string label;
+    (void)StorageDaemonAdapter::GetInstance().ReadMetadata(dmPath, uuid, fsType, label);
+    if (fsType.empty()) {
+        LOGW("QueryDmDeviceFsType: no filesystem found, dmPath=%{public}s", dmPath.c_str());
+        return E_FSTYPE_NOT_EXIST;
+    }
+    return E_OK;
+}
+
+int32_t DiskManager::MountDmDevice(const std::string &diskId, const std::string &dmPath,
+                                   const std::string &dstPath, const std::string &fsType,
+                                   const MountParam &mountParam)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDiskId(diskId).WithDevPath(dmPath).WithFsType(fsType);
+    IpcDfxScope dfx("DiskManager::MountDmDevice", DFX_STAGE_MOUNT_DM_DEVICE,
+                    VolumeOpType::MOUNT_DM_DEVICE, reportInfo);
+    LOGI("MountDmDevice diskId=%{public}s dmPath=%{public}s dstPath=%{public}s fsType=%{public}s",
+         diskId.c_str(), dmPath.c_str(), dstPath.c_str(), fsType.c_str());
+    if (!HasDisk(diskId)) {
+        LOGE("MountDmDevice: disk not found, diskId=%{public}s", diskId.c_str());
+        return dfx.Finish(E_NON_EXIST);
+    }
+    std::string actualFsType;
+    int32_t err = QueryDmDeviceFsType(dmPath, actualFsType);
+    if (err != E_OK) {
+        return dfx.Finish(err);
+    }
+    if (actualFsType != fsType) {
+        LOGE("MountDmDevice: fsType mismatch, actual=%{public}s expected=%{public}s",
+             actualFsType.c_str(), fsType.c_str());
+        return dfx.Finish(E_FSTYPE_MISMATCH);
+    }
+    uint64_t mountFlag = 0;
+    if (mountParam.GetReadOnly()) {
+        mountFlag |= static_cast<uint64_t>(MS_RDONLY);
+    }
+    err = StorageDaemonAdapter::GetInstance().Mount(dmPath, dstPath, fsType, mountFlag,
+                                                    mountParam.GetMountData());
+    if (err != E_OK) {
+        LOGE("MountDmDevice: mount failed, err=%{public}d", err);
+        return dfx.Finish(E_DM_MOUNT_FAILED);
+    }
+    LOGI("MountDmDevice: mount success");
+    return dfx.Finish(E_OK);
+}
+
+int32_t DiskManager::FormatDmDevice(const std::string &diskId, const std::string &dmPath,
+                                    const std::string &fsType)
+{
+    VolumeReportInfo reportInfo;
+    reportInfo.WithDiskId(diskId).WithDevPath(dmPath).WithFsType(fsType);
+    IpcDfxScope dfx("DiskManager::FormatDmDevice", DFX_STAGE_FORMAT_DM_DEVICE,
+                    VolumeOpType::FORMAT_DM_DEVICE, reportInfo);
+    LOGI("FormatDmDevice diskId=%{public}s dmPath=%{public}s fsType=%{public}s", diskId.c_str(),
+         dmPath.c_str(), fsType.c_str());
+    if (!HasDisk(diskId)) {
+        LOGE("FormatDmDevice: disk not found, diskId=%{public}s", diskId.c_str());
+        return dfx.Finish(E_NON_EXIST);
+    }
+    int32_t err = StorageDaemonAdapter::GetInstance().FormatVolume(dmPath, fsType, "/dev/block/" + diskId,
+                                                                   "", 0);
+    if (err != E_OK) {
+        LOGE("FormatDmDevice: format failed, err=%{public}d", err);
+        return dfx.Finish(E_DM_FORMAT_FAILED);
+    }
+    LOGI("FormatDmDevice: format success");
+    return dfx.Finish(E_OK);
 }
 } // namespace DiskManager
 } // namespace OHOS

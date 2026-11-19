@@ -40,9 +40,22 @@ void MountParam::SetFromEdmMount(bool fromEdmMount)
     fromEdmMount_ = fromEdmMount;
 }
 
+std::string MountParam::GetMountData() const
+{
+    return mountData_;
+}
+
+void MountParam::SetMountData(const std::string &mountData)
+{
+    mountData_ = mountData;
+}
+
 bool MountParam::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteBool(readOnly_) || !parcel.WriteBool(fromEdmMount_)) {
+        return false;
+    }
+    if (!parcel.WriteString(mountData_)) {
         return false;
     }
     return true;
@@ -56,6 +69,7 @@ MountParam *MountParam::Unmarshalling(Parcel &parcel)
     }
     obj->readOnly_ = parcel.ReadBool();
     obj->fromEdmMount_ = parcel.ReadBool();
+    obj->mountData_ = parcel.ReadString();
     return obj;
 }
 

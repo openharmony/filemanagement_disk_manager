@@ -102,6 +102,10 @@ public:
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath,
                               const MountParam &param) override;
     int32_t UmountVolumeByPath(const std::string &diskId, const std::string &volPath) override;
+    int32_t MountDmDevice(const std::string &diskId, const std::string &dmPath, const std::string &dstPath,
+                          const std::string &fsType, const MountParam &mountParam) override;
+    int32_t FormatDmDevice(const std::string &diskId, const std::string &dmPath,
+                           const std::string &fsType) override;
 
 private:
     bool ValidateBurnOptionsSubfields(const std::string &burnOptions);
@@ -128,6 +132,7 @@ private:
     // mutex to serialize CheckAndUnloadIfIdle and OnBlockDiskUevent to prevent race condition
     std::mutex unloadUeventMutex_;
     std::mutex cryptVolMutex_;
+    std::mutex dmDevMutex_;
     std::atomic<bool> isUnloading_{false};
 
     // 全局防重入标志：台式机数据盘 Format/Partition 共享，CAS true 抢占，操作完成后重置。

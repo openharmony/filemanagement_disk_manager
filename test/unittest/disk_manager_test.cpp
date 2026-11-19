@@ -1592,6 +1592,24 @@ HWTEST_F(DiskManagerTest, PurgeVolumesForDisk_TestCase_002, TestSize.Level0)
 }
 
 /**
+ * @tc.name: PurgeVolumesForDisk_DataDisk_NotifyFormatted_001
+ * @tc.desc: PurgeVolumesForDisk on data disk triggers NotifyVolumeFormatted, no crash.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, PurgeVolumesForDisk_DataDisk_NotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "PurgeVolumesForDisk_DataDisk_NotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-pv-dn"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-pv-dn", "disk-77-pv-dn", "uuid-pv-dn", UNMOUNTED));
+    EXPECT_EQ(dm.PurgeVolumesForDisk("disk-77-pv-dn"), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-pv-dn", out), E_NON_EXIST);
+    GTEST_LOG_(INFO) << "PurgeVolumesForDisk_DataDisk_NotifyFormatted_001 End";
+}
+
+/**
  * @tc.name: Partition_TestCase_001
  * @tc.desc: Partition CD disk returns E_NOT_SUPPORT.
  * @tc.type: FUNC
@@ -1621,6 +1639,73 @@ HWTEST_F(DiskManagerTest, Partition_TestCase_002, TestSize.Level0)
     dm.OnVolumeCreated(vol);
     EXPECT_EQ(dm.Partition("disk-32-1", 0), E_VOL_STATE);
     GTEST_LOG_(INFO) << "Partition_TestCase_002 End";
+}
+
+/**
+ * @tc.name: Format_SkipNotifyFormatted_001
+ * @tc.desc: Format with skipNotifyFormatted_=true skips NotifyVolumeFormatted, returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Format_SkipNotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_SkipNotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-snf-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-snf-1", "disk-77-snf-1", "uuid-snf-1", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-snf-1"), SetArgReferee<2>("ext4"),
+        SetArgReferee<3>("label"), Return(E_OK)));
+    dm.skipNotifyFormatted_.store(true);
+    EXPECT_EQ(dm.Format("vol-snf-1", "ext4"), E_OK);
+    dm.skipNotifyFormatted_.store(false);
+    GTEST_LOG_(INFO) << "Format_SkipNotifyFormatted_001 End";
+}
+
+/**
+ * @tc.name: Format_DataDisk_NotifyFormatted_001
+ * @tc.desc: Format on data disk with skipNotifyFormatted_=false triggers NotifyVolumeFormatted.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Format_DataDisk_NotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_DataDisk_NotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-fdn-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-fdn-1", "disk-77-fdn-1", "uuid-fdn-1", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-fdn-1"), SetArgReferee<2>("ext4"),
+        SetArgReferee<3>("label"), Return(E_OK)));
+    EXPECT_EQ(dm.Format("vol-fdn-1", "ext4"), E_OK);
+    GTEST_LOG_(INFO) << "Format_DataDisk_NotifyFormatted_001 End";
+}
+
+/**
+ * @tc.name: Format_UsbDisk_SkipNotifyFormatted_001
+ * @tc.desc: Format on USB disk with skipNotifyFormatted_=true, isInternalDataDisk=false, returns E_OK.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Format_UsbDisk_SkipNotifyFormatted_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Format_UsbDisk_SkipNotifyFormatted_001 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-77-usn-1"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-usn-1", "disk-77-usn-1", "uuid-usn-1", UNMOUNTED));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _)).WillOnce(DoAll(
+        SetArgReferee<1>("uuid-usn-1"), SetArgReferee<2>("ext4"),
+        SetArgReferee<3>("label"), Return(E_OK)));
+    dm.skipNotifyFormatted_.store(true);
+    EXPECT_EQ(dm.Format("vol-usn-1", "ext4"), E_OK);
+    dm.skipNotifyFormatted_.store(false);
+    GTEST_LOG_(INFO) << "Format_UsbDisk_SkipNotifyFormatted_001 End";
 }
 
 /**
@@ -6657,6 +6742,178 @@ HWTEST_F(DiskManagerTest, Burn_DfxFailKeepsReturn_001, TestSize.Level0)
     EXPECT_NE(tail.find("DiskManager::Burn"), std::string::npos);
     EXPECT_NE(tail.find("ret:13601806"), std::string::npos);
     GTEST_LOG_(INFO) << "Burn_DfxFailKeepsReturn_001 End";
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_001
+ * @tc.desc: MountDmDevice on non-existent disk returns E_NON_EXIST.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-99-99", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_NON_EXIST);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_002
+ * @tc.desc: MountDmDevice returns E_FSTYPE_NOT_EXIST when ReadMetadata returns empty type.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_002, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-2"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), SetArgReferee<2>(""), SetArgReferee<3>(""),
+                        Return(E_DAEMON_IPC_FAILED)));
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-2", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_FSTYPE_NOT_EXIST);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_003
+ * @tc.desc: MountDmDevice returns E_FSTYPE_MISMATCH when ReadMetadata returns vfat but expected ext4.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_003, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-3"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-3"), SetArgReferee<2>("vfat"),
+                        SetArgReferee<3>("label"), Return(E_OK)));
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-3", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_FSTYPE_MISMATCH);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_004
+ * @tc.desc: MountDmDevice succeeds when ReadMetadata returns ext4 and Mount returns E_OK.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_004, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-4"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-4"), SetArgReferee<2>("ext4"),
+                        SetArgReferee<3>("label"), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_OK));
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-4", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param), E_OK);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_005
+ * @tc.desc: MountDmDevice returns E_DM_MOUNT_FAILED when Mount returns error.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_005, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-5"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-5"), SetArgReferee<2>("ext4"),
+                        SetArgReferee<3>("label"), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-5", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_DM_MOUNT_FAILED);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_006
+ * @tc.desc: MountDmDevice with readOnly MountParam sets MS_RDONLY bit in mountFlag.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_006, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-6"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-6"), SetArgReferee<2>("ext4"),
+                        SetArgReferee<3>("label"), Return(E_OK)));
+    uint64_t capturedFlag = 0;
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _))
+        .WillOnce(DoAll(SaveArg<3>(&capturedFlag), Return(E_OK)));
+    MountParam param(true);
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-6", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param), E_OK);
+    EXPECT_TRUE((capturedFlag & static_cast<uint64_t>(MS_RDONLY)) != 0);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_007
+ * @tc.desc: ReadMetadata fails but type is empty → E_FSTYPE_NOT_EXIST.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_007, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-7"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), SetArgReferee<2>(""), SetArgReferee<3>(""),
+                        Return(E_DAEMON_IPC_FAILED)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).Times(0);
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-7", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param),
+              E_FSTYPE_NOT_EXIST);
+}
+
+/**
+ * @tc.name: MountDmDevice_TestCase_008
+ * @tc.desc: ReadMetadata returns ext4 and Mount succeeds.
+ */
+HWTEST_F(DiskManagerTest, MountDmDevice_TestCase_008, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-mdd-8"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, ReadMetadata(_, _, _, _))
+        .WillOnce(DoAll(SetArgReferee<1>("uuid-8"), SetArgReferee<2>("ext4"),
+                        SetArgReferee<3>("label"), Return(E_OK)));
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_OK));
+    MountParam param;
+    EXPECT_EQ(dm.MountDmDevice("disk-77-mdd-8", "/dev/block/dm-0", "/mnt/data/crypt", "ext4", param), E_OK);
+}
+
+/**
+ * @tc.name: FormatDmDevice_TestCase_001
+ * @tc.desc: FormatDmDevice on non-existent disk returns E_NON_EXIST.
+ */
+HWTEST_F(DiskManagerTest, FormatDmDevice_TestCase_001, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    EXPECT_EQ(dm.FormatDmDevice("disk-99-99", "/dev/block/dm-0", "ext4"), E_NON_EXIST);
+}
+
+/**
+ * @tc.name: FormatDmDevice_TestCase_002
+ * @tc.desc: FormatDmDevice succeeds when FormatVolume returns E_OK.
+ */
+HWTEST_F(DiskManagerTest, FormatDmDevice_TestCase_002, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-fdd-2"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_OK));
+    EXPECT_EQ(dm.FormatDmDevice("disk-77-fdd-2", "/dev/block/dm-0", "ext4"), E_OK);
+}
+
+/**
+ * @tc.name: FormatDmDevice_TestCase_003
+ * @tc.desc: FormatDmDevice returns E_DM_FORMAT_FAILED when FormatVolume returns error.
+ */
+HWTEST_F(DiskManagerTest, FormatDmDevice_TestCase_003, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeSsdDisk("disk-77-fdd-3"));
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, FormatVolume(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_EQ(dm.FormatDmDevice("disk-77-fdd-3", "/dev/block/dm-0", "ext4"), E_DM_FORMAT_FAILED);
 }
 
 /**

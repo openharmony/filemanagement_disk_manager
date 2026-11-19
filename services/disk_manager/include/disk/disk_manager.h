@@ -133,6 +133,9 @@ public:
     int32_t UnbindBlockLoopDev(const std::string &loopPath);
     int32_t MountVolumeByPath(const std::string &diskId, const std::string &volPath, const MountParam &mountParam);
     int32_t UmountVolumeByPath(const std::string &diskId, const std::string &volPath);
+    int32_t MountDmDevice(const std::string &diskId, const std::string &dmPath, const std::string &dstPath,
+                          const std::string &fsType, const MountParam &mountParam);
+    int32_t FormatDmDevice(const std::string &diskId, const std::string &dmPath, const std::string &fsType);
 
 private:
     DiskManager();
@@ -265,6 +268,8 @@ private:
     std::string CheckVolId(const std::string &volId);
     bool IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeLimit, std::string &loopPath);
 
+    int32_t QueryDmDeviceFsType(const std::string &dmPath, std::string &fsType);
+
     /**
      * diskMapMutex_ 与 volumeMapMutex_ 相互独立。
      * 若同一流程需两把锁，必须按此顺序一次性加锁：先 disk，后 volume。
@@ -281,6 +286,7 @@ private:
     std::map<std::string, PartitionTableInfo> partitionTableMap_;
     std::set<std::string> partitioningDiskIds_;
     mutable std::shared_mutex oddMutex_;
+    std::atomic<bool> skipNotifyFormatted_ {false};
 };
 
 } // namespace DiskManager

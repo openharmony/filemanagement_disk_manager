@@ -33,6 +33,8 @@ constexpr uint32_t DISK_MANAGER_IPC_CODES[] = {
     46, 47, 48, 49,
     // Public API: external storage device info query (@since 27.0.0)
     51, 52, 53, 54, 55, 56,
+    // dm device mount/format (PC encryption extension service)
+    57, 58,
 };
 
 } // namespace

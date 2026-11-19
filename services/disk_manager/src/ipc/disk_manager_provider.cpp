@@ -58,6 +58,8 @@ constexpr uint32_t IDLE_CHECK_INTERVAL_MS = 3U * 60U * 1000U;
 constexpr uint32_t EPOLL_INTERVAL_MS = 10;
 #ifdef PC_MANAGER
 constexpr pid_t CRYPTO_USB_MGR_SERVICE_UID = 7060;
+constexpr pid_t PC_ENC_EXT_SERVICE_UID = 7075;
+constexpr size_t MOUNT_DATA_MAX_LEN = 4096;
 #endif
 // 台式机数据盘格式化鉴权权限名
 constexpr const char *FORMAT_DATA_DISK_PRIVILEGE = "ohos.privilege.format_data_disk";
@@ -1336,6 +1338,90 @@ int32_t DiskManagerProvider::UmountVolumeByPath(const std::string &diskId, const
     return E_OK;
 #else
     LOGI("UmountVolumeByPath: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
+}
+
+int32_t DiskManagerProvider::MountDmDevice(const std::string &diskId, const std::string &dmPath,
+                                           const std::string &dstPath, const std::string &fsType,
+                                           const MountParam &mountParam)
+{
+    LOGI("MountDmDevice diskId=%{public}s dmPath=%{public}s dstPath=%{public}s fsType=%{public}s "
+         "readOnly=%{public}d",
+         diskId.c_str(), dmPath.c_str(), dstPath.c_str(), fsType.c_str(), mountParam.GetReadOnly());
+#ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(dmDevMutex_);
+    int32_t uid = IpcCallerAuth::GetCallingAppUid();
+    if (uid != PC_ENC_EXT_SERVICE_UID) {
+        LOGE("MountDmDevice: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("MountDmDevice: verify permission %{public}s failed", PERMISSION_FORMAT_MANAGER.c_str());
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("MountDmDevice: diskId is invalid, diskId=%{public}s", diskId.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(dmPath) || dmPath.find("/dev/block/") != 0) {
+        LOGE("MountDmDevice: dmPath is invalid, dmPath=%{public}s", dmPath.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(dstPath)) {
+        LOGE("MountDmDevice: dstPath is invalid, dstPath=%{public}s", dstPath.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (fsType != "ext4") {
+        LOGE("MountDmDevice: fsType is not ext4, fsType=%{public}s", fsType.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (mountParam.GetMountData().length() > MOUNT_DATA_MAX_LEN) {
+        LOGE("MountDmDevice: mountData is too long, length=%{public}zu", mountParam.GetMountData().length());
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().MountDmDevice(diskId, dmPath, dstPath, fsType, mountParam);
+    LOGI("MountDmDevice done ret=%{public}d", ret);
+    return ret;
+#else
+    LOGI("MountDmDevice: <<< EXIT <<< not support");
+    return E_NOT_SUPPORT;
+#endif
+}
+
+int32_t DiskManagerProvider::FormatDmDevice(const std::string &diskId, const std::string &dmPath,
+                                            const std::string &fsType)
+{
+    LOGI("FormatDmDevice diskId=%{public}s dmPath=%{public}s fsType=%{public}s", diskId.c_str(),
+         dmPath.c_str(), fsType.c_str());
+#ifdef PC_MANAGER
+    std::lock_guard<std::mutex> lock(dmDevMutex_);
+    int32_t uid = IpcCallerAuth::GetCallingAppUid();
+    if (uid != PC_ENC_EXT_SERVICE_UID) {
+        LOGE("FormatDmDevice: call uid %{public}d is invalid", uid);
+        return E_PERMISSION_DENIED;
+    }
+    if (!IpcCallerAuth::VerifyCallerPermission(PERMISSION_FORMAT_MANAGER)) {
+        LOGE("FormatDmDevice: verify permission %{public}s failed", PERMISSION_FORMAT_MANAGER.c_str());
+        return E_PERMISSION_DENIED;
+    }
+    if (!IsDiskIdValid(diskId)) {
+        LOGE("FormatDmDevice: diskId is invalid, diskId=%{public}s", diskId.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (IsFilePathInvalid(dmPath) || dmPath.find("/dev/block/") != 0) {
+        LOGE("FormatDmDevice: dmPath is invalid, dmPath=%{public}s", dmPath.c_str());
+        return E_PARAMS_INVALID;
+    }
+    if (fsType != "ext4") {
+        LOGE("FormatDmDevice: fsType is not ext4, fsType=%{public}s", fsType.c_str());
+        return E_PARAMS_INVALID;
+    }
+    const int32_t ret = DiskManager::GetInstance().FormatDmDevice(diskId, dmPath, fsType);
+    LOGI("FormatDmDevice done ret=%{public}d", ret);
+    return ret;
+#else
+    LOGI("FormatDmDevice: <<< EXIT <<< not support");
     return E_NOT_SUPPORT;
 #endif
 }

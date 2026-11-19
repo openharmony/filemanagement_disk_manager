@@ -30,5 +30,7 @@ group("disk_manager_fuzztest") {
     "//foundation/filemanagement/disk_manager/test/fuzztest/externaldiskinfo_fuzzer:externaldiskinfo_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/externalvolumeinfo_fuzzer:externalvolumeinfo_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/localdiskinfo_fuzzer:localdiskinfo_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/mountdmdevice_fuzzer:mountdmdevice_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/formatdmdevice_fuzzer:formatdmdevice_fuzztest",
   ]
 }

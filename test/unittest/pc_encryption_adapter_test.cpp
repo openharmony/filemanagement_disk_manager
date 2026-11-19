@@ -43,6 +43,13 @@ int32_t MockNotifyMounted(const std::string &diskId, const std::string &volumeId
     g_notifyCallCount.fetch_add(1);
     return 0;
 }
+
+std::atomic<int32_t> g_notifyFormattedCallCount{0};
+int32_t MockNotifyFormatted(const std::string &diskId, const std::string &volumeId)
+{
+    g_notifyFormattedCallCount.fetch_add(1);
+    return 0;
+}
 } // namespace
 
 using namespace testing::ext;
@@ -150,6 +157,40 @@ HWTEST_F(PcEncryptionAdapterTest, NotifyVolumeMounted_MultipleTasks_001, TestSiz
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     EXPECT_EQ(g_notifyCallCount.load(), 5);
+}
+
+HWTEST_F(PcEncryptionAdapterTest, NotifyVolumeFormatted_HandlerNullptr_001, TestSize.Level0)
+{
+    auto &adapter = PcEncryptionAdapter::GetInstance();
+    EXPECT_NO_FATAL_FAILURE(adapter.NotifyVolumeFormatted("disk-1", "vol-1"));
+}
+
+HWTEST_F(PcEncryptionAdapterTest, NotifyVolumeFormatted_Success_001, TestSize.Level0)
+{
+    auto &adapter = PcEncryptionAdapter::GetInstance();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    adapter.handler_ = reinterpret_cast<void *>(0x1);
+    MockDlfcnConfig::GetInstance().SetDlsymResult(
+        "PC_ENC_EXT_NotifyVolumeFormatted",
+        reinterpret_cast<uintptr_t>(&MockNotifyFormatted));
+
+    g_notifyFormattedCallCount = 0;
+    EXPECT_NO_FATAL_FAILURE(adapter.NotifyVolumeFormatted("disk-1", "vol-1"));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(g_notifyFormattedCallCount.load(), 1);
+}
+
+HWTEST_F(PcEncryptionAdapterTest, NotifyVolumeFormatted_DlsymFailed_001, TestSize.Level0)
+{
+    auto &adapter = PcEncryptionAdapter::GetInstance();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    adapter.handler_ = reinterpret_cast<void *>(0x1);
+    MockDlfcnConfig::GetInstance().ClearDlsymResults();
+
+    g_notifyFormattedCallCount = 0;
+    EXPECT_NO_FATAL_FAILURE(adapter.NotifyVolumeFormatted("disk-2", "vol-2"));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(g_notifyFormattedCallCount.load(), 0);
 }
 
 } // namespace DiskManager

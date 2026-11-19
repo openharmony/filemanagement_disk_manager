@@ -75,6 +75,11 @@ public:
     MOCK_METHOD(int32_t, MountVolumeByPath,
         (const std::string &diskId, const std::string &volPath, const MountParam &param));
     MOCK_METHOD(int32_t, UmountVolumeByPath, (const std::string &diskId, const std::string &volPath));
+    MOCK_METHOD(int32_t, MountDmDevice,
+        (const std::string &diskId, const std::string &dmPath, const std::string &dstPath,
+         const std::string &fsType, const MountParam &mountParam));
+    MOCK_METHOD(int32_t, FormatDmDevice,
+        (const std::string &diskId, const std::string &dmPath, const std::string &fsType));
 };
 
 } // namespace DiskManager

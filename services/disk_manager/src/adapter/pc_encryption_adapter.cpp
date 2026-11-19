@@ -26,9 +26,11 @@ namespace DiskManager {
 namespace {
 using FuncQueryEncStatus = int32_t (*)(const std::string &, int32_t &);
 using FuncNotifyMounted = int32_t (*)(const std::string &, const std::string &, const std::string &);
+using FuncNotifyFormatted = int32_t (*)(const std::string &, const std::string &);
 constexpr const char *PC_ENCRYPTION_LIB_PATH = "/system/lib64/libpc_encryption_ext_volume_user_api.z.so";
 constexpr const char *PC_ENC_QUERY_FUNC_NAME = "PC_ENC_EXT_QueryVolEncryptionStatus";
 constexpr const char *PC_ENC_NOTIFY_MOUNTED_FUNC_NAME = "PC_ENC_EXT_ConfigureVolEncryptionPolicyOnMounted";
+constexpr const char *PC_ENC_NOTIFY_FORMATTED_FUNC_NAME = "PC_ENC_EXT_NotifyVolumeFormatted";
 } // namespace
 
 PcEncryptionAdapter &PcEncryptionAdapter::GetInstance()
@@ -115,6 +117,31 @@ void PcEncryptionAdapter::NotifyVolumeMounted(const std::string &diskId,
              GetAnonyString(volumeId).c_str());
     });
     LOGI("NotifyVolumeMounted: async task started");
+}
+
+void PcEncryptionAdapter::NotifyVolumeFormatted(const std::string &diskId,
+                                                const std::string &volumeId)
+{
+    LOGI("NotifyVolumeFormatted enter diskId=%{public}s volumeId=%{public}s",
+         diskId.c_str(), volumeId.c_str());
+    threadPool_.AddTask([this, diskId, volumeId]() {
+        if (handler_ == nullptr) {
+            LOGE("NotifyVolumeFormatted: handler is nullptr");
+            return;
+        }
+        FuncNotifyFormatted func = reinterpret_cast<FuncNotifyFormatted>(
+            dlsym(handler_, PC_ENC_NOTIFY_FORMATTED_FUNC_NAME));
+        if (func == nullptr) {
+            LOGE("NotifyVolumeFormatted: dlsym %{public}s failed, error: %{public}s",
+                 PC_ENC_NOTIFY_FORMATTED_FUNC_NAME, dlerror());
+            return;
+        }
+        int32_t ret = func(diskId, volumeId);
+        LOGI("NotifyVolumeFormatted: %{public}s returned %{public}d, diskId: %{public}s, volumeId: %{public}s",
+             PC_ENC_NOTIFY_FORMATTED_FUNC_NAME, ret, GetAnonyString(diskId).c_str(),
+             GetAnonyString(volumeId).c_str());
+    });
+    LOGI("NotifyVolumeFormatted: async task started");
 }
 
 } // namespace DiskManager

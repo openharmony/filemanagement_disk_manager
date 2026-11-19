@@ -35,12 +35,16 @@ public:
     bool IsFromEdmMount() const;
     void SetFromEdmMount(bool fromEdmMount);
 
+    std::string GetMountData() const;
+    void SetMountData(const std::string &mountData);
+
     bool Marshalling(Parcel &parcel) const override;
     static MountParam *Unmarshalling(Parcel &parcel);
 
 private:
     bool readOnly_ {false};
     bool fromEdmMount_ {false};
+    std::string mountData_;
 };
 
 } // namespace DiskManager
