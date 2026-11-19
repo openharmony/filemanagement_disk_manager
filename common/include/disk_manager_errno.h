@@ -48,7 +48,6 @@ enum DiskManagerErrNo : int32_t {
     E_PARAMS_INVALID = 13600000 + 2,
     E_NON_EXIST = 13600000 + 4,
     E_NOT_SUPPORT = 13600000 + 7,
-    E_WEXITSTATUS = 13600000 + 20, // 与 storage_service_errno.h 数值一致，子进程退出码非 0
     E_SYS_APP_PERMISSION_DENIED = 13600000 + 25,
     E_STATVFS = 13600000 + 1204,
 
