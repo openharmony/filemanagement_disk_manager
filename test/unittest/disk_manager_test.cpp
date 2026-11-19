@@ -2669,6 +2669,37 @@ HWTEST_F(DiskManagerTest, IsDiskNotReady_TestCase_005, TestSize.Level0)
     EXPECT_TRUE(dm.IsDiskNotReady("disk-51-5"));
 }
 
+/**
+ * @tc.name: IsDiskNotReady_TestCase_006
+ * @tc.desc: Disk with only REPAIR_FINISH_FAIL volume is ready for partition operations:
+ *           repair-failed volume (no valid mount point) must not block partition flow.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsDiskNotReady_TestCase_006, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-51-6"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-51-7", "disk-51-6", "uuid-dnr-7", REPAIR_FINISH_FAIL));
+    EXPECT_FALSE(dm.IsDiskNotReady("disk-51-6"));
+}
+
+/**
+ * @tc.name: IsDiskNotReady_TestCase_007
+ * @tc.desc: Disk with both REPAIR_FINISH_FAIL and MOUNTED volumes is still not ready:
+ *           REPAIR_FINISH_FAIL is tolerated, but a mounted volume keeps blocking partition ops.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, IsDiskNotReady_TestCase_007, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-51-7"));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-51-8", "disk-51-7", "uuid-dnr-8", REPAIR_FINISH_FAIL));
+    dm.OnVolumeCreated(MakeUsbVolume("vol-51-9", "disk-51-7", "uuid-dnr-9", MOUNTED));
+    EXPECT_TRUE(dm.IsDiskNotReady("disk-51-7"));
+}
+
 HWTEST_F(DiskManagerTest, IsVolumeMounted_TestCase_001, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();

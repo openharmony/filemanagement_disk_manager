@@ -2557,9 +2557,10 @@ bool DiskManager::IsDiskNotReady(const std::string &diskId)
         if (GetVolumeById(item, external) != E_OK) {
             continue;
         }
-        // DAMAGED 卷无挂载点且无法回到 UNMOUNTED，不应拦截分区操作
+        // DAMAGED 卷无挂载点且无法回到 UNMOUNTED，不应拦截分区操作；
+        // REPAIR_FINISH_FAIL 表示数据盘修复失败，卷已无有效挂载点，再次分区应放行。
         const int32_t state = external.GetState();
-        if (state != UNMOUNTED && state != DAMAGED) {
+        if (state != UNMOUNTED && state != DAMAGED && state != REPAIR_FINISH_FAIL) {
             LOGE("volume status is not unmounted, id=%{public}s", item.c_str());
             return true;
         }
