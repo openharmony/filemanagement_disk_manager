@@ -123,7 +123,7 @@ void PcEncryptionAdapter::NotifyVolumeFormatted(const std::string &diskId,
                                                 const std::string &volumeId)
 {
     LOGI("NotifyVolumeFormatted enter diskId=%{public}s volumeId=%{public}s",
-         GetAnonyString(diskId).c_str(), GetAnonyString(volumeId).c_str());
+         diskId.c_str(), volumeId.c_str());
     threadPool_.AddTask([this, diskId, volumeId]() {
         if (handler_ == nullptr) {
             LOGE("NotifyVolumeFormatted: handler is nullptr");

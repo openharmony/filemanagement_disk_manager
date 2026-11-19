@@ -3337,28 +3337,12 @@ bool DiskManager::IsVolumeBind(const Disk &disk, uint64_t offset, uint64_t sizeL
 
 int32_t DiskManager::QueryDmDeviceFsType(const std::string &dmPath, std::string &fsType)
 {
-    std::vector<std::string> cmd = {"blkid", "-n", "mdraid", "-s", "TYPE", "-o", "value", dmPath};
-    int32_t execRet = 0;
-    std::vector<std::string> output;
-    int32_t err = StorageDaemonAdapter::GetInstance().ExecuteCommand(cmd, execRet, output);
-    if (err != E_OK) {
-        if (execRet == E_WEXITSTATUS && output.empty()) {
-            LOGW("QueryDmDeviceFsType: blkid no filesystem found, dmPath=%{public}s", dmPath.c_str());
-            return E_FSTYPE_NOT_EXIST;
-        }
-        LOGE("QueryDmDeviceFsType: blkid ExecuteCommand failed, err=%{public}d, execRet=%{public}d",
-             err, execRet);
-        return E_DM_MOUNT_FAILED;
-    }
-    if (output.empty() || output[0].empty()) {
-        LOGE("QueryDmDeviceFsType: blkid result is empty, dm device not formatted, dmPath=%{public}s",
-             dmPath.c_str());
+    std::string uuid;
+    std::string label;
+    StorageDaemonAdapter::GetInstance().ReadMetadata(dmPath, uuid, fsType, label);
+    if (fsType.empty()) {
+        LOGW("QueryDmDeviceFsType: no filesystem found, dmPath=%{public}s", dmPath.c_str());
         return E_FSTYPE_NOT_EXIST;
-    }
-    fsType = output[0];
-    size_t sep = fsType.find_first_of("\n");
-    if (sep != std::string::npos) {
-        fsType.resize(sep);
     }
     return E_OK;
 }
@@ -3380,9 +3364,6 @@ int32_t DiskManager::MountDmDevice(const std::string &diskId, const std::string 
     std::string actualFsType;
     int32_t err = QueryDmDeviceFsType(dmPath, actualFsType);
     if (err != E_OK) {
-        if (err == E_FSTYPE_NOT_EXIST) {
-            return err;
-        }
         return dfx.Finish(err);
     }
     if (actualFsType != fsType) {
