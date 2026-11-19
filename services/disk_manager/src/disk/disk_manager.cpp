@@ -3339,7 +3339,7 @@ int32_t DiskManager::QueryDmDeviceFsType(const std::string &dmPath, std::string 
 {
     std::string uuid;
     std::string label;
-    StorageDaemonAdapter::GetInstance().ReadMetadata(dmPath, uuid, fsType, label);
+    (void)StorageDaemonAdapter::GetInstance().ReadMetadata(dmPath, uuid, fsType, label);
     if (fsType.empty()) {
         LOGW("QueryDmDeviceFsType: no filesystem found, dmPath=%{public}s", dmPath.c_str());
         return E_FSTYPE_NOT_EXIST;
