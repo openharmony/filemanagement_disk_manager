@@ -38,8 +38,6 @@ enum VolumeState {
     REPAIR_FINISH_FAIL = 13,
     REPAIR_FINISH_SUCCESS,
     FORMAT_FINISH_FAIL,
-    REPAIR_START,
-    REPAIRING,
 };
 
 // 异常卷原因码（封闭枚举）：按 U 盘识别顺序编号（分区表 → 卷元数据 → fsType → 挂载），

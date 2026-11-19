@@ -65,7 +65,6 @@ const VolumeStateInfo STATE_INFOS[] = {
     {REPAIR_FINISH_SUCCESS, "REPAIR_FINISH_SUCCESS",
         EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
     {FORMAT_FINISH_FAIL, "FORMAT_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
-    {REPAIR_START, "REPAIR_START", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
 };
 
 void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)

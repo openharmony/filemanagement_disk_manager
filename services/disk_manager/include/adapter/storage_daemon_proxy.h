@@ -45,7 +45,7 @@ public:
     ErrCode FormatVolume(const std::string &devPath, const std::string &fsType,
                          const std::string &diskPath, const std::string &partitionType,
                          const int32_t partitionNum) override;
-    ErrCode Check(const std::string &devPath, const std::string &fsType) override;
+    ErrCode Check(const std::string &devPath, const std::string &fsType, bool autoFix) override;
     ErrCode Repair(const std::string &devPath, const std::string &fsType) override;
     ErrCode SetLabel(const std::string &devPath, const std::string &fsType, const std::string &label) override;
     ErrCode ReadMetadata(const std::string &devPath,
