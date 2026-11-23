@@ -1557,6 +1557,29 @@ HWTEST_F(DiskManagerTest, SetVolumeDescription_TestCase_011, TestSize.Level0)
 }
 
 /**
+ * @tc.name: SetVolumeDescription_TestCase_012
+ * @tc.desc: SetVolumeDescription on DAMAGED volume with supported fsType succeeds.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, SetVolumeDescription_TestCase_012, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_012 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-29-7"));
+    VolumeExternal vol = MakeUsbVolume("vol-29-8", "disk-29-7", "uuid-svd-9", DAMAGED);
+    vol.SetFsType(static_cast<int32_t>(NTFS));
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, SetLabel(_, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.SetVolumeDescription("uuid-svd-9", "DamagedDesc"), E_OK);
+    VolumeExternal out;
+    dm.GetVolumeById("vol-29-8", out);
+    EXPECT_EQ(out.GetDescription(), "DamagedDesc");
+    GTEST_LOG_(INFO) << "SetVolumeDescription_TestCase_012 End";
+}
+
+/**
  * @tc.name: PurgeVolumesForDisk_TestCase_001
  * @tc.desc: PurgeVolumesForDisk non-existent disk returns E_DISK_NOT_FOUND.
  * @tc.type: FUNC
@@ -2433,15 +2456,6 @@ HWTEST_F(DiskManagerTest, LookupVolumeByUuidUnlocked_TestCase_001, TestSize.Leve
     VolumeExternal out;
     EXPECT_EQ(dm.LookupVolumeByUuidUnlocked("uuid-lk-1", out), DiskManagerErrNo::E_OK);
     EXPECT_EQ(dm.LookupVolumeByUuidUnlocked("nonexistent-uuid", out), E_NON_EXIST);
-}
-
-HWTEST_F(DiskManagerTest, GetVolumePath_TestCase_001, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-41-1"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-41-1", "disk-41-1", "uuid-gvp-1"));
-    EXPECT_EQ(dm.GetVolumePath("uuid-gvp-1"), "/mnt/data/external/uuid-gvp-1");
-    EXPECT_EQ(dm.GetVolumePath("nonexistent-uuid"), "");
 }
 
 HWTEST_F(DiskManagerTest, GetOddCapacity_TestCase_001, TestSize.Level0)
@@ -3463,26 +3477,6 @@ HWTEST_F(DiskManagerTest, TryToFix_TestCase_006, TestSize.Level0)
     EXPECT_EQ(dm.TryToFix("vol-60-2"), E_OK);
 }
 
-HWTEST_F(DiskManagerTest, Unmount_TestCase_006, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-27-5"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-27-5", "disk-27-5", "uuid-um-6", ENCRYPTED_AND_LOCKED));
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.Unmount("vol-27-5"), ERR_OK);
-}
-
-HWTEST_F(DiskManagerTest, Unmount_TestCase_007, TestSize.Level0)
-{
-    auto &dm = DiskManager::GetInstance();
-    dm.OnDiskCreated(MakeUsbDisk("disk-27-6"));
-    dm.OnVolumeCreated(MakeUsbVolume("vol-27-6", "disk-27-6", "uuid-um-7", ENCRYPTED_AND_UNLOCKED));
-    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
-    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).WillOnce(Return(ERR_OK));
-    EXPECT_EQ(dm.Unmount("vol-27-6"), ERR_OK);
-}
-
 HWTEST_F(DiskManagerTest, IsPathMounted_TestCase_002, TestSize.Level0)
 {
     auto &dm = DiskManager::GetInstance();
@@ -3598,6 +3592,50 @@ HWTEST_F(DiskManagerTest, Mount_TestCase_010, TestSize.Level0)
     EXPECT_CALL(sdAdapter, Mount("/dev/block/loop-mc-2", _, _, _, _)).WillOnce(Return(ERR_OK));
     EXPECT_EQ(dm.Mount("vol-crypt-mc-2"), E_OK);
     GTEST_LOG_(INFO) << "Mount_TestCase_010 End";
+}
+
+/**
+ * @tc.name: Mount_TestCase_011
+ * @tc.desc: Mount DAMAGED volume succeeds and state becomes MOUNTED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Mount_TestCase_011, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_TestCase_011 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-26-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-26-6", "disk-26-6", "uuid-mt-11", DAMAGED);
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Mount("vol-26-6"), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-26-6", out), E_OK);
+    EXPECT_EQ(out.GetState(), MOUNTED);
+    GTEST_LOG_(INFO) << "Mount_TestCase_011 End";
+}
+
+/**
+ * @tc.name: Mount_TestCase_012
+ * @tc.desc: Mount DAMAGED volume fails and state falls back to UNMOUNTED.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, Mount_TestCase_012, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Mount_TestCase_012 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-26-7"));
+    VolumeExternal vol = MakeUsbVolume("vol-26-7", "disk-26-7", "uuid-mt-12", DAMAGED);
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(E_DAEMON_IPC_FAILED));
+    EXPECT_NE(dm.Mount("vol-26-7"), E_OK);
+    VolumeExternal out;
+    EXPECT_EQ(dm.GetVolumeById("vol-26-7", out), E_OK);
+    EXPECT_EQ(out.GetState(), UNMOUNTED);
+    GTEST_LOG_(INFO) << "Mount_TestCase_012 End";
 }
 
 HWTEST_F(DiskManagerTest, Partition_TestCase_004, TestSize.Level0)
@@ -3895,6 +3933,20 @@ HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_005, TestSize
     auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
     EXPECT_CALL(sdAdapter, DestroyBlockDeviceNode(_)).WillOnce(Return(E_DAEMON_IPC_FAILED));
     EXPECT_FALSE(dm.DestroyVolumeByDiskIdAndPartNum("disk-63-4", 1));
+}
+
+HWTEST_F(DiskManagerTest, DestroyVolumeByDiskIdAndPartNum_TestCase_006, TestSize.Level0)
+{
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-63-5"));
+    VolumeExternal vol = MakeUsbVolume("vol-63-5", "disk-63-5", "uuid-dv-6", DAMAGED);
+    vol.SetPartitionNum(1);
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    // Never mounted (DAMAGED) volume: no daemon unmount, only destroy the device node.
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).Times(0);
+    EXPECT_CALL(sdAdapter, DestroyBlockDeviceNode(_)).WillOnce(Return(E_OK));
+    EXPECT_TRUE(dm.DestroyVolumeByDiskIdAndPartNum("disk-63-5", 1));
 }
 
 HWTEST_F(DiskManagerTest, MountVolumeFilesystem_TestCase_001, TestSize.Level0)
@@ -6205,6 +6257,26 @@ HWTEST_F(DiskManagerTest, UmountVolumeByPath_TestCase_005, TestSize.Level0)
 }
 
 /**
+ * @tc.name: UmountVolumeByPath_TestCase_006
+ * @tc.desc: UmountVolumeByPath on DAMAGED volume returns E_VOL_STATE without daemon unmount.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(DiskManagerTest, UmountVolumeByPath_TestCase_006, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_006 Start";
+    auto &dm = DiskManager::GetInstance();
+    dm.OnDiskCreated(MakeUsbDisk("disk-8-uvb-6"));
+    VolumeExternal vol = MakeUsbVolume("vol-uvb-6", "disk-8-uvb-6", "uuid-uvb-6", DAMAGED);
+    vol.SetLoopPath("/dev/block/dm-uvb-6");
+    dm.OnVolumeCreated(vol);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Unmount(_, _, _)).Times(0);
+    EXPECT_EQ(dm.UmountVolumeByPath("disk-8-uvb-6", "/dev/block/dm-uvb-6"), E_VOL_STATE);
+    GTEST_LOG_(INFO) << "UmountVolumeByPath_TestCase_006 End";
+}
+
+/**
  * @tc.name: MapToPublicVolumeState_TestCase_001
  * @tc.desc: MapToPublicVolumeState maps MOUNTED to MOUNTED (2).
  * @tc.type: FUNC
@@ -6259,7 +6331,6 @@ HWTEST_F(DiskManagerTest, MapToPublicVolumeState_TestCase_007, TestSize.Level0)
     EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::UNMOUNTED), VolumeState::UNMOUNTED);
     EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::REMOVED), VolumeState::UNMOUNTED);
     EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::DAMAGED), VolumeState::UNMOUNTED);
-    EXPECT_EQ(dm.MapToPublicVolumeState(VolumeState::FUSE_REMOVED), VolumeState::UNMOUNTED);
     EXPECT_EQ(dm.MapToPublicVolumeState(-1), VolumeState::UNMOUNTED);
     EXPECT_EQ(dm.MapToPublicVolumeState(999), VolumeState::UNMOUNTED);
     GTEST_LOG_(INFO) << "MapToPublicVolumeState_TestCase_007 End";
@@ -6934,24 +7005,26 @@ HWTEST_F(DiskManagerTest, DamagedVolume_Format_Succeeds_TestCase_001, TestSize.L
 }
 
 /**
- * @tc.name: DamagedVolume_Mount_Rejected_TestCase_001
- * @tc.desc: DAMAGED volume is rejected by Mount with E_VOL_MOUNT_ERR(13601702) and state stays DAMAGED.
+ * @tc.name: DamagedVolume_Mount_Retry_Allowed_TestCase_001
+ * @tc.desc: DAMAGED volume (marked via MarkVolumeAbnormal) retries Mount successfully and state becomes MOUNTED.
  * @tc.type: FUNC
  * @tc.require: 20260807939139
  */
-HWTEST_F(DiskManagerTest, DamagedVolume_Mount_Rejected_TestCase_001, TestSize.Level0)
+HWTEST_F(DiskManagerTest, DamagedVolume_Mount_Retry_Allowed_TestCase_001, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "DamagedVolume_Mount_Rejected_TestCase_001 Start";
+    GTEST_LOG_(INFO) << "DamagedVolume_Mount_Retry_Allowed_TestCase_001 Start";
     auto &dm = DiskManager::GetInstance();
     dm.OnDiskCreated(MakeUsbDisk("disk-dmg-mnt"));
     dm.OnVolumeCreated(MakeUsbVolume("vol-dmg-mnt", "disk-dmg-mnt", "uuid-dmg-mnt", UNMOUNTED));
     EXPECT_EQ(dm.MarkVolumeAbnormal("vol-dmg-mnt", FSTYPE_UNSUPPORTED), E_OK);
-    EXPECT_EQ(dm.Mount("vol-dmg-mnt"), E_VOL_MOUNT_ERR);
+    auto &sdAdapter = MockStorageDaemonAdapter::GetInstance();
+    EXPECT_CALL(sdAdapter, Mount(_, _, _, _, _)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(dm.Mount("vol-dmg-mnt"), E_OK);
     VolumeExternal out;
     dm.GetVolumeById("vol-dmg-mnt", out);
-    EXPECT_EQ(out.GetState(), static_cast<int32_t>(DAMAGED));
+    EXPECT_EQ(out.GetState(), static_cast<int32_t>(MOUNTED));
 
-    GTEST_LOG_(INFO) << "DamagedVolume_Mount_Rejected_TestCase_001 End";
+    GTEST_LOG_(INFO) << "DamagedVolume_Mount_Retry_Allowed_TestCase_001 End";
 }
 
 // ===== Burn audit helpers (file-scope functions in disk_manager.cpp) =====

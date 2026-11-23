@@ -4,7 +4,7 @@
 
 ## 状态转换约束
 
-卷状态转换必须经过合法路径，不可跳步（`interfaces/innerkits/include/volume_core.h` 的 `VolumeState`，18 态；对外公开状态经 `MapToPublicVolumeState` 收敛为 4 态：0=unmounted、1=checking、2=mounted、3=ejecting）：
+卷状态转换必须经过合法路径，不可跳步（`interfaces/innerkits/include/volume_core.h` 的 `VolumeState`，10 态；对外公开状态经 `MapToPublicVolumeState` 收敛为 4 态：0=unmounted、1=checking、2=mounted、3=ejecting）：
 
 | 操作 | 必经路径 | 禁止跳转 |
 |------|----------|----------|
@@ -14,6 +14,8 @@
 | 异常标记 | UNMOUNTED → DAMAGED | `MarkVolumeAbnormal` 专用，幂等（已 DAMAGED 跳过重发布） |
 
 状态切换由 `SetVolumeStateLocked`（调用方持 `volumeMapMutex_` 锁）统一执行。操作失败时回退到操作前状态，不要停留在中间状态。
+
+**DAMAGED 状态定义**：设备接入后自动挂载失败的状态（由 `MarkVolumeAbnormal` 标记，reason 见"异常卷标记与广播"节），此时卷从未挂载成功、无挂载点，本质是 **UNMOUNTED 的特殊版本**。原则：**放行 UNMOUNTED 状态的操作，预期也应该放行 DAMAGED**——新增或修改卷状态限制时按此原则同步评估 DAMAGED 的放行豁免（当前豁免清单见"异常卷标记与广播"节）。
 
 ## 锁模型
 
@@ -35,6 +37,8 @@
 |--------|----------|----------|
 | add | `HandleDiskAdd` | `DiscoverPartitionsAndVolumes`（建节点→sgdisk→blkid→按策略挂载） |
 | remove | `HandleDiskRemove` | `DestroyALLVolume`（ForceUnmount→DestroyBlockDeviceNode）→ `DestroyALLDisk` |
+
+`DestroyALLVolume` 卸载豁免：**UNMOUNTED（已安全弹出）与 DAMAGED（从未挂载成功）卷跳过 ForceUnmount**，直接销毁设备节点并发 REMOVED；其余状态（MOUNTED 等）先强制卸载再销毁、发 BAD_REMOVAL（残留挂载层递归删会穿透源数据，勿对 MOUNTED 卷跳过）。分区 diff 移除（`DestroyVolumeByDiskIdAndPartNum`）遵循同一豁免规则。
 | change | `HandleDiskChange` | `IsPartitioning(diskId) && 内置数据盘` 则跳过；否则 `DiscoverPartitionsAndVolumes` + `NotifyPartitionDone` |
 
 **diskId 生成**：`DiskIdFrom(maj, min)` → `"disk-{maj}-{min}"`；**volId 生成**：`VolIdFromDev(dev_t)` → `"vol-{maj}-{min}"`；**加密卷 volId**：`"vol-crypt-{loop设备名}"`（BindBlockLoopDev 创建）。
@@ -75,6 +79,11 @@
 - **reasonCode 是封闭枚举、跨版本稳定**，变更须走设计文档修订。系统广播，任意有权限订阅方可消费（已知：文件管理 APP、系统设置 APP、大桌面 APP、文件管理服务 SA、文件监听服务 SA）。
 - `EvaluateVolumeMetadataAbnormal`/`MountDiscoveredVolume` 仅对外置卷生效（isUserData 直接放行）；`IsAbnormalDetectableFsType` 之外的 fsType 不标记。
 - 自动挂载门禁：`AUTO_MOUNT_EXTERNAL_VOLUMES = true` 且 uuid/fsType 均非空；跳过时上报 `ReportDiscoverAutoMountSkipFault`（AutoMountSkipReason 区分原因）。
+- **DAMAGED 是 UNMOUNTED 的特殊版本**：所有仅针对 UNMOUNTED 的状态限制对 DAMAGED 同等放开——
+  - `Mount` 允许重试挂载（MOUNT_FAILED 型可能恢复成功）；挂载失败沿用既有回退路径置回 UNMOUNTED（保守处理：DAMAGED 卷失败后转为 UNMOUNTED，不标记异常、不重发广播，避免兼容性影响）；成功后并发校验同样豁免 DAMAGED。
+  - `SetVolumeDescription` 允许修改卷标（label 工具直写元数据区，不依赖挂载）；`LABEL_SUPPORTED_FS_TYPES`（ntfs/exfat/hmfs/f2fs）白名单仍把关，ext4 无 SetLabel 实现（存量缺口）。
+  - `UmountVolumeByPath` 与 UNMOUNTED 同等按"已卸载"拒绝（`E_VOL_STATE`），避免空转 `DoUnmountVolume`。
+  - 既有豁免：`Unmount` 幂等返回 E_OK；`Format`/`Partition`/`FormatPartition` 操作白名单已含 DAMAGED。
 
 ## sysfs 直读（SysfsReader）
 
@@ -95,6 +104,7 @@
 | 安全弹出后拔出 | 仅 `VOLUME_REMOVED`（随后 `DISK_REMOVED`），不再发 EJECT/UNMOUNTED |
 | 未安全弹出直接拔出 | `VOLUME_EJECT` → `VOLUME_UNMOUNTED` → `VOLUME_BAD_REMOVAL`（随后 `DISK_REMOVED`） |
 | 卷不可识别 | `COMMON_EVENT_DISK_UNMOUNTABLE`（见上文异常卷广播） |
+| 卷不可识别后拔出 | 仅 `VOLUME_REMOVED`（随后 `DISK_REMOVED`）：DAMAGED 卷从未挂载，无卸载动作，不发 EJECT/UNMOUNTED/BAD_REMOVAL |
 
 ## 分区表解析
 

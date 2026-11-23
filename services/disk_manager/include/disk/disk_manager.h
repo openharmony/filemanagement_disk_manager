@@ -169,7 +169,6 @@ private:
     std::string DedupFsUuidUnlocked(const std::string &volumeId, const std::string &fsUuid) const;
     /** 调用方已持 volumeMapMutex_（读锁或写锁）。判断 uuid 是否被除 volumeId 外的其它卷占用。 */
     bool IsUuidOccupiedUnlocked(const std::string &volumeId, const std::string &uuid) const;
-    std::string GetVolumePath(const std::string &volumeUuid);
     bool IsOddFsType(const std::string &fsType);
     int32_t GetOddCapacity(const std::string &devPath, int64_t &totalSize, int64_t &freeSize);
     /** 将内部 VolumeState 映射为 Public API 公开状态：0=unmounted, 1=checking, 2=mounted, 3=ejecting。 */

@@ -596,17 +596,6 @@ std::string DiskManager::DedupFsUuidUnlocked(const std::string &volumeId, const 
     }
 }
 
-std::string DiskManager::GetVolumePath(const std::string &volumeUuid)
-{
-    std::shared_lock<std::shared_mutex> readlock(volumeMapMutex_);
-    VolumeExternal vol;
-    if (LookupVolumeByUuidUnlocked(volumeUuid, vol) != DiskManagerErrNo::E_OK) {
-        LOGE("GetVolumePath fail.");
-        return "";
-    }
-    return vol.GetPath();
-}
-
 int32_t DiskManager::MapToPublicVolumeState(int32_t internalState)
 {
     switch (internalState) {
@@ -697,7 +686,9 @@ int32_t DiskManager::EnsureFsUuidReady(VolumeExternal &volExternal, std::string 
     }
     volExternal.SetFsUuid(uuid);
     outFsUuid = uuid;
-    volExternal.SetDescription(label);
+    if (!label.empty()) {
+        volExternal.SetDescription(label);
+    }
     volExternal.SetFsType(volExternal.GetFsTypeByStr(type));
     return DiskManagerErrNo::E_OK;
 }
@@ -889,8 +880,10 @@ int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountP
             LOGE("Volume with id %{public}s not found", volumeId.c_str());
             return dfx.Finish(E_NON_EXIST);
         }
+        // DAMAGED 视为 UNMOUNTED 的特殊版本：允许重试挂载，MOUNT_FAILED 型可能恢复成功
         if ((it->second.GetState() != VolumeState::UNMOUNTED) &&
-            (it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL)) {
+            (it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL) &&
+            (it->second.GetState() != VolumeState::DAMAGED)) {
             LOGE("Mount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(),
                  it->second.GetState());
             return dfx.Finish(E_VOL_MOUNT_ERR);
@@ -918,7 +911,8 @@ int32_t DiskManager::Mount(const std::string &volumeId, const MountParam &mountP
         }
         if (mountErr == DiskManagerErrNo::E_OK &&
             it->second.GetState() != VolumeState::UNMOUNTED &&
-            it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL) {
+            it->second.GetState() != VolumeState::FORMAT_FINISH_FAIL &&
+            it->second.GetState() != VolumeState::DAMAGED) {
             LOGE("Mount: volumeId=%{public}s state changed during mount", volumeId.c_str());
             return dfx.Finish(E_VOL_MOUNT_ERR);
         }
@@ -1105,9 +1099,7 @@ int32_t DiskManager::Unmount(const std::string &volumeId)
             LOGI("Unmount: damaged volume %{public}s has nothing to unmount, return ok", volumeId.c_str());
             return dfx.Finish(DiskManagerErrNo::E_OK);
         }
-        if (state != VolumeState::MOUNTED &&
-            state != VolumeState::ENCRYPTED_AND_LOCKED &&
-            state != VolumeState::ENCRYPTED_AND_UNLOCKED) {
+        if (state != VolumeState::MOUNTED) {
             LOGE("Unmount: volumeId=%{public}s state=%{public}d not allowed", volumeId.c_str(), state);
             return dfx.Finish(E_VOL_UMOUNT_ERR);
         }
@@ -1307,7 +1299,10 @@ int32_t DiskManager::SetVolumeDescription(const std::string &fsUuid, const std::
             LOGE("Volume with id %{public}s not found", GetAnonyString(fsUuid).c_str());
             return dfx.Finish(E_NON_EXIST);
         }
-        if (volExternal.GetState() != VolumeState::UNMOUNTED) {
+        // DAMAGED 视为 UNMOUNTED 的特殊版本：允许修改卷标（label 工具直写元数据区，不依赖挂载）；
+        // fsType 能力校验由下方 LABEL_SUPPORTED_FS_TYPES 白名单承担
+        if (volExternal.GetState() != VolumeState::UNMOUNTED &&
+            volExternal.GetState() != VolumeState::DAMAGED) {
             LOGE("SetVolumeDescription state=%{public}d not unmounted", volExternal.GetState());
             return dfx.Finish(E_VOL_STATE);
         }
@@ -1539,6 +1534,7 @@ int32_t DiskManager::OnVolumeCreated(const VolumeExternal &volExternal)
     {
         std::shared_lock<std::shared_mutex> diskReadLock(diskMapMutex_);
         vol.SetFlags(ResolveVolumeFlagsUnlocked(volExternal.GetDiskId()));
+        ApplyDefaultVolumeDescriptionIfUnset(vol, vol.GetFlags());
     }
     std::unique_lock<std::shared_mutex> volWriteLock(volumeMapMutex_);
     volumeMap_.insert(make_pair(vol.GetId(), vol));
@@ -1758,7 +1754,9 @@ int32_t DiskManager::UpdateVolumeMetadata(const std::string &volumeId,
     const std::string resolvedUuid = DedupFsUuidUnlocked(volumeId, fsUuid);
     volExternal.SetFsUuid(resolvedUuid);
     volExternal.SetFsType(volExternal.GetFsTypeByStr(fsTypeStr));
-    volExternal.SetDescription(description);
+    if (!description.empty()) {
+        volExternal.SetDescription(description);
+    }
     LOGI("Updated metadata for volume %{public}s: uuid=%{public}s, fsType=%{public}d, description=%{public}s",
          volumeId.c_str(), GetAnonyString(resolvedUuid).c_str(),
          volExternal.GetFsType(), GetAnonyString(description).c_str());
@@ -2797,6 +2795,7 @@ int32_t DiskManager::UpdateVolumeAfterFormat(const std::string &volumeId, const 
     }
     it->second.SetFsUuid(uuid);
     it->second.SetDescription(label);
+    ApplyDefaultVolumeDescriptionIfUnset(it->second, it->second.GetFlags());
     it->second.SetFsType(it->second.GetFsTypeByStr(fsType));
     it->second.SetState(UNMOUNTED);
     if (isInternalDataDisk && !skipNotifyFormatted_.load()) {
@@ -2943,8 +2942,9 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
     }
 
     const int32_t stateBeforeUnmount = vol.GetState();
-    // Already safely ejected: skip ForceUnmount to avoid duplicate EJECT/UNMOUNTED.
-    if (stateBeforeUnmount != UNMOUNTED) {
+    // Already safely ejected (UNMOUNTED) or never mounted (DAMAGED): skip ForceUnmount
+    // to avoid redundant EJECT/UNMOUNTED events for volumes without a mount point.
+    if (stateBeforeUnmount != UNMOUNTED && stateBeforeUnmount != VolumeState::DAMAGED) {
         const int32_t unmountRet = ForceUnmount(vol.GetId());
         if (unmountRet != E_OK) {
             LOGE("DestroyVolumeByDiskIdAndPartNum: ForceUnmount failed volId=%{public}s ret=%{public}d",
@@ -2958,8 +2958,11 @@ bool DiskManager::DestroyVolumeByDiskIdAndPartNum(const std::string &diskId, int
         LOGI("Destroy volume failed devPath:%{public}s, ret:%{public}d", devPath.c_str(), ret);
         return false;
     }
-    // Fuse and non-Fuse share the same remove events: REMOVED after safe eject, BAD_REMOVAL otherwise.
-    CommonEventPublisher::PublishVolumeChange((stateBeforeUnmount == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
+    // Fuse and non-Fuse share the same remove events: REMOVED after safe eject or
+    // for never-mounted (DAMAGED) volumes, BAD_REMOVAL otherwise.
+    const bool isSafelyRemoved = (stateBeforeUnmount == UNMOUNTED) ||
+        (stateBeforeUnmount == VolumeState::DAMAGED);
+    CommonEventPublisher::PublishVolumeChange(isSafelyRemoved ? REMOVED : BAD_REMOVAL, vol);
     (void)OnVolumeDestroyed(vol.GetId());
     LOGI("DestroyVolume end.");
     return true;
@@ -3207,8 +3210,10 @@ int32_t DiskManager::UmountVolumeByPath(const std::string &diskId, const std::st
         LOGE("UmountVolumeByPath: volume not exist.");
         return dfx.Finish(E_NON_EXIST);
     }
-    if (volExternal.GetState() == VolumeState::UNMOUNTED) {
-        LOGE("UmountVolumeByPath: volume has unmounted");
+    // DAMAGED 卷无挂载点，与 UNMOUNTED 同等按"已卸载"拒绝，避免空转 DoUnmountVolume
+    if (volExternal.GetState() == VolumeState::UNMOUNTED ||
+        volExternal.GetState() == VolumeState::DAMAGED) {
+        LOGE("UmountVolumeByPath: volume has unmounted, state=%{public}d", volExternal.GetState());
         return dfx.Finish(E_VOL_STATE);
     }
     int32_t res = DoUnmountVolume(volExternal, false);
