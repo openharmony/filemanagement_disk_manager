@@ -45,7 +45,7 @@ public:
     MOCK_METHOD5(FormatVolume, ErrCode(const std::string &devPath, const std::string &fsType,
                                        const std::string &diskPath, const std::string &partitionType,
                                        const int32_t partitionNum));
-    MOCK_METHOD2(Check, ErrCode(const std::string &devPath, const std::string &fsType));
+    MOCK_METHOD3(Check, ErrCode(const std::string &devPath, const std::string &fsType, bool autoFix));
     MOCK_METHOD2(Repair, ErrCode(const std::string &devPath, const std::string &fsType));
     MOCK_METHOD3(SetLabel,
                  ErrCode(const std::string &devPath, const std::string &fsType, const std::string &label));
