@@ -593,5 +593,23 @@ HWTEST_F(CommonEventPublisherTest, PublishDiskAbnormal_TestCase_001, TestSize.Le
     GTEST_LOG_(INFO) << "PublishDiskAbnormal_TestCase_001 End";
 }
 
+/**
+ * @tc.name: PublishVolumeChange_TestCase_012
+ * @tc.desc: MOUNTED + VFAT + GET_FREE_SIZE_TIMEOUT_S=0 覆盖 SetMountedEventParams 超时分支：
+ *           GetFreeSizeWithTimeout 返回 false，跳过 freeSize，广播仍发布不崩溃。
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_012, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_012 Start";
+
+    VolumeExternal vMounted = MakeSampleVolume();
+    vMounted.SetPath("/mnt/data/external/fs-uuid-ut");
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(MOUNTED, vMounted));
+
+    GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_012 End";
+}
+
 } // namespace DiskManager
 } // namespace OHOS
