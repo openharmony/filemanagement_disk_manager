@@ -27,7 +27,7 @@ namespace OHOS {
 namespace {
 
 constexpr size_t MAX_STRING_LEN = 4096;
-constexpr uint32_t MOUNT_DM_DEVICE_IPC_CODE = 53;
+constexpr uint32_t MOUNT_DM_DEVICE_IPC_CODE = 57;
 
 } // namespace
 

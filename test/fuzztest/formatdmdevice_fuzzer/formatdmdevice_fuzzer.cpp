@@ -26,7 +26,7 @@ namespace OHOS {
 namespace {
 
 constexpr size_t MAX_STRING_LEN = 4096;
-constexpr uint32_t FORMAT_DM_DEVICE_IPC_CODE = 54;
+constexpr uint32_t FORMAT_DM_DEVICE_IPC_CODE = 58;
 
 } // namespace
 
