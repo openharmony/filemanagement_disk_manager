@@ -23,6 +23,9 @@
 #include "partition_types.h"
 #include "system_ability_definition.h"
 
+#include <string>
+#include <vector>
+
 namespace OHOS {
 namespace {
 
@@ -39,6 +42,72 @@ constexpr uint32_t PARTITION_OP_IPC_CODES[] = {
     FORMAT_PARTITION_IPC_CODE,
 };
 
+void FuzzGetPartitionTable(DiskManager::DiskManagerProvider &provider, const std::string &diskId)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(GET_PARTITION_TABLE_IPC_CODE, datas, reply, option);
+}
+
+void FuzzCreatePartition(DiskManager::DiskManagerProvider &provider, const std::string &diskId,
+                         const DiskManager::PartitionParams &params)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    params.Marshalling(datas);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(CREATE_PARTITION_IPC_CODE, datas, reply, option);
+}
+
+void FuzzDeletePartition(DiskManager::DiskManagerProvider &provider, const std::string &diskId,
+                         int32_t partitionNum)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.WriteInt32(partitionNum);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(DELETE_PARTITION_IPC_CODE, datas, reply, option);
+}
+
+void FuzzFormatPartition(DiskManager::DiskManagerProvider &provider, const std::string &diskId,
+                         int32_t partitionNum, const DiskManager::FormatParams &formatParams)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.WriteInt32(partitionNum);
+    formatParams.Marshalling(datas);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(FORMAT_PARTITION_IPC_CODE, datas, reply, option);
+}
+
+void FuzzRawParcels(DiskManager::DiskManagerProvider &provider, const std::vector<uint8_t> &remaining)
+{
+    MessageParcel reply;
+    MessageOption option;
+    for (uint32_t code : PARTITION_OP_IPC_CODES) {
+        MessageParcel rawParcel;
+        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+        if (!remaining.empty()) {
+            rawParcel.WriteBuffer(remaining.data(), remaining.size());
+        }
+        rawParcel.RewindRead(0);
+        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
+    }
+}
+
 } // namespace
 
 bool PartitionOpFuzzTest(const uint8_t *data, size_t size)
@@ -53,71 +122,22 @@ bool PartitionOpFuzzTest(const uint8_t *data, size_t size)
     int64_t startSector = fdp.ConsumeIntegral<int64_t>();
     int64_t endSector = fdp.ConsumeIntegral<int64_t>();
     std::string typeCode = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
+    std::string fsType = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
+    bool quickFormat = fdp.ConsumeBool();
+    std::string volumeName = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
 
-    MessageParcel reply;
-    MessageOption option;
+    DiskManager::PartitionParams params(partitionNum, startSector, endSector, typeCode);
+    DiskManager::FormatParams formatParams(fsType, quickFormat, volumeName);
+
     static DiskManager::DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-
-    // 1. GetPartitionTable（ipccode 46）：diskId
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(GET_PARTITION_TABLE_IPC_CODE, datas, reply, option);
-    }
-
-    // 2. CreatePartition（ipccode 47）：diskId + PartitionParams
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        DiskManager::PartitionParams params(partitionNum, startSector, endSector, typeCode);
-        params.Marshalling(datas);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(CREATE_PARTITION_IPC_CODE, datas, reply, option);
-    }
-
-    // 3. DeletePartition（ipccode 48）：diskId + partitionNum
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.WriteInt32(partitionNum);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(DELETE_PARTITION_IPC_CODE, datas, reply, option);
-    }
-
-    // 4. FormatPartition（ipccode 49）：diskId + partitionNum + FormatParams
-    {
-        std::string fsType = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
-        bool quickFormat = fdp.ConsumeBool();
-        std::string volumeName = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.WriteInt32(partitionNum);
-        DiskManager::FormatParams formatParams(fsType, quickFormat, volumeName);
-        formatParams.Marshalling(datas);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(FORMAT_PARTITION_IPC_CODE, datas, reply, option);
-    }
-
-    // 5. 原始字节 parcel：截断报文 / 缺参数 / 坏 Parcelable 数据，遍历全组 code
-    auto remaining = fdp.ConsumeRemainingBytes<uint8_t>();
-    for (uint32_t code : PARTITION_OP_IPC_CODES) {
-        MessageParcel rawParcel;
-        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        if (!remaining.empty()) {
-            rawParcel.WriteBuffer(remaining.data(), remaining.size());
-        }
-        rawParcel.RewindRead(0);
-        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
-    }
+    FuzzGetPartitionTable(provider, diskId);
+    FuzzCreatePartition(provider, diskId, params);
+    FuzzDeletePartition(provider, diskId, partitionNum);
+    FuzzFormatPartition(provider, diskId, partitionNum, formatParams);
+    FuzzRawParcels(provider, fdp.ConsumeRemainingBytes<uint8_t>());
 
     return true;
 }
-
 } // namespace OHOS
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)

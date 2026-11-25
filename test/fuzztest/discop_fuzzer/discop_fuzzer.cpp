@@ -22,6 +22,9 @@
 #include "message_parcel.h"
 #include "system_ability_definition.h"
 
+#include <string>
+#include <vector>
+
 namespace OHOS {
 namespace {
 
@@ -40,6 +43,80 @@ constexpr uint32_t DISC_OP_IPC_CODES[] = {
     GET_VOLUME_OP_PROCESS_IPC_CODE,
 };
 
+void FuzzErase(DiskManager::DiskManagerProvider &provider, const std::string &volumeId)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(ERASE_IPC_CODE, datas, reply, option);
+}
+
+void FuzzEject(DiskManager::DiskManagerProvider &provider, const std::string &diskId)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(EJECT_IPC_CODE, datas, reply, option);
+}
+
+void FuzzCreateIsoImage(DiskManager::DiskManagerProvider &provider, const std::string &volumeId,
+                        const std::string &filePath)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.WriteString(filePath);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(CREATE_ISO_IMAGE_IPC_CODE, datas, reply, option);
+}
+
+void FuzzBurn(DiskManager::DiskManagerProvider &provider, const std::string &volumeId,
+              const std::string &burnOptions)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.WriteString(burnOptions);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(BURN_IPC_CODE, datas, reply, option);
+}
+
+void FuzzGetVolumeOpProcess(DiskManager::DiskManagerProvider &provider, const std::string &volumeId)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(GET_VOLUME_OP_PROCESS_IPC_CODE, datas, reply, option);
+}
+
+void FuzzRawParcels(DiskManager::DiskManagerProvider &provider, const std::vector<uint8_t> &remaining)
+{
+    MessageParcel reply;
+    MessageOption option;
+    for (uint32_t code : DISC_OP_IPC_CODES) {
+        MessageParcel rawParcel;
+        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+        if (!remaining.empty()) {
+            rawParcel.WriteBuffer(remaining.data(), remaining.size());
+        }
+        rawParcel.RewindRead(0);
+        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
+    }
+}
+
 } // namespace
 
 bool DiscOpFuzzTest(const uint8_t *data, size_t size)
@@ -54,72 +131,16 @@ bool DiscOpFuzzTest(const uint8_t *data, size_t size)
     std::string filePath = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
     std::string burnOptions = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
 
-    MessageParcel reply;
-    MessageOption option;
     static DiskManager::DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-
-    // 1. Erase（ipccode 40）：volumeId
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(ERASE_IPC_CODE, datas, reply, option);
-    }
-
-    // 2. Eject（ipccode 41）：diskId
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(EJECT_IPC_CODE, datas, reply, option);
-    }
-
-    // 3. CreateIsoImage（ipccode 42）：volumeId + filePath
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.WriteString(filePath);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(CREATE_ISO_IMAGE_IPC_CODE, datas, reply, option);
-    }
-
-    // 4. Burn（ipccode 43）：volumeId + burnOptions（JSON 结构，含子字段校验）
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.WriteString(burnOptions);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(BURN_IPC_CODE, datas, reply, option);
-    }
-
-    // 5. GetVolumeOpProcess（ipccode 44）：volumeId
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(GET_VOLUME_OP_PROCESS_IPC_CODE, datas, reply, option);
-    }
-
-    // 6. 原始字节 parcel：截断报文 / 缺参数 / 非字符串数据，遍历全组 code
-    auto remaining = fdp.ConsumeRemainingBytes<uint8_t>();
-    for (uint32_t code : DISC_OP_IPC_CODES) {
-        MessageParcel rawParcel;
-        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        if (!remaining.empty()) {
-            rawParcel.WriteBuffer(remaining.data(), remaining.size());
-        }
-        rawParcel.RewindRead(0);
-        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
-    }
+    FuzzErase(provider, volumeId);
+    FuzzEject(provider, diskId);
+    FuzzCreateIsoImage(provider, volumeId, filePath);
+    FuzzBurn(provider, volumeId, burnOptions);
+    FuzzGetVolumeOpProcess(provider, volumeId);
+    FuzzRawParcels(provider, fdp.ConsumeRemainingBytes<uint8_t>());
 
     return true;
 }
-
 } // namespace OHOS
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)

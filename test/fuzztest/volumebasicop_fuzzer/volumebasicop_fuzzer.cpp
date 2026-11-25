@@ -23,6 +23,9 @@
 #include "mount_param.h"
 #include "system_ability_definition.h"
 
+#include <string>
+#include <vector>
+
 namespace OHOS {
 namespace {
 
@@ -41,6 +44,84 @@ constexpr uint32_t VOLUME_BASIC_OP_IPC_CODES[] = {
     SET_VOLUME_DESCRIPTION_IPC_CODE,
 };
 
+void FuzzMount(DiskManager::DiskManagerProvider &provider, const std::string &volumeId,
+               bool readOnly, const std::string &mountData)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    DiskManager::MountParam mountParam(readOnly);
+    mountParam.SetMountData(mountData);
+    mountParam.Marshalling(datas);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(MOUNT_IPC_CODE, datas, reply, option);
+}
+
+void FuzzUnmount(DiskManager::DiskManagerProvider &provider, const std::string &volumeId)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(UNMOUNT_IPC_CODE, datas, reply, option);
+}
+
+void FuzzFormat(DiskManager::DiskManagerProvider &provider, const std::string &volumeId,
+                const std::string &fsType)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.WriteString(fsType);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(FORMAT_IPC_CODE, datas, reply, option);
+}
+
+void FuzzTryToFix(DiskManager::DiskManagerProvider &provider, const std::string &volumeId)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(volumeId);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(TRY_TO_FIX_IPC_CODE, datas, reply, option);
+}
+
+void FuzzSetVolumeDescription(DiskManager::DiskManagerProvider &provider, const std::string &fsUuid,
+                              const std::string &description)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(fsUuid);
+    datas.WriteString(description);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(SET_VOLUME_DESCRIPTION_IPC_CODE, datas, reply, option);
+}
+
+void FuzzRawParcels(DiskManager::DiskManagerProvider &provider, const std::vector<uint8_t> &remaining)
+{
+    MessageParcel reply;
+    MessageOption option;
+    for (uint32_t code : VOLUME_BASIC_OP_IPC_CODES) {
+        MessageParcel rawParcel;
+        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+        if (!remaining.empty()) {
+            rawParcel.WriteBuffer(remaining.data(), remaining.size());
+        }
+        rawParcel.RewindRead(0);
+        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
+    }
+}
+
 } // namespace
 
 bool VolumeBasicOpFuzzTest(const uint8_t *data, size_t size)
@@ -57,75 +138,16 @@ bool VolumeBasicOpFuzzTest(const uint8_t *data, size_t size)
     bool readOnly = fdp.ConsumeBool();
     std::string mountData = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
 
-    MessageParcel reply;
-    MessageOption option;
     static DiskManager::DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-
-    // 1. Mount（ipccode 1）：volumeId + MountParam
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        DiskManager::MountParam mountParam(readOnly);
-        mountParam.SetMountData(mountData);
-        mountParam.Marshalling(datas);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(MOUNT_IPC_CODE, datas, reply, option);
-    }
-
-    // 2. Unmount（ipccode 2）：volumeId
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(UNMOUNT_IPC_CODE, datas, reply, option);
-    }
-
-    // 3. Format（ipccode 3）：volumeId + fsType
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.WriteString(fsType);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(FORMAT_IPC_CODE, datas, reply, option);
-    }
-
-    // 4. TryToFix（ipccode 4）：volumeId
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(volumeId);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(TRY_TO_FIX_IPC_CODE, datas, reply, option);
-    }
-
-    // 5. SetVolumeDescription（ipccode 5）：fsUuid + description
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(fsUuid);
-        datas.WriteString(description);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(SET_VOLUME_DESCRIPTION_IPC_CODE, datas, reply, option);
-    }
-
-    // 6. 原始字节 parcel：截断报文 / 缺参数 / 非字符串数据，遍历全组 code
-    auto remaining = fdp.ConsumeRemainingBytes<uint8_t>();
-    for (uint32_t code : VOLUME_BASIC_OP_IPC_CODES) {
-        MessageParcel rawParcel;
-        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        if (!remaining.empty()) {
-            rawParcel.WriteBuffer(remaining.data(), remaining.size());
-        }
-        rawParcel.RewindRead(0);
-        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
-    }
+    FuzzMount(provider, volumeId, readOnly, mountData);
+    FuzzUnmount(provider, volumeId);
+    FuzzFormat(provider, volumeId, fsType);
+    FuzzTryToFix(provider, volumeId);
+    FuzzSetVolumeDescription(provider, fsUuid, description);
+    FuzzRawParcels(provider, fdp.ConsumeRemainingBytes<uint8_t>());
 
     return true;
 }
-
 } // namespace OHOS
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)

@@ -24,6 +24,9 @@
 #include "mount_param.h"
 #include "system_ability_definition.h"
 
+#include <string>
+#include <vector>
+
 namespace OHOS {
 namespace {
 
@@ -44,6 +47,99 @@ constexpr uint32_t CRYPT_VOLUME_IPC_CODES[] = {
     UMOUNT_VOLUME_BY_PATH_IPC_CODE,
 };
 
+void FuzzBindBlockLoopDev(DiskManager::DiskManagerProvider &provider, const std::string &diskId,
+                          uint64_t offset, uint64_t sizeLimit)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.WriteUint64(offset);
+    datas.WriteUint64(sizeLimit);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(BIND_BLOCK_LOOP_DEV_IPC_CODE, datas, reply, option);
+}
+
+void FuzzCreateDmCryptVolume(DiskManager::DiskManagerProvider &provider,
+                             const DiskManager::CryptParam &cryptParam,
+                             const std::string &loopPath, const std::string &mapperName)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    cryptParam.Marshalling(datas);
+    datas.WriteString(loopPath);
+    datas.WriteString(mapperName);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(CREATE_DM_CRYPT_VOLUME_IPC_CODE, datas, reply, option);
+}
+
+void FuzzDestroyDmCryptVolume(DiskManager::DiskManagerProvider &provider, const std::string &mapperName)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(mapperName);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(DESTROY_DM_CRYPT_VOLUME_IPC_CODE, datas, reply, option);
+}
+
+void FuzzUnbindBlockLoopDev(DiskManager::DiskManagerProvider &provider, const std::string &loopPath)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(loopPath);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(UNBIND_BLOCK_LOOP_DEV_IPC_CODE, datas, reply, option);
+}
+
+void FuzzMountVolumeByPath(DiskManager::DiskManagerProvider &provider, const std::string &diskId,
+                           const std::string &volPath, const DiskManager::MountParam &mountParam)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.WriteString(volPath);
+    mountParam.Marshalling(datas);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(MOUNT_VOLUME_BY_PATH_IPC_CODE, datas, reply, option);
+}
+
+void FuzzUmountVolumeByPath(DiskManager::DiskManagerProvider &provider, const std::string &diskId,
+                            const std::string &volPath)
+{
+    MessageParcel datas;
+    datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+    datas.WriteString(diskId);
+    datas.WriteString(volPath);
+    datas.RewindRead(0);
+    MessageParcel reply;
+    MessageOption option;
+    (void)provider.OnRemoteRequest(UMOUNT_VOLUME_BY_PATH_IPC_CODE, datas, reply, option);
+}
+
+void FuzzRawParcels(DiskManager::DiskManagerProvider &provider, const std::vector<uint8_t> &remaining)
+{
+    MessageParcel reply;
+    MessageOption option;
+    for (uint32_t code : CRYPT_VOLUME_IPC_CODES) {
+        MessageParcel rawParcel;
+        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
+        if (!remaining.empty()) {
+            rawParcel.WriteBuffer(remaining.data(), remaining.size());
+        }
+        rawParcel.RewindRead(0);
+        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
+    }
+}
+
 } // namespace
 
 bool CryptVolumeFuzzTest(const uint8_t *data, size_t size)
@@ -59,96 +155,28 @@ bool CryptVolumeFuzzTest(const uint8_t *data, size_t size)
     std::string volPath = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
     uint64_t offset = fdp.ConsumeIntegral<uint64_t>();
     uint64_t sizeLimit = fdp.ConsumeIntegral<uint64_t>();
+    std::string type = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
+    std::string cipher = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
+    int32_t keySize = fdp.ConsumeIntegral<int32_t>();
+    std::string keyFile = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
+    bool readOnly = fdp.ConsumeBool();
+    std::string mountData = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
 
-    MessageParcel reply;
-    MessageOption option;
+    DiskManager::CryptParam cryptParam(type, cipher, keySize, keyFile);
+    DiskManager::MountParam mountParam(readOnly);
+    mountParam.SetMountData(mountData);
+
     static DiskManager::DiskManagerProvider provider(DISK_MANAGER_SA_ID, false);
-
-    // 1. BindBlockLoopDev（ipccode 15）：diskId + offset + sizeLimit
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.WriteUint64(offset);
-        datas.WriteUint64(sizeLimit);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(BIND_BLOCK_LOOP_DEV_IPC_CODE, datas, reply, option);
-    }
-
-    // 2. CreateDmCryptVolume（ipccode 16）：CryptParam + loopPath + mapperName（in/out）
-    {
-        std::string type = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
-        std::string cipher = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
-        int32_t keySize = fdp.ConsumeIntegral<int32_t>();
-        std::string keyFile = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        DiskManager::CryptParam cryptParam(type, cipher, keySize, keyFile);
-        cryptParam.Marshalling(datas);
-        datas.WriteString(loopPath);
-        datas.WriteString(mapperName);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(CREATE_DM_CRYPT_VOLUME_IPC_CODE, datas, reply, option);
-    }
-
-    // 3. DestroyDmCryptVolume（ipccode 17）：mapperName
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(mapperName);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(DESTROY_DM_CRYPT_VOLUME_IPC_CODE, datas, reply, option);
-    }
-
-    // 4. UnbindBlockLoopDev（ipccode 18）：loopPath
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(loopPath);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(UNBIND_BLOCK_LOOP_DEV_IPC_CODE, datas, reply, option);
-    }
-
-    // 5. MountVolumeByPath（ipccode 19）：diskId + volPath + MountParam
-    {
-        bool readOnly = fdp.ConsumeBool();
-        std::string mountData = fdp.ConsumeRandomLengthString(MAX_STRING_LEN);
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.WriteString(volPath);
-        DiskManager::MountParam mountParam(readOnly);
-        mountParam.SetMountData(mountData);
-        mountParam.Marshalling(datas);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(MOUNT_VOLUME_BY_PATH_IPC_CODE, datas, reply, option);
-    }
-
-    // 6. UmountVolumeByPath（ipccode 20）：diskId + volPath
-    {
-        MessageParcel datas;
-        datas.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        datas.WriteString(diskId);
-        datas.WriteString(volPath);
-        datas.RewindRead(0);
-        (void)provider.OnRemoteRequest(UMOUNT_VOLUME_BY_PATH_IPC_CODE, datas, reply, option);
-    }
-
-    // 7. 原始字节 parcel：截断报文 / 缺参数 / 坏 Parcelable 数据，遍历全组 code
-    auto remaining = fdp.ConsumeRemainingBytes<uint8_t>();
-    for (uint32_t code : CRYPT_VOLUME_IPC_CODES) {
-        MessageParcel rawParcel;
-        rawParcel.WriteInterfaceToken(DiskManager::DiskManagerStub::GetDescriptor());
-        if (!remaining.empty()) {
-            rawParcel.WriteBuffer(remaining.data(), remaining.size());
-        }
-        rawParcel.RewindRead(0);
-        (void)provider.OnRemoteRequest(code, rawParcel, reply, option);
-    }
+    FuzzBindBlockLoopDev(provider, diskId, offset, sizeLimit);
+    FuzzCreateDmCryptVolume(provider, cryptParam, loopPath, mapperName);
+    FuzzDestroyDmCryptVolume(provider, mapperName);
+    FuzzUnbindBlockLoopDev(provider, loopPath);
+    FuzzMountVolumeByPath(provider, diskId, volPath, mountParam);
+    FuzzUmountVolumeByPath(provider, diskId, volPath);
+    FuzzRawParcels(provider, fdp.ConsumeRemainingBytes<uint8_t>());
 
     return true;
 }
-
 } // namespace OHOS
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
