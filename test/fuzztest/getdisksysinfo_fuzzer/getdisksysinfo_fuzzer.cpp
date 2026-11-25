@@ -22,6 +22,9 @@
 #include "message_parcel.h"
 #include "system_ability_definition.h"
 
+#include <string>
+#include <vector>
+
 namespace OHOS {
 namespace {
 
