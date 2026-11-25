@@ -37,5 +37,9 @@ group("disk_manager_fuzztest") {
     "//foundation/filemanagement/disk_manager/test/fuzztest/blockinfotable_fuzzer:blockinfotable_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/diskconfig_fuzzer:diskconfig_fuzztest",
     "//foundation/filemanagement/disk_manager/test/fuzztest/getdisksysinfo_fuzzer:getdisksysinfo_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/volumebasicop_fuzzer:volumebasicop_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/cryptvolume_fuzzer:cryptvolume_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/discop_fuzzer:discop_fuzztest",
+    "//foundation/filemanagement/disk_manager/test/fuzztest/partitionop_fuzzer:partitionop_fuzztest",
   ]
 }
