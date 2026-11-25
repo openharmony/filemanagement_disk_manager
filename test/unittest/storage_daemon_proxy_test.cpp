@@ -1125,6 +1125,7 @@ HWTEST_F(StorageDaemonProxyTest, Check_TestCase_005, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CHECK), _, _, _))
         .WillOnce(Return(IPC_FAILED));
@@ -1145,6 +1146,7 @@ HWTEST_F(StorageDaemonProxyTest, Check_TestCase_006, TestSize.Level0)
 
     EXPECT_CALL(*messageParcelMock_, WriteInterfaceToken(_)).WillOnce(Return(true));
     EXPECT_CALL(*messageParcelMock_, WriteString16(_)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*messageParcelMock_, WriteBool(_)).WillOnce(Return(true));
     EXPECT_CALL(*remote_,
                 SendRequest(static_cast<uint32_t>(StorageDaemon::IStorageDaemonIpcCode::ADDON_CHECK), _, _, _))
         .WillOnce(Return(ERR_OK));
