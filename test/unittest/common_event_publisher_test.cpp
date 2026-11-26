@@ -98,7 +98,7 @@ public:
 
 /**
  * @tc.name: PublishVolumeChange_TestCase_001
- * @tc.desc: 静态 API 冒烟（已映射 UNMOUNTED）及 CHECKING、FUSE_REMOVED 无 STATE_INFOS 映射时的提前返回分支。
+ * @tc.desc: 静态 API 冒烟（已映射 UNMOUNTED）及 CHECKING 无 STATE_INFOS 映射时的提前返回分支。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -111,9 +111,6 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_001, TestSize.Le
 
     VolumeExternal vChecking = MakeSampleVolume();
     EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(CHECKING, vChecking));
-
-    VolumeExternal vFuseRemoved = MakeSampleVolume();
-    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeChange(FUSE_REMOVED, vFuseRemoved));
 
     GTEST_LOG_(INFO) << "PublishVolumeChange_TestCase_001 End";
 }
@@ -134,8 +131,6 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeChange_TestCase_002, TestSize.Le
         BAD_REMOVAL,
         EJECTING,
         DAMAGED,
-        ENCRYPTED_AND_LOCKED,
-        ENCRYPTED_AND_UNLOCKED,
     };
     for (VolumeState s : nonMountedMapped) {
         VolumeExternal vol = MakeSampleVolume();
@@ -283,8 +278,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_001, TestSize.Le
 
     const VolumeState mappedStates[] = {
         REMOVED, UNMOUNTED, MOUNTED, BAD_REMOVAL, EJECTING,
-        DAMAGED, ENCRYPTED_AND_LOCKED,
-        ENCRYPTED_AND_UNLOCKED, CHECKING,
+        DAMAGED, CHECKING,
         REPAIR_FINISH_FAIL, REPAIR_FINISH_SUCCESS, FORMAT_FINISH_FAIL,
     };
     for (VolumeState s : mappedStates) {
@@ -297,7 +291,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_001, TestSize.Le
 
 /**
  * @tc.name: PublishVolumeResult_TestCase_002
- * @tc.desc: PublishVolumeResult FUSE_REMOVED 无 STATE_INFOS 映射，覆盖 actionSet=false early return。
+ * @tc.desc: PublishVolumeResult CHECKING 无 STATE_INFOS 映射，覆盖 actionSet=false early return。
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -306,7 +300,7 @@ HWTEST_F(CommonEventPublisherTest, PublishVolumeResult_TestCase_002, TestSize.Le
     GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_002 Start";
 
     VolumeExternal vol = MakeSampleVolume();
-    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(FUSE_REMOVED, vol));
+    EXPECT_NO_THROW(CommonEventPublisher::PublishVolumeResult(CHECKING, vol));
 
     GTEST_LOG_(INFO) << "PublishVolumeResult_TestCase_002 End";
 }

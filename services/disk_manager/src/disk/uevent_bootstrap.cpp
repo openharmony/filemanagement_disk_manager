@@ -216,8 +216,10 @@ void DestroyALLVolume(const std::string &diskId)
         if (vol.GetDiskId() != diskId || vol.GetId() == "0") {
             continue;
         }
-        // Already safely ejected: skip ForceUnmount to avoid duplicate EJECT/UNMOUNTED.
-        if (vol.GetState() != UNMOUNTED) {
+        // Already safely ejected (UNMOUNTED) or never mounted (DAMAGED): skip ForceUnmount
+        // to avoid redundant EJECT/UNMOUNTED events for volumes without a mount point.
+        const bool isUnmountedLike = (vol.GetState() == UNMOUNTED) || (vol.GetState() == DAMAGED);
+        if (!isUnmountedLike) {
             int32_t unmountRet = DiskManager::GetInstance().ForceUnmount(vol.GetId());
             if (unmountRet != E_OK) {
                 LOGE("ForceUnmount failed, volId=%{public}s, ret=%{public}d", vol.GetId().c_str(), unmountRet);
@@ -235,8 +237,9 @@ void DestroyALLVolume(const std::string &diskId)
             LOGI("Destroy volume failed vol:%{public}s, ret:%{public}d", vol.GetId().c_str(), ret);
             continue;
         }
-        // Fuse and non-Fuse share the same remove events: REMOVED after safe eject, BAD_REMOVAL otherwise.
-        CommonEventPublisher::PublishVolumeChange((vol.GetState() == UNMOUNTED) ? REMOVED : BAD_REMOVAL, vol);
+        // Fuse and non-Fuse share the same remove events: REMOVED after safe eject or
+        // for never-mounted (DAMAGED) volumes, BAD_REMOVAL otherwise.
+        CommonEventPublisher::PublishVolumeChange(isUnmountedLike ? REMOVED : BAD_REMOVAL, vol);
         (void)DiskManager::GetInstance().OnVolumeDestroyed(vol.GetId());
     }
 }
