@@ -15,6 +15,11 @@
 
 #include "notification/common_event_publisher.h"
 
+#include <chrono>
+#include <future>
+#include <memory>
+#include <thread>
+
 #include "common_event_data.h"
 #include "common_event_manager.h"
 #include "common_event_support.h"
@@ -66,6 +71,31 @@ const VolumeStateInfo STATE_INFOS[] = {
     {FORMAT_FINISH_FAIL, "FORMAT_FINISH_FAIL", EventFwk::CommonEventSupport::COMMON_EVENT_DISK_VOLUME_STATE_CHANGE},
 };
 
+#ifndef GET_FREE_SIZE_TIMEOUT_S
+constexpr int32_t GET_FREE_SIZE_TIMEOUT_S = 5;
+#endif
+
+struct FreeSizeResult {
+    int32_t ret{E_OK};
+    int64_t freeSize{0};
+};
+
+bool GetFreeSizeWithTimeout(const std::string &uuid, FreeSizeResult &result)
+{
+    auto promisePtr = std::make_shared<std::promise<FreeSizeResult>>();
+    std::future<FreeSizeResult> future = promisePtr->get_future();
+    std::thread([promisePtr, uuid]() {
+        FreeSizeResult res;
+        res.ret = DiskManager::GetInstance().GetFreeSizeOfVolume(uuid, res.freeSize);
+        promisePtr->set_value(res);
+    }).detach();
+    if (future.wait_for(std::chrono::seconds(GET_FREE_SIZE_TIMEOUT_S)) != std::future_status::ready) {
+        return false;
+    }
+    result = future.get();
+    return true;
+}
+
 void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)
 {
     wantParams.SetParam("path", AAFwk::String::Box(volume.GetPath()));
@@ -73,23 +103,27 @@ void SetMountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &
     if (volume.GetFsType() == FsType::MTP || volume.GetFsType() == FsType::PTP) {
         LOGI("Volume mounted: id=%{public}s, fsType=%{public}d (MTP/PTP device, freeSize not set)",
             volume.GetId().c_str(), volume.GetFsType());
-    } else {
-        int64_t freeSize = 0;
-        int32_t ret = DiskManager::GetInstance().GetFreeSizeOfVolume(volume.GetUuid(), freeSize);
-        if (ret == E_OK) {
-            if (freeSize < 0) {
-                LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
-                    volume.GetId().c_str(), static_cast<long long>(freeSize));
-            } else {
-                wantParams.SetParam("freeSize", AAFwk::Long::Box64(freeSize));
-                LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
-                    volume.GetId().c_str(), volume.GetFsType(), static_cast<long long>(freeSize));
-            }
-        } else {
-            LOGW("Volume mounted: id=%{public}s, failed to get freeSize, ret=%{public}d",
-                volume.GetId().c_str(), ret);
-        }
+        return;
     }
+    FreeSizeResult result;
+    if (!GetFreeSizeWithTimeout(volume.GetUuid(), result)) {
+        LOGW("Volume mounted: id=%{public}s, GetFreeSizeOfVolume timeout(%{public}ds), skip freeSize",
+            volume.GetId().c_str(), GET_FREE_SIZE_TIMEOUT_S);
+        return;
+    }
+    if (result.ret != E_OK) {
+        LOGW("Volume mounted: id=%{public}s, failed to get freeSize, ret=%{public}d",
+            volume.GetId().c_str(), result.ret);
+        return;
+    }
+    if (result.freeSize < 0) {
+        LOGW("Volume mounted: id=%{public}s, invalid freeSize=%{public}lld, skip setting",
+            volume.GetId().c_str(), static_cast<long long>(result.freeSize));
+        return;
+    }
+    wantParams.SetParam("freeSize", AAFwk::Long::Box64(result.freeSize));
+    LOGI("Volume mounted: id=%{public}s, fsType=%{public}d, freeSize=%{public}lld",
+        volume.GetId().c_str(), volume.GetFsType(), static_cast<long long>(result.freeSize));
 }
 
 void SetUnmountedEventParams(AAFwk::WantParams &wantParams, const VolumeExternal &volume)

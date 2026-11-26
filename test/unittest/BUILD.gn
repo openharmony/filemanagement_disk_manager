@@ -64,6 +64,7 @@ ohos_unittest("disk_manager_common_event_publisher_test") {
     "dlsym=MockDlsym",
     "dlclose=MockDlclose",
     "dlerror=MockDlerror",
+    "GET_FREE_SIZE_TIMEOUT_S=0",
   ]
 
   if (car_device_enable) {
@@ -259,6 +260,7 @@ ohos_unittest("disk_manager_server_test") {
     "UeventBootstrap=MockUeventBootstrap",
     "FindParameter=MockFindParameter",
     "GetParameterValue=MockGetParameterValue",
+    "GET_FREE_SIZE_TIMEOUT_S=0",
     "dlopen=MockDlopen",
     "dlsym=MockDlsym",
     "dlclose=MockDlclose",
@@ -853,6 +855,7 @@ ohos_unittest("disk_manager_provider_test") {
     "IPCSkeleton=MockIPCSkeleton",
     "GetParameter=MockGetParameter",
     "AUTH_WAIT_TIMEOUT_SEC=1",
+    "GET_FREE_SIZE_TIMEOUT_S=0",
     "private = public",
     "dlopen=MockDlopen",
     "dlsym=MockDlsym",
