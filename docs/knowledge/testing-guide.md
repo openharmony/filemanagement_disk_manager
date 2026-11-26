@@ -72,6 +72,11 @@ defines = [
 | `partitiontypes_fuzzer` | PartitionInfo 等 Parcelable |
 | `ueventparser_fuzzer` | UeventEnvParser::Parse |
 | `volumecore_fuzzer` / `volumeexternal_fuzzer` | VolumeCore + VolumeInfoStr / VolumeExternal |
+| `dfxtypes_fuzzer` | DFX 类型（ParseOpDiagText/ParseOpDiagReport/DfxTruncate/跳过原因推导） |
+| `voldatauuidstore_fuzzer` | VoldataUuidEntry::FromJson/ToJson 往返 + 只读查询 |
+| `blockinfotable_fuzzer` | BlockInfoTable::ToJsonStringWithExtras / BlockInfo 序列化 / TryCopyByDiskId |
+| `diskconfig_fuzzer` | DiskConfig::IsMatch（fnmatch 模式匹配） |
+| `getdisksysinfo_fuzzer` | IPC code 54/55/56（sysPath 查询：序列号/通电次数/通电时长） |
 
 统一配置：`cflags = ["-fno-lto", "-g", "-O0", "-Wno-unused-variable", "-fno-omit-frame-pointer"]`。
 
