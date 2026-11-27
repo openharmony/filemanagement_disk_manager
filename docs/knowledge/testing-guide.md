@@ -77,6 +77,10 @@ defines = [
 | `blockinfotable_fuzzer` | BlockInfoTable::ToJsonStringWithExtras / BlockInfo 序列化 / TryCopyByDiskId |
 | `diskconfig_fuzzer` | DiskConfig::IsMatch（fnmatch 模式匹配） |
 | `getdisksysinfo_fuzzer` | IPC code 54/55/56（sysPath 查询：序列号/通电次数/通电时长） |
+| `volumebasicop_fuzzer` | IPC code 1-5（Mount/Unmount/Format/TryToFix/SetVolumeDescription，含 MountParam） |
+| `cryptvolume_fuzzer` | IPC code 15-20（加密卷全流程：Bind/Create/Destroy/Unbind/MountVolumeByPath/UmountVolumeByPath，含 CryptParam） |
+| `discop_fuzzer` | IPC code 40-44（光盘/刻录：Erase/Eject/CreateIsoImage/Burn/GetVolumeOpProcess） |
+| `partitionop_fuzzer` | IPC code 46-49（分区管理：GetPartitionTable/Create/Delete/FormatPartition，含 PartitionParams/FormatParams） |)
 
 统一配置：`cflags = ["-fno-lto", "-g", "-O0", "-Wno-unused-variable", "-fno-omit-frame-pointer"]`。
 
